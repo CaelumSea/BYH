@@ -127,15 +127,25 @@ internal sealed class SelectionRuntime : IDisposable
     private readonly List<PinnedScreenshotWindow> _pinnedWindows = new();
     private readonly List<NoActivateWindowHost> _pinnedHosts = new();
 
-    // R47: numbered badge annotation mode. _oceanEyesAnnotating is 1 while
-    // the user is placing badges (between A-on and A-off/Esc). Volatile —
-    // read on the keyboard + mouse hook threads, written from the UI thread.
-    // _annotationSession holds the badge list + undo stack; created on A-on,
+    // R47/R48: annotation mode. _oceanEyesAnnotating is 1 while the user is
+    // in annotation mode (between A-on and A-off/Esc). Volatile — read on
+    // the keyboard + mouse hook threads, written from the UI thread.
+    // _annotationSession holds items + unified undo stack; created on A-on,
     // cleared on dismiss. _annotationOverlay is the RegionSelectOverlay whose
-    // AnnotationCanvas we draw badges on; set by App.axaml.cs.
+    // AnnotationCanvas we draw on; set by App.axaml.cs.
+    // R48: _currentAnnotationTool selects the active drawing tool (default
+    // Rectangle on entering annotation mode). _annotationDragging / DragStart /
+    // DragPoints track in-progress shape drags. _annotationStrokeTimer polls
+    // cursor position for pen/highlight path recording (the mouse hook only
+    // fires on button events, not moves).
     private int _oceanEyesAnnotating;
-    private NumberedAnnotationSession? _annotationSession;
+    private AnnotationSession? _annotationSession;
     private RegionSelectOverlay? _annotationOverlay;
+    private AnnotationTool _currentAnnotationTool;
+    private bool _annotationDragging;
+    private Avalonia.Point _annotationDragStart;
+    private readonly List<(double X, double Y)> _annotationDragPoints = new();
+    private DispatcherTimer? _annotationStrokeTimer;
 
     public SelectionRuntime(
         ToolbarWindow toolbarWindow,
@@ -532,19 +542,19 @@ internal sealed class SelectionRuntime : IDisposable
             return;
         }
 
-        // R47: snapshot badges before marshaling to UI thread.
+        // R48: snapshot annotation items before marshaling to UI thread.
         // The session may be cleared by DismissOceanEyes before the Post runs.
-        IReadOnlyList<NumberedBadge> badges =
-            _annotationSession?.Badges ?? Array.Empty<NumberedBadge>();
+        IReadOnlyList<IAnnotationItem> items =
+            _annotationSession?.Items ?? Array.Empty<IAnnotationItem>();
 
         Dispatcher.UIThread.Post(() =>
         {
             try
             {
-                // R47: burn badges into PNG before saving. DPI scale is read
-                // on the UI thread (RenderScaling is a UI property).
+                // R48: burn all annotations into PNG before saving. DPI scale
+                // is read on the UI thread (RenderScaling is a UI property).
                 double dpiScale = _annotationOverlay?.RenderScaling ?? 1.0;
-                byte[] finalPng = BurnBadgesIntoPng(png, badges, dpiScale);
+                byte[] finalPng = BurnAnnotationsIntoPng(png, items, dpiScale);
 
                 if (settings.AutoSaveEnabled)
                 {
@@ -746,33 +756,102 @@ internal sealed class SelectionRuntime : IDisposable
     // ── R47 numbered badge annotation ──────────────────────────────────
 
     /// <summary>
-    /// R47: enters annotation mode. Creates a new session, arms the
-    /// annotation flag, and updates the toolbar status. Called from
-    /// OnToolbarKeyPressed on the keyboard hook thread; UI ops marshaled.
+    /// R47/R48: enters annotation mode. Creates a new session, arms the
+    /// annotation flag, sets the default tool to Rectangle, and updates
+    /// the toolbar status. Called from OnToolbarKeyPressed on the keyboard
+    /// hook thread; UI ops marshaled.
     /// </summary>
     private void EnterAnnotationMode()
     {
-        _annotationSession = new NumberedAnnotationSession();
+        _annotationSession = new AnnotationSession();
+        _currentAnnotationTool = AnnotationTool.Rectangle;
         Volatile.Write(ref _oceanEyesAnnotating, 1);
         Dispatcher.UIThread.Post(() =>
         {
-            _toolbarWindow.SetDiagnosticStatus("标注模式 · 点击放序号 · Ctrl+Z 撤销 · A/Esc 退出");
+            _toolbarWindow.SetDiagnosticStatus(
+                "标注模式 · [1]矩形 [2]椭圆 [3]箭头 [4]画笔 [5]高亮 · Ctrl+Z 撤销 · A/Esc 退出");
         });
     }
 
     /// <summary>
-    /// R47: exits annotation mode (badges stay on overlay). Clears the
-    /// active flag and restores the toolbar status. Idempotent — safe from
-    /// any thread. Does NOT clear the session or overlay badges (they
-    /// persist until Ocean Eyes is dismissed or Enter saves).
+    /// R47/R48: exits annotation mode (annotations stay on overlay). Clears
+    /// the active flag, drag state, and restores the toolbar status.
+    /// Idempotent — safe from any thread. Does NOT clear the session or
+    /// overlay (they persist until Ocean Eyes is dismissed or Enter saves).
     /// </summary>
     private void ExitAnnotationMode()
     {
         Volatile.Write(ref _oceanEyesAnnotating, 0);
+        _annotationDragging = false;
+        StopAnnotationStrokeTimer();
+        _annotationDragPoints.Clear();
         Dispatcher.UIThread.Post(() =>
         {
             _toolbarWindow.SetDiagnosticStatus("已退出标注模式 · Enter 保存 / Esc 退出");
         });
+    }
+
+    // ── R48 annotation stroke timer (pen/highlight path recording) ─────
+
+    /// <summary>
+    /// Starts a DispatcherTimer that polls GetCursorPos at ~60Hz to record
+    /// the pen/highlight stroke path. The mouse hook only fires on button
+    /// events, so we need a timer to capture intermediate move points.
+    /// Runs on the hook thread; timer ticks marshal to the UI thread.
+    /// </summary>
+    private void StartAnnotationStrokeTimer(double originX, double originY, double dpiScale)
+    {
+        StopAnnotationStrokeTimer();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        timer.Tick += (_, _) =>
+        {
+            if (!_annotationDragging) return;
+            if (!GetCursorPos(out NativePoint pt)) return;
+            double x = (pt.X - originX) / dpiScale;
+            double y = (pt.Y - originY) / dpiScale;
+            _annotationDragPoints.Add((x, y));
+        };
+        _annotationStrokeTimer = timer;
+        Dispatcher.UIThread.Post(() => timer.Start());
+    }
+
+    /// <summary>Stops the annotation stroke timer if running.</summary>
+    private void StopAnnotationStrokeTimer()
+    {
+        DispatcherTimer? timer = _annotationStrokeTimer;
+        _annotationStrokeTimer = null;
+        if (timer is not null)
+        {
+            Dispatcher.UIThread.Post(() => timer.Stop());
+        }
+    }
+
+    // ── R48 shape creation helpers ─────────────────────────────────────
+
+    private static RectangleAnnotation CreateRectangleItem(Avalonia.Point start, double endX, double endY, bool shift)
+    {
+        var rect = AnnotationShapeGeometry.NormalizeRect(start.X, start.Y, endX, endY);
+        return AnnotationShapeGeometry.ApplyShiftConstraint(rect, shift);
+    }
+
+    private static EllipseAnnotation CreateEllipseItem(Avalonia.Point start, double endX, double endY, bool shift)
+    {
+        var ellipse = AnnotationShapeGeometry.NormalizeEllipse(start.X, start.Y, endX, endY);
+        return AnnotationShapeGeometry.ApplyShiftConstraint(ellipse, shift);
+    }
+
+    private static PenStrokeAnnotation CreatePenItem(List<(double X, double Y)> points)
+    {
+        return new PenStrokeAnnotation(points.Count >= 2
+            ? new List<(double X, double Y)>(points)
+            : new List<(double X, double Y)> { points[0], points[0] });
+    }
+
+    private static HighlightStrokeAnnotation CreateHighlightItem(List<(double X, double Y)> points)
+    {
+        return new HighlightStrokeAnnotation(points.Count >= 2
+            ? new List<(double X, double Y)>(points)
+            : new List<(double X, double Y)> { points[0], points[0] });
     }
 
     /// <summary>
@@ -812,6 +891,109 @@ internal sealed class SelectionRuntime : IDisposable
         }
 
         // Re-encode to PNG.
+        return ScreenRegionCapture.EncodeBgraToPng(bgra, width, height);
+    }
+
+    /// <summary>
+    /// R48: burns all annotation items (badges + shapes) into the PNG byte
+    /// array. Dispatches each <see cref="IAnnotationItem"/> to the correct
+    /// BGRA draw method. Returns the modified PNG bytes.
+    /// </summary>
+    private static byte[] BurnAnnotationsIntoPng(
+        byte[] png,
+        IReadOnlyList<IAnnotationItem> items,
+        double dpiScale)
+    {
+        if (items.Count == 0)
+        {
+            return png;
+        }
+
+        byte[]? bgra = DecodePngToBgra(png, out int width, out int height);
+        if (bgra is null || width <= 0 || height <= 0)
+        {
+            return png;
+        }
+
+        int thickness = Math.Max(1, (int)(AnnotationShapeGeometry.StrokeThicknessDip * dpiScale));
+        int highlightThickness = Math.Max(1, (int)(AnnotationShapeGeometry.HighlightThicknessDip * dpiScale));
+
+        foreach (IAnnotationItem item in items)
+        {
+            switch (item)
+            {
+                case NumberedBadgeAnnotation badge:
+                {
+                    (double cx, double cy) = NumberedBadgeGeometry.GetPhysicalCenter(
+                        new NumberedBadge(badge.Number, badge.X, badge.Y), dpiScale);
+                    double radius = NumberedBadgeGeometry.GetRadius(dpiScale);
+                    DrawCircleOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
+                        0xAA, 0xC2, 0xD9, 0xFF);
+                    DrawCircleStrokeOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
+                        0x95, 0xB8, 0xFF, 0xFF);
+                    DrawDigitOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
+                        badge.Number);
+                    break;
+                }
+                case RectangleAnnotation rect:
+                {
+                    int l = (int)(rect.Left * dpiScale);
+                    int t = (int)(rect.Top * dpiScale);
+                    int r = (int)((rect.Left + rect.Width) * dpiScale);
+                    int b = (int)((rect.Top + rect.Height) * dpiScale);
+                    BurnInHelpers.DrawRectangleStrokeOnBgra(bgra, width, height,
+                        l, t, r, b, thickness,
+                        AnnotationShapeGeometry.GoldB, AnnotationShapeGeometry.GoldG,
+                        AnnotationShapeGeometry.GoldR, AnnotationShapeGeometry.GoldA);
+                    break;
+                }
+                case EllipseAnnotation ellipse:
+                {
+                    int cx = (int)((ellipse.Left + ellipse.Width / 2) * dpiScale);
+                    int cy = (int)((ellipse.Top + ellipse.Height / 2) * dpiScale);
+                    int rx = (int)(ellipse.Width / 2 * dpiScale);
+                    int ry = (int)(ellipse.Height / 2 * dpiScale);
+                    BurnInHelpers.DrawEllipseStrokeOnBgra(bgra, width, height,
+                        cx, cy, rx, ry, thickness,
+                        AnnotationShapeGeometry.GoldB, AnnotationShapeGeometry.GoldG,
+                        AnnotationShapeGeometry.GoldR, AnnotationShapeGeometry.GoldA);
+                    break;
+                }
+                case ArrowAnnotation arrow:
+                {
+                    BurnInHelpers.DrawArrowOnBgra(bgra, width, height,
+                        (int)(arrow.StartX * dpiScale), (int)(arrow.StartY * dpiScale),
+                        (int)(arrow.EndX * dpiScale), (int)(arrow.EndY * dpiScale),
+                        thickness,
+                        AnnotationShapeGeometry.GoldB, AnnotationShapeGeometry.GoldG,
+                        AnnotationShapeGeometry.GoldR, AnnotationShapeGeometry.GoldA);
+                    break;
+                }
+                case PenStrokeAnnotation pen:
+                {
+                    var scaled = new List<(double X, double Y)>(pen.Points.Count);
+                    foreach (var pt in pen.Points)
+                        scaled.Add((pt.X * dpiScale, pt.Y * dpiScale));
+                    BurnInHelpers.DrawPathOnBgra(bgra, width, height,
+                        scaled, thickness,
+                        AnnotationShapeGeometry.GoldB, AnnotationShapeGeometry.GoldG,
+                        AnnotationShapeGeometry.GoldR, AnnotationShapeGeometry.GoldA);
+                    break;
+                }
+                case HighlightStrokeAnnotation highlight:
+                {
+                    var scaled = new List<(double X, double Y)>(highlight.Points.Count);
+                    foreach (var pt in highlight.Points)
+                        scaled.Add((pt.X * dpiScale, pt.Y * dpiScale));
+                    BurnInHelpers.DrawPathOnBgra(bgra, width, height,
+                        scaled, highlightThickness,
+                        AnnotationShapeGeometry.HighlightB, AnnotationShapeGeometry.HighlightG,
+                        AnnotationShapeGeometry.HighlightR, AnnotationShapeGeometry.HighlightA);
+                    break;
+                }
+            }
+        }
+
         return ScreenRegionCapture.EncodeBgraToPng(bgra, width, height);
     }
 
@@ -2222,9 +2404,9 @@ internal sealed class SelectionRuntime : IDisposable
             return true;
         }
 
-        // R47 Ctrl+Z: undo the most recent badge. Only fires during active
-        // annotation mode. Checked before other branches so it works even if
-        // Ctrl is held (which would otherwise skip single-key branches).
+        // R47/R48 Ctrl+Z: undo the most recent annotation item (badge or
+        // shape). Only fires during active annotation mode. Checked before
+        // other branches so it works even if Ctrl is held.
         const int vkZ = 0x5A;
         if (vkCode == vkZ &&
             (GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
@@ -2232,12 +2414,12 @@ internal sealed class SelectionRuntime : IDisposable
         {
             try
             {
-                _logger.Info("OceanEyes", "Annotation: Ctrl+Z → undo last badge.");
+                _logger.Info("OceanEyes", "Annotation: Ctrl+Z → undo last item.");
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (_annotationSession?.Undo() == true)
+                    if (_annotationSession?.Undo() is not null)
                     {
-                        _annotationOverlay?.RemoveLastBadge();
+                        _annotationOverlay?.RemoveLastAnnotation();
                     }
                 });
             }
@@ -2363,6 +2545,38 @@ internal sealed class SelectionRuntime : IDisposable
             {
                 _logger.Error("OceanEyes", "Annotation toggle failed.", exception);
                 ExitAnnotationMode();
+            }
+            return true;
+        }
+
+        // R48: tool switching with 1-5 keys (vkCode 0x31-0x35). Only fires
+        // during active annotation mode. Updates the current tool and status.
+        if (vkCode >= 0x31 && vkCode <= 0x35 &&
+            Volatile.Read(ref _oceanEyesAnnotating) != 0)
+        {
+            try
+            {
+                AnnotationTool tool = (AnnotationTool)(vkCode - 0x30); // 1→1, 2→2, etc.
+                _currentAnnotationTool = tool;
+                string toolName = tool switch
+                {
+                    AnnotationTool.Rectangle => "矩形",
+                    AnnotationTool.Ellipse => "椭圆",
+                    AnnotationTool.Arrow => "箭头",
+                    AnnotationTool.Pen => "画笔",
+                    AnnotationTool.Highlight => "高亮",
+                    _ => "未知",
+                };
+                _logger.Info("OceanEyes", $"Annotation: {vkCode - 0x30} → switch to {toolName}.");
+                Dispatcher.UIThread.Post(() =>
+                {
+                    _toolbarWindow.SetDiagnosticStatus(
+                        $"标注模式 · [1]矩形 [2]椭圆 [3]箭头 [4]画笔 [5]高亮 · 当前:{toolName} · Ctrl+Z 撤销 · A/Esc 退出");
+                });
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("OceanEyes", "Annotation tool switch failed.", exception);
             }
             return true;
         }
@@ -2748,44 +2962,79 @@ internal sealed class SelectionRuntime : IDisposable
             return;
         }
 
-        // R47 annotation mode: left-button-down places a numbered badge.
+        // R47/R48 annotation mode: routes mouse events to the current tool.
         // Short-circuit so the click doesn't trigger selection or toolbar
         // dismiss. Right-click and other events pass through.
         if (Volatile.Read(ref _oceanEyesAnnotating) != 0)
         {
+            RegionSelectOverlay? overlay = _annotationOverlay;
+            double dpiScale = overlay?.RenderScaling ?? 1.0;
+            double originX = 0;
+            double originY = 0;
+            if (overlay?.Screens?.Primary is { } primaryScreen)
+            {
+                originX = primaryScreen.Bounds.X;
+                originY = primaryScreen.Bounds.Y;
+            }
+
+            double dipX = (mouseEvent.X - originX) / dpiScale;
+            double dipY = (mouseEvent.Y - originY) / dpiScale;
+
+            bool shiftHeld = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+
             if (mouseEvent.Message == MouseMessageType.LeftButtonDown)
             {
-                // Convert physical screen px → overlay DIP coordinates.
-                // The overlay covers the primary screen; its physical origin
-                // is stored in _annotationOverlay.
-                RegionSelectOverlay? overlay = _annotationOverlay;
-                double dpiScale = overlay?.RenderScaling ?? 1.0;
-                double originX = 0;
-                double originY = 0;
-                if (overlay?.Screens?.Primary is { } primaryScreen)
+                _annotationDragging = true;
+                _annotationDragStart = new Avalonia.Point(dipX, dipY);
+                _annotationDragPoints.Clear();
+                _annotationDragPoints.Add((dipX, dipY));
+
+                // For pen/highlight, start a timer to poll cursor position
+                // (the mouse hook only fires on button events, not moves).
+                AnnotationTool tool = _currentAnnotationTool;
+                if (tool is AnnotationTool.Pen or AnnotationTool.Highlight)
                 {
-                    originX = primaryScreen.Bounds.X;
-                    originY = primaryScreen.Bounds.Y;
+                    StartAnnotationStrokeTimer(originX, originY, dpiScale);
                 }
-                double dipX = (mouseEvent.X - originX) / dpiScale;
-                double dipY = (mouseEvent.Y - originY) / dpiScale;
+            }
+            else if (mouseEvent.Message == MouseMessageType.LeftButtonUp && _annotationDragging)
+            {
+                _annotationDragging = false;
+                StopAnnotationStrokeTimer();
+                AnnotationTool tool = _currentAnnotationTool;
+                Avalonia.Point start = _annotationDragStart;
 
                 Dispatcher.UIThread.Post(() =>
                 {
                     try
                     {
-                        if (_annotationSession is { } session &&
-                            Volatile.Read(ref _oceanEyesAnnotating) != 0)
+                        if (_annotationSession is not { } session ||
+                            Volatile.Read(ref _oceanEyesAnnotating) == 0)
                         {
-                            NumberedBadge badge = session.Push(dipX, dipY);
-                            _annotationOverlay?.AddBadge(badge);
+                            return;
+                        }
+
+                        IAnnotationItem? item = tool switch
+                        {
+                            AnnotationTool.Rectangle => CreateRectangleItem(start, dipX, dipY, shiftHeld),
+                            AnnotationTool.Ellipse => CreateEllipseItem(start, dipX, dipY, shiftHeld),
+                            AnnotationTool.Arrow => new ArrowAnnotation(start.X, start.Y, dipX, dipY),
+                            AnnotationTool.Pen => CreatePenItem(_annotationDragPoints),
+                            AnnotationTool.Highlight => CreateHighlightItem(_annotationDragPoints),
+                            _ => null,
+                        };
+
+                        if (item is not null)
+                        {
+                            session.Push(item);
+                            _annotationOverlay?.AddShape(item);
                             _logger.Info("OceanEyes",
-                                $"Annotation: placed badge #{badge.Number} at ({dipX:F1}, {dipY:F1}).");
+                                $"Annotation: drew {tool} at ({start.X:F1},{start.Y:F1})->({dipX:F1},{dipY:F1}).");
                         }
                     }
                     catch (Exception exception)
                     {
-                        _logger.Error("OceanEyes", "Annotation badge placement failed.", exception);
+                        _logger.Error("OceanEyes", "Annotation item creation failed.", exception);
                     }
                 });
             }
@@ -2917,9 +3166,10 @@ internal sealed class SelectionRuntime : IDisposable
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out NativePoint lpPoint);
 
-    // ── R47 P/Invoke: GetKeyState for Ctrl+Z detection ──────────────────
+    // ── R47/R48 P/Invoke: GetKeyState for modifier detection ────────────
 
     private const int VK_CONTROL = 0x11;
+    private const int VK_SHIFT = 0x10;
 
     [DllImport("user32.dll")]
     private static extern short GetKeyState(int nVirtKey);
