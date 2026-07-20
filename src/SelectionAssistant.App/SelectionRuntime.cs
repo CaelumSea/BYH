@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using SelectionAssistant.Core.Annotation;
+using SelectionAssistant.Core.Annotation; // NumberedBadge, NumberedBadgeGeometry, MagneticSnapCalculator, PhysicalRect
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
@@ -1052,6 +1052,25 @@ internal sealed class SelectionRuntime : IDisposable
                 window.RequestCopy += () => CopyPinnedToClipboard(window);
                 window.RequestClose += () => ClosePinned(window);
                 window.RequestCloseAll += CloseAllPinned;
+
+                // R52: inject magnetic-snap bounds callback. Returns the
+                // physical-pixel rects of all OTHER pinned windows (excluding
+                // this one) so the snap calculator can align edges.
+                window.GetOtherPinnedBounds = () =>
+                {
+                    var result = new List<PhysicalRect>();
+                    foreach (var w in _pinnedWindows)
+                    {
+                        if (ReferenceEquals(w, window)) continue;
+                        double scaling = w.RenderScaling > 0 ? w.RenderScaling : 1.0;
+                        var pos = w.Position;
+                        var cs = w.ClientSize;
+                        int physW = (int)(cs.Width * scaling);
+                        int physH = (int)(cs.Height * scaling);
+                        result.Add(new PhysicalRect(pos.X, pos.Y, pos.X + physW, pos.Y + physH));
+                    }
+                    return result;
+                };
 
                 // Decode + show before positioning — SizeToContent=WidthAndHeight
                 // needs the image loaded to compute bounds.

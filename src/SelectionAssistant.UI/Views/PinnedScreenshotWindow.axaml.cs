@@ -1,13 +1,17 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using SelectionAssistant.Core.Annotation;
 
 namespace SelectionAssistant.UI.Views;
 
@@ -47,6 +51,13 @@ namespace SelectionAssistant.UI.Views;
 /// User decided to defer the scale animation and ship the slide-in for now.
 /// See handoff §3x §22 for the full exploration log + future fix ideas.
 /// </para>
+/// <para>
+/// <b>R52:</b> magnetic snap during drag. The window snaps to screen work-area
+/// edges and other pinned-window edges within an 8px threshold. Shift
+/// temporarily disables snapping. A gold guide line appears during drag when a
+/// snap edge is hit. The pure-function calculator is
+/// <see cref="MagneticSnapCalculator.ComputeSnap"/>.
+/// </para>
 /// </summary>
 public partial class PinnedScreenshotWindow : Window, IDisposable
 {
@@ -74,6 +85,13 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
     /// to be forgiving of imprecise double-clicks).
     /// </summary>
     private const double DoubleClickPx = 8.0;
+
+    // R52: magnetic snap constants and P/Invoke.
+    private const int VK_SHIFT = 0x10;
+    private static readonly Color SnapGuideColor = Color.FromArgb(0x99, 0xD9, 0xC2, 0x8A); // #FFD9C28A @ alpha=0.6
+
+    [DllImport("user32.dll")]
+    private static extern short GetKeyState(int nVirtKey);
 
     private byte[]? _pngBytes;
     private Bitmap? _bitmap;
@@ -124,6 +142,13 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
     /// </summary>
     private long _lastClickTicks;
     private PixelPoint _lastClickScreen;
+
+    /// <summary>
+    /// R52: callback injected by <c>SelectionRuntime</c> that returns the
+    /// physical-pixel rects of all other pinned windows (excluding this one).
+    /// Null when no runtime is attached (e.g. unit-test context).
+    /// </summary>
+    public Func<IReadOnlyList<PhysicalRect>>? GetOtherPinnedBounds { get; set; }
 
     public PinnedScreenshotWindow()
     {
@@ -310,6 +335,8 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
     /// <summary>
     /// Pointer moved while left button is held: once movement exceeds
     /// <see cref="DragThreshold"/>, start updating the window position.
+    /// R52: applies magnetic snap before setting Position, and draws
+    /// gold guide lines when a snap edge is hit.
     /// </summary>
     private void OnPointerMoved(object? sender, PointerEventArgs e)
     {
@@ -331,7 +358,22 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
             _dragCommitted = true;
         }
 
-        Position = new PixelPoint(_startWindowPos.X + dx, _startWindowPos.Y + dy);
+        // R52: compute target position then apply magnetic snap.
+        int targetX = _startWindowPos.X + dx;
+        int targetY = _startWindowPos.Y + dy;
+        int w = (int)(ClientSize.Width * RenderScaling);
+        int h = (int)(ClientSize.Height * RenderScaling);
+        var targetRect = new PhysicalRect(targetX, targetY, targetX + w, targetY + h);
+
+        bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        var (snapped, hints) = MagneticSnapCalculator.ComputeSnap(
+            targetRect,
+            GetWorkAreas(),
+            GetOtherPinnedBounds?.Invoke() ?? Array.Empty<PhysicalRect>(),
+            shift);
+
+        Position = new PixelPoint(snapped.X, snapped.Y);
+        UpdateSnapGuideCanvas(hints);
     }
 
     /// <summary>
@@ -340,6 +382,7 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
     /// double-click within <see cref="DoubleClickMs"/> and
     /// <see cref="DoubleClickPx"/> of the previous one. If so, raise
     /// <see cref="RequestClose"/>.
+    /// R52: applies final magnetic snap on release and clears guide lines.
     /// </summary>
     private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
@@ -347,6 +390,27 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
         {
             return;
         }
+
+        // R52: apply final snap on release (in case the release position is
+        // within threshold but the last OnPointerMoved didn't snap).
+        if (_dragCommitted)
+        {
+            var pos = Position;
+            int w = (int)(ClientSize.Width * RenderScaling);
+            int h = (int)(ClientSize.Height * RenderScaling);
+            var rect = new PhysicalRect(pos.X, pos.Y, pos.X + w, pos.Y + h);
+            bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+            var (snapped, _) = MagneticSnapCalculator.ComputeSnap(
+                rect,
+                GetWorkAreas(),
+                GetOtherPinnedBounds?.Invoke() ?? Array.Empty<PhysicalRect>(),
+                shift);
+            Position = new PixelPoint(snapped.X, snapped.Y);
+        }
+
+        // R52: clear snap guide lines on release.
+        ClearSnapGuides();
+
         bool wasClick = !_dragCommitted;
         _isDragging = false;
         _dragCommitted = false;
@@ -359,11 +423,11 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
         }
 
         long now = Environment.TickCount64;
-        var pos = this.PointToScreen(e.GetPosition(this));
+        var screenPos = this.PointToScreen(e.GetPosition(this));
         if (_lastClickTicks != 0 &&
             (now - _lastClickTicks) <= DoubleClickMs &&
-            Math.Abs(pos.X - _lastClickScreen.X) <= DoubleClickPx &&
-            Math.Abs(pos.Y - _lastClickScreen.Y) <= DoubleClickPx)
+            Math.Abs(screenPos.X - _lastClickScreen.X) <= DoubleClickPx &&
+            Math.Abs(screenPos.Y - _lastClickScreen.Y) <= DoubleClickPx)
         {
             _lastClickTicks = 0;
             RequestClose?.Invoke();
@@ -371,7 +435,7 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
         else
         {
             _lastClickTicks = now;
-            _lastClickScreen = pos;
+            _lastClickScreen = screenPos;
         }
     }
 
@@ -419,5 +483,104 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
         menu.Items.Add(close);
         menu.Items.Add(closeAll);
         return menu;
+    }
+
+    // ── R52: magnetic snap helpers ────────────────────────────────────────
+
+    /// <summary>
+    /// Returns the physical-pixel work areas for all screens.
+    /// Uses Avalonia's <c>Screens.AllScreens</c> and scales
+    /// <c>WorkingArea</c> by <c>RenderScaling</c> to get physical pixels.
+    /// </summary>
+    private IReadOnlyList<PhysicalRect> GetWorkAreas()
+    {
+        var screens = Screens?.All;
+        if (screens is null || screens.Count == 0)
+        {
+            return Array.Empty<PhysicalRect>();
+        }
+
+        double scaling = RenderScaling > 0 ? RenderScaling : 1.0;
+        var result = new List<PhysicalRect>(screens.Count);
+        foreach (var screen in screens)
+        {
+            var wa = screen.WorkingArea;
+            int left = (int)(wa.X * scaling);
+            int top = (int)(wa.Y * scaling);
+            int right = (int)((wa.X + wa.Width) * scaling);
+            int bottom = (int)((wa.Y + wa.Height) * scaling);
+            result.Add(new PhysicalRect(left, top, right, bottom));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Draws gold guide lines on <see cref="SnapGuideCanvas"/> for the given
+    /// snap hints. Each hint produces a line at the snapped edge, extending
+    /// across the window. The canvas is made visible when there are lines.
+    /// </summary>
+    private void UpdateSnapGuideCanvas(IReadOnlyList<SnapHint> hints)
+    {
+        SnapGuideCanvas.Children.Clear();
+
+        if (hints.Count == 0)
+        {
+            SnapGuideCanvas.IsVisible = false;
+            return;
+        }
+
+        double w = ClientSize.Width;
+        double h = ClientSize.Height;
+        var brush = new SolidColorBrush(SnapGuideColor);
+
+        foreach (var hint in hints)
+        {
+            if (hint.Axis == SnapAxis.X)
+            {
+                // Vertical guide line at the snapped edge.
+                double x = hint.Target switch
+                {
+                    SnapTarget.ScreenLeft or SnapTarget.WindowRight => 0,
+                    SnapTarget.ScreenRight or SnapTarget.WindowLeft => w,
+                    _ => 0,
+                };
+                SnapGuideCanvas.Children.Add(new Line
+                {
+                    StartPoint = new Point(x, 0),
+                    EndPoint = new Point(x, h),
+                    Stroke = brush,
+                    StrokeThickness = 2,
+                });
+            }
+            else
+            {
+                // Horizontal guide line at the snapped edge.
+                double y = hint.Target switch
+                {
+                    SnapTarget.ScreenTop or SnapTarget.WindowBottom => 0,
+                    SnapTarget.ScreenBottom or SnapTarget.WindowTop => h,
+                    _ => 0,
+                };
+                SnapGuideCanvas.Children.Add(new Line
+                {
+                    StartPoint = new Point(0, y),
+                    EndPoint = new Point(w, y),
+                    Stroke = brush,
+                    StrokeThickness = 2,
+                });
+            }
+        }
+
+        SnapGuideCanvas.IsVisible = true;
+    }
+
+    /// <summary>
+    /// Clears all guide lines from <see cref="SnapGuideCanvas"/> and hides it.
+    /// </summary>
+    private void ClearSnapGuides()
+    {
+        SnapGuideCanvas.Children.Clear();
+        SnapGuideCanvas.IsVisible = false;
     }
 }
