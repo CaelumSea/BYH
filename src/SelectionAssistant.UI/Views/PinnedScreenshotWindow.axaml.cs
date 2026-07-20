@@ -500,16 +500,15 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
             return Array.Empty<PhysicalRect>();
         }
 
-        double scaling = RenderScaling > 0 ? RenderScaling : 1.0;
+        // Avalonia's Screen.WorkingArea is a PixelRect — already in physical
+        // pixels (NOT DIP). Do NOT multiply by RenderScaling; doing so makes
+        // every edge coordinate unreachable (e.g. at 125% DPI a 1920px screen
+        // edge becomes 2400px, so snap targets sit beyond the visible screen).
         var result = new List<PhysicalRect>(screens.Count);
         foreach (var screen in screens)
         {
             var wa = screen.WorkingArea;
-            int left = (int)(wa.X * scaling);
-            int top = (int)(wa.Y * scaling);
-            int right = (int)((wa.X + wa.Width) * scaling);
-            int bottom = (int)((wa.Y + wa.Height) * scaling);
-            result.Add(new PhysicalRect(left, top, right, bottom));
+            result.Add(new PhysicalRect(wa.X, wa.Y, wa.X + wa.Width, wa.Y + wa.Height));
         }
 
         return result;
