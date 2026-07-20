@@ -134,8 +134,17 @@ internal sealed class SelectionRuntime : IDisposable
     // cleared on dismiss. _annotationOverlay is the RegionSelectOverlay whose
     // AnnotationCanvas we draw badges on; set by App.axaml.cs.
     private int _oceanEyesAnnotating;
-    private NumberedAnnotationSession? _annotationSession;
+    private AnnotationSession? _annotationSession;
     private RegionSelectOverlay? _annotationOverlay;
+
+    // R48: annotation tool state. _currentAnnotationTool is set by 0-5 keys.
+    // _annotationDragging is true while the user is dragging a shape.
+    // _annotationDragStart is the physical screen px where the drag started.
+    // _annotationDragPoints accumulates points for pen/highlight strokes.
+    private AnnotationTool _currentAnnotationTool = AnnotationTool.Number;
+    private bool _annotationDragging;
+    private (double X, double Y) _annotationDragStart;
+    private List<(double X, double Y)> _annotationDragPoints = new();
 
     public SelectionRuntime(
         ToolbarWindow toolbarWindow,
@@ -532,19 +541,19 @@ internal sealed class SelectionRuntime : IDisposable
             return;
         }
 
-        // R47: snapshot badges before marshaling to UI thread.
+        // R48: snapshot annotations before marshaling to UI thread.
         // The session may be cleared by DismissOceanEyes before the Post runs.
-        IReadOnlyList<NumberedBadge> badges =
-            _annotationSession?.Badges ?? Array.Empty<NumberedBadge>();
+        IReadOnlyList<IAnnotationItem> annotations =
+            _annotationSession?.Items ?? Array.Empty<IAnnotationItem>();
 
         Dispatcher.UIThread.Post(() =>
         {
             try
             {
-                // R47: burn badges into PNG before saving. DPI scale is read
+                // R48: burn annotations into PNG before saving. DPI scale is read
                 // on the UI thread (RenderScaling is a UI property).
                 double dpiScale = _annotationOverlay?.RenderScaling ?? 1.0;
-                byte[] finalPng = BurnBadgesIntoPng(png, badges, dpiScale);
+                byte[] finalPng = BurnAnnotationsIntoPng(png, annotations, dpiScale);
 
                 if (settings.AutoSaveEnabled)
                 {
@@ -636,8 +645,8 @@ internal sealed class SelectionRuntime : IDisposable
         // DismissOverlay → _regionOverlay) must run on the Avalonia UI thread.
         Dispatcher.UIThread.Post(() =>
         {
-            // R47: clear badge visuals from the overlay.
-            _annotationOverlay?.ClearBadges();
+            // R48: clear all annotation visuals from the overlay.
+            _annotationOverlay?.ClearAnnotations();
             _windowHost.Hide();
             // R42: tell App.axaml.cs to close the region-select overlay.
             DismissOverlay?.Invoke();
@@ -749,14 +758,17 @@ internal sealed class SelectionRuntime : IDisposable
     /// R47: enters annotation mode. Creates a new session, arms the
     /// annotation flag, and updates the toolbar status. Called from
     /// OnToolbarKeyPressed on the keyboard hook thread; UI ops marshaled.
+    /// R48: also resets the current tool to Number (default).
     /// </summary>
     private void EnterAnnotationMode()
     {
-        _annotationSession = new NumberedAnnotationSession();
+        _annotationSession = new AnnotationSession();
+        _currentAnnotationTool = AnnotationTool.Number;
         Volatile.Write(ref _oceanEyesAnnotating, 1);
         Dispatcher.UIThread.Post(() =>
         {
-            _toolbarWindow.SetDiagnosticStatus("标注模式 · 点击放序号 · Ctrl+Z 撤销 · A/Esc 退出");
+            _toolbarWindow.SetDiagnosticStatus(
+                "标注模式 · 点击放序号 · [0]序号 [1]矩形 [2]椭圆 [3]箭头 [4]画笔 [5]高亮 · Ctrl+Z 撤销 · A/Esc 退出");
         });
     }
 
@@ -769,24 +781,72 @@ internal sealed class SelectionRuntime : IDisposable
     private void ExitAnnotationMode()
     {
         Volatile.Write(ref _oceanEyesAnnotating, 0);
+        _annotationDragging = false;
         Dispatcher.UIThread.Post(() =>
         {
+            _annotationOverlay?.RemoveLivePreview();
             _toolbarWindow.SetDiagnosticStatus("已退出标注模式 · Enter 保存 / Esc 退出");
         });
     }
 
+    // ── R48 live preview helpers (must run on UI thread) ──────────────
+
     /// <summary>
-    /// R47: burns the current numbered badges into the PNG byte array.
-    /// Draws filled circles + centered digits directly onto the BGRA pixel
-    /// buffer (no SkiaSharp dependency — uses a built-in 5×7 bitmap font
-    /// for digits). Returns the modified PNG bytes.
+    /// Finalizes the live preview: removes the preview, creates the final
+    /// IAnnotationItem, pushes to session, and adds the final visual.
     /// </summary>
-    private static byte[] BurnBadgesIntoPng(
+    private void FinalizeLivePreviewShape(double dipX, double dipY)
+    {
+        _annotationOverlay?.RemoveLivePreview();
+
+        if (_annotationSession is not { } session ||
+            Volatile.Read(ref _oceanEyesAnnotating) == 0)
+        {
+            return;
+        }
+
+        bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+        double startX = _annotationDragStart.X;
+        double startY = _annotationDragStart.Y;
+
+        IAnnotationItem? item = _currentAnnotationTool switch
+        {
+            AnnotationTool.Rectangle =>
+                AnnotationShapeGeometry.NormalizeRect(startX, startY, dipX, dipY) is { } r
+                    ? (shift ? AnnotationShapeGeometry.ApplyShiftConstraint(r, true) : r)
+                    : null,
+            AnnotationTool.Ellipse =>
+                AnnotationShapeGeometry.NormalizeEllipse(startX, startY, dipX, dipY) is { } e
+                    ? (shift ? AnnotationShapeGeometry.ApplyShiftConstraint(e, true) : e)
+                    : null,
+            AnnotationTool.Arrow => new ArrowAnnotation(startX, startY, dipX, dipY),
+            AnnotationTool.Pen => new PenStrokeAnnotation(_annotationDragPoints.ToArray()),
+            AnnotationTool.Highlight => new HighlightStrokeAnnotation(_annotationDragPoints.ToArray()),
+            _ => null,
+        };
+
+        if (item is not null)
+        {
+            session.Push(item);
+            _annotationOverlay?.AddShape(item);
+            _logger.Info("OceanEyes",
+                $"Annotation: finalized {_currentAnnotationTool} at ({dipX:F1}, {dipY:F1}).");
+        }
+
+        _annotationDragPoints.Clear();
+    }
+
+    /// <summary>
+    /// R47/R48: burns all annotations (badges + shapes) into the PNG byte array.
+    /// Draws directly onto the BGRA pixel buffer (no SkiaSharp dependency).
+    /// Returns the modified PNG bytes.
+    /// </summary>
+    private static byte[] BurnAnnotationsIntoPng(
         byte[] png,
-        IReadOnlyList<NumberedBadge> badges,
+        IReadOnlyList<IAnnotationItem> items,
         double dpiScale)
     {
-        if (badges.Count == 0)
+        if (items.Count == 0)
         {
             return png;
         }
@@ -798,17 +858,92 @@ internal sealed class SelectionRuntime : IDisposable
             return png; // decode failed — return original
         }
 
-        // Draw each badge onto the BGRA buffer.
-        foreach (NumberedBadge badge in badges)
+        // Draw each annotation onto the BGRA buffer.
+        foreach (IAnnotationItem item in items)
         {
-            (double cx, double cy) = NumberedBadgeGeometry.GetPhysicalCenter(badge, dpiScale);
-            double radius = NumberedBadgeGeometry.GetRadius(dpiScale);
-            DrawCircleOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
-                0xAA, 0xC2, 0xD9, 0xFF); // BGRA for #FFD9C28A (gold)
-            DrawCircleStrokeOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
-                0x95, 0xB8, 0xFF, 0xFF); // BGRA for #FFB8956A (dark gold stroke)
-            DrawDigitOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
-                badge.Number);
+            switch (item)
+            {
+                case NumberedBadgeAnnotation badge:
+                {
+                    var nb = new NumberedBadge(badge.Number, badge.X, badge.Y);
+                    (double cx, double cy) = NumberedBadgeGeometry.GetPhysicalCenter(nb, dpiScale);
+                    double radius = NumberedBadgeGeometry.GetRadius(dpiScale);
+                    DrawCircleOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
+                        0xAA, 0xC2, 0xD9, 0xFF); // BGRA for #FFD9C28A (gold)
+                    DrawCircleStrokeOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
+                        0x95, 0xB8, 0xFF, 0xFF); // BGRA for #FFB8956A (dark gold stroke)
+                    DrawDigitOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
+                        badge.Number);
+                    break;
+                }
+                case RectangleAnnotation rect:
+                {
+                    int left = (int)(rect.Left * dpiScale);
+                    int top = (int)(rect.Top * dpiScale);
+                    int right = (int)((rect.Left + rect.Width) * dpiScale);
+                    int bottom = (int)((rect.Top + rect.Height) * dpiScale);
+                    int thickness = (int)(AnnotationShapeGeometry.StrokeThicknessDip * dpiScale);
+                    BurnInHelpers.DrawRectangleStrokeOnBgra(bgra, width, height,
+                        left, top, right, bottom, thickness,
+                        AnnotationShapeGeometry.GoldB, AnnotationShapeGeometry.GoldG,
+                        AnnotationShapeGeometry.GoldR, AnnotationShapeGeometry.GoldA);
+                    break;
+                }
+                case EllipseAnnotation ellipse:
+                {
+                    int cx = (int)((ellipse.Left + ellipse.Width / 2) * dpiScale);
+                    int cy = (int)((ellipse.Top + ellipse.Height / 2) * dpiScale);
+                    int rx = (int)((ellipse.Width / 2) * dpiScale);
+                    int ry = (int)((ellipse.Height / 2) * dpiScale);
+                    int thickness = (int)(AnnotationShapeGeometry.StrokeThicknessDip * dpiScale);
+                    BurnInHelpers.DrawEllipseStrokeOnBgra(bgra, width, height,
+                        cx, cy, rx, ry, thickness,
+                        AnnotationShapeGeometry.GoldB, AnnotationShapeGeometry.GoldG,
+                        AnnotationShapeGeometry.GoldR, AnnotationShapeGeometry.GoldA);
+                    break;
+                }
+                case ArrowAnnotation arrow:
+                {
+                    int sx = (int)(arrow.StartX * dpiScale);
+                    int sy = (int)(arrow.StartY * dpiScale);
+                    int ex = (int)(arrow.EndX * dpiScale);
+                    int ey = (int)(arrow.EndY * dpiScale);
+                    int thickness = (int)(AnnotationShapeGeometry.StrokeThicknessDip * dpiScale);
+                    BurnInHelpers.DrawArrowOnBgra(bgra, width, height,
+                        sx, sy, ex, ey, thickness,
+                        AnnotationShapeGeometry.GoldB, AnnotationShapeGeometry.GoldG,
+                        AnnotationShapeGeometry.GoldR, AnnotationShapeGeometry.GoldA);
+                    break;
+                }
+                case PenStrokeAnnotation pen:
+                {
+                    var scaledPoints = new List<(double X, double Y)>();
+                    foreach (var (x, y) in pen.Points)
+                    {
+                        scaledPoints.Add((x * dpiScale, y * dpiScale));
+                    }
+                    int thickness = (int)(AnnotationShapeGeometry.StrokeThicknessDip * dpiScale);
+                    BurnInHelpers.DrawPathOnBgra(bgra, width, height,
+                        scaledPoints, thickness,
+                        AnnotationShapeGeometry.GoldB, AnnotationShapeGeometry.GoldG,
+                        AnnotationShapeGeometry.GoldR, AnnotationShapeGeometry.GoldA);
+                    break;
+                }
+                case HighlightStrokeAnnotation highlight:
+                {
+                    var scaledPoints = new List<(double X, double Y)>();
+                    foreach (var (x, y) in highlight.Points)
+                    {
+                        scaledPoints.Add((x * dpiScale, y * dpiScale));
+                    }
+                    int thickness = (int)(AnnotationShapeGeometry.HighlightThicknessDip * dpiScale);
+                    BurnInHelpers.DrawPathOnBgra(bgra, width, height,
+                        scaledPoints, thickness,
+                        AnnotationShapeGeometry.HighlightB, AnnotationShapeGeometry.HighlightG,
+                        AnnotationShapeGeometry.HighlightR, AnnotationShapeGeometry.HighlightA);
+                    break;
+                }
+            }
         }
 
         // Re-encode to PNG.
@@ -1234,11 +1369,11 @@ internal sealed class SelectionRuntime : IDisposable
         // R44: right-click redraw should also cancel the color picker — the
         // loupe doesn't make sense on an unconfirmed region.
         HideColorPicker();
-        // R47: also exit annotation mode + clear badges on redraw.
+        // R48: also exit annotation mode + clear annotations on redraw.
         Volatile.Write(ref _oceanEyesAnnotating, 0);
         _annotationSession?.Clear();
         _annotationSession = null;
-        Dispatcher.UIThread.Post(() => _annotationOverlay?.ClearBadges());
+        Dispatcher.UIThread.Post(() => _annotationOverlay?.ClearAnnotations());
         Volatile.Write(ref _oceanEyesActive, 0);
         _oceanEyesPng = null;
         _oceanEyesOcrTask = null;
@@ -2241,9 +2376,10 @@ internal sealed class SelectionRuntime : IDisposable
             return true;
         }
 
-        // R47 Ctrl+Z: undo the most recent badge. Only fires during active
-        // annotation mode. Checked before other branches so it works even if
-        // Ctrl is held (which would otherwise skip single-key branches).
+        // R47 Ctrl+Z: undo the most recent annotation (badge or shape). Only
+        // fires during active annotation mode. Checked before other branches so
+        // it works even if Ctrl is held (which would otherwise skip single-key
+        // branches).
         const int vkZ = 0x5A;
         if (vkCode == vkZ &&
             (GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
@@ -2251,18 +2387,51 @@ internal sealed class SelectionRuntime : IDisposable
         {
             try
             {
-                _logger.Info("OceanEyes", "Annotation: Ctrl+Z → undo last badge.");
+                _logger.Info("OceanEyes", "Annotation: Ctrl+Z → undo last annotation.");
                 Dispatcher.UIThread.Post(() =>
                 {
-                    if (_annotationSession?.Undo() == true)
+                    if (_annotationSession?.Undo() is not null)
                     {
-                        _annotationOverlay?.RemoveLastBadge();
+                        _annotationOverlay?.RemoveLastAnnotation();
                     }
                 });
             }
             catch (Exception exception)
             {
                 _logger.Error("OceanEyes", "Annotation Ctrl+Z failed.", exception);
+            }
+            return true;
+        }
+
+        // R48 tool switching: 0-5 keys switch annotation tool. Only fires during
+        // active annotation mode. Keys 0x30-0x35 are before the A-Z filter.
+        if (vkCode >= 0x30 && vkCode <= 0x35 &&
+            Volatile.Read(ref _oceanEyesAnnotating) != 0)
+        {
+            try
+            {
+                var newTool = (AnnotationTool)(vkCode - 0x30);
+                _currentAnnotationTool = newTool;
+                string toolName = newTool switch
+                {
+                    AnnotationTool.Number => "序号",
+                    AnnotationTool.Rectangle => "矩形",
+                    AnnotationTool.Ellipse => "椭圆",
+                    AnnotationTool.Arrow => "箭头",
+                    AnnotationTool.Pen => "画笔",
+                    AnnotationTool.Highlight => "高亮",
+                    _ => "未知",
+                };
+                _logger.Info("OceanEyes", $"Annotation: switched to tool {toolName} ({(int)newTool}).");
+                Dispatcher.UIThread.Post(() =>
+                {
+                    _toolbarWindow.SetDiagnosticStatus(
+                        $"标注模式 · 当前工具: {toolName} · [0]序号 [1]矩形 [2]椭圆 [3]箭头 [4]画笔 [5]高亮 · Ctrl+Z 撤销 · A/Esc 退出");
+                });
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("OceanEyes", "Annotation tool switch failed.", exception);
             }
             return true;
         }
@@ -2767,44 +2936,105 @@ internal sealed class SelectionRuntime : IDisposable
             return;
         }
 
-        // R47 annotation mode: left-button-down places a numbered badge.
+        // R47/R48 annotation mode: routes mouse events based on current tool.
         // Short-circuit so the click doesn't trigger selection or toolbar
         // dismiss. Right-click and other events pass through.
         if (Volatile.Read(ref _oceanEyesAnnotating) != 0)
         {
+            // Convert physical screen px → overlay DIP coordinates.
+            RegionSelectOverlay? overlay = _annotationOverlay;
+            double dpiScale = overlay?.RenderScaling ?? 1.0;
+            double originX = 0;
+            double originY = 0;
+            if (overlay?.Screens?.Primary is { } primaryScreen)
+            {
+                originX = primaryScreen.Bounds.X;
+                originY = primaryScreen.Bounds.Y;
+            }
+            double dipX = (mouseEvent.X - originX) / dpiScale;
+            double dipY = (mouseEvent.Y - originY) / dpiScale;
+
             if (mouseEvent.Message == MouseMessageType.LeftButtonDown)
             {
-                // Convert physical screen px → overlay DIP coordinates.
-                // The overlay covers the primary screen; its physical origin
-                // is stored in _annotationOverlay.
-                RegionSelectOverlay? overlay = _annotationOverlay;
-                double dpiScale = overlay?.RenderScaling ?? 1.0;
-                double originX = 0;
-                double originY = 0;
-                if (overlay?.Screens?.Primary is { } primaryScreen)
+                if (_currentAnnotationTool == AnnotationTool.Number)
                 {
-                    originX = primaryScreen.Bounds.X;
-                    originY = primaryScreen.Bounds.Y;
+                    // Number tool: click to place badge (R47 behavior).
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        try
+                        {
+                            if (_annotationSession is { } session &&
+                                Volatile.Read(ref _oceanEyesAnnotating) != 0)
+                            {
+                                NumberedBadgeAnnotation badge = session.PushBadge(dipX, dipY);
+                                _annotationOverlay?.AddShape(badge);
+                                _logger.Info("OceanEyes",
+                                    $"Annotation: placed badge #{badge.Number} at ({dipX:F1}, {dipY:F1}).");
+                            }
+                        }
+                        catch (Exception exception)
+                        {
+                            _logger.Error("OceanEyes", "Annotation badge placement failed.", exception);
+                        }
+                    });
                 }
-                double dipX = (mouseEvent.X - originX) / dpiScale;
-                double dipY = (mouseEvent.Y - originY) / dpiScale;
-
+                else
+                {
+                    // Shape tools: start drag. Create live preview on UI thread.
+                    _annotationDragStart = (dipX, dipY);
+                    _annotationDragPoints.Clear();
+                    _annotationDragPoints.Add((dipX, dipY));
+                    _annotationDragging = true;
+                    var tool = _currentAnnotationTool;
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        try
+                        {
+                            _annotationOverlay?.CreateLivePreview(tool, dipX, dipY);
+                        }
+                        catch (Exception exception)
+                        {
+                            _logger.Error("OceanEyes", "Annotation live preview creation failed.", exception);
+                        }
+                    });
+                }
+            }
+            else if (mouseEvent.Message == MouseMessageType.MouseMove && _annotationDragging)
+            {
+                // Update live preview on UI thread.
+                // For pen/highlight, also accumulate points.
+                if (_currentAnnotationTool is AnnotationTool.Pen or AnnotationTool.Highlight)
+                {
+                    _annotationDragPoints.Add((dipX, dipY));
+                }
+                double startX = _annotationDragStart.X;
+                double startY = _annotationDragStart.Y;
                 Dispatcher.UIThread.Post(() =>
                 {
                     try
                     {
-                        if (_annotationSession is { } session &&
-                            Volatile.Read(ref _oceanEyesAnnotating) != 0)
-                        {
-                            NumberedBadge badge = session.Push(dipX, dipY);
-                            _annotationOverlay?.AddBadge(badge);
-                            _logger.Info("OceanEyes",
-                                $"Annotation: placed badge #{badge.Number} at ({dipX:F1}, {dipY:F1}).");
-                        }
+                        bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+                        _annotationOverlay?.UpdateLivePreview(dipX, dipY, startX, startY, shift);
                     }
                     catch (Exception exception)
                     {
-                        _logger.Error("OceanEyes", "Annotation badge placement failed.", exception);
+                        _logger.Error("OceanEyes", "Annotation live preview update failed.", exception);
+                    }
+                });
+            }
+            else if (mouseEvent.Message == MouseMessageType.LeftButtonUp && _annotationDragging)
+            {
+                // Finalize shape: remove live preview, create final item, push to session.
+                _annotationDragging = false;
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        FinalizeLivePreviewShape(dipX, dipY);
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.Error("OceanEyes", "Annotation finalize failed.", exception);
                     }
                 });
             }
@@ -2939,6 +3169,7 @@ internal sealed class SelectionRuntime : IDisposable
     // ── R47 P/Invoke: GetKeyState for Ctrl+Z detection ──────────────────
 
     private const int VK_CONTROL = 0x11;
+    private const int VK_SHIFT = 0x10;
 
     [DllImport("user32.dll")]
     private static extern short GetKeyState(int nVirtKey);
