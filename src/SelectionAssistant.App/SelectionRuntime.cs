@@ -20,6 +20,7 @@ using SelectionAssistant.Platform.Windows.Windowing;
 using SelectionAssistant.Providers;
 using SelectionAssistant.UI.Views;
 using Avalonia.Input.Platform;
+using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 
 namespace SelectionAssistant.App;
@@ -552,6 +553,91 @@ internal sealed class SelectionRuntime : IDisposable
                 // Always dismiss the toolbar after Enter — saving is a terminal
                 // action (mirrors how F/J/Z hide the toolbar after RunActionAsync).
                 DismissOceanEyes();
+            }
+        });
+    }
+
+    /// <summary>
+    /// R45: decodes a QR code from the cached Ocean Eyes PNG and copies the
+    /// decoded text to the clipboard. Runs on a background thread (Task.Run)
+    /// so the keyboard hook thread is not blocked by ZXing decode (~50ms).
+    /// All UI updates dispatched via Dispatcher.UIThread.Post.
+    /// </summary>
+    private void DecodeQrFromOceanEyes()
+    {
+        byte[]? png = _oceanEyesPng;
+        if (png is null || png.Length == 0)
+        {
+            Dispatcher.UIThread.Post(() =>
+                _toolbarWindow.SetDiagnosticStatus("未识别到二维码"));
+            return;
+        }
+
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                // Decode PNG → Avalonia Bitmap → BGRA pixel bytes.
+                using var stream = new MemoryStream(png);
+                using var bmp = new Bitmap(stream);
+                var pixelSize = bmp.PixelSize;
+                int w = pixelSize.Width, h = pixelSize.Height;
+                if (w <= 0 || h <= 0)
+                {
+                    Dispatcher.UIThread.Post(() =>
+                        _toolbarWindow.SetDiagnosticStatus("未识别到二维码"));
+                    return;
+                }
+                int stride = w * 4;
+                int totalBytes = w * h * 4;
+                var bgra = new byte[totalBytes];
+                nint nativeBuffer = Marshal.AllocHGlobal(totalBytes);
+                try
+                {
+                    bmp.CopyPixels(new Avalonia.PixelRect(0, 0, w, h), nativeBuffer, stride, 0);
+                    Marshal.Copy(nativeBuffer, bgra, 0, totalBytes);
+                }
+                finally
+                {
+                    Marshal.FreeHGlobal(nativeBuffer);
+                }
+
+                QrDecodeResult result = QrDecoder.Decode(bgra, w, h);
+                if (!result.Success || string.IsNullOrEmpty(result.Text))
+                {
+                    Dispatcher.UIThread.Post(() =>
+                        _toolbarWindow.SetDiagnosticStatus("未识别到二维码"));
+                    return;
+                }
+
+                // Copy decoded text to clipboard.
+                try
+                {
+                    using var clipboard = new Win32Clipboard();
+                    clipboard.SetText(result.Text);
+                }
+                catch (Exception exception)
+                {
+                    _logger.Error("OceanEyes", "QR clipboard copy failed.", exception);
+                }
+
+                // Status slot feedback.
+                string display = result.Text.Length > 40
+                    ? result.Text[..40]
+                    : result.Text;
+                string status = result.IsUrl
+                    ? $"已复制 URL：{display}"
+                    : $"已复制：{display}";
+                Dispatcher.UIThread.Post(() =>
+                    _toolbarWindow.SetDiagnosticStatus(status));
+
+                _logger.Info("OceanEyes", $"QR decoded: '{result.Text}' (IsUrl={result.IsUrl}).");
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("OceanEyes", "QR decode background task failed.", exception);
+                Dispatcher.UIThread.Post(() =>
+                    _toolbarWindow.SetDiagnosticStatus("未识别到二维码"));
             }
         });
     }
@@ -1986,6 +2072,26 @@ internal sealed class SelectionRuntime : IDisposable
             catch (Exception exception)
             {
                 _logger.Error("OceanEyes", "Pin screenshot failed.", exception);
+                DismissOceanEyes();
+            }
+            return true;
+        }
+
+        // R45 QR decode: Q decodes a QR code from the cached Ocean Eyes PNG
+        // and copies the decoded text to the clipboard. Only fires during an
+        // active Ocean Eyes session. Skips the OCR gate — QR decode is a pure
+        // image operation, OCR is irrelevant.
+        const int vkQr = 0x51;
+        if (vkCode == vkQr && Volatile.Read(ref _oceanEyesActive) != 0)
+        {
+            try
+            {
+                _logger.Info("OceanEyes", "QR decode: Q → decode from cached PNG.");
+                DecodeQrFromOceanEyes();
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("OceanEyes", "QR decode failed.", exception);
                 DismissOceanEyes();
             }
             return true;
