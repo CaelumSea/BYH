@@ -96,6 +96,10 @@ internal sealed class SelectionRuntime : IDisposable
     // immediately without re-capturing (which would also pick up the toolbar).
     // nulled out when the Ocean Eyes toolbar is dismissed (Esc/Enter/action).
     private byte[]? _oceanEyesPng;
+    /// <summary>R48: raw BGRA pixel buffer for the captured region. Used by
+    /// annotation burn-in to bypass the Avalonia 12 Bitmap.CopyPixels stride
+    /// bug. Null when no Ocean Eyes session is active.</summary>
+    private byte[]? _oceanEyesBgra;
     // R41: the screen rect (physical px) of the current Ocean Eyes region. Kept
     // so EnsureOceanEyesOcrAsync can (re)start OCR without App re-passing it.
     private (int X, int Y, int W, int H) _oceanEyesRect;
@@ -393,7 +397,7 @@ internal sealed class SelectionRuntime : IDisposable
     /// <param name="png">Pre-captured PNG bytes (captured before this call so
     /// the toolbar window isn't in the shot). Cached for Enter-to-save.</param>
     public void ShowToolbarForOceanEyes(
-        int regionRightX, int regionTopY, byte[] png,
+        int regionRightX, int regionTopY, byte[] png, byte[] bgra,
         int regionX, int regionY, int regionW, int regionH)
     {
         ArgumentNullException.ThrowIfNull(png);
@@ -401,6 +405,9 @@ internal sealed class SelectionRuntime : IDisposable
         // Cache the PNG + rect first so Enter (save) and EnsureOceanEyesOcrAsync
         // (lazy OCR on first action key) can use them without re-capturing.
         _oceanEyesPng = png;
+        // R48: cache the raw BGRA buffer for annotation burn-in (avoids the
+        // Avalonia 12 Bitmap.CopyPixels stride bug — see BurnAnnotationsIntoPng).
+        _oceanEyesBgra = bgra;
         _oceanEyesRect = (regionX, regionY, regionW, regionH);
         // R41: lazy OCR — do NOT start the OCR task here. It starts on the first
         // F/J/Z/R/C press via EnsureOceanEyesOcrAsync.
@@ -494,6 +501,7 @@ internal sealed class SelectionRuntime : IDisposable
         if (Volatile.Read(ref _oceanEyesActive) == 0)
         {
             _oceanEyesPng = null;
+            _oceanEyesBgra = null;
             return;
         }
 
@@ -553,7 +561,20 @@ internal sealed class SelectionRuntime : IDisposable
                 // R48: burn annotations into PNG before saving. DPI scale is read
                 // on the UI thread (RenderScaling is a UI property).
                 double dpiScale = _annotationOverlay?.RenderScaling ?? 1.0;
-                byte[] finalPng = BurnAnnotationsIntoPng(png, annotations, dpiScale);
+                // Annotation DIP coords are screen-absolute (the overlay canvas
+                // covers the whole screen). The PNG is just the captured region,
+                // so we must subtract the region's top-left screen DIP to get
+                // PNG-local DIP, then multiply by dpiScale for PNG pixels.
+                // _oceanEyesRect is in physical px, so convert back to DIP.
+                double originXDip = _oceanEyesRect.X / dpiScale;
+                double originYDip = _oceanEyesRect.Y / dpiScale;
+                // R48: pass the raw BGRA buffer if we have it (captured alongside
+                // the PNG). This bypasses Avalonia 12's Bitmap.CopyPixels which
+                // throws ArgumentOutOfRangeException('stride') on some PNGs.
+                // If BGRA is null (older capture path), fall back to PNG decode.
+                byte[] finalPng = BurnAnnotationsIntoPng(
+                    png, _oceanEyesBgra, _oceanEyesRect.W, _oceanEyesRect.H,
+                    annotations, dpiScale, originXDip, originYDip);
 
                 if (settings.AutoSaveEnabled)
                 {
@@ -621,6 +642,7 @@ internal sealed class SelectionRuntime : IDisposable
         // concurrent hook callback sees the inactive state right away.
         Volatile.Write(ref _oceanEyesActive, 0);
         _oceanEyesPng = null;
+        _oceanEyesBgra = null;
         // R41: clear lazy-OCR state so the next Ocean Eyes session starts fresh.
         _oceanEyesOcrTask = null;
         _oceanEyesOcrText = null;
@@ -842,20 +864,50 @@ internal sealed class SelectionRuntime : IDisposable
     /// Returns the modified PNG bytes.
     /// </summary>
     private static byte[] BurnAnnotationsIntoPng(
-        byte[] png,
+        byte[]? png,
+        byte[]? rawBgra,
+        int regionW,
+        int regionH,
         IReadOnlyList<IAnnotationItem> items,
-        double dpiScale)
+        double dpiScale,
+        double originXDip,
+        double originYDip)
     {
+        if (png is null)
+        {
+            return Array.Empty<byte>();
+        }
         if (items.Count == 0)
         {
             return png;
         }
 
-        // Decode PNG to BGRA pixel buffer.
-        byte[]? bgra = DecodePngToBgra(png, out int width, out int height);
-        if (bgra is null || width <= 0 || height <= 0)
+        // Prefer the raw BGRA buffer captured alongside the PNG (R40+ capture
+        // path always produces it). This bypasses Avalonia 12's
+        // Bitmap.CopyPixels, which throws ArgumentOutOfRangeException('stride')
+        // for many PNGs — without this, burn-in silently returned the original
+        // PNG and saved screenshots had no annotations.
+        byte[] bgra;
+        int width, height;
+        if (rawBgra is { Length: > 0 } && regionW > 0 && regionH > 0
+            && rawBgra.Length == regionW * regionH * 4)
         {
-            return png; // decode failed — return original
+            // Clone: drawing annotations mutates the buffer; we must not
+            // modify the cached _oceanEyesBgra or subsequent saves would
+            // stack annotations on top of already-burned-in ones.
+            bgra = (byte[])rawBgra.Clone();
+            width = regionW;
+            height = regionH;
+        }
+        else
+        {
+            // Fallback: decode PNG → BGRA (may fail on Avalonia 12).
+            byte[]? decoded = DecodePngToBgra(png, out width, out height);
+            if (decoded is null || width <= 0 || height <= 0)
+            {
+                return png; // decode failed — return original
+            }
+            bgra = decoded;
         }
 
         // Draw each annotation onto the BGRA buffer.
@@ -865,7 +917,8 @@ internal sealed class SelectionRuntime : IDisposable
             {
                 case NumberedBadgeAnnotation badge:
                 {
-                    var nb = new NumberedBadge(badge.Number, badge.X, badge.Y);
+                    // Subtract region origin (screen DIP) before scaling to PNG px.
+                    var nb = new NumberedBadge(badge.Number, badge.X - originXDip, badge.Y - originYDip);
                     (double cx, double cy) = NumberedBadgeGeometry.GetPhysicalCenter(nb, dpiScale);
                     double radius = NumberedBadgeGeometry.GetRadius(dpiScale);
                     DrawCircleOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
@@ -878,10 +931,10 @@ internal sealed class SelectionRuntime : IDisposable
                 }
                 case RectangleAnnotation rect:
                 {
-                    int left = (int)(rect.Left * dpiScale);
-                    int top = (int)(rect.Top * dpiScale);
-                    int right = (int)((rect.Left + rect.Width) * dpiScale);
-                    int bottom = (int)((rect.Top + rect.Height) * dpiScale);
+                    int left = (int)((rect.Left - originXDip) * dpiScale);
+                    int top = (int)((rect.Top - originYDip) * dpiScale);
+                    int right = (int)((rect.Left + rect.Width - originXDip) * dpiScale);
+                    int bottom = (int)((rect.Top + rect.Height - originYDip) * dpiScale);
                     int thickness = (int)(AnnotationShapeGeometry.StrokeThicknessDip * dpiScale);
                     BurnInHelpers.DrawRectangleStrokeOnBgra(bgra, width, height,
                         left, top, right, bottom, thickness,
@@ -891,8 +944,8 @@ internal sealed class SelectionRuntime : IDisposable
                 }
                 case EllipseAnnotation ellipse:
                 {
-                    int cx = (int)((ellipse.Left + ellipse.Width / 2) * dpiScale);
-                    int cy = (int)((ellipse.Top + ellipse.Height / 2) * dpiScale);
+                    int cx = (int)((ellipse.Left + ellipse.Width / 2 - originXDip) * dpiScale);
+                    int cy = (int)((ellipse.Top + ellipse.Height / 2 - originYDip) * dpiScale);
                     int rx = (int)((ellipse.Width / 2) * dpiScale);
                     int ry = (int)((ellipse.Height / 2) * dpiScale);
                     int thickness = (int)(AnnotationShapeGeometry.StrokeThicknessDip * dpiScale);
@@ -904,10 +957,10 @@ internal sealed class SelectionRuntime : IDisposable
                 }
                 case ArrowAnnotation arrow:
                 {
-                    int sx = (int)(arrow.StartX * dpiScale);
-                    int sy = (int)(arrow.StartY * dpiScale);
-                    int ex = (int)(arrow.EndX * dpiScale);
-                    int ey = (int)(arrow.EndY * dpiScale);
+                    int sx = (int)((arrow.StartX - originXDip) * dpiScale);
+                    int sy = (int)((arrow.StartY - originYDip) * dpiScale);
+                    int ex = (int)((arrow.EndX - originXDip) * dpiScale);
+                    int ey = (int)((arrow.EndY - originYDip) * dpiScale);
                     int thickness = (int)(AnnotationShapeGeometry.StrokeThicknessDip * dpiScale);
                     BurnInHelpers.DrawArrowOnBgra(bgra, width, height,
                         sx, sy, ex, ey, thickness,
@@ -917,10 +970,10 @@ internal sealed class SelectionRuntime : IDisposable
                 }
                 case PenStrokeAnnotation pen:
                 {
-                    var scaledPoints = new List<(double X, double Y)>();
+                    var scaledPoints = new List<(double X, double Y)>(pen.Points.Count);
                     foreach (var (x, y) in pen.Points)
                     {
-                        scaledPoints.Add((x * dpiScale, y * dpiScale));
+                        scaledPoints.Add(((x - originXDip) * dpiScale, (y - originYDip) * dpiScale));
                     }
                     int thickness = (int)(AnnotationShapeGeometry.StrokeThicknessDip * dpiScale);
                     BurnInHelpers.DrawPathOnBgra(bgra, width, height,
@@ -931,10 +984,10 @@ internal sealed class SelectionRuntime : IDisposable
                 }
                 case HighlightStrokeAnnotation highlight:
                 {
-                    var scaledPoints = new List<(double X, double Y)>();
+                    var scaledPoints = new List<(double X, double Y)>(highlight.Points.Count);
                     foreach (var (x, y) in highlight.Points)
                     {
-                        scaledPoints.Add((x * dpiScale, y * dpiScale));
+                        scaledPoints.Add(((x - originXDip) * dpiScale, (y - originYDip) * dpiScale));
                     }
                     int thickness = (int)(AnnotationShapeGeometry.HighlightThicknessDip * dpiScale);
                     BurnInHelpers.DrawPathOnBgra(bgra, width, height,
