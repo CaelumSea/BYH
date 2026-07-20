@@ -1,4 +1,4 @@
-id: REQ-013
+id: REQ-015
 title: 标注工具集（rectangle / ellipse / arrow / pen / highlight，R48）
 status: dispatched
 lite: true
@@ -12,45 +12,45 @@ acceptance_criteria:
 - id: AC-1
   text: A 进入标注模式后，状态槽显示工具切换提示；默认工具 1（矩形）。
   satisfied_by:
-  - TASK-015
+  - TASK-017
 - id: AC-2
   text: '1 矩形：拖拽画 2px 金色描边矩形；Shift 约束正方形。'
   satisfied_by:
-  - TASK-015
+  - TASK-017
 - id: AC-3
   text: '2 椭圆：拖拽画 2px 金色描边椭圆；Shift 约束正圆。'
   satisfied_by:
-  - TASK-015
+  - TASK-017
 - id: AC-4
   text: '3 箭头：拖拽画 2px 金色线段 + 12px 箭头头部。'
   satisfied_by:
-  - TASK-015
+  - TASK-017
 - id: AC-5
   text: '4 画笔：拖拽记录路径，2px 金色圆头线段连接相邻点。'
   satisfied_by:
-  - TASK-015
+  - TASK-017
 - id: AC-6
   text: '5 高亮：同画笔，半透明黄 #80FFEB3B，8px 宽。'
   satisfied_by:
-  - TASK-015
+  - TASK-017
 - id: AC-7
   text: Ctrl+Z 撤销任意类型；A/Esc 退出标注模式（标注保留）。
   satisfied_by:
-  - TASK-015
+  - TASK-017
 - id: AC-8
   text: Enter 保存 PNG 时所有标注烧入；手写 BGRA 像素操作，无 SkiaSharp。
   satisfied_by:
-  - TASK-015
+  - TASK-017
 - id: AC-9
   text: 单元测试 ≥ 12 个（5 工具几何 + record 相等 + undo 混合 + 烧入纯函数）。
   satisfied_by:
-  - TASK-015
+  - TASK-017
 - id: AC-10
   text: Debug build 0 警告 0 错误；dotnet test 全过；NativeAOT publish 0 trim 警告；exe 增量 ≤ +80KB。
   satisfied_by:
-  - TASK-015
+  - TASK-017
 tasks:
-- id: TASK-015
+- id: TASK-017
   title: 标注工具集 5 种工具 + IAnnotationItem + BGRA 烧入
   status: dispatched
 aesthetic_score:

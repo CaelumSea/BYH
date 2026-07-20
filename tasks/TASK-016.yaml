@@ -1,7 +1,7 @@
-id: TASK-014
+id: TASK-016
 title: 贴图磁力吸（R52）
 status: dispatched
-requirement: REQ-012
+requirement: REQ-014
 type: code
 estimate_lines: 220
 files:

@@ -1,7 +1,7 @@
-id: TASK-015
+id: TASK-017
 title: 标注工具集（R48）
 status: dispatched
-requirement: REQ-013
+requirement: REQ-015
 type: code
 estimate_lines: 700
 files:
