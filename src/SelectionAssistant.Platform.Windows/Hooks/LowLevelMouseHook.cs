@@ -12,6 +12,7 @@ namespace SelectionAssistant.Platform.Windows.Hooks;
 public sealed class LowLevelMouseHook : IMouseHook
 {
     private const int WhMouseLl = 14;
+    private const int WmMouseMove = 0x0200;
     private const int WmLButtonDown = 0x0201;
     private const int WmLButtonUp = 0x0202;
     private const int WmRButtonDown = 0x0204;
@@ -154,6 +155,7 @@ public sealed class LowLevelMouseHook : IMouseHook
                 // source application's own right-click context menus keep working.
                 MouseMessageType? messageType = message switch
                 {
+                    WmMouseMove => MouseMessageType.MouseMove,
                     WmLButtonDown => MouseMessageType.LeftButtonDown,
                     WmLButtonUp => MouseMessageType.LeftButtonUp,
                     WmRButtonDown => MouseMessageType.RightButtonDown,
