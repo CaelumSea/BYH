@@ -286,9 +286,26 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
 
 ### 🖌️ P1 中等性价比（本地渲染，无网络，按需打开）
 
-#### R48 — 标注工具集（rectangle / ellipse / arrow / pen / highlight）
+#### ✅ R48 — 标注工具集（rectangle / ellipse / arrow / pen / highlight）（已完成 v2，2026-07-20 第四十三批）
 
-- **触发**：与 R47 同一个标注模式（按 A 进入），工具栏提供 5 种工具。
+- **触发**：R47 标注模式（按 A 进入）扩展 6 种工具（按 0-5 切换）。0=NumberedBadge（默认，R47 序号），1=矩形 / 2=椭圆 / 3=箭头 / 4=画笔 / 5=高亮。
+- **代码量**：v2 ~1700 行（5 工具 sealed records + AnnotationSession 统一 undo stack + IMouseHook.MouseMove 扩展 + 实时拖拽预览 + BGRA 烧入 Bresenham 算法 + 25+20 测试）。
+- **依赖**：**无新增**（避开 SkiaSharp，节省 ~2MB AOT 体积）。
+- **v1 → v2 重做教训（永久记录）**：v1 worker 三个失败模式都源自"想当然"——
+  1. **没有拖拽实时预览**（v1 假设只在 LeftButtonUp 才画，看不到拖拽过程）→ v2 用 `_livePreviewShape` 字段跟踪 + 每次 MouseMove 更新
+  2. **画笔/高亮路径记录失效**（v1 用 DispatcherTimer 在 hook 线程创建跨线程失效）→ v2 扩 `IMouseHook.MouseMove` 事件（修改 platform abstraction，根本解决）
+  3. **Arrow 撤销孤儿**（v1 给 line+head 两个 children 都标 AnnotationTag(1)）→ v2 改 Tag(2) + 6 个回归测试覆盖
+- **v2 落地后 4 轮调试修复（永久记录）**：
+  - 第 1 轮：吸附距离太近 → 阈值 8→24 物理像素
+  - 第 2 轮：磁吸距离还太近 + 箭头/画笔/高亮看不到 → 24→48；发现 Line/Polyline 用 `Canvas.SetLeft(dipX)` 会**双偏移**（Points 本身就是绝对坐标），改 Line/Polyline 设 0
+  - 第 3 轮：磁吸太远 + 画笔/高亮变封闭图形 + 序号偏左上 → 48→32；`Polyline.Fill = Brushes.Transparent` 在 Avalonia 仍渲染闭合多边形 → 改 `Fill = null`；TextBlock 加 HorizontalAlignment/VerticalAlignment/TextAlignment = Center
+  - 第 4 轮：磁吸还远 + 保存 PNG 没烧入 → 32→20；**烧入真因 4 轮才定位**：`Avalonia 12.1 Bitmap.CopyPixels` 对 capture 出来的 PNG 100% 抛 `ArgumentOutOfRangeException('stride')`，worker 的 catch 块吞了异常返回 null → BurnAnnotationsIntoPng 直接 return 原 PNG。**修复**：capture 时同时保留原始 BGRA buffer（`CaptureAsPngAndBgra`），`BurnAnnotationsIntoPng` 直接用 buffer 跳过 Avalonia decode，buffer 克隆避免重复保存叠加。
+- **验收（v2 终态，2026-07-20）**：
+  - Debug build 0 警告 0 错误。
+  - **316/316 测试通过**（worker 25 + reviewer 20 个 v1 回归测试 + 271 基线）。
+  - NativeAOT Release publish **0 trim/AOT 警告**。
+  - exe 27,711,488 → **27,786,240 字节**（+75KB，远低于 +80KB 预算）。
+- **关键架构教训（永久）**：(1) Avalonia 12 的 `Bitmap.CopyPixels` 对某些 PNG 不可靠，**永远优先用 capture 时保留的原始 buffer**，不要 round-trip PNG。(2) `Polyline.Fill = Brushes.Transparent` ≠ 不填充——必须 `null`。(3) Line/Polyline 的 `Points/StartPoint` 是绝对坐标，`Canvas.SetLeft` 会双偏移。(4) DispatcherTimer 在非 UI 线程创建会跨线程失效，必须 UI 线程构造或直接用 hook 路由。
 - **代码量**：~400 行（5 个工具的 hit-test + draw + undo/redo stack）。
 - **依赖**：无新增（纯 Avalonia Canvas + Skia）。
 - **资源开销**：常驻 0。
