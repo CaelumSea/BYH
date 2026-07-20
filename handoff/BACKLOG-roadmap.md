@@ -3,7 +3,7 @@
 > 来源：用户 2026-07-17 提出的功能清单 + 第 1-14 批增量；2026-07-19 加入 R44-R53（小旺 inspired Ocean Eyes 扩展）。
 > 主交接快照见 `00-CURRENT-HANDOFF.md`。
 > 模块文档见 `docs/architecture/00-architecture-overview.md`。
-> **更新 2026-07-20 第四十三批（进行中）：撤销 R45 二维码识别（用户判定"不太用得上"+ ZXing +595KB 不划算，revert commit 0623e4c，exe 从 28,283,392 回到 27,691,008）。开始推进 R52 磁力吸 + R48 标注工具集（两个 worktree 真正并行：改的文件不重叠，前者 PinnedScreenshotWindow，后者 RegionSelectOverlay）。第四十二批及更早：R47 数字序号标注（A 键进入标注模式，1/2/3 gold badge，Ctrl+Z 撤销，Enter 烧入 PNG 手写 BGRA，+18KB）；R46 贴图 v13 终态；R44 取色器；R30 设置页英文精修；R23 暂缓。**
+> **更新 2026-07-20 第四十三批（v2 终态）：撤销 R45 二维码（用户判定"不太用得上"，revert 0623e4c）；R52 磁力吸 + R48 标注工具集 落地。R48 走了两轮：v1（merge 9092d37）用户测试发现 3 个严重 bug（无拖拽实时预览 / pen-highlight 路径记录失效 / arrow 撤销计数错）→ revert 79a39a0 → v2（merge 702788c）重做，扩 IMouseHook 加 MouseMove 事件根本解决路径记录 + 加 live preview + 修 Arrow Tag(2)，reviewer 补 20 个回归测试覆盖 3 个 v1 失败模式。R52 也修了 GetWorkAreas 的 DPI 缩放 bug（WorkingArea 已是物理像素，不应再 ×RenderScaling，commit 633f066）。最终 main：316/316 测试通过，NativeAOT 0 警告，exe = 27,782,144 字节。**
 
 ---
 
