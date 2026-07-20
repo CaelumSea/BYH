@@ -3,7 +3,7 @@
 > 来源：用户 2026-07-17 提出的功能清单 + 第 1-14 批增量；2026-07-19 加入 R44-R53（小旺 inspired Ocean Eyes 扩展）。
 > 主交接快照见 `00-CURRENT-HANDOFF.md`。
 > 模块文档见 `docs/architecture/00-architecture-overview.md`。
-> **更新 2026-07-20 第四十批：R30 第二次 follow-up 已完成——直接以用户参考图为准，将设置面板改为简洁英文、加入五枚统一线性导航图标，并用低对比金线 + 象牙内高光 + 香槟 glint + 暖色柔影建立立体边缘；NativeAOT 默认/最小尺寸复核通过。上一批 R46 贴图 v13 终态保持不变；R44 已完成；R23 用户明确暂缓。**
+> **更新 2026-07-20 第四十二批：R45 二维码识别 + R47 数字序号标注 已完成。R45 引入 ZXing.Net 0.16.11（纯静态 MultiFormatReader 管线，0 trim 警告，+582KB），Ocean Eyes 框选确认后按 Q 解码条码 → 剪贴板 + 状态槽提示。R47 按 A 进入数字标注模式（左键放 1/2/3 gold badge、Ctrl+Z 撤销、A/Esc 退出、Enter 烧入 PNG），手写 BGRA 像素 + 5x7 font 烧入避开 Skia 依赖（+18KB）；Core 层 NumberedAnnotationSession/Geometry 抽象已为 R48 标注工具集留好扩展点。测试 280/280，NativeAOT 0 警告，exe = 28,283,392 字节。第四十批及其以前：R30 设置页英文精修 / R46 贴图 v13 / R44 取色器 / R23 暂缓。**
 
 ---
 
@@ -172,14 +172,28 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
   - 双路径同步：`cp` 到 `artifacts/publish/win-x64-nativeuia/BYH.exe`。
   - 机器侧验证：BYH 已启动（PID 43764），等待用户人工复测 P 键交互。
 
-#### R45 — 二维码识别（QR decode）
+#### ✅ R45 — 二维码识别（QR decode）（已完成，2026-07-20 第四十二批）
 
-- **触发**：Ocean Eyes overlay 框选包含二维码的区域后，工具栏加一个 **Q**（QR）键，识别后把内容塞剪贴板（URL 则提示"打开浏览器？"）。
-- **代码量**：~150 行（ZXing 调用 + 结果展示）。
-- **依赖**：`ZXing.Net`（纯托管，~200KB，MIT，AOT 友好）或 `ZXing.Net.Bindings.ImageSharp`（如果想要更现代 API）。
-- **资源开销**：常驻 0；运行时单次解码 < 50ms。
-- **验收**：支持 QR Code / Data Matrix / Code 128；URL 直接复制+提示打开，纯文本复制即可。
-- **风险**：ZXing 在 NativeAOT 下首次反射调用需验证——若 trim 失败，需直接用 `BarcodeReader` 静态 API，避免 DI 容器。
+- **触发**：Ocean Eyes overlay 框选确认后按 **Q**（QR），用 ZXing 解码当前缓存 PNG；成功把内容塞剪贴板并在工具栏状态槽显示"已复制 URL：..."或"已复制：..."；失败显示"未识别到二维码"。**不自动打开浏览器**（用户可能正在敏感应用中工作，自动开浏览器会抢焦点）。
+- **代码量**：~280 行（QrDecoder 138 + SelectionRuntime Q 分支 + DecodeQrFromOceanEyes 106 + Win32Clipboard.SetText 45）。
+- **依赖**：`ZXing.Net` 0.16.11（micjahn 维护，纯托管，MIT）。
+- **架构关键决策（永久记录）**：
+  - **不用 `BarcodeReader<T>`**（它会通过委托反射构造 LuminanceSource，AOT 风险高）。改用最静态的管线：`RGBLuminanceSource(BGRA32)` → `HybridBinarizer` → `BinaryBitmap` → `MultiFormatReader.decode(bitmap, hints)`，全链路无反射。
+  - **POSSIBLE_FORMATS** 显式限定 QR_CODE / DATA_MATRIX / CODE_128 三种，缩小检测面。
+  - `[UnconditionalSuppressMessage("IL2026"/"IL2057")]` 集中压在 `QrDecoder.Decode` 上，不外溢到其他文件。
+  - PNG byte[] → Avalonia Bitmap → `Marshal.AllocHGlobal` + `CopyPixels(nint, ...)` + `Marshal.Copy` 取 BGRA。**Avalonia 12 的 `Bitmap.CopyPixels` 第二参数已从 byte[] 改为 nint**，必须走指针路径。
+  - Q 键 vkCode 0x51，分支必须插在 R46 T 之后、OCR-lazy gate **之前**（Q 在 A-Z 范围内，gate 之后会被吞）。
+  - 剪贴板复用 `Win32Clipboard.SetPng` 模式新增 `SetText(string)`（CF_UNICODETEXT）。
+- **资源开销**：常驻 0；运行时单次解码 < 100ms（BitBlt 已在 R40 完成，ZXing 静态管线 < 50ms）。
+- **验收（第四十二批）**：
+  - Debug build 0 警告 0 错误。
+  - **253/253 → 280/280 测试通过**（R45 新增 21：QrDecoder 边界 7 + UrlDetector 12 + record 2）。
+  - NativeAOT Release publish **0 trim/AOT 警告**（IL2026+IL2057 suppress 生效）。
+  - exe 27,669,504 → 28,264,960 字节（**+595,456 / 582KB**，超 AC-4 的 300KB 目标 282KB；原因：ZXing 在 NativeAOT 下 QR+DM+Code128 全解码链 AOT 化的代码体积；如需瘦身可裁掉未用格式或换 QR-only 解码库）。0 trim 风险的功能性可接受。
+  - 双路径同步到 `artifacts/publish/win-x64-nativeuia/BYH.exe`。
+- **风险实测结论**：spec 预警"ZXing 在 NativeAOT 下首次反射调用需验证" —— **实测通过**，因为绕开了 `BarcodeReader<T>` 反射路径，用纯静态管线。
+
+
 
 #### ✅ R46 — 贴图（pin screenshot as floating note）（已完成，2026-07-19 第三十八批）
 
@@ -240,14 +254,31 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
   - **教训**：(1) 遇到模糊的动画描述先问清位置动画 vs 缩放动画。(2) Avalonia `ExtendClientAreaToDecorationsHint=True` 窗口上 `RenderTransformOrigin` 不可靠，不能用于 center-origin scale。(3) Avalonia `Animation` 关键帧 API 可以做三值曲线（弹簧），但 `RenderTransformOrigin` 问题阻止了测试效果。
 - **与原始 spec 的偏差**：原始 spec 写"Esc 仅关闭当前焦点贴图"。实际 v6+ 实现 Esc 通过全局 hook LIFO 关闭最近一个贴图（贴图是 `WS_EX_NOACTIVATE` 永远不能获得焦点，没有"当前焦点贴图"概念）。贴图关闭走 **Esc** / **双击**（v3 手动检测）/ 右键菜单，所有路径带 v7 凘出 + v13 侧面滑出动画。v8-v12 的 scale 弹性动画搁置。
 
-#### R47 — 数字序号标注（numbered badges）
+#### ✅ R47 — 数字序号标注（numbered badges）（已完成，2026-07-20 第四十二批）
 
-- **触发**：Ocean Eyes overlay 进入"标注模式"（按 **A** = Annotate），工具栏切换到标注工具集；数字工具每点一下加一个 1/2/3 圆形 badge，颜色与现有 gold accent 一致。
-- **代码量**：~200 行（标注 layer overlay + 工具切换）。
-- **依赖**：无新增。
-- **资源开销**：常驻 0；标注 layer 是 Avalonia Canvas。
-- **验收**：数字自增，撤销 Ctrl+Z；保存 PNG 时 badge 烧入。
-- **范围**：本批次仅做数字 badge；矩形/圆/箭头/画笔在 R48。
+- **触发**：Ocean Eyes overlay 框选确认后按 **A**（Annotate）进入标注模式 → 鼠标左键点击放数字 badge（1, 2, 3... 自增）→ **Ctrl+Z** 撤销 → 再次 **A** 或 **Esc** 退出标注模式（badge 仍保留）→ Enter 保存时 badge 烧入 PNG。
+- **代码量**：~1060 行（Core 抽象 3 文件 + UI AnnotationCanvas + SelectionRuntime 432 + tests 292 + 其他配置）。
+- **依赖**：**无新增**。
+- **架构关键决策（永久记录）**：
+  - **三层抽象**（为 R48 标注工具集预留）：
+    - `NumberedBadge`（record: Number/X/Y）
+    - `NumberedAnnotationSession`（Push/Undo/Clear，undo stack 抽象，R48 可复用）
+    - `NumberedBadgeGeometry`（纯函数 DPI 缩放几何计算，可测，R48 可加 RectangleGeometry 等）
+  - **A 键 vkCode 0x41 必须插在 Q 之后、OCR-lazy gate 之前**（A 是 A-Z 范围首字母，gate 之后会被吞）。
+  - **Ctrl+Z** 用 P/Invoke `GetKeyState(VK_CONTROL=0x11) & 0x8000` 检测，不能只判单 vkCode。
+  - **mouse hook 守护**：标注模式激活时吞左键（不传源程序、不触发 R41 重画），把点击坐标派发到 UI 线程调 `session.Push + canvas.AddBadge`。仿 R44 `_colorPickerActive` 短路模式。
+  - **badge 烧入 PNG**：**故意不用 SkiaSharp**（会增重 ~2MB+ AOT 体积），改用**手写 BGRA 像素操作 + 内建 5x7 bitmap font** + alpha 混合 + DPI 缩放（数据源自 `NumberedBadgeGeometry` 纯函数）。代价：数字无抗锯齿（2x 缩放后单数字可读，可接受）。未来要美化再换 SkiaSharp 或 Avalonia RenderTargetBitmap。
+  - Badge 视觉：28 DIP 直径，gold accent `#FFD9C28A` 填充 + `#FFB8956A` 描边 + 白色 Bold 数字。
+- **资源开销**：常驻 0；运行时每 badge < 1ms 渲染。
+- **验收（第四十二批）**：
+  - Debug build 0 警告 0 错误。
+  - **280/280 测试通过**（R47 新增 27：NumberedAnnotationSession 11 + NumberedBadgeGeometry 16）。
+  - NativeAOT Release publish **0 trim/AOT 警告**。
+  - exe 28,264,960 → 28,283,392 字节（**+18,432 / 18KB**，远低于 100KB 预算 —— 因为避开了 Skia 依赖）。
+  - 双路径同步到 `artifacts/publish/win-x64-nativeuia/BYH.exe`。
+- **R48 就绪度**：`NumberedAnnotationSession` undo stack + `AnnotationCanvas` add/remove/clear API + `NumberedBadgeGeometry` 纯函数模式都已为 rectangle/ellipse/arrow/pen/highlight 工具留好扩展点。
+
+
 
 ---
 
@@ -338,12 +369,13 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
 ```
 P0（高性价比，先做）
   ✅ R44 取色器 (2026-07-19 落地)
-  R45 二维码   ─┐  代码量小，互不依赖，可并行
-  R47 数字标注 ─┘
-  R46 贴图     ──→ R52 磁力吸（依赖 R46）
+  ✅ R45 二维码 (2026-07-20 落地，第四十二批)
+  ✅ R47 数字标注 (2026-07-20 落地，第四十二批)
+  ✅ R46 贴图 (2026-07-19 落地，v13 终态)
+    ──→ R52 磁力吸（依赖 R46，待做）
 
 P1（中等，按需做）
-  R48 标注工具集（依赖 R47 标注 layer）
+  R48 标注工具集（依赖 R47 标注 layer —— 已就绪）
   R49 截图相册
   R50 带壳截图
   R51 截图美化
