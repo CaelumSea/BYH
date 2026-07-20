@@ -3,7 +3,7 @@
 > 来源：用户 2026-07-17 提出的功能清单 + 第 1-14 批增量；2026-07-19 加入 R44-R53（小旺 inspired Ocean Eyes 扩展）。
 > 主交接快照见 `00-CURRENT-HANDOFF.md`。
 > 模块文档见 `docs/architecture/00-architecture-overview.md`。
-> **更新 2026-07-20 第四十二批：R45 二维码识别 + R47 数字序号标注 已完成。R45 引入 ZXing.Net 0.16.11（纯静态 MultiFormatReader 管线，0 trim 警告，+582KB），Ocean Eyes 框选确认后按 Q 解码条码 → 剪贴板 + 状态槽提示。R47 按 A 进入数字标注模式（左键放 1/2/3 gold badge、Ctrl+Z 撤销、A/Esc 退出、Enter 烧入 PNG），手写 BGRA 像素 + 5x7 font 烧入避开 Skia 依赖（+18KB）；Core 层 NumberedAnnotationSession/Geometry 抽象已为 R48 标注工具集留好扩展点。测试 280/280，NativeAOT 0 警告，exe = 28,283,392 字节。第四十批及其以前：R30 设置页英文精修 / R46 贴图 v13 / R44 取色器 / R23 暂缓。**
+> **更新 2026-07-20 第四十三批（进行中）：撤销 R45 二维码识别（用户判定"不太用得上"+ ZXing +595KB 不划算，revert commit 0623e4c，exe 从 28,283,392 回到 27,691,008）。开始推进 R52 磁力吸 + R48 标注工具集（两个 worktree 真正并行：改的文件不重叠，前者 PinnedScreenshotWindow，后者 RegionSelectOverlay）。第四十二批及更早：R47 数字序号标注（A 键进入标注模式，1/2/3 gold badge，Ctrl+Z 撤销，Enter 烧入 PNG 手写 BGRA，+18KB）；R46 贴图 v13 终态；R44 取色器；R30 设置页英文精修；R23 暂缓。**
 
 ---
 
@@ -172,9 +172,11 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
   - 双路径同步：`cp` 到 `artifacts/publish/win-x64-nativeuia/BYH.exe`。
   - 机器侧验证：BYH 已启动（PID 43764），等待用户人工复测 P 键交互。
 
-#### ✅ R45 — 二维码识别（QR decode）（已完成，2026-07-20 第四十二批）
+#### ❌ R45 — 二维码识别（QR decode）（**已撤销 2026-07-20 第四十三批**）
 
-- **触发**：Ocean Eyes overlay 框选确认后按 **Q**（QR），用 ZXing 解码当前缓存 PNG；成功把内容塞剪贴板并在工具栏状态槽显示"已复制 URL：..."或"已复制：..."；失败显示"未识别到二维码"。**不自动打开浏览器**（用户可能正在敏感应用中工作，自动开浏览器会抢焦点）。
+> ⚠️ **状态：WITHDRAWN** — 用户 2026-07-20 反馈："二维码识别功能其实不太用得上，如果占用资源多可以不做。" 实测 ZXing.Net 在 NativeAOT 下占 +595KB exe 体积（超 AC-4 的 300KB 目标），用户判定性价比不足。代码已 revert（commit `0623e4c`），REQ-010 标记 withdrawn。下方技术细节作为历史保留，未来若 QR 需求回归可参考（注意"裁掉未用格式或换 QR-only 解码库"的瘦身建议）。
+
+- **触发**（历史）：Ocean Eyes overlay 框选确认后按 **Q**（QR），用 ZXing 解码当前缓存 PNG；成功把内容塞剪贴板并在工具栏状态槽显示"已复制 URL：..."或"已复制：..."；失败显示"未识别到二维码"。**不自动打开浏览器**（用户可能正在敏感应用中工作，自动开浏览器会抢焦点）。
 - **代码量**：~280 行（QrDecoder 138 + SelectionRuntime Q 分支 + DecodeQrFromOceanEyes 106 + Win32Clipboard.SetText 45）。
 - **依赖**：`ZXing.Net` 0.16.11（micjahn 维护，纯托管，MIT）。
 - **架构关键决策（永久记录）**：
@@ -369,13 +371,13 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
 ```
 P0（高性价比，先做）
   ✅ R44 取色器 (2026-07-19 落地)
-  ✅ R45 二维码 (2026-07-20 落地，第四十二批)
-  ✅ R47 数字标注 (2026-07-20 落地，第四十二批)
+  ❌ R45 二维码 (2026-07-20 落地 → 同日撤销，ZXing +595KB 不划算)
+  ✅ R47 数字标注 (2026-07-20 落地)
   ✅ R46 贴图 (2026-07-19 落地，v13 终态)
-    ──→ R52 磁力吸（依赖 R46，待做）
+    ──→ R52 磁力吸（依赖 R46，进行中，第四十三批）
 
 P1（中等，按需做）
-  R48 标注工具集（依赖 R47 标注 layer —— 已就绪）
+  R48 标注工具集（依赖 R47 标注 layer —— 已就绪，进行中，第四十三批）
   R49 截图相册
   R50 带壳截图
   R51 截图美化
@@ -389,7 +391,7 @@ P1+（重功能，最后做）
 1. `dotnet build -c Debug` — 0 警告 0 错误
 2. `dotnet test` — 全过（Core + Providers + Windows，含该功能新增测试）
 3. `dotnet publish -c Release -r win-x64` — 0 AOT/trim 警告
-4. exe 大小增量 < 100KB（除 R45 二维码 +200KB / R50 带壳外壳资源 +500KB-1MB）
+4. exe 大小增量 < 100KB（除 R50 带壳外壳资源 +500KB-1MB）
 5. 双路径同步 + PowerShell 重启
 6. 机器侧验证清单（每项独立列）
 7. handoff §3 新增章节 + BACKLOG-roadmap.md 该项打 ✅
