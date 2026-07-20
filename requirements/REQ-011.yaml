@@ -1,6 +1,6 @@
 id: REQ-011
 title: 数字序号标注（Ocean Eyes numbered badges，R47）
-status: dispatched
+status: done
 lite: true
 score_kind: aesthetic
 created: '2026-07-20T13:00:00'
@@ -36,7 +36,7 @@ acceptance_criteria:
 tasks:
 - id: TASK-013
   title: Ocean Eyes A 键 + 数字标注 Canvas + Skia 烧入
-  status: dispatched
+  status: done
 aesthetic_score:
   scored_at: ''
   scored_by: ''

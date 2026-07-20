@@ -146,6 +146,17 @@ public static class ScreenRegionCapture
         return png is null ? null : "data:image/png;base64," + Convert.ToBase64String(png);
     }
 
+    /// <summary>
+    /// R47: re-encodes an existing BGRA pixel buffer to PNG bytes.
+    /// Used by the annotation badge burn-in path which modifies pixels
+    /// in-place then needs to re-encode. Exposes the internal
+    /// <see cref="PngEncoder"/> without making it public.
+    /// </summary>
+    public static byte[] EncodeBgraToPng(byte[] bgra, int width, int height)
+    {
+        return PngEncoder.Encode(bgra, width, height);
+    }
+
     private const int BitmapInfoSize = 40;
 
     [StructLayout(LayoutKind.Sequential)]

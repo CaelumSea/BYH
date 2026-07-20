@@ -5,6 +5,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using SelectionAssistant.Core.Annotation;
 
 namespace SelectionAssistant.UI.Views;
 
@@ -758,6 +759,86 @@ public partial class RegionSelectOverlay : Window
         // R42: Move removed — user redraws instead (single-click confirm or
         // drag from anywhere). Resize via handles remains.
         ResizeNW, ResizeN, ResizeNE, ResizeE, ResizeSE, ResizeS, ResizeSW, ResizeW,
+    }
+
+    // ── R47 Numbered badge annotation ──────────────────────────────────
+
+    private static readonly SolidColorBrush BadgeFillBrush = new(Color.Parse("#FFD9C28A"));
+    private static readonly SolidColorBrush BadgeStrokeBrush = new(Color.Parse("#FFB8956A"));
+    private static readonly SolidColorBrush BadgeTextBrush = new(Colors.White);
+
+    /// <summary>
+    /// R47: adds a numbered badge (Ellipse + TextBlock) to the annotation canvas.
+    /// Coordinates are in overlay DIP (logical px), matching the badge's X/Y.
+    /// </summary>
+    public void AddBadge(NumberedBadge badge)
+    {
+        const double radius = NumberedBadgeGeometry.RadiusDip;
+
+        var ellipse = new Ellipse
+        {
+            Width = NumberedBadgeGeometry.DiameterDip,
+            Height = NumberedBadgeGeometry.DiameterDip,
+            Fill = BadgeFillBrush,
+            Stroke = BadgeStrokeBrush,
+            StrokeThickness = NumberedBadgeGeometry.StrokeThicknessDip,
+            IsHitTestVisible = false,
+        };
+
+        var text = new TextBlock
+        {
+            Text = badge.Number.ToString(),
+            Foreground = BadgeTextBrush,
+            FontWeight = FontWeight.Bold,
+            FontSize = NumberedBadgeGeometry.FontSizeDip,
+            IsHitTestVisible = false,
+        };
+
+        // Position the ellipse so its center is at (badge.X, badge.Y).
+        Canvas.SetLeft(ellipse, badge.X - radius);
+        Canvas.SetTop(ellipse, badge.Y - radius);
+
+        // Center the text inside the ellipse. TextBlock size is unknown until
+        // layout, so we use a trick: wrap in a container sized to the badge
+        // diameter with centered alignment.
+        var textContainer = new Border
+        {
+            Width = NumberedBadgeGeometry.DiameterDip,
+            Height = NumberedBadgeGeometry.DiameterDip,
+            IsHitTestVisible = false,
+        };
+        textContainer.Child = text;
+        Canvas.SetLeft(textContainer, badge.X - radius);
+        Canvas.SetTop(textContainer, badge.Y - radius);
+
+        // Tag both with the badge number for identification on removal.
+        ellipse.Tag = badge.Number;
+        textContainer.Tag = badge.Number;
+
+        AnnotationCanvas.Children.Add(ellipse);
+        AnnotationCanvas.Children.Add(textContainer);
+    }
+
+    /// <summary>
+    /// R47: removes the most recently added badge (Ellipse + TextBlock pair).
+    /// </summary>
+    public void RemoveLastBadge()
+    {
+        // Remove the last two children (text container + ellipse).
+        int count = AnnotationCanvas.Children.Count;
+        if (count >= 2)
+        {
+            AnnotationCanvas.Children.RemoveAt(count - 1);
+            AnnotationCanvas.Children.RemoveAt(count - 2);
+        }
+    }
+
+    /// <summary>
+    /// R47: clears all badges from the annotation canvas.
+    /// </summary>
+    public void ClearBadges()
+    {
+        AnnotationCanvas.Children.Clear();
     }
 }
 
