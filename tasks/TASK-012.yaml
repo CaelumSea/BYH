@@ -1,9 +1,9 @@
 id: TASK-012
 requirement: REQ-010
 title: Ocean Eyes Q 键 + ZXing QR 解码器
-status: done
+status: dispatched
 created: '2026-07-20T13:00:00'
-updated: '2026-07-20T15:00:00'
+updated: '2026-07-20T13:00:00'
 satisfies:
 - AC-1
 - AC-2
@@ -11,17 +11,5 @@ satisfies:
 - AC-4
 - AC-5
 description: 在 SelectionRuntime.OnToolbarKeyPressed 的 vkCode 路由里、OCR-lazy gate 之前插入 Q 键分支；新增 QrDecoder 纯函数（ZXing BarcodeReader 静态 API，AOT 友好）+ UrlDetector；新增 SelectionAssistant.Providers.Tests 单测 ≥ 5 个；publish 验证 AOT 0 警告 + exe 增量 ≤ 300KB。
-handoff: 'Q 键分支 + DecodeQrFromOceanEyes 已接入 SelectionRuntime，Win32Clipboard.SetText 已添加。
-  QrDecoder 纯函数 + UrlDetector 已就绪。21 个新测试全部通过（253/253 总计）。
-  NativeAOT Release publish 0 警告 0 错误。exe 增量 582 KB（vs R46），超出 300 KB 目标，
-  原因是 ZXing.Net NativeAOT 代码生成体积，不阻塞功能。详见 output/TASK-012-qr-verification.md。
-  '
-execution_log:
-- '2026-07-20: 在 OnToolbarKeyPressed 的 T 键分支之后插入 Q 键分支（vkQ=0x51），gated by _oceanEyesActive，
-  调用 DecodeQrFromOceanEyes()，try/catch 包裹，catch 调 DismissOceanEyes。'
-- '2026-07-20: 实现 DecodeQrFromOceanEyes 私有方法：Task.Run 后台线程 decode PNG→Bitmap→BGRA bytes→QrDecoder.Decode，
-  成功用 Win32Clipboard.SetText 写剪贴板，状态槽显示已复制/已复制 URL/未识别到二维码。'
-- '2026-07-20: 添加 Win32Clipboard.SetText(string) 方法写 CF_UNICODETEXT，与 SetPng 模式一致。
-  Avalonia 12 CopyPixels 签名变更（byte[]→nint）已用 Marshal.AllocHGlobal 适配。'
-- '2026-07-20: 新增 QrDecoderTests.cs 21 个测试（null/empty/short buffer/zero/negative/white/black/UrlDetector 12 case/record equality）。
-  253/253 全部通过。NativeAOT publish 0 警告 0 错误，exe 28,264,960 bytes（+582 KB vs R46）。'
+handoff: ''
+execution_log: []

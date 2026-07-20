@@ -198,51 +198,6 @@ public sealed unsafe class Win32Clipboard : IClipboardAccess, IDisposable
     }
 
     /// <summary>
-    /// R45 QR: writes the given text to the clipboard as CF_UNICODETEXT.
-    /// Empties the clipboard first so stale data doesn't persist.
-    /// </summary>
-    public bool SetText(string text)
-    {
-        ArgumentNullException.ThrowIfNull(text);
-        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
-
-        if (text.Length == 0 || text.Length > MaxTextBytes / sizeof(char))
-        {
-            return false;
-        }
-
-        byte[] encoded = Encoding.Unicode.GetBytes(text + '\0');
-        nint memory = AllocateGlobal(encoded);
-        try
-        {
-            return TryWithOpenClipboard(
-                () =>
-                {
-                    if (!EmptyClipboard())
-                    {
-                        return false;
-                    }
-                    return SetClipboardData(CfUnicodeText, memory) != 0;
-                },
-                out bool placed) && placed;
-        }
-        finally
-        {
-            if (memory != 0)
-            {
-                if (IsClipboardFormatAvailable(CfUnicodeText))
-                {
-                    // Ownership transferred.
-                }
-                else
-                {
-                    GlobalFree(memory);
-                }
-            }
-        }
-    }
-
-    /// <summary>
     /// R40 Ocean Eyes: writes the given PNG bytes to the clipboard under the
     /// registered "PNG" format (Windows 10 1809+ and all modern image editors /
     /// chat clients read it). The raw PNG is placed verbatim — no DIB

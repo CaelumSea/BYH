@@ -19,12 +19,4 @@
     <InternalsVisibleTo Include="SelectionAssistant.Providers.Tests" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- R45 / REQ-010: 二维码识别。ZXing.Net 0.16.11（micjahn 维护，纯托管，MIT）。
-         仅由 QrDecoder 静态封装内部调用 BarcodeReader<GameObject>；其他位置不直接
-         使用，把 AOT/trim 风险集中在 QrDecoder 里管理。PossibleFormats 显式限定
-         QR_CODE / DATA_MATRIX / CODE_128 以缩小反射检测面。-->
-    <PackageReference Include="ZXing.Net" Version="0.16.11" />
-  </ItemGroup>
-
 </Project>
