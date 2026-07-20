@@ -803,6 +803,14 @@ public partial class RegionSelectOverlay : Window
             FontWeight = FontWeight.Bold,
             FontSize = NumberedBadgeGeometry.FontSizeDip,
             IsHitTestVisible = false,
+            // Center the text inside the badge: the wrapping Border sizes to
+            // the badge diameter, so we need both alignments on the TextBlock
+            // to actually center the glyph (Border alone does not propagate
+            // centering to its Child — TextBlock would otherwise stick to the
+            // top-left corner, making digits look offset toward upper-left).
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            TextAlignment = TextAlignment.Center,
         };
 
         // Position the ellipse so its center is at (badge.X, badge.Y).
@@ -1137,7 +1145,19 @@ public partial class RegionSelectOverlay : Window
             }
             case Avalonia.Controls.Shapes.Polyline polyline:
             {
-                polyline.Points.Add(new Point(dipX, dipY));
+                // Avalonia's Polyline.Points is a StyledProperty<IList<Point>>;
+                // mutating the existing list in place does NOT reliably raise
+                // the property-changed notification that triggers a repaint.
+                // (Symptom: DIAG logs show MouseMove firing + UpdateLivePreview
+                // being called, but the polyline stays invisible during drag
+                // — only appears on LeftButtonUp when AddPathVisual builds a
+                // fresh Polyline.) Reassigning a new Points collection forces
+                // the property notification so the shape repaints each move.
+                var existing = polyline.Points;
+                var updated = new Avalonia.Collections.AvaloniaList<Point>(existing.Count + 1);
+                foreach (var p in existing) updated.Add(p);
+                updated.Add(new Point(dipX, dipY));
+                polyline.Points = updated;
                 break;
             }
         }
