@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using SelectionAssistant.Core.Annotation;
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
@@ -125,6 +126,16 @@ internal sealed class SelectionRuntime : IDisposable
     // stay always-on-top without stealing focus.
     private readonly List<PinnedScreenshotWindow> _pinnedWindows = new();
     private readonly List<NoActivateWindowHost> _pinnedHosts = new();
+
+    // R47: numbered badge annotation mode. _oceanEyesAnnotating is 1 while
+    // the user is placing badges (between A-on and A-off/Esc). Volatile —
+    // read on the keyboard + mouse hook threads, written from the UI thread.
+    // _annotationSession holds the badge list + undo stack; created on A-on,
+    // cleared on dismiss. _annotationOverlay is the RegionSelectOverlay whose
+    // AnnotationCanvas we draw badges on; set by App.axaml.cs.
+    private int _oceanEyesAnnotating;
+    private NumberedAnnotationSession? _annotationSession;
+    private RegionSelectOverlay? _annotationOverlay;
 
     public SelectionRuntime(
         ToolbarWindow toolbarWindow,
@@ -311,6 +322,17 @@ internal sealed class SelectionRuntime : IDisposable
     /// Called at the end of <see cref="DismissOceanEyes"/> on the UI thread.
     /// </summary>
     public Action? DismissOverlay { get; set; }
+
+    /// <summary>
+    /// R47: the RegionSelectOverlay whose AnnotationCanvas receives numbered
+    /// badges. Set by App.axaml.cs when the overlay is created. Null when no
+    /// overlay exists (non-Ocean-Eyes sessions).
+    /// </summary>
+    public RegionSelectOverlay? AnnotationOverlay
+    {
+        get => _annotationOverlay;
+        set => _annotationOverlay = value;
+    }
 
     /// <summary>
     /// Enables the legacy left+right mouse chord. Disabled by default because
@@ -510,10 +532,20 @@ internal sealed class SelectionRuntime : IDisposable
             return;
         }
 
+        // R47: snapshot badges before marshaling to UI thread.
+        // The session may be cleared by DismissOceanEyes before the Post runs.
+        IReadOnlyList<NumberedBadge> badges =
+            _annotationSession?.Badges ?? Array.Empty<NumberedBadge>();
+
         Dispatcher.UIThread.Post(() =>
         {
             try
             {
+                // R47: burn badges into PNG before saving. DPI scale is read
+                // on the UI thread (RenderScaling is a UI property).
+                double dpiScale = _annotationOverlay?.RenderScaling ?? 1.0;
+                byte[] finalPng = BurnBadgesIntoPng(png, badges, dpiScale);
+
                 if (settings.AutoSaveEnabled)
                 {
                     string? directory = settings.SavePath;
@@ -522,20 +554,21 @@ internal sealed class SelectionRuntime : IDisposable
                         Directory.CreateDirectory(directory);
                         string stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
                         string file = Path.Combine(directory, $"ocean-eyes-{stamp}.png");
-                        File.WriteAllBytes(file, png);
+                        File.WriteAllBytes(file, finalPng);
                         _logger.Info("OceanEyes", $"Saved screenshot: {file}");
                     }
                 }
 
                 if (settings.CopyToClipboardEnabled)
                 {
+                    byte[] clipPng = finalPng;
                     _ = Task.Run(() =>
                     {
                         try
                         {
                             using var clipboard = new Win32Clipboard();
-                            clipboard.SetPng(png);
-                            _logger.Info("OceanEyes", $"Copied {png.Length} PNG bytes to clipboard.");
+                            clipboard.SetPng(clipPng);
+                            _logger.Info("OceanEyes", $"Copied {clipPng.Length} PNG bytes to clipboard.");
                         }
                         catch (Exception exception)
                         {
@@ -655,6 +688,11 @@ internal sealed class SelectionRuntime : IDisposable
         // window Hide to the UI thread.
         HideColorPicker();
 
+        // R47: exit annotation mode + clear session + clear overlay badges.
+        Volatile.Write(ref _oceanEyesAnnotating, 0);
+        _annotationSession?.Clear();
+        _annotationSession = null;
+
         // Clear flags immediately (thread-safe Volatile writes) so any
         // concurrent hook callback sees the inactive state right away.
         Volatile.Write(ref _oceanEyesActive, 0);
@@ -683,6 +721,8 @@ internal sealed class SelectionRuntime : IDisposable
         // DismissOverlay → _regionOverlay) must run on the Avalonia UI thread.
         Dispatcher.UIThread.Post(() =>
         {
+            // R47: clear badge visuals from the overlay.
+            _annotationOverlay?.ClearBadges();
             _windowHost.Hide();
             // R42: tell App.axaml.cs to close the region-select overlay.
             DismissOverlay?.Invoke();
@@ -787,6 +827,273 @@ internal sealed class SelectionRuntime : IDisposable
         Volatile.Write(ref _colorPickerActive, 0);
         Dispatcher.UIThread.Post(() => _colorPickerLoupe?.HideLoupe());
     }
+
+    // ── R47 numbered badge annotation ──────────────────────────────────
+
+    /// <summary>
+    /// R47: enters annotation mode. Creates a new session, arms the
+    /// annotation flag, and updates the toolbar status. Called from
+    /// OnToolbarKeyPressed on the keyboard hook thread; UI ops marshaled.
+    /// </summary>
+    private void EnterAnnotationMode()
+    {
+        _annotationSession = new NumberedAnnotationSession();
+        Volatile.Write(ref _oceanEyesAnnotating, 1);
+        Dispatcher.UIThread.Post(() =>
+        {
+            _toolbarWindow.SetDiagnosticStatus("标注模式 · 点击放序号 · Ctrl+Z 撤销 · A/Esc 退出");
+        });
+    }
+
+    /// <summary>
+    /// R47: exits annotation mode (badges stay on overlay). Clears the
+    /// active flag and restores the toolbar status. Idempotent — safe from
+    /// any thread. Does NOT clear the session or overlay badges (they
+    /// persist until Ocean Eyes is dismissed or Enter saves).
+    /// </summary>
+    private void ExitAnnotationMode()
+    {
+        Volatile.Write(ref _oceanEyesAnnotating, 0);
+        Dispatcher.UIThread.Post(() =>
+        {
+            _toolbarWindow.SetDiagnosticStatus("已退出标注模式 · Enter 保存 / Esc 退出");
+        });
+    }
+
+    /// <summary>
+    /// R47: burns the current numbered badges into the PNG byte array.
+    /// Draws filled circles + centered digits directly onto the BGRA pixel
+    /// buffer (no SkiaSharp dependency — uses a built-in 5×7 bitmap font
+    /// for digits). Returns the modified PNG bytes.
+    /// </summary>
+    private static byte[] BurnBadgesIntoPng(
+        byte[] png,
+        IReadOnlyList<NumberedBadge> badges,
+        double dpiScale)
+    {
+        if (badges.Count == 0)
+        {
+            return png;
+        }
+
+        // Decode PNG to BGRA pixel buffer.
+        byte[]? bgra = DecodePngToBgra(png, out int width, out int height);
+        if (bgra is null || width <= 0 || height <= 0)
+        {
+            return png; // decode failed — return original
+        }
+
+        // Draw each badge onto the BGRA buffer.
+        foreach (NumberedBadge badge in badges)
+        {
+            (double cx, double cy) = NumberedBadgeGeometry.GetPhysicalCenter(badge, dpiScale);
+            double radius = NumberedBadgeGeometry.GetRadius(dpiScale);
+            DrawCircleOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
+                0xAA, 0xC2, 0xD9, 0xFF); // BGRA for #FFD9C28A (gold)
+            DrawCircleStrokeOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
+                0x95, 0xB8, 0xFF, 0xFF); // BGRA for #FFB8956A (dark gold stroke)
+            DrawDigitOnBgra(bgra, width, height, (int)cx, (int)cy, (int)radius,
+                badge.Number);
+        }
+
+        // Re-encode to PNG.
+        return ScreenRegionCapture.EncodeBgraToPng(bgra, width, height);
+    }
+
+    /// <summary>
+    /// Decodes a PNG byte array to a BGRA pixel buffer using Avalonia Bitmap.
+    /// Returns null on failure.
+    /// </summary>
+    private static byte[]? DecodePngToBgra(byte[] png, out int width, out int height)
+    {
+        width = height = 0;
+        try
+        {
+            using var stream = new MemoryStream(png);
+            using var bmp = new Bitmap(stream);
+            var pixelSize = bmp.PixelSize;
+            width = pixelSize.Width;
+            height = pixelSize.Height;
+            if (width <= 0 || height <= 0) return null;
+
+            int stride = width * 4;
+            int totalBytes = width * height * 4;
+            var bgra = new byte[totalBytes];
+            nint nativeBuffer = Marshal.AllocHGlobal(totalBytes);
+            try
+            {
+                bmp.CopyPixels(new Avalonia.PixelRect(0, 0, width, height), nativeBuffer, stride, 0);
+                Marshal.Copy(nativeBuffer, bgra, 0, totalBytes);
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(nativeBuffer);
+            }
+            return bgra;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Draws a filled circle on a BGRA pixel buffer.
+    /// </summary>
+    private static void DrawCircleOnBgra(
+        byte[] bgra, int imgW, int imgH,
+        int cx, int cy, int radius,
+        byte b, byte g, byte r, byte a)
+    {
+        int left = Math.Max(0, cx - radius);
+        int top = Math.Max(0, cy - radius);
+        int right = Math.Min(imgW - 1, cx + radius);
+        int bottom = Math.Min(imgH - 1, cy + radius);
+        int r2 = radius * radius;
+
+        for (int y = top; y <= bottom; y++)
+        {
+            int dy = y - cy;
+            int dy2 = dy * dy;
+            int rowOffset = y * imgW * 4;
+            for (int x = left; x <= right; x++)
+            {
+                int dx = x - cx;
+                if (dx * dx + dy2 <= r2)
+                {
+                    int off = rowOffset + x * 4;
+                    // Alpha-blend: src over dst.
+                    float srcA = a / 255f;
+                    float dstA = bgra[off + 3] / 255f;
+                    float outA = srcA + dstA * (1 - srcA);
+                    if (outA > 0)
+                    {
+                        bgra[off] = (byte)((b * srcA + bgra[off] * dstA * (1 - srcA)) / outA);
+                        bgra[off + 1] = (byte)((g * srcA + bgra[off + 1] * dstA * (1 - srcA)) / outA);
+                        bgra[off + 2] = (byte)((r * srcA + bgra[off + 2] * dstA * (1 - srcA)) / outA);
+                        bgra[off + 3] = (byte)(outA * 255);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Draws a 1px circle stroke on a BGRA pixel buffer.
+    /// </summary>
+    private static void DrawCircleStrokeOnBgra(
+        byte[] bgra, int imgW, int imgH,
+        int cx, int cy, int radius,
+        byte b, byte g, byte r, byte a)
+    {
+        int left = Math.Max(0, cx - radius - 1);
+        int top = Math.Max(0, cy - radius - 1);
+        int right = Math.Min(imgW - 1, cx + radius + 1);
+        int bottom = Math.Min(imgH - 1, cy + radius + 1);
+        int rOuter2 = (radius + 1) * (radius + 1);
+        int rInner2 = Math.Max(0, radius - 1) * Math.Max(0, radius - 1);
+
+        for (int y = top; y <= bottom; y++)
+        {
+            int dy = y - cy;
+            int dy2 = dy * dy;
+            int rowOffset = y * imgW * 4;
+            for (int x = left; x <= right; x++)
+            {
+                int dx = x - cx;
+                int dist2 = dx * dx + dy2;
+                if (dist2 <= rOuter2 && dist2 >= rInner2)
+                {
+                    int off = rowOffset + x * 4;
+                    float srcA = a / 255f;
+                    float dstA = bgra[off + 3] / 255f;
+                    float outA = srcA + dstA * (1 - srcA);
+                    if (outA > 0)
+                    {
+                        bgra[off] = (byte)((b * srcA + bgra[off] * dstA * (1 - srcA)) / outA);
+                        bgra[off + 1] = (byte)((g * srcA + bgra[off + 1] * dstA * (1 - srcA)) / outA);
+                        bgra[off + 2] = (byte)((r * srcA + bgra[off + 2] * dstA * (1 - srcA)) / outA);
+                        bgra[off + 3] = (byte)(outA * 255);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Draws a centered digit (1-99) on a BGRA pixel buffer using a built-in
+    /// 5×7 bitmap font. White color, bold appearance via 2× scaling.
+    /// </summary>
+    private static void DrawDigitOnBgra(
+        byte[] bgra, int imgW, int imgH,
+        int cx, int cy, int radius, int number)
+    {
+        string text = number.ToString();
+        // Each glyph is 5 wide × 7 tall; scale factor 2 → 10×14 per glyph.
+        const int glyphW = 5;
+        const int glyphH = 7;
+        const int scale = 2;
+        int charSpacing = 1; // extra pixels between chars at scale 1
+        int totalWidth = text.Length * (glyphW * scale + charSpacing * scale) - charSpacing * scale;
+        int totalHeight = glyphH * scale;
+        int startX = cx - totalWidth / 2;
+        int startY = cy - totalHeight / 2;
+
+        foreach (char ch in text)
+        {
+            int digit = ch - '0';
+            if (digit < 0 || digit > 9) continue;
+
+            ReadOnlySpan<byte> glyph = GetGlyph(digit);
+            for (int gy = 0; gy < glyphH; gy++)
+            {
+                byte row = glyph[gy];
+                for (int gx = 0; gx < glyphW; gx++)
+                {
+                    if ((row & (1 << (4 - gx))) != 0)
+                    {
+                        // Draw scaled pixel.
+                        for (int sy = 0; sy < scale; sy++)
+                        {
+                            for (int sx = 0; sx < scale; sx++)
+                            {
+                                int px = startX + gx * scale + sx;
+                                int py = startY + gy * scale + sy;
+                                if (px >= 0 && px < imgW && py >= 0 && py < imgH)
+                                {
+                                    int off = (py * imgW + px) * 4;
+                                    bgra[off] = 0xFF;     // B (white)
+                                    bgra[off + 1] = 0xFF; // G
+                                    bgra[off + 2] = 0xFF; // R
+                                    bgra[off + 3] = 0xFF; // A
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            startX += (glyphW + charSpacing) * scale;
+        }
+    }
+
+    /// <summary>
+    /// Returns the 5×7 bitmap font glyph for a digit (0-9).
+    /// Each row is 5 bits wide (MSB = leftmost pixel).
+    /// </summary>
+    private static ReadOnlySpan<byte> GetGlyph(int digit) => digit switch
+    {
+        0 => [0b01110, 0b10001, 0b10011, 0b10101, 0b11001, 0b10001, 0b01110],
+        1 => [0b00100, 0b01100, 0b00100, 0b00100, 0b00100, 0b00100, 0b01110],
+        2 => [0b01110, 0b10001, 0b00001, 0b00110, 0b01000, 0b10000, 0b11111],
+        3 => [0b11111, 0b00010, 0b00100, 0b00010, 0b00001, 0b10001, 0b01110],
+        4 => [0b00010, 0b00110, 0b01010, 0b10010, 0b11111, 0b00010, 0b00010],
+        5 => [0b11111, 0b10000, 0b11110, 0b00001, 0b00001, 0b10001, 0b01110],
+        6 => [0b00110, 0b01000, 0b10000, 0b11110, 0b10001, 0b10001, 0b01110],
+        7 => [0b11111, 0b00001, 0b00010, 0b00100, 0b01000, 0b01000, 0b01000],
+        8 => [0b01110, 0b10001, 0b10001, 0b01110, 0b10001, 0b10001, 0b01110],
+        9 => [0b01110, 0b10001, 0b10001, 0b01111, 0b00001, 0b00010, 0b01100],
+        _ => [0b01110, 0b10001, 0b10001, 0b10001, 0b10001, 0b10001, 0b01110],
+    };
 
     /// <summary>
     /// R46: pins the currently-cached Ocean Eyes PNG as a new always-on-top
@@ -993,6 +1300,11 @@ internal sealed class SelectionRuntime : IDisposable
         // R44: right-click redraw should also cancel the color picker — the
         // loupe doesn't make sense on an unconfirmed region.
         HideColorPicker();
+        // R47: also exit annotation mode + clear badges on redraw.
+        Volatile.Write(ref _oceanEyesAnnotating, 0);
+        _annotationSession?.Clear();
+        _annotationSession = null;
+        Dispatcher.UIThread.Post(() => _annotationOverlay?.ClearBadges());
         Volatile.Write(ref _oceanEyesActive, 0);
         _oceanEyesPng = null;
         _oceanEyesOcrTask = null;
@@ -1971,6 +2283,15 @@ internal sealed class SelectionRuntime : IDisposable
         {
             try
             {
+                // R47: if annotation mode is active, Esc exits annotation mode
+                // (badges stay on overlay) without dismissing Ocean Eyes.
+                if (Volatile.Read(ref _oceanEyesAnnotating) != 0)
+                {
+                    _logger.Info("OceanEyes", "Annotation: Esc → exit annotation mode.");
+                    ExitAnnotationMode();
+                    return true;
+                }
+
                 // R40: Esc clears the Ocean Eyes state too so a leftover
                 // cached PNG / flag doesn't fire on the next session. Idempotent
                 // — DismissOceanEyes is a no-op when the flag is already 0.
@@ -1982,6 +2303,32 @@ internal sealed class SelectionRuntime : IDisposable
             catch (Exception exception)
             {
                 _logger.Error("KeyboardHook", "Failed to dismiss toolbar on Esc.", exception);
+            }
+            return true;
+        }
+
+        // R47 Ctrl+Z: undo the most recent badge. Only fires during active
+        // annotation mode. Checked before other branches so it works even if
+        // Ctrl is held (which would otherwise skip single-key branches).
+        const int vkZ = 0x5A;
+        if (vkCode == vkZ &&
+            (GetKeyState(VK_CONTROL) & 0x8000) != 0 &&
+            Volatile.Read(ref _oceanEyesAnnotating) != 0)
+        {
+            try
+            {
+                _logger.Info("OceanEyes", "Annotation: Ctrl+Z → undo last badge.");
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (_annotationSession?.Undo() == true)
+                    {
+                        _annotationOverlay?.RemoveLastBadge();
+                    }
+                });
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("OceanEyes", "Annotation Ctrl+Z failed.", exception);
             }
             return true;
         }
@@ -2093,6 +2440,34 @@ internal sealed class SelectionRuntime : IDisposable
             {
                 _logger.Error("OceanEyes", "QR decode failed.", exception);
                 DismissOceanEyes();
+            }
+            return true;
+        }
+
+        // R47 annotation mode: A toggles numbered badge placement. Only fires
+        // during an active Ocean Eyes session. MUST be before the A-Z filter
+        // (0x41-0x5A) because A=0x41 is the first letter — the OCR-lazy gate
+        // below would swallow it otherwise.
+        const int vkAnnotate = 0x41; // 'A'
+        if (vkCode == vkAnnotate && Volatile.Read(ref _oceanEyesActive) != 0)
+        {
+            try
+            {
+                if (Volatile.Read(ref _oceanEyesAnnotating) != 0)
+                {
+                    _logger.Info("OceanEyes", "Annotation: A → exit annotation mode.");
+                    ExitAnnotationMode();
+                }
+                else
+                {
+                    _logger.Info("OceanEyes", "Annotation: A → enter annotation mode.");
+                    EnterAnnotationMode();
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("OceanEyes", "Annotation toggle failed.", exception);
+                ExitAnnotationMode();
             }
             return true;
         }
@@ -2478,6 +2853,50 @@ internal sealed class SelectionRuntime : IDisposable
             return;
         }
 
+        // R47 annotation mode: left-button-down places a numbered badge.
+        // Short-circuit so the click doesn't trigger selection or toolbar
+        // dismiss. Right-click and other events pass through.
+        if (Volatile.Read(ref _oceanEyesAnnotating) != 0)
+        {
+            if (mouseEvent.Message == MouseMessageType.LeftButtonDown)
+            {
+                // Convert physical screen px → overlay DIP coordinates.
+                // The overlay covers the primary screen; its physical origin
+                // is stored in _annotationOverlay.
+                RegionSelectOverlay? overlay = _annotationOverlay;
+                double dpiScale = overlay?.RenderScaling ?? 1.0;
+                double originX = 0;
+                double originY = 0;
+                if (overlay?.Screens?.Primary is { } primaryScreen)
+                {
+                    originX = primaryScreen.Bounds.X;
+                    originY = primaryScreen.Bounds.Y;
+                }
+                double dipX = (mouseEvent.X - originX) / dpiScale;
+                double dipY = (mouseEvent.Y - originY) / dpiScale;
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        if (_annotationSession is { } session &&
+                            Volatile.Read(ref _oceanEyesAnnotating) != 0)
+                        {
+                            NumberedBadge badge = session.Push(dipX, dipY);
+                            _annotationOverlay?.AddBadge(badge);
+                            _logger.Info("OceanEyes",
+                                $"Annotation: placed badge #{badge.Number} at ({dipX:F1}, {dipY:F1}).");
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.Error("OceanEyes", "Annotation badge placement failed.", exception);
+                    }
+                });
+            }
+            return;
+        }
+
         // Feed every event to the chord detector first. A chord (both buttons
         // down together) takes priority over normal selection / dismiss logic —
         // when a chord fires we bail out before the outside-click dismiss runs,
@@ -2602,6 +3021,13 @@ internal sealed class SelectionRuntime : IDisposable
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out NativePoint lpPoint);
+
+    // ── R47 P/Invoke: GetKeyState for Ctrl+Z detection ──────────────────
+
+    private const int VK_CONTROL = 0x11;
+
+    [DllImport("user32.dll")]
+    private static extern short GetKeyState(int nVirtKey);
 
     private sealed class ToolbarSessionView : ISelectionSessionView
     {

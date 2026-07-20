@@ -219,6 +219,10 @@ public partial class App : Application
                     }
                 };
 
+                // R47: pass the overlay reference so the runtime can draw
+                // numbered badges on its AnnotationCanvas.
+                _runtime.AnnotationOverlay = _regionOverlay;
+
                 // Push the current custom functions into the toolbar's "more"
                 // row so user-added actions appear immediately.
                 var templates = _runtime.GetPromptTemplates().AsList();
