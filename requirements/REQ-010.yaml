@@ -1,10 +1,12 @@
 id: REQ-010
 title: 二维码识别（Ocean Eyes QR decode，R45）
-status: dispatched
+status: withdrawn
 lite: true
 score_kind: functional
 created: '2026-07-20T13:00:00'
-updated: '2026-07-20T13:00:00'
+updated: '2026-07-20T18:00:00'
+withdrawn_at: '2026-07-20T18:00:00'
+withdrawn_reason: 用户 2026-07-20 决定撤销。原因："二维码识别功能其实不太用得上，如果占用资源多可以不做"。实测 ZXing.Net 在 NativeAOT 下占 +595KB exe 体积（超 AC-4 的 300KB 目标），用户判定性价比不足。revert commit 0623e4c。
 aligned_via: quick-user
 aligned_at: '2026-07-20T13:00:00'
 aesthetic_template: ''
@@ -32,7 +34,7 @@ acceptance_criteria:
 tasks:
 - id: TASK-012
   title: Ocean Eyes Q 键 + ZXing QR 解码器
-  status: dispatched
+  status: withdrawn
 aesthetic_score:
   scored_at: ''
   scored_by: ''
