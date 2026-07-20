@@ -1,40 +1,48 @@
 id: REQ-015
-title: 标注工具集（rectangle / ellipse / arrow / pen / highlight，R48）
+title: 标注工具集 v2（rectangle / ellipse / arrow / pen / highlight，R48 redo）
 status: dispatched
 lite: true
 score_kind: functional
 created: '2026-07-20T18:00:00'
-updated: '2026-07-20T18:00:00'
+updated: '2026-07-20T19:30:00'
+v1_merged_at: '2026-07-20T14:13:00'
+v1_merged_commit: 9092d37
+v1_reverted_at: '2026-07-20T14:38:00'
+v1_reverted_commit: 79a39a0
+v1_failure_reasons:
+- 没有拖拽实时预览，松手才画形状
+- 画笔/高亮路径记录失效（DispatcherTimer 跨线程），只画起点→终点直线
+- AddArrowVisual 给 line+head 都标 AnnotationTag(1)，撤销时只删 1 个 children 留下孤儿
 aligned_via: quick-user
-aligned_at: '2026-07-20T18:00:00'
+aligned_at: '2026-07-20T19:30:00'
 aesthetic_template: ''
 acceptance_criteria:
 - id: AC-1
-  text: A 进入标注模式后，状态槽显示工具切换提示；默认工具 1（矩形）。
+  text: 'A 进入标注模式后，状态槽显示 "[0]序号 [1]矩形 [2]椭圆 [3]箭头 [4]画笔 [5]高亮"；默认工具 0 NumberedBadge（保留 R47）。'
   satisfied_by:
   - TASK-017
 - id: AC-2
-  text: '1 矩形：拖拽画 2px 金色描边矩形；Shift 约束正方形。'
+  text: '1 矩形 + 实时预览：拖拽过程实时看到矩形跟随光标；Shift 约束正方形（实时预览也跟随）。v1 缺预览，v2 必做。'
   satisfied_by:
   - TASK-017
 - id: AC-3
-  text: '2 椭圆：拖拽画 2px 金色描边椭圆；Shift 约束正圆。'
+  text: '2 椭圆 + 实时预览：拖拽过程实时看到椭圆；Shift 约束正圆。'
   satisfied_by:
   - TASK-017
 - id: AC-4
-  text: '3 箭头：拖拽画 2px 金色线段 + 12px 箭头头部。'
+  text: '3 箭头 + 实时预览：拖拽过程实时看到线段 + 12px 箭头头部。'
   satisfied_by:
   - TASK-017
 - id: AC-5
-  text: '4 画笔：拖拽记录路径，2px 金色圆头线段连接相邻点。'
+  text: '4 画笔 + 完整路径：拖拽 100 像素曲线必须记录 ≥ 5-10 个中间点（不能退化直线段）。v1 失效，v2 用 IMouseHook.MouseMove 或 UI 线程 DispatcherTimer 必做。'
   satisfied_by:
   - TASK-017
 - id: AC-6
-  text: '5 高亮：同画笔，半透明黄 #80FFEB3B，8px 宽。'
+  text: '5 高亮 + 完整路径：同画笔但半透明黄 #80FFEB3B + 8px 宽。'
   satisfied_by:
   - TASK-017
 - id: AC-7
-  text: Ctrl+Z 撤销任意类型；A/Esc 退出标注模式（标注保留）。
+  text: 'Ctrl+Z 撤销任意类型，Canvas.Children 完整移除（arrow 必删 2 个 children，v1 bug 修复）。'
   satisfied_by:
   - TASK-017
 - id: AC-8
@@ -42,16 +50,16 @@ acceptance_criteria:
   satisfied_by:
   - TASK-017
 - id: AC-9
-  text: 单元测试 ≥ 12 个（5 工具几何 + record 相等 + undo 混合 + 烧入纯函数）。
+  text: '单元测试 ≥ 18 个（含 6 个 v1-bug 回归测试：arrow/badge/rect child count、pen/highlight 路径点数、EnterAnnotationMode 默认工具）。'
   satisfied_by:
   - TASK-017
 - id: AC-10
-  text: Debug build 0 警告 0 错误；dotnet test 全过；NativeAOT publish 0 trim 警告；exe 增量 ≤ +80KB。
+  text: Debug build 0 警告 0 错误；dotnet test 全过（基线 236 + 新增 ≥ 18）；NativeAOT publish 0 trim 警告；exe 增量 ≤ +80KB。
   satisfied_by:
   - TASK-017
 tasks:
 - id: TASK-017
-  title: 标注工具集 5 种工具 + IAnnotationItem + BGRA 烧入
+  title: 标注工具集 v2（5 工具 + 实时预览 + IAnnotationItem + BGRA 烧入）
   status: dispatched
 aesthetic_score:
   scored_at: ''
@@ -59,4 +67,4 @@ aesthetic_score:
   dimensions: {}
   total: null
 aesthetic_notes: []
-aligned_evidence: R48 是 R47 标注模式的自然扩展。IAnnotationItem 接口让 badge/shape 共用 undo stack。手写 BGRA draw 避开 SkiaSharp 的 +2MB AOT 体积，与 R47 决策一致。
+aligned_evidence: 'v1 已 revert（commit 79a39a0）。v2 加入 v1 失败教训作为硬性 AC + 回归测试。关键：实时预览、笔迹完整路径（IMouseHook.MouseMove）、arrow Tag(2)。'
