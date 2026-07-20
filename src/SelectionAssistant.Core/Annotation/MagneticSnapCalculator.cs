@@ -42,8 +42,11 @@ public enum SnapTarget
 /// </summary>
 public static class MagneticSnapCalculator
 {
-    /// <summary>Default snap threshold in physical pixels.</summary>
-    public const double SnapThreshold = 8.0;
+    /// <summary>Default snap threshold in physical pixels. 24px ≈ 14 DIP at
+    /// 175% DPI — comfortable "feels magnetic" distance without being so
+    /// large it snaps from far away. Was 8 (too tight, user had to be within
+    /// ~4 visual px to trigger). Tuned per 2026-07-20 user feedback.</summary>
+    public const double SnapThreshold = 24.0;
 
     /// <summary>
     /// Compute the snapped position for a moving window.

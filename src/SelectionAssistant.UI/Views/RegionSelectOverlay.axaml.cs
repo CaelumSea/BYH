@@ -1078,8 +1078,23 @@ public partial class RegionSelectOverlay : Window
 
         if (shape is not null)
         {
-            Canvas.SetLeft(shape, dipX);
-            Canvas.SetTop(shape, dipY);
+            // Rectangle/Ellipse use Canvas.SetLeft/Top as their top-left corner
+            // (their Width/Height extends from there). Line/Polyline use their
+            // own Points/StartPoint/EndPoint as absolute canvas coordinates —
+            // setting Canvas.Left/Top to a non-zero value would DOUBLE-offset
+            // them (Points + Canvas offset), painting them off-screen.
+            // So for Line/Polyline we leave Canvas.Left/Top at (0,0) and let
+            // the Points carry the absolute position.
+            if (shape is Avalonia.Controls.Shapes.Line || shape is Avalonia.Controls.Shapes.Polyline)
+            {
+                Canvas.SetLeft(shape, 0);
+                Canvas.SetTop(shape, 0);
+            }
+            else
+            {
+                Canvas.SetLeft(shape, dipX);
+                Canvas.SetTop(shape, dipY);
+            }
             AnnotationCanvas.Children.Add(shape);
             _livePreviewShape = shape;
         }
