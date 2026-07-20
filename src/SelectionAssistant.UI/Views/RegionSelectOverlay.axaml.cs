@@ -983,7 +983,8 @@ public partial class RegionSelectOverlay : Window
         {
             Stroke = stroke,
             StrokeThickness = thickness,
-            Fill = Brushes.Transparent,
+            // Fill MUST be null (not Transparent) — see CreateLivePreview.
+            Fill = null,
             IsHitTestVisible = false,
         };
         foreach (var (x, y) in points)
@@ -1070,7 +1071,12 @@ public partial class RegionSelectOverlay : Window
                 Points = new Points { new Point(dipX, dipY) },
                 Stroke = AnnotationStrokeBrush,
                 StrokeThickness = AnnotationShapeGeometry.StrokeThicknessDip,
-                Fill = Brushes.Transparent,
+                // Fill MUST be null (not Transparent): Polyline with non-null
+                // Fill renders the closed polygon formed by the points list,
+                // which makes freehand strokes look like closed shapes. With
+                // null Fill, only the stroke segments between adjacent points
+                // are drawn — true freehand pen behavior.
+                Fill = null,
                 IsHitTestVisible = false,
             },
             AnnotationTool.Highlight => new Avalonia.Controls.Shapes.Polyline
@@ -1078,7 +1084,7 @@ public partial class RegionSelectOverlay : Window
                 Points = new Points { new Point(dipX, dipY) },
                 Stroke = HighlightFillBrush,
                 StrokeThickness = AnnotationShapeGeometry.HighlightThicknessDip,
-                Fill = Brushes.Transparent,
+                Fill = null,
                 IsHitTestVisible = false,
             },
             _ => null,

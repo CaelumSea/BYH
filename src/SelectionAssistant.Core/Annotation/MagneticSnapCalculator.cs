@@ -42,10 +42,10 @@ public enum SnapTarget
 /// </summary>
 public static class MagneticSnapCalculator
 {
-    /// <summary>Default snap threshold in physical pixels. 32px ≈ 18 DIP at
-    /// 175% DPI — middle ground between 24 (too tight) and 48 (too far).
-    /// Tuning history: 8 → 24 → 48 → 32 (current).</summary>
-    public const double SnapThreshold = 32.0;
+    /// <summary>Default snap threshold in physical pixels. 20px ≈ 11 DIP at
+    /// 175% DPI — user-tuned middle ground.
+    /// Tuning history: 8 → 24 → 48 → 32 → 20 (current).</summary>
+    public const double SnapThreshold = 20.0;
 
     /// <summary>
     /// Compute the snapped position for a moving window.
