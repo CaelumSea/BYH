@@ -1,6 +1,6 @@
 id: TASK-016
 title: 贴图磁力吸（R52）
-status: dispatched
+status: done
 requirement: REQ-014
 type: code
 estimate_lines: 220

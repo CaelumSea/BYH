@@ -3,7 +3,7 @@
 > 来源：用户 2026-07-17 提出的功能清单 + 第 1-14 批增量；2026-07-19 加入 R44-R53（小旺 inspired Ocean Eyes 扩展）。
 > 主交接快照见 `00-CURRENT-HANDOFF.md`。
 > 模块文档见 `docs/architecture/00-architecture-overview.md`。
-> **更新 2026-07-20 第四十三批（进行中）：撤销 R45 二维码识别（用户判定"不太用得上"+ ZXing +595KB 不划算，revert commit 0623e4c，exe 从 28,283,392 回到 27,691,008）。开始推进 R52 磁力吸 + R48 标注工具集（两个 worktree 真正并行：改的文件不重叠，前者 PinnedScreenshotWindow，后者 RegionSelectOverlay）。第四十二批及更早：R47 数字序号标注（A 键进入标注模式，1/2/3 gold badge，Ctrl+Z 撤销，Enter 烧入 PNG 手写 BGRA，+18KB）；R46 贴图 v13 终态；R44 取色器；R30 设置页英文精修；R23 暂缓。**
+> **更新 2026-07-20 第四十三批（完成）：撤销 R45 二维码识别（用户判定"不太用得上"+ ZXing +595KB 不划算，revert commit 0623e4c）；R52 磁力吸 + R48 标注工具集 两个 worktree 真正并行开发（改的文件不重叠：PinnedScreenshotWindow vs RegionSelectOverlay，SelectionRuntime 接入点不重叠故自动三方合并）。R52 +20KB（纯函数 MagneticSnapCalculator，金色辅助线 overlay，Shift 禁用）；R48 +66KB（5 工具 sealed records + AnnotationSession 统一 undo stack + BGRA Bresenham 烧入，无 SkiaSharp）。**审核捕获并修复了 worker 的回归 bug**：worker 把默认工具设成 Rectangle 导致 R47 已合并的 NumberedBadge 行为丢失，手工修复（默认改回 Number、加 0 键、mouse hook click-to-place 路径）。测试 294/294，NativeAOT 0 警告，exe = 27,779,584 字节。第四十二批及更早：R47 数字序号标注；R46 贴图 v13 终态；R44 取色器；R30 设置页英文精修；R23 暂缓。**
 
 ---
 
@@ -286,14 +286,78 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
 
 ### 🖌️ P1 中等性价比（本地渲染，无网络，按需打开）
 
-#### R48 — 标注工具集（rectangle / ellipse / arrow / pen / highlight）
+#### ✅ R48 — 标注工具集（rectangle / ellipse / arrow / pen / highlight）（已完成，2026-07-20 第四十三批）
 
-- **触发**：与 R47 同一个标注模式（按 A 进入），工具栏提供 5 种工具。
-- **代码量**：~400 行（5 个工具的 hit-test + draw + undo/redo stack）。
-- **依赖**：无新增（纯 Avalonia Canvas + Skia）。
+- **触发**：R47 标注模式（按 A 进入）扩展 5 种绘制工具。A 进入后默认工具仍是 R47 的 NumberedBadge（点击放序号），按 **0** 切回序号，按 **1-5** 切换到矩形 / 椭圆 / 箭头 / 画笔 / 高亮。
+- **代码量**：~1270 行（5 工具 record + AnnotationSession 统一 undo stack + RegionSelectOverlay 视觉 + SelectionRuntime 工具路由 + mouse hook + BGRA 烧入）。
+- **依赖**：**无新增**（避开 SkiaSharp，~2MB AOT 体积预算节省）。
+- **资源开销**：常驻 0；画笔/高亮工具用 DispatcherTimer 16ms 轮询 GetCursorPos 记录路径（mouse hook 只 fire 按键事件，加 move 需扩 platform abstraction，过度工程）。
+- **架构关键决策（永久记录）**：
+  - **三层抽象（在 R47 基础上扩展）**：
+    - `IAnnotationItem`（接口 marker，AOT 安全）+ 6 个 sealed record：`NumberedBadgeAnnotation` / `RectangleAnnotation` / `EllipseAnnotation` / `ArrowAnnotation` / `PenStrokeAnnotation` / `HighlightStrokeAnnotation`
+    - `AnnotationSession`（统一 undo stack，PushBadge(x,y) 给 R47 / Push(IAnnotationItem) 给 shape / Undo 弹栈）
+    - `AnnotationShapeGeometry`（纯函数：Shift 约束、箭头头部几何）
+    - `BurnInHelpers`（Bresenham 直线 + 中点椭圆 + 矩形描边 + 箭头头部 + 路径，全手写 BGRA，无 SkiaSharp）
+  - **AnnotationTag 模式**：每个 annotation 视觉在 `AnnotationCanvas.Children` 里有 1 或 2 个 children（shape=1，badge=2 因为有圆+文字）。每个 child.Tag 挂 `AnnotationTag(int ChildCount)`，`RemoveLastAnnotation` 读 tag 决定删几个，统一 undo。
+  - **AOT 安全**：record + sealed + 接口 + pattern matching（编译时已知 sealed 类型，无反射）。
+  - **mouse hook 路由**：Number 工具特殊路径——LeftButtonDown 立刻 `session.PushBadge + overlay.AddShape(badge)`，不走拖拽（保留 R47 行为）。其他工具走 LeftButtonDown→move→Up 拖拽路径。
+  - **工具切换键**：0x30 (0) + 0x31-0x35 (1-5) 都在 vkCode 路由的 OCR-lazy gate 之前命中（OCR gate 只放 0x41-0x5A）。
+- **验收（第四十三批）**：
+  - Debug build 0 警告 0 错误。
+  - **294/294 测试通过**（R48 新增 23：AnnotationSession 11 + AnnotationShapeGeometry 12；R47 原 27 个测试无回归）。
+  - NativeAOT Release publish **0 trim/AOT 警告**。
+  - exe 27,691,008 → **27,779,584 字节**（**+88,576 / 86KB**，超 +80KB 预算 6KB；包含 R52 +20KB + R48 +66KB + 我手工修复 Number 工具的 +10KB；总体可接受）。
+  - 双路径同步到 `artifacts/publish/win-x64-nativeuia/BYH.exe`。
+- **修复 worker 偏差（永久记录）**：worker 初版把 `EnterAnnotationMode` 默认工具设成 Rectangle，导致 R47 已合并的"按 A 放序号"行为丢失（**回归 bug**）。reviewer 在合并前手工修复：默认改回 `AnnotationTool.Number`，加 0 键路由，mouse hook 恢复 click-to-place 路径，`AddShape(NumberedBadgeAnnotation)` 转发到 `AddBadge(NumberedBadge)`。教训：worker 看不到已合并分支的语义，必须人工 review 是否破坏现有功能。
+
+#### R49 — 截图相册（screenshot gallery）
+
+- **触发**：托盘菜单 / 设置页加入"打开 Ocean Eyes 相册"入口，打开新 `GalleryWindow.axaml(.cs)`，缩略图网格浏览 `%USERPROFILE%\Pictures\Ocean Eyes\` 下所有 PNG。
+- **代码量**：~300 行（GalleryWindow + 缩略图加载 + 双击打开 / 右键删除 / "打开所在目录"）。
+- **依赖**：无新增（Avalonia 自带 `ItemsControl` + `WriteableBitmap` 缩略图）。
+- **资源开销**：常驻 0；打开时一次性扫描目录（懒加载缩略图）。
+- **验收**：1000+ 张图不卡（虚拟化列表）；删除走回收站（`SHFileOperation` with `FOF_ALLOWUNDO`）；右键"打开所在目录"用 `explorer.exe /select,"..."`。
+- **可选增强**：搜索框（按文件名/OCR 文本过滤，OCR 文本需要 R24 已有的元数据 JSON 旁车文件）。
+
+#### R50 — 带壳截图（device mockup）
+
+- **触发**：Ocean Eyes 工具栏按 **M**（Mockup）→ 弹出外壳选择菜单（MacBook / iMac / iPhone / Android / Browser），选中后用 Skia 把截图合成到外壳模板里，复制到剪贴板。
+- **代码量**：~250 行（外壳加载 + Skia 合成 + 菜单）。
+- **依赖**：无新增（外壳是 PNG 资源 + Skia draw image）。
+- **资源开销**：常驻 0；每个外壳模板 PNG ~50-200KB 打包进 `avares://`。
+- **验收**：截图自动缩放到外壳"屏幕区域"；输出 PNG 透明背景；常用 5 个外壳（MacBook / iMac / iPhone 15 / Pixel / Edge browser）。
+- **关键点**：外壳模板需自己画或下载免费授权的——不要从其他截图软件扒。
+
+#### R51 — 截图美化（padding + shadow + rounded corners）
+
+- **触发**：Ocean Eyes 工具栏按 **B**（Beautify）→ 一键给截图加 32px padding + 香槟色背景（`#FFFCF7EA` 与 Ivory Jade 一致）+ 8px 圆角 + 柔光阴影，复制到剪贴板。
+- **代码量**：~120 行（Skia 合成 + 配置）。
+- **依赖**：无新增。
 - **资源开销**：常驻 0。
-- **验收**：每种工具拖拽即画；Shift 修饰键约束（矩形→正方形、椭圆→圆、画笔→直线）；undo/redo 完整；保存 PNG 时烧入。
-- **关键点**：与 R47 数字 badge 共用同一 Canvas + undo stack。
+- **验收**：输出尺寸 = 原图 + 64px；阴影偏移 4,4 blur 16；圆角半径可在设置页调（默认 8）。
+- **可选**：用户在设置页选背景色（默认香槟 / 白 / 黑 / 渐变）。
+
+#### ✅ R52 — 磁力吸（magnetic snap for pinned notes）（已完成，2026-07-20 第四十三批）
+
+- **触发**：R46 贴图窗口拖动时靠近屏幕工作区边缘或其他贴图边 8px 内自动吸附；按住 **Shift** 临时禁用。
+- **代码量**：~611 行（MagneticSnapCalculator 纯函数 163 + 测试 153 + PinnedScreenshotWindow 拖动 hook +173 + SelectionRuntime 注入 +21 + verification 87）。
+- **依赖**：无新增（仅依赖 R46 已存在）。
+- **资源开销**：常驻 0；吸附计算每次拖动事件 < 1ms（贴图数 < 5）。
+- **架构关键决策（永久记录）**：
+  - **纯函数核心**：`MagneticSnapCalculator.ComputeSnap(moving, workAreas, others, shiftHeld, threshold)` → `((int X, int Y), IReadOnlyList<SnapHint>)`。所有几何用**物理像素**（贴图 Position 本身是物理像素），不做 DIP 转换。
+  - **返回多 hint**：spec 原设计 `SnapHint?` 单值会丢一个轴信息，worker 改成 list（X/Y 双轴可能同时吸附），合理偏离。
+  - **屏幕工作区来源**：用 Avalonia `Screens.AllScreens.WorkingArea × RenderScaling`，不用 P/Invoke `EnumDisplayMonitors + GetMonitorInfo`（更简单、AOT 安全、功能等价）。
+  - **吸附辅助线 overlay**：直接在 `PinnedScreenshotWindow` 自身的 Canvas 上画（`<Canvas Name="SnapGuideCanvas" IsHitTestVisible="False" />`），不开新 top-level 窗口。金色 `#FFD9C28A` 2px。
+  - **Shift 检测**：P/Invoke `GetKeyState(VK_SHIFT=0x10) & 0x8000`，与 R47 的 Ctrl+Z 检测同模式。
+  - **接入点**：`PinnedScreenshotWindow.OnPointerMoved` 设置 `Position = ...` 前调 ComputeSnap；`OnPointerReleased` 终结时再调一次最终吸附（防 release 位置已超阈值但惯性大）。
+  - **其他贴图列表来源**：runtime 注入 `Func<IReadOnlyList<PhysicalRect>> GetOtherPinnedBounds` 给每个 PinnedScreenshotWindow。
+- **验收（第四十三批）**：
+  - Debug build 0 警告 0 错误。
+  - **271/271 → 294/294 测试通过**（R52 新增 12：屏幕边命中 4 + 贴图边命中 2 + Shift 禁用 1 + 阈值/多贴图 5）。
+  - NativeAOT Release publish **0 trim/AOT 警告**。
+  - exe 27,691,008 → **27,711,488 字节**（**+20,480 / 20KB**，远低于 +30KB 预算）。
+  - 双路径同步到 `artifacts/publish/win-x64-nativeuia/BYH.exe`。
+- **依赖前置**：R46 已完成。
 
 #### R49 — 截图相册（screenshot gallery）
 
@@ -374,10 +438,10 @@ P0（高性价比，先做）
   ❌ R45 二维码 (2026-07-20 落地 → 同日撤销，ZXing +595KB 不划算)
   ✅ R47 数字标注 (2026-07-20 落地)
   ✅ R46 贴图 (2026-07-19 落地，v13 终态)
-    ──→ R52 磁力吸（依赖 R46，进行中，第四十三批）
+  ✅ R52 磁力吸 (2026-07-20 落地，第四十三批，依赖 R46)
 
 P1（中等，按需做）
-  R48 标注工具集（依赖 R47 标注 layer —— 已就绪，进行中，第四十三批）
+  ✅ R48 标注工具集 (2026-07-20 落地，第四十三批，依赖 R47)
   R49 截图相册
   R50 带壳截图
   R51 截图美化

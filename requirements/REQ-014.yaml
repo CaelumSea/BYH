@@ -1,10 +1,10 @@
 id: REQ-014
 title: 贴图磁力吸（magnetic snap for pinned notes，R52）
-status: dispatched
+status: done
 lite: true
 score_kind: functional
 created: '2026-07-20T18:00:00'
-updated: '2026-07-20T18:00:00'
+updated: '2026-07-20T19:00:00'
 aligned_via: quick-user
 aligned_at: '2026-07-20T18:00:00'
 aesthetic_template: ''
@@ -40,7 +40,7 @@ acceptance_criteria:
 tasks:
 - id: TASK-016
   title: 贴图磁力吸（纯函数 + PinnedScreenshotWindow hook + 辅助线 overlay）
-  status: dispatched
+  status: done
 aesthetic_score:
   scored_at: ''
   scored_by: ''

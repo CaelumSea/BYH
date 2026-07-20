@@ -1,10 +1,10 @@
 id: REQ-015
 title: 标注工具集（rectangle / ellipse / arrow / pen / highlight，R48）
-status: dispatched
+status: done
 lite: true
 score_kind: functional
 created: '2026-07-20T18:00:00'
-updated: '2026-07-20T18:00:00'
+updated: '2026-07-20T19:00:00'
 aligned_via: quick-user
 aligned_at: '2026-07-20T18:00:00'
 aesthetic_template: ''
@@ -52,7 +52,7 @@ acceptance_criteria:
 tasks:
 - id: TASK-017
   title: 标注工具集 5 种工具 + IAnnotationItem + BGRA 烧入
-  status: dispatched
+  status: done
 aesthetic_score:
   scored_at: ''
   scored_by: ''
