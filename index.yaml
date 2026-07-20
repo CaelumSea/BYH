@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-20T11:44:24'
-secretary_focus: REQ-009
+updated: '2026-07-20T13:00:00'
+secretary_focus: REQ-010
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -42,9 +42,17 @@ requirements:
   title: 设置页框架比例与双层边框精修
   status: done
   progress: 1/1
-phase: done
-next_step: score
+- id: REQ-010
+  title: 二维码识别（Ocean Eyes QR decode，R45）
+  status: dispatched
+  progress: 0/1
+- id: REQ-011
+  title: 数字序号标注（Ocean Eyes numbered badges，R47）
+  status: dispatched
+  progress: 0/1
+phase: executing
+next_step: execute
 plan_confirmed_via: quick-user
-plan_confirmed_at: '2026-07-20T11:16:19'
+plan_confirmed_at: '2026-07-20T13:00:00'
 mode: quick
-plan_confirmed_evidence: 用户确认：导航背景重心保持在下，直接移入内框；取消圆角的是最左侧栏。
+plan_confirmed_evidence: 用户在 R44-R53 backlog 排序中选择本批做 R45（REQ-010）+ R47（REQ-011）；每 R 一个 task 分支串行合并避免 SelectionRuntime.OnToolbarKeyPressed 冲突。

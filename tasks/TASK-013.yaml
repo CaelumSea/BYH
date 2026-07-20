@@ -1,0 +1,16 @@
+id: TASK-013
+requirement: REQ-011
+title: Ocean Eyes A 键 + 数字标注 Canvas + Skia 烧入
+status: dispatched
+created: '2026-07-20T13:00:00'
+updated: '2026-07-20T13:00:00'
+satisfies:
+- AC-1
+- AC-2
+- AC-3
+- AC-4
+- AC-5
+- AC-6
+description: 在 SelectionRuntime.OnToolbarKeyPressed 的 vkCode 路由里、OCR-lazy gate 之前插入 A 键分支（进入/退出标注模式）+ Ctrl+Z 撤销分支；扩展 mouse hook SwallowCheck 在标注模式下吞左键；新增 NumberedAnnotationSession（badge 列表 + undo）+ NumberedBadgeRenderer（Skia 烧入纯函数）+ AnnotationCanvas 控件挂到 RegionSelectOverlay；Enter 保存时 Skia 把 badge 烧入 PNG；≥ 3 个纯函数单测；publish 验证 0 AOT 警告 + 常驻内存 0。
+handoff: ''
+execution_log: []
