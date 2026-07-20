@@ -831,12 +831,18 @@ public partial class RegionSelectOverlay : Window
     }
 
     /// <summary>
-    /// R48: adds a shape annotation to the canvas. Dispatches by item type.
+    /// R48: adds an annotation item to the canvas. Dispatches by item type.
+    /// R47 numbered badges route to the existing AddBadge path.
     /// </summary>
     public void AddShape(IAnnotationItem item)
     {
         switch (item)
         {
+            case NumberedBadgeAnnotation badge:
+                // R47 compatibility: convert to the legacy NumberedBadge struct
+                // and reuse the existing badge visual path.
+                AddBadge(new NumberedBadge(badge.Number, badge.X, badge.Y));
+                break;
             case RectangleAnnotation rect:
                 AddRectangleVisual(rect);
                 break;

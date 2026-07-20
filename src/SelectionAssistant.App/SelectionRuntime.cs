@@ -757,19 +757,20 @@ internal sealed class SelectionRuntime : IDisposable
 
     /// <summary>
     /// R47/R48: enters annotation mode. Creates a new session, arms the
-    /// annotation flag, sets the default tool to Rectangle, and updates
-    /// the toolbar status. Called from OnToolbarKeyPressed on the keyboard
-    /// hook thread; UI ops marshaled.
+    /// annotation flag, sets the default tool to Number (R47 badge tool —
+    /// preserves R47 behavior on first entry), and updates the toolbar
+    /// status. Called from OnToolbarKeyPressed on the keyboard hook thread;
+    /// UI ops marshaled.
     /// </summary>
     private void EnterAnnotationMode()
     {
         _annotationSession = new AnnotationSession();
-        _currentAnnotationTool = AnnotationTool.Rectangle;
+        _currentAnnotationTool = AnnotationTool.Number;
         Volatile.Write(ref _oceanEyesAnnotating, 1);
         Dispatcher.UIThread.Post(() =>
         {
             _toolbarWindow.SetDiagnosticStatus(
-                "标注模式 · [1]矩形 [2]椭圆 [3]箭头 [4]画笔 [5]高亮 · Ctrl+Z 撤销 · A/Esc 退出");
+                "标注模式 · 点击放序号 · [1]矩形 [2]椭圆 [3]箭头 [4]画笔 [5]高亮 · 0 序号 · Ctrl+Z 撤销 · A/Esc 退出");
         });
     }
 
@@ -2549,17 +2550,20 @@ internal sealed class SelectionRuntime : IDisposable
             return true;
         }
 
-        // R48: tool switching with 1-5 keys (vkCode 0x31-0x35). Only fires
-        // during active annotation mode. Updates the current tool and status.
-        if (vkCode >= 0x31 && vkCode <= 0x35 &&
+        // R48: tool switching with 0-5 keys. 0 (vkCode 0x30) selects the R47
+        // Number badge tool; 1-5 (vkCode 0x31-0x35) select the R48 shape tools.
+        // Only fires during active annotation mode. Updates the current tool
+        // and status.
+        if ((vkCode == 0x30 || (vkCode >= 0x31 && vkCode <= 0x35)) &&
             Volatile.Read(ref _oceanEyesAnnotating) != 0)
         {
             try
             {
-                AnnotationTool tool = (AnnotationTool)(vkCode - 0x30); // 1→1, 2→2, etc.
+                AnnotationTool tool = (AnnotationTool)(vkCode - 0x30); // 0→0, 1→1, 2→2, etc.
                 _currentAnnotationTool = tool;
                 string toolName = tool switch
                 {
+                    AnnotationTool.Number => "序号",
                     AnnotationTool.Rectangle => "矩形",
                     AnnotationTool.Ellipse => "椭圆",
                     AnnotationTool.Arrow => "箭头",
@@ -2571,7 +2575,7 @@ internal sealed class SelectionRuntime : IDisposable
                 Dispatcher.UIThread.Post(() =>
                 {
                     _toolbarWindow.SetDiagnosticStatus(
-                        $"标注模式 · [1]矩形 [2]椭圆 [3]箭头 [4]画笔 [5]高亮 · 当前:{toolName} · Ctrl+Z 撤销 · A/Esc 退出");
+                        $"标注模式 · [0]序号 [1]矩形 [2]椭圆 [3]箭头 [4]画笔 [5]高亮 · 当前:{toolName} · Ctrl+Z 撤销 · A/Esc 退出");
                 });
             }
             catch (Exception exception)
@@ -2981,6 +2985,33 @@ internal sealed class SelectionRuntime : IDisposable
             double dipY = (mouseEvent.Y - originY) / dpiScale;
 
             bool shiftHeld = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+
+            // R47 Number tool: left-button-down immediately places a numbered
+            // badge at the click point (no drag). This preserves R47 behavior
+            // when the user has not switched to a shape tool with 1-5.
+            if (_currentAnnotationTool == AnnotationTool.Number &&
+                mouseEvent.Message == MouseMessageType.LeftButtonDown)
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    try
+                    {
+                        if (_annotationSession is { } session &&
+                            Volatile.Read(ref _oceanEyesAnnotating) != 0)
+                        {
+                            NumberedBadgeAnnotation badge = session.PushBadge(dipX, dipY);
+                            _annotationOverlay?.AddShape(badge);
+                            _logger.Info("OceanEyes",
+                                $"Annotation: placed badge #{badge.Number} at ({dipX:F1}, {dipY:F1}).");
+                        }
+                    }
+                    catch (Exception exception)
+                    {
+                        _logger.Error("OceanEyes", "Annotation badge placement failed.", exception);
+                    }
+                });
+                return;
+            }
 
             if (mouseEvent.Message == MouseMessageType.LeftButtonDown)
             {
