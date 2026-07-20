@@ -1,0 +1,50 @@
+id: REQ-012
+title: 贴图磁力吸（magnetic snap for pinned notes，R52）
+status: dispatched
+lite: true
+score_kind: functional
+created: '2026-07-20T18:00:00'
+updated: '2026-07-20T18:00:00'
+aligned_via: quick-user
+aligned_at: '2026-07-20T18:00:00'
+aesthetic_template: ''
+acceptance_criteria:
+- id: AC-1
+  text: 拖动贴图时，若贴图左/右/上/下边距屏幕工作区相应边 ≤ 8px，松手后吸附贴齐。
+  satisfied_by:
+  - TASK-014
+- id: AC-2
+  text: 拖动贴图时，若贴图左/右/上/下边距任意其他贴图窗口的可见边 ≤ 8px，松手后吸附贴齐。
+  satisfied_by:
+  - TASK-014
+- id: AC-3
+  text: 拖动过程中实时显示半透明金色 (#FFD9C28A) 吸附辅助线，松手时消失。
+  satisfied_by:
+  - TASK-014
+- id: AC-4
+  text: 按住 Shift 拖动时磁力吸禁用，辅助线不显示，位置跟随光标。
+  satisfied_by:
+  - TASK-014
+- id: AC-5
+  text: 磁力吸纯函数单元测试 ≥ 8 个（屏幕/贴图边命中、阈值边界、多贴图最近、Shift 禁用、多屏负偏移）。
+  satisfied_by:
+  - TASK-014
+- id: AC-6
+  text: Debug build 0 警告 0 错误；dotnet test 全过；NativeAOT Release publish 0 trim/AOT 警告；exe 增量 ≤ +30KB。
+  satisfied_by:
+  - TASK-014
+- id: AC-7
+  text: 机器侧验证：屏幕右边吸附 / Shift 禁用 / 双贴图互相吸附三场景人工实测通过。
+  satisfied_by:
+  - TASK-014
+tasks:
+- id: TASK-014
+  title: 贴图磁力吸（纯函数 + PinnedScreenshotWindow hook + 辅助线 overlay）
+  status: dispatched
+aesthetic_score:
+  scored_at: ''
+  scored_by: ''
+  dimensions: {}
+  total: null
+aesthetic_notes: []
+aligned_evidence: 用户 2026-07-20 决定撤销 R45 后继续 backlog；R52（依赖 R46 已就绪）+ R48（依赖 R47 已就绪）作为下一批。R52 改 PinnedScreenshotWindow.axaml.cs + 新增 MagneticSnapCalculator 纯函数，与 R48（改 RegionSelectOverlay）不重叠，可真正并行。

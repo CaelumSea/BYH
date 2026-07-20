@@ -1,0 +1,30 @@
+id: TASK-014
+title: 贴图磁力吸（R52）
+status: dispatched
+requirement: REQ-012
+type: code
+estimate_lines: 220
+files:
+  create:
+  - src/SelectionAssistant.Core/Annotation/MagneticSnapCalculator.cs
+  - tests/SelectionAssistant.Core.Tests/Annotation/MagneticSnapCalculatorTests.cs
+  modify:
+  - src/SelectionAssistant.UI/Views/PinnedScreenshotWindow.axaml
+  - src/SelectionAssistant.UI/Views/PinnedScreenshotWindow.axaml.cs
+  - src/SelectionAssistant.App/SelectionRuntime.cs
+acceptance_criteria:
+- AC-1 屏幕工作区边吸附
+- AC-2 其他贴图边吸附
+- AC-3 实时半透明吸附辅助线
+- AC-4 Shift 临时禁用
+- AC-5 ≥ 8 单元测试
+- AC-6 build/test/publish 0 警告，≤ +30KB
+- AC-7 机器侧三场景实测
+dependencies:
+- R46 (PinnedScreenshotWindow) - 已完成
+notes: |
+  纯函数 MagneticSnapCalculator.ComputeSnap(windowRect, workAreas, otherRects, threshold, shiftHeld) → (PixelPoint snapped, SnapHint? hint)。
+  接入 PinnedScreenshotWindow.OnPointerMoved 修改 Position 前调一次。
+  辅助线 overlay 走 PinnedScreenshotWindow 自身的 Canvas（不开新窗口）。
+  Shift 检测：GetKeyState(VK_SHIFT=0x10) & 0x8000。
+  屏幕工作区：P/Invoke EnumDisplayMonitors + GetMonitorInfo 取物理 rcWork。
