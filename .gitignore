@@ -68,4 +68,3 @@ secrets.yaml
 *.apikey
 .env
 .env.*
-output/BYH.exe
