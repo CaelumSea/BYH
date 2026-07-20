@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "match": {
+        "processName": "ExampleTerminal.exe"
+      },
+      "detectionEnabled": true,
+      "accessibilityCapture": true,
+      "simulatedCopyMode": "CtrlInsertOnly",
+      "clipboardStabilizationMs": 0,
+      "manualFallback": true
+    },
+    {
+      "match": {
+        "exactPath": "C:\\Apps\\ExampleReader.exe"
+      },
+      "detectionEnabled": true,
+      "accessibilityCapture": true,
+      "simulatedCopyMode": "CtrlInsertThenCtrlC",
+      "clipboardStabilizationMs": 150,
+      "manualFallback": true
+    }
+  ]
+}

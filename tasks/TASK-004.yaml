@@ -1,0 +1,40 @@
+id: TASK-004
+requirement: REQ-002
+title: 迁移全部用户界面并处理透明悬浮层
+status: done
+created: '2026-07-18T14:34:42'
+updated: '2026-07-18T15:01:03'
+satisfies:
+- AC-2
+- AC-4
+description: 替换所有用户可见 AXAML/C# 硬编码色，处理透明工具窗与 OCR overlay 的可读性和功能色。
+handoff: '七个窗口已全部改为 DynamicResource/语义 Classes；View AXAML 不再含旧十六进制颜色，C# 不再直接赋 LightCoral/LightGreen。
+
+  QuickTools 在 175% DPI 的真实截图中曾出现底部重叠，现改为 480 logical px 高、72px 指令区，功能列表使用 Ghost 降低古金面积。
+
+  OCR overlay 使用暖棕遮罩、玉色选择框与小面积金色手柄；已实际打开 overlay 并验证提示层可读。
+
+
+  [自检修复] [visual_consistency] 175% DPI 真实截图发现 QuickTools 底部控件重叠与金色轮廓过量；已增高面板、固定输入区并将功能列表改为
+  Ghost。'
+execution_log:
+- step: 1
+  action: 迁移 Settings/Prompt/PromptTemplate/Result/Toolbar/QuickTools/RegionOverlay
+    七个 AXAML
+  result: 所有颜色改为 Ivory Jade 语义资源，主要/次要/危险动作完成分级
+- step: 2
+  action: 把 SettingsWindow 与 ResultWindow 运行时状态色改为反馈样式类
+  result: C# 中 Brushes.LightCoral/LightGreen 引用为 0
+- step: 3
+  action: 静态扫描 View 层旧色值
+  command: rg '#[0-9A-Fa-f]{6,8}|Brushes\.(LightCoral|LightGreen)' src/SelectionAssistant.UI/Views
+  result: 0 matches
+- step: 4
+  action: 在 175% DPI 实际打开并截图 Settings 与 QuickTools
+  artifact: artifacts/qa/ivory-jade-settings.png; artifacts/qa/ivory-jade-quick-tools.png
+- step: 5
+  action: 依据截图修复 QuickTools 底部重叠并减少金色轮廓用量
+  result: 第二次截图无重叠，视觉焦点收敛到 OCR 和 Prompt Run
+- step: 6
+  action: 从 QuickTools 实际打开区域选择 overlay 并检查暖色遮罩与提示
+  artifact: artifacts/qa/ivory-jade-region-overlay.png

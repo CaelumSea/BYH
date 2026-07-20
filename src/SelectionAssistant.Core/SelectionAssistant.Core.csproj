@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Core 依赖平台抽象,不依赖任何具体平台实现 -->
+    <ProjectReference Include="..\SelectionAssistant.Platform.Abstractions\SelectionAssistant.Platform.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

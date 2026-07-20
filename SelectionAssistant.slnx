@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SelectionAssistant.App/SelectionAssistant.App.csproj" />
+    <Project Path="src/SelectionAssistant.Core/SelectionAssistant.Core.csproj" />
+    <Project Path="src/SelectionAssistant.Infrastructure/SelectionAssistant.Infrastructure.csproj" />
+    <Project Path="src/SelectionAssistant.Platform.Abstractions/SelectionAssistant.Platform.Abstractions.csproj" />
+    <Project Path="src/SelectionAssistant.Platform.Windows/SelectionAssistant.Platform.Windows.csproj" />
+    <Project Path="src/SelectionAssistant.Providers/SelectionAssistant.Providers.csproj" />
+    <Project Path="src/SelectionAssistant.UI/SelectionAssistant.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SelectionAssistant.Core.Tests/SelectionAssistant.Core.Tests.csproj" />
+    <Project Path="tests/SelectionAssistant.Providers.Tests/SelectionAssistant.Providers.Tests.csproj" />
+    <Project Path="tests/SelectionAssistant.Windows.IntegrationTests/SelectionAssistant.Windows.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

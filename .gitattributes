@@ -1,0 +1,58 @@
+# =============================================================================
+# BYH (SelectionAssistant) — .gitattributes
+# =============================================================================
+# 目的：
+#   1. 统一行尾，避免多 Agent / 多工具跨平台编辑时 CRLF↔LF 抖动
+#   2. 明确标记二进制文件，防止误 diff/merge 损坏
+#   3. 启用 C# / PowerShell 专用 diff，提升 review 体验
+# =============================================================================
+
+## --- 默认：自动识别文本，统一 LF ---
+* text=auto eol=lf
+
+## --- Windows 批处理必须 CRLF（cmd.exe 对 LF 容忍度差） ---
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+
+## --- PowerShell / Shell 偏好 LF ---
+*.ps1  text eol=lf
+*.sh   text eol=lf
+
+## --- 源码：LF + 语言专属 diff ---
+*.cs    text eol=lf diff=csharp
+*.csx   text eol=lf diff=csharp
+*.csproj   text eol=lf
+*.props    text eol=lf
+*.targets  text eol=lf
+*.sln      text eol=lf
+*.slnx     text eol=lf
+
+## --- 标记语言 / 配置（YAML 对缩进敏感，强制 LF 保平安） ---
+*.md     text eol=lf
+*.yaml   text eol=lf
+*.yml    text eol=lf
+*.json   text eol=lf
+*.xml    text eol=lf
+*.axaml  text eol=lf
+*.css    text eol=lf
+*.js     text eol=lf
+
+## --- 二进制文件（git 不会尝试 diff/merge，原样存储） ---
+*.exe   binary
+*.dll   binary
+*.pdb   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.ico   binary
+*.icns  binary
+*.gif   binary
+*.bmp   binary
+*.pdf   binary
+*.zip   binary
+*.7z    binary
+*.nupkg binary
+
+## --- linguist 语言检测辅助（GitHub 等用它判定项目语言占比） ---
+*.axaml linguist-language=XAML
+*.csproj linguist-language=XML

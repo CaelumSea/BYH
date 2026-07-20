@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "defaultProviderId": "deepseek",
+  "providers": [
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "baseUrl": "https://api.deepseek.com",
+      "apiKeyReference": "secret://provider/deepseek",
+      "defaultModel": "deepseek-v4-flash",
+      "chatCompletionsPath": "chat/completions",
+      "timeoutSeconds": 60,
+      "maxSourceCharacters": 8000
+    },
+    {
+      "id": "siliconflow",
+      "name": "SiliconFlow",
+      "baseUrl": "https://api.siliconflow.cn/v1",
+      "apiKeyReference": "secret://provider/siliconflow",
+      "defaultModel": "deepseek-ai/DeepSeek-V3",
+      "chatCompletionsPath": "chat/completions",
+      "timeoutSeconds": 60,
+      "maxSourceCharacters": 8000
+    }
+  ]
+}

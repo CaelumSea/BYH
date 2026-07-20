@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="200" d:DesignHeight="80"
+        x:Class="SelectionSpike.MainWindow"
+        Title="SelectionSpike"
+        Width="220"
+        Height="90"
+        CanResize="False"
+        ShowInTaskbar="False"
+        SystemDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent"
+        Topmost="True">
+    <!--
+      门2 验证目标:
+      - SystemDecorations="None"        → 无边框
+      - TransparencyLevelHint + Transparent → 透明背景
+      - Topmost="True"                  → 置顶
+      - ShowInTaskbar="False"           → 不进任务栏
+      真正的 WS_EX_NOACTIVATE 在 code-behind 里通过 Win32 注入(见 MainWindow.axaml.cs)
+    -->
+    <Border Background="#E6302F2F"
+            CornerRadius="10"
+            Padding="14"
+            BoxShadow="0 4 16 0 #40000000">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock Text="🪝 Phase 0 验证"
+                       Foreground="White"
+                       FontSize="14"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Center"/>
+            <TextBlock x:Name="CoordText"
+                       Text="等待鼠标抬起..."
+                       Foreground="#FFB0B0"
+                       FontSize="11"
+                       Margin="0,6,0,0"
+                       FontFamily="Consolas,Cascadia Code,monospace"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Border>
+</Window>

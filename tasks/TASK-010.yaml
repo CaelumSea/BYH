@@ -1,0 +1,40 @@
+id: TASK-010
+requirement: REQ-008
+title: Refine Settings UI copy, icons, and dimensional frames
+status: done
+created: '2026-07-20T09:24:51'
+updated: '2026-07-20T10:15:17'
+satisfies:
+- AC-1
+- AC-2
+- AC-3
+- AC-4
+description: Update SettingsWindow AXAML/runtime copy and Ivory Jade styles; build,
+  test, publish, and visually verify at default and minimum sizes.
+handoff: Settings UI refinement is complete. Visible settings copy and runtime statuses
+  are English, redundant descriptions are reduced, the five navigation items use understated
+  outline icons, and the main surfaces use layered ivory/gold highlights with warm
+  shadows. NativeAOT default and 1240x680 logical minimum screenshots passed without
+  clipping. See output/TASK-010-settings-english-depth-verification.md.
+execution_log:
+- action: Convert Settings UI and runtime feedback to English
+  result: All visible Settings labels, page headings, provider/action/vision/launcher
+    controls, tray-adjacent status feedback, and current setup summaries are English;
+    Chinese matches in edited C# files are comments only.
+  evidence: src/SelectionAssistant.UI/Views/SettingsWindow.axaml; src/SelectionAssistant.UI/Views/SettingsWindow.axaml.cs;
+    src/SelectionAssistant.App/App.axaml.cs
+- action: Reduce copy and add navigation iconography
+  result: Repeated helper paragraphs and duplicate status rows were removed while
+    essential current values, warnings, and errors remain; five navigation entries
+    now use consistent outline Path icons.
+  evidence: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+- action: Refine dimensional Ivory Jade surfaces
+  result: PearlCard, DecorativeFrame, SettingsFrame, and PorcelainCard use translucent
+    gold hairlines, inset ivory/champagne highlights, and low-opacity warm shadows;
+    the default black Fluent navigation focus rectangle is suppressed.
+  evidence: src/SelectionAssistant.UI/Themes/IvoryJade.axaml
+- action: Build, test, publish, and visually verify
+  result: 232/232 tests passed; NativeAOT publish succeeded with 0 PDB; default and
+    1240x680 logical minimum-size screenshots show no clipping or overlap.
+  evidence: artifacts/publish/win-x64-nativeuia/BYH.exe (27671040 bytes); artifacts/qa/ivory-jade-settings-v8-english-depth-nativeaot.png;
+    artifacts/qa/ivory-jade-settings-v8-english-depth-minimum-nativeaot.png

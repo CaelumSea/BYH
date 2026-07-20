@@ -1,0 +1,23 @@
+id: TASK-011
+requirement: REQ-009
+title: 按用户标注图重构设置页外框与上下比例
+status: done
+created: '2026-07-20T11:16:19'
+updated: '2026-07-20T11:44:23'
+satisfies:
+- AC-1
+- AC-2
+- AC-3
+- AC-4
+- AC-5
+description: 严格按照用户红色标注图和确认回复精修设置窗口；大型框架使用靠近的双层细边框与柔和阴影，小型控件保持克制。
+handoff: '已按用户红色标注图完成设置页框架精修。核心改动位于 SettingsWindow.axaml 与 IvoryJade.axaml；NativeAOT
+  默认/最小尺寸截图、232/232 测试及发布证据见 output/TASK-011-settings-frame-verification.md。
+
+  '
+execution_log:
+- '2026-07-20: 将导航装饰图移入内框，新增 NavTowerFrame 紧邻双金线、象牙高光与暖色柔影，双层视觉间距约 5px。'
+- '2026-07-20: 最左概念栏改为无圆角 FlatRail，以 1.5px 古金竖线分隔；保留三个内部等高分区及分隔线。'
+- '2026-07-20: 设置页两行比例由 *,204 调为 *,260，增高 System Overview；删除概览标题与正文之间的横向分割线。'
+- '2026-07-20: 完成 175% DPI 默认与 1240x680 logical 最小尺寸视觉复核；232/232 测试通过，Windows NativeAOT
+  发布成功。'

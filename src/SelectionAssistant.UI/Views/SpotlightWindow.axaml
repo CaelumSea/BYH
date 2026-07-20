@@ -1,0 +1,146 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
+        x:Class="SelectionAssistant.UI.Views.SpotlightWindow"
+        Title="BYH · Launcher"
+        Width="560"
+        Height="480"
+        CanResize="False"
+        ShowActivated="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen"
+        WindowDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent"
+        Topmost="True"
+        KeyDown="OnWindowKeyDown">
+  <Border x:Name="RootBorder"
+          Classes="FloatingSurface"
+          Padding="14"
+          CornerRadius="12">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
+
+      <!-- Search input row: lightning icon + TextBox. The TextBox is wrapped
+           tightly (only the field itself, not the lightning icon) in a Border
+           that owns the gold-lace frame — same machinery as the selected list
+           row (Border.SpotlightRow.Active): outer 1px gold border + champagne
+           gap + bright-gold inner glint via inset BoxShadow. The inner TextBox
+           is fully borderless/transparent so its own frame never shows. -->
+      <Grid Grid.Row="0" ColumnDefinitions="28,*,Auto" ColumnSpacing="8">
+        <TextBlock Grid.Column="0"
+                   Text="⚡"
+                   FontSize="16"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center" />
+        <Border Grid.Column="1"
+                Classes="SpotlightGoldFrame"
+                CornerRadius="12"
+                Padding="8,3">
+          <TextBox x:Name="SearchInput"
+                   Classes="SpotlightSearch"
+                   PlaceholderText="Search…"
+                   FontSize="15"
+                   FontWeight="SemiBold"
+                   Padding="0,1"
+                   VerticalAlignment="Center"
+                   VerticalContentAlignment="Center"
+                   BorderThickness="0"
+                   Background="Transparent"
+                   TextChanged="OnSearchInputTextChanged" />
+        </Border>
+      </Grid>
+
+      <!-- Category header -->
+      <TextBlock Grid.Row="1"
+                 Classes="Kicker"
+                 Text="启动器"
+                 FontSize="10" />
+
+      <!-- Filtered results list -->
+      <Border Grid.Row="2"
+              Background="Transparent"
+              BorderBrush="{DynamicResource ByhHairlineBrush}"
+              BorderThickness="0,1,0,0"
+              Padding="0,8,0,0">
+        <ScrollViewer x:Name="ResultsScroll"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+          <ItemsControl x:Name="ResultsList">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="views:LauncherEntryRow">
+                <!-- R43: bind the "Active" class membership to IsSelected.
+                     ItemsControl wraps each item in an internal ContentPresenter;
+                     toggling a class on that container never reaches our Border.
+                     The Avalonia "Classes.<name>={Binding bool}" syntax is the
+                     supported way to data-drive class membership, and it works
+                     cleanly with compiled bindings + NativeAOT. -->
+                <Border x:Name="RowBorder"
+                        Classes="SpotlightRow"
+                        Classes.Active="{Binding IsSelected}"
+                        Background="Transparent"
+                        Padding="6,6"
+                        Margin="0,1"
+                        CornerRadius="8"
+                        PointerPressed="OnRowPointerPressed">
+                  <Grid ColumnDefinitions="32,*,Auto" ColumnSpacing="10">
+                    <Image Grid.Column="0"
+                           Source="{Binding Icon}"
+                           Width="24"
+                           Height="24"
+                           VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Spacing="1">
+                      <TextBlock Text="{Binding Name}"
+                                 Classes="SpotlightRowName"
+                                 FontSize="13"
+                                 FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Target}"
+                                 Classes="Muted SpotlightRowTarget"
+                                 FontSize="10"
+                                 TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2"
+                               Classes="Muted"
+                               FontSize="10"
+                               VerticalAlignment="Center"
+                               Text="{Binding Kind}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Border>
+
+      <!-- Footer: settings + keycap hints -->
+      <Grid Grid.Row="3"
+            ColumnDefinitions="Auto,*,Auto"
+            ColumnSpacing="8"
+            Margin="0,6,0,0">
+        <Button Grid.Column="0"
+                Classes="Ghost"
+                Click="OnSettingsClick"
+                Padding="6,2"
+                FontSize="11"
+                Content="⚙ 设置" />
+        <StackPanel Grid.Column="2"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    VerticalAlignment="Center">
+          <Border Classes="Badge" Padding="6,2">
+            <TextBlock FontSize="10" Text="↑↓ 选择" />
+          </Border>
+          <Border Classes="Badge" Padding="6,2">
+            <TextBlock FontSize="10" Text="↵ 启动" />
+          </Border>
+          <Border Classes="Badge" Padding="6,2">
+            <TextBlock FontSize="10" Text="Ctrl+↵ 设置" />
+          </Border>
+          <Border Classes="Badge" Padding="6,2">
+            <TextBlock FontSize="10" Text="Esc 关闭" />
+          </Border>
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Border>
+</Window>

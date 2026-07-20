@@ -1,0 +1,76 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- App 是组合根:Windows 专用 TFM 以便引用 Platform.Windows -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app-icon.ico</ApplicationIcon>
+    <!-- R36: 用户可见品牌统一为 BYH。AssemblyName 决定 exe 文件名和任务管理器
+         进程名；与 Mutex 名、配置目录、HTTP UA、托盘 tooltip、所有窗口标题保持
+         一致。namespace 仍为 SelectionAssistant.*（技术标识符，不改）。
+         注意：avares:// URI 用 AssemblyName 解析，avares://SelectionAssistant.App/*
+         必须改成 avares://BYH/*（见 App.axaml.cs 和 SettingsWindow.axaml）。 -->
+    <AssemblyName>BYH</AssemblyName>
+    <AssemblyTitle>BYH</AssemblyTitle>
+    <Product>BYH</Product>
+    <Company>By Your Hand</Company>
+    <Description>BYH — By Your Hand. Context-aware selection assistant for Windows.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Icon assets (embedded).
+         - app-icon.ico: drives the exe icon (Windows Explorer / taskbar) AND
+           the TrayIcon. Loaded at runtime as a full ICO container so Win32
+           CreateIconFromResource preserves the alpha channel (a raw PNG passed
+           to WindowIcon loses transparency in the tray on Windows).
+         - app-icon.png: fallback / used where a bitmap is required. -->
+    <AvaloniaResource Include="Assets\app-icon.ico" />
+    <AvaloniaResource Include="Assets\app-icon.png" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishAot>true</PublishAot>
+    <TrimMode>full</TrimMode>
+    <TrimmerSingleWarn>false</TrimmerSingleWarn>
+    <DynamicLoading>false</DynamicLoading>
+    <StripSymbols>true</StripSymbols>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3">
+      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 组合根:引用所有需要在此装配的项目 -->
+    <ProjectReference Include="..\SelectionAssistant.Core\SelectionAssistant.Core.csproj" />
+    <ProjectReference Include="..\SelectionAssistant.Platform.Windows\SelectionAssistant.Platform.Windows.csproj" />
+    <ProjectReference Include="..\SelectionAssistant.Providers\SelectionAssistant.Providers.csproj" />
+    <ProjectReference Include="..\SelectionAssistant.UI\SelectionAssistant.UI.csproj" />
+    <ProjectReference Include="..\SelectionAssistant.Infrastructure\SelectionAssistant.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <Target Name="RemovePublishedDebugSymbols"
+          AfterTargets="Publish"
+          Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <PublishedDebugSymbols Include="$(PublishDir)**\*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(PublishedDebugSymbols)" />
+  </Target>
+
+</Project>

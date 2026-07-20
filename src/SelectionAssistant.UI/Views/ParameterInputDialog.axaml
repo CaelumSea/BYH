@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SelectionAssistant.UI.Views.ParameterInputDialog"
+        Title="BYH · 输入参数"
+        Width="320"
+        SizeToContent="WidthAndHeight"
+        CanResize="False"
+        WindowDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False">
+  <Border x:Name="RootBorder"
+          Classes="FloatingSurface"
+          Padding="16"
+          MinWidth="280">
+    <StackPanel Spacing="12">
+
+      <TextBlock x:Name="PromptLabel"
+                 Text="请输入参数"
+                 FontSize="13"
+                 TextWrapping="Wrap" />
+
+      <TextBox x:Name="ValueInput"
+               FontSize="13"
+               KeyDown="OnValueInputKeyDown" />
+
+      <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+        <Button Grid.Column="0"
+                x:Name="ConfirmButton"
+                Classes="Primary"
+                Content="确定"
+                HorizontalAlignment="Stretch"
+                Click="OnConfirmClick" />
+        <Button Grid.Column="1"
+                Classes="Ghost"
+                Content="取消"
+                HorizontalAlignment="Stretch"
+                Click="OnCancelClick" />
+      </Grid>
+    </StackPanel>
+  </Border>
+</Window>

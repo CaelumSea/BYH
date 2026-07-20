@@ -1,0 +1,46 @@
+id: REQ-008
+title: Settings UI English and dimensional frame refinement
+status: done
+created: '2026-07-20T09:22:47'
+updated: '2026-07-20T10:16:27'
+score_kind: aesthetic
+aesthetic_template: frontend
+acceptance_criteria:
+- id: AC-1
+  text: All user-visible copy in the Settings window, including runtime status text,
+    is English.
+  satisfied_by:
+  - TASK-010
+- id: AC-2
+  text: Redundant explanatory paragraphs are removed while essential labels, current
+    values, safety notes, and error feedback remain clear.
+  satisfied_by:
+  - TASK-010
+- id: AC-3
+  text: Navigation tabs and key actions use a consistent understated line-icon treatment
+    derived from the supplied reference.
+  satisfied_by:
+  - TASK-010
+- id: AC-4
+  text: Primary panes and cards use soft layered ivory, gold highlight, and warm shadow
+    depth without heavy borders, clipping, or reduced readability at default and minimum
+    window sizes.
+  satisfied_by:
+  - TASK-010
+tasks:
+- id: TASK-010
+  title: Refine Settings UI copy, icons, and dimensional frames
+  status: done
+aesthetic_score:
+  scored_at: '2026-07-20T10:17:00'
+  scored_by: Codex self-review
+  dimensions:
+    pixel_fidelity: 4
+    interaction: 4
+    visual_consistency: 5
+    detail_polish: 4
+  total: 4.24
+aesthetic_notes: []
+aligned_via: ask-user
+aligned_at: '2026-07-20T09:24:50'
+aligned_evidence: 用户：有参考图了，直接按参考图设计。

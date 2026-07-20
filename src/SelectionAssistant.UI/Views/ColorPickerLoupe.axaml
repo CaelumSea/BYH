@@ -1,0 +1,64 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SelectionAssistant.UI.Views.ColorPickerLoupe"
+        Title="BYH · Color Picker"
+        SizeToContent="WidthAndHeight"
+        CanResize="False"
+        ShowActivated="False"
+        ShowInTaskbar="False"
+        WindowDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent"
+        Topmost="True">
+  <Border Classes="FloatingSurface"
+          Padding="8">
+    <StackPanel Spacing="4">
+
+      <!-- 15x15 magnified pixel block (150x150 device px).
+           Each source pixel is drawn as a 10x10 block. A gold crosshair
+           marks the center pixel (the sampled pixel under the cursor). -->
+      <Panel Width="150" Height="150">
+        <Image x:Name="MagImage"
+               Width="150"
+               Height="150"
+               Stretch="None" />
+        <!-- Crosshair: vertical + horizontal dashed gold lines through center,
+             plus a 10x10 outline rect marking the sampled pixel boundary. -->
+        <Canvas Width="150" Height="150"
+                IsHitTestVisible="False">
+          <Line StartPoint="75,0" EndPoint="75,150"
+                Stroke="#FFD9C28A"
+                StrokeThickness="1"
+                StrokeDashArray="2,2" />
+          <Line StartPoint="0,75" EndPoint="150,75"
+                Stroke="#FFD9C28A"
+                StrokeThickness="1"
+                StrokeDashArray="2,2" />
+          <Rectangle Canvas.Left="70" Canvas.Top="70"
+                     Width="10" Height="10"
+                     Stroke="#FFD9C28A"
+                     StrokeThickness="1"
+                     Fill="Transparent" />
+        </Canvas>
+      </Panel>
+
+      <!-- HEX readout: #RRGGBB uppercase -->
+      <TextBlock x:Name="HexText"
+                 Text="#000000"
+                 FontSize="16"
+                 FontWeight="Bold"
+                 FontFamily="Cascadia Mono,Consolas,Courier New"
+                 HorizontalAlignment="Center" />
+
+      <!-- RGB readout: rgb(r, g, b) decimal -->
+      <TextBlock x:Name="RgbText"
+                 Classes="Secondary"
+                 Text="rgb(0, 0, 0)"
+                 FontSize="11"
+                 FontFamily="Cascadia Mono,Consolas,Courier New"
+                 HorizontalAlignment="Center" />
+
+    </StackPanel>
+  </Border>
+</Window>

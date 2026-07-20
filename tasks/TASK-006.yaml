@@ -1,0 +1,27 @@
+id: TASK-006
+requirement: REQ-004
+title: 实施参考图同构的 BYH 多窗格设置工作台
+status: done
+created: '2026-07-18T16:25:46'
+updated: '2026-07-18T16:43:20'
+satisfies:
+- AC-1
+- AC-2
+- AC-3
+- AC-4
+description: 重构 SettingsWindow 为四列两行布局，接入真实摘要状态，保留现有绑定和功能，完成高 DPI、测试、截图与 NativeAOT
+  验证。
+handoff: '
+
+  [自检修复] [pixel_fidelity] 默认 1120 最小宽度的 Provider 页面发生横向裁切；已提高到 1240 并在 175% DPI 重新截图，关键控件完整可达。
+
+  [自检修复] [consistency] 摘要快捷键初始值原为硬编码 Ctrl+Alt+Q；已改为正在读取，并只由运行时设置写入真实值。'
+execution_log:
+- '2026-07-18: OMP/MiMo 探针通过；定位宿主 timeout 必须大于 wrapper --max-time，并通过 skill-hub 更新、校验、修复
+  omp-worker 三端链接。'
+- '2026-07-18: SettingsWindow 重构为 208,184,*,252 四列 × *,204 两行；默认 1320×800，最小 1240×680。'
+- '2026-07-18: 新增产品概览、真实 Current setup、运行模式、配置诊断和窗口控制窗格；三个摘要字段接运行时 Provider、快捷键与 OCR
+  数据。'
+- '2026-07-18: Release 构建 0 警告；162/162 测试通过；175% DPI 默认、Provider、最小 Provider 截图验收通过。'
+- '2026-07-18: NativeAOT 发布成功，0 AOT/裁剪警告，SelectionAssistant.App.exe 26,597,888 bytes，无
+  PDB；发布版设置窗口响应正常。'

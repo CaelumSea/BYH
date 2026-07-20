@@ -1,0 +1,2068 @@
+using SelectionAssistant.Core.Capture;
+using SelectionAssistant.Core.Input;
+using SelectionAssistant.Core.Launcher;
+using SelectionAssistant.Core.Selection;
+using SelectionAssistant.Core.Translation;
+using SelectionAssistant.Infrastructure.Capture;
+using SelectionAssistant.Infrastructure.Configuration;
+using SelectionAssistant.Infrastructure.Logging;
+using SelectionAssistant.Infrastructure.Translation;
+using SelectionAssistant.Platform.Abstractions;
+using SelectionAssistant.Platform.Abstractions.Secrets;
+using SelectionAssistant.Platform.Windows;
+using SelectionAssistant.Platform.Windows.Clipboard;
+using SelectionAssistant.Platform.Windows.Capture;
+using SelectionAssistant.Platform.Windows.Hooks;
+using SelectionAssistant.Platform.Windows.Launcher;
+using SelectionAssistant.Platform.Windows.Secrets;
+using SelectionAssistant.Platform.Windows.Windowing;
+using SelectionAssistant.Providers;
+using SelectionAssistant.UI.Views;
+using Avalonia.Input.Platform;
+using Avalonia.Threading;
+
+namespace SelectionAssistant.App;
+
+/// <summary>Windows composition root for the Phase 1 selection path.</summary>
+internal sealed class SelectionRuntime : IDisposable
+{
+    private const nuint OurInjectedInputMarker = 0x53454C41;
+
+    private readonly object _taskGate = new();
+    private readonly HashSet<Task> _sessionTasks = [];
+    private readonly ToolbarWindow _toolbarWindow;
+    private readonly ResultWindow _resultWindow;
+    private readonly RedactedLogger _logger;
+    private readonly LowLevelMouseHook _mouseHook;
+    // R34: low-level keyboard hook active only while the toolbar is visible.
+    // The toolbar is WS_EX_NOACTIVATE and cannot receive Avalonia KeyDown, so
+    // single-character shortcuts (F/J/Z/R + any user-bound custom action) are
+    // dispatched through this hook instead. Start() on show, Stop() on hide.
+    private readonly LowLevelKeyboardHook _keyboardHook;
+    private readonly WindowsMouseContextProvider _contextProvider = new();
+    private readonly SystemMetricGestureClassifier _gestureClassifier;
+    private readonly ChordDetector _chordDetector = new();
+    private readonly SelectionSessionManager _sessionManager;
+    private readonly IProcessCapturePolicyProvider _capturePolicyProvider;
+    private readonly TranslationSessionManager _translationManager;  // null until assigned in ctor
+    private ITranslationProvider _translationProvider = new MyMemoryTranslationProvider();  // mutable for hot-swap, set by SwitchToProvider
+    private IDisposable? _disposableProvider;           // mutable for hot-swap
+    private readonly ISecretStore _secretStore;
+    private string? _apiKeyReference;                   // mutable for hot-swap
+    private string _providerLabel = "未配置";            // mutable for hot-swap, set by SwitchToProvider
+    private readonly ByhApplicationPaths _paths;
+    private readonly MutableProviderConfiguration _providerConfig;
+    private PromptTemplateSet _promptTemplates;  // global templates, loaded at start
+    // R23 launcher entries (quick-launch software/URLs). User-added only.
+    private LauncherEntrySet _launcherEntries;
+    private readonly WindowsSelectionTextCapture _textCapture;
+    private readonly NoActivateWindowHost _windowHost;
+    // R24 track B: vision OCR tier (screenshot → cloud OCR). Owned here so the
+    // backend + OCR client share one disposal point. Null until configured.
+    // _visionOcrClient is typed as IVisionOcrClient (not IDisposable) so the
+    // region-select OCR path can call RecognizeAsync; the client is also
+    // IDisposable (interface inherits) and disposed in ApplyVisionCapture/Dispose.
+    private WindowsUiAutomationBackend? _visionBackend;
+    private IVisionOcrClient? _visionOcrClient;
+    private VisionCaptureSettings _visionSettings = VisionCaptureSettings.Default;
+    // R37/R41: user-configurable toolbar built-in shortcut keys (Prompt/Copy,
+    // defaults R/C). Mutable for hot-swap from the settings page. Read on the
+    // keyboard hook thread by TryInvokeBuiltinToolbarShortcut — assignments from
+    // the UI thread are reference-atomic (reference swap), so no lock needed.
+    private ToolbarShortcutSettings _toolbarShortcuts = ToolbarShortcutSettings.Default;
+    private int _mouseChordEnabled;
+    private int _disposed;
+
+    // R40 Ocean Eyes: when the user completes a region box, we capture the PNG
+    // bytes once (before showing the toolbar so the toolbar isn't in the shot),
+    // then show the SAME ToolbarWindow that the selection flow uses — the
+    // F/J/Z/R/C shortcuts work unchanged. The only new key is Enter (save the
+    // cached PNG), gated by _oceanEyesActive so the selection flow's Enter
+    // still passes through to the source app.
+    //
+    // R41: OCR is now LAZY — the toolbar shows immediately in "未识别" state
+    // with all action buttons disabled; OCR only fires when the user presses
+    // F/J/Z/R/C. The OCR task is cached so subsequent action keys on the same
+    // region reuse the result (no re-OCR).
+    //
+    // _oceanEyesActive is read on the keyboard hook thread (Enter handler) and
+    // written from the UI thread (FeedOceanEyesCapture / Esc); Volatile for
+    // cross-thread visibility without a lock.
+    private int _oceanEyesActive;
+    // PNG captured for the current Ocean Eyes session. Cached so Enter can save
+    // immediately without re-capturing (which would also pick up the toolbar).
+    // nulled out when the Ocean Eyes toolbar is dismissed (Esc/Enter/action).
+    private byte[]? _oceanEyesPng;
+    // R41: the screen rect (physical px) of the current Ocean Eyes region. Kept
+    // so EnsureOceanEyesOcrAsync can (re)start OCR without App re-passing it.
+    private (int X, int Y, int W, int H) _oceanEyesRect;
+    // R41: the lazy OCR task. Null = OCR not yet started; non-null = started
+    // (maybe still running, maybe completed). Same Task is awaited by every
+    // action key so OCR runs at most once per region. Nulled on Dismiss/Reset.
+    private Task<string?>? _oceanEyesOcrTask;
+    // R41: the OCR result once the task completes. Null until then. Read on the
+    // hook thread to decide "cached text ready" vs "must await task".
+    private string? _oceanEyesOcrText;
+    private int _oceanEyesOcrDone; // Volatile flag: 0 = not done, 1 = done
+    // User-configurable: where screenshots go + whether to auto-save / copy.
+    // Reference-atomic swap from the UI thread; read by SaveOceanEyesScreenshot.
+    private OceanEyesCaptureSettings _oceanEyesCapture = OceanEyesCaptureSettings.Default;
+
+    public SelectionRuntime(
+        ToolbarWindow toolbarWindow,
+        ResultWindow resultWindow,
+        ByhApplicationPaths paths)
+    {
+        _toolbarWindow = toolbarWindow;
+        _resultWindow = resultWindow;
+        ArgumentNullException.ThrowIfNull(paths);
+        _paths = paths;
+        _logger = new RedactedLogger(paths.LogFile);
+        nint windowHandle = toolbarWindow.NativeHandle
+            ?? throw new InvalidOperationException("Toolbar HWND is not available after Opened.");
+
+        _windowHost = new NoActivateWindowHost(windowHandle);
+        _gestureClassifier = new SystemMetricGestureClassifier(new WindowsSystemMetrics());
+        _mouseHook = new LowLevelMouseHook(message => _logger.Info("MouseHook", message));
+        _keyboardHook = new LowLevelKeyboardHook(message => _logger.Info("KeyboardHook", message));
+        _keyboardHook.KeyPressed += OnToolbarKeyPressed;
+        // NOTE: the keyboard hook is NOT installed here in the ctor. Starting
+        // its background message-loop thread at ctor time (before the clipboard
+        // message window is created) caused intermittent "Clipboard message
+        // window startup timed out" crashes — the second Win32 thread racing
+        // on window-class registration / desktop attach appears to disrupt the
+        // main thread's clipboard window creation. We install it lazily in
+        // Start() instead, after the mouse hook is already running and the
+        // runtime is otherwise ready.
+
+        var dispatcher = new AvaloniaSelectionUiDispatcher();
+        var view = new ToolbarSessionView(
+            toolbarWindow,
+            _windowHost,
+            onToolbarShown: () =>
+            {
+                // Enable shortcut dispatching while the toolbar is visible.
+                // The hook itself stays installed for the whole app lifetime;
+                // this only flips a flag read inside the callback.
+                _keyboardHook.SetEnabled(true);
+            },
+            onToolbarHidden: () =>
+            {
+                // Disable dispatching so typing in the source app is not
+                // filtered while the toolbar is hidden.
+                _keyboardHook.SetEnabled(false);
+            });
+        IReadOnlyList<PolicyRule> userPolicyRules = LoadUserCapturePolicies(paths.CapturePolicyFile);
+        _capturePolicyProvider = WindowsDefaultCapturePolicies.CreateProvider(userPolicyRules);
+        _textCapture = new WindowsSelectionTextCapture(_capturePolicyProvider);
+        _sessionManager = new SelectionSessionManager(
+            _textCapture,
+            view,
+            dispatcher,
+            diagnosticSink: message => _logger.Info("Capture", message));
+
+        _secretStore = new DpapiSecretStore(paths.SecretsDirectory);
+        _providerConfig = LoadProviderConfig(paths);
+        _promptTemplates = LoadPromptTemplates(paths);
+        _launcherEntries = LoadLauncherEntries(paths);
+        SwitchToProvider(ResolveDefaultEntry(), logOnMiss: true);
+        _translationManager = new TranslationSessionManager(
+            _translationProvider!,
+            new ResultTranslationView(resultWindow),
+            dispatcher);
+
+        _toolbarWindow.TranslateRequested += OnTranslateRequested;
+        _toolbarWindow.ActionRequested += (actionId, text) => RunActionAsync(actionId, text);
+        _resultWindow.RetryRequested += OnRetryRequested;
+        _resultWindow.ReplaceRequested += OnReplaceRequested;
+        _resultWindow.CloseRequested += OnResultCloseRequested;
+
+        // Chord (left+right button together) → quick-tools panel. The detector
+        // fires on the mouse-hook thread; ChordTriggered surfaces it so App.axaml
+        // can marshal to the UI thread and open the Ocean Eyes region overlay.
+        _chordDetector.ChordDetected += (x, y) =>
+        {
+            if (Volatile.Read(ref _mouseChordEnabled) != 0)
+            {
+                ChordTriggered?.Invoke(x, y);
+            }
+        };
+
+        // R24 track B: wire the vision OCR tier (screenshot → cloud OCR) from
+        // vision.json. Loads settings, resolves the OCR provider entry, and
+        // injects the capture into _textCapture. Non-fatal if anything is
+        // missing — the tier just stays disabled (UIA + clipboard only).
+        ConfigureVisionCapture();
+    }
+
+    /// <summary>
+    /// R24 track B: loads <c>vision.json</c>, resolves the OCR provider entry
+    /// from providers.json, builds the OCR client + screenshot backend, and
+    /// injects the vision tier into the text capture. Safe to call with no
+    /// provider configured (tier stays disabled). Called once at construction.
+    /// </summary>
+    private void ConfigureVisionCapture()
+    {
+        try
+        {
+            _visionSettings = VisionCaptureStore.LoadIfExists(_paths.VisionCaptureFile);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("VisionCapture", "vision.json rejected; vision tier disabled.", exception);
+            _visionSettings = VisionCaptureSettings.Default with { Enabled = false };
+        }
+
+        ApplyVisionCapture();
+    }
+
+    /// <summary>
+    /// (Re)builds and injects the vision tier from <see cref="_visionSettings" />.
+    /// Disposes the previous backend/OCR client first. No-op (tier disabled) when
+    /// the setting is off or the OCR provider entry can't be resolved.
+    /// </summary>
+    private void ApplyVisionCapture()
+    {
+        // Tear down any previous vision wiring.
+        _textCapture.SetVisionCapture(null);
+        _textCapture.SetVisionEnabled(false);
+        _visionOcrClient?.Dispose();
+        _visionOcrClient = null;
+        _visionBackend?.Dispose();
+        _visionBackend = null;
+
+        if (!_visionSettings.Enabled)
+        {
+            return;
+        }
+
+        ProviderProfileEntry? entry = _providerConfig.FindById(_visionSettings.ProviderId);
+        if (entry is null)
+        {
+            _logger.Info(
+                "VisionCapture",
+                $"Vision tier disabled: provider '{_visionSettings.ProviderId}' not found in providers.json.");
+            return;
+        }
+
+        var options = new OpenAiCompatibleProviderOptions
+        {
+            Id = entry.Id,
+            DisplayName = entry.Name,
+            BaseUrl = entry.BaseUrl,
+            ApiKeyReference = entry.ApiKeyReference,
+            // Override the provider's default model with the configured OCR model
+            // (e.g. Qwen/Qwen3.5-4B), keeping the translation model intact.
+            DefaultModel = _visionSettings.Model,
+            ChatCompletionsPath = entry.ChatCompletionsPath,
+            Timeout = entry.TimeoutSeconds < 30 ? TimeSpan.FromSeconds(30) : TimeSpan.FromSeconds(entry.TimeoutSeconds),
+            MaxSourceCharacters = entry.MaxSourceCharacters,
+        };
+
+        var ocrClient = new OpenAiCompatibleVisionOcrClient(
+            options, _secretStore, _visionSettings.OcrPrompt, _visionSettings.DisableThinking);
+        _visionOcrClient = ocrClient;
+        _visionBackend = new WindowsUiAutomationBackend();
+        var visionCapture = new VisionTextCapture(_visionBackend, ocrClient);
+        _textCapture.SetVisionCapture(visionCapture);
+        _textCapture.SetVisionEnabled(true);
+
+        _logger.Info(
+            "VisionCapture",
+            $"Vision OCR tier enabled: provider='{entry.Id}' model='{_visionSettings.Model}'.");
+    }
+
+    /// <summary>
+    /// Raised when a left+right mouse chord is detected. Fires on the mouse-hook
+    /// thread — the handler must marshal to the UI thread. Args = screen coords.
+    /// </summary>
+    public event Action<int, int>? ChordTriggered;
+
+    /// <summary>
+    /// R41: raised when the user right-clicks while the Ocean Eyes toolbar is
+    /// up. The runtime has already hidden the toolbar + cleared OCR cache
+    /// (DismissOceanEyes); App.axaml.cs calls <c>_regionOverlay.Reset()</c> so
+    /// the overlay clears its rect + re-arms UIA tracking for the redraw.
+    /// </summary>
+    public event Action? RegionResetRequested;
+
+    /// <summary>
+    /// Enables the legacy left+right mouse chord. Disabled by default because
+    /// the right-button half conflicts with source-application context menus.
+    /// The detector still observes release events while disabled so its latch
+    /// cannot become stuck across a live setting change.
+    /// </summary>
+    public void SetMouseChordEnabled(bool enabled) =>
+        Volatile.Write(ref _mouseChordEnabled, enabled ? 1 : 0);
+
+    /// <summary>
+    /// R37: replaces the user-configurable toolbar built-in shortcut keys
+    /// (Prompt/Copy). Applied immediately — the next key press on the
+    /// toolbar will use the new bindings. Reference swap is atomic, so this is
+    /// safe to call from the UI thread while the keyboard hook thread is
+    /// reading <see cref="_toolbarShortcuts"/>.
+    /// </summary>
+    public void SetToolbarShortcuts(ToolbarShortcutSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        _toolbarShortcuts = settings.Normalize();
+    }
+
+    // ── R40 Ocean Eyes: region-select → toolbar → OCR → F/J/Z/R/C/V + Enter ──
+
+    /// <summary>
+    /// Pushes the Ocean Eyes screenshot/save settings from the settings UI.
+    /// Applied immediately — the next Enter (save) will use the new path /
+    /// toggles. Reference swap is atomic, safe from the UI thread.
+    /// </summary>
+    public void SetOceanEyesCaptureSettings(OceanEyesCaptureSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        _oceanEyesCapture = settings.Normalize();
+    }
+
+    /// <summary>Read-only accessor for App.axaml.cs (UIA assist toggle).</summary>
+    public OceanEyesCaptureSettings GetOceanEyesCaptureSettings() => _oceanEyesCapture;
+
+    /// <summary>
+    /// R40: shows the toolbar at the Ocean Eyes anchor (region's right edge,
+    /// top of the box) and arms the Enter key for saving the cached PNG. The
+    /// toolbar is the SAME ToolbarWindow used by the selection flow — its
+    /// F/J/Z/R/C/V shortcuts work unchanged once OCR text is fed in via
+    /// <see cref="FeedOceanEyesCapture"/>. Must be called on the UI thread.
+    /// </summary>
+    /// <param name="regionRightX">Right edge of the drawn region (physical px).</param>
+    /// <param name="regionTopY">Top edge of the drawn region (physical px).</param>
+    /// <param name="png">Pre-captured PNG bytes (captured before this call so
+    /// the toolbar window isn't in the shot). Cached for Enter-to-save.</param>
+    public void ShowToolbarForOceanEyes(
+        int regionRightX, int regionTopY, byte[] png,
+        int regionX, int regionY, int regionW, int regionH)
+    {
+        ArgumentNullException.ThrowIfNull(png);
+
+        // Cache the PNG + rect first so Enter (save) and EnsureOceanEyesOcrAsync
+        // (lazy OCR on first action key) can use them without re-capturing.
+        _oceanEyesPng = png;
+        _oceanEyesRect = (regionX, regionY, regionW, regionH);
+        // R41: lazy OCR — do NOT start the OCR task here. It starts on the first
+        // F/J/Z/R/C press via EnsureOceanEyesOcrAsync.
+        _oceanEyesOcrTask = null;
+        _oceanEyesOcrText = null;
+        Volatile.Write(ref _oceanEyesOcrDone, 0);
+
+        // Put the toolbar in "未识别" state: all action buttons disabled (the
+        // user hasn't triggered OCR yet), status tells them what to press.
+        // ShowPending gives us the disabled-buttons state; we then override
+        // the status text to the lazy-OCR prompt.
+        _toolbarWindow.ShowPending(new SelectionGesture(
+            MouseUpX: regionRightX, MouseUpY: regionTopY,
+            MouseDownX: regionRightX, MouseDownY: regionTopY,
+            MouseDownTimestampMs: 0, MouseUpTimestampMs: 0,
+            SourceRootHwnd: 0, SourceProcessId: 0));
+        _toolbarWindow.SetDiagnosticStatus("未识别 · 按 F/J/Z/R/C 开始");
+
+        // Anchor at the region's top-right corner. ClampAnchor's flip logic
+        // (mirrors selection flow) keeps the toolbar inside the working area:
+        // if the top-right anchor overflows the right edge, the toolbar flips
+        // to the left of the box; same for the top edge.
+        Avalonia.PixelPoint topLeft = _toolbarWindow.ClampAnchor(regionRightX, regionTopY);
+        _windowHost.ShowAtNoActivatePoint(topLeft.X, topLeft.Y);
+
+        // Arm the Ocean Eyes flag + the keyboard hook so Enter / F / J / Z /
+        // R / C all route through OnToolbarKeyPressed.
+        Volatile.Write(ref _oceanEyesActive, 1);
+        _keyboardHook.SetEnabled(true);
+    }
+
+    /// <summary>
+    /// R41: lazily starts (or re-awaits) the OCR task for the current Ocean
+    /// Eyes region. Called on the first F/J/Z/R/C press. The OCR runs at most
+    /// once per region — subsequent action keys await the same task and reuse
+    /// the cached text. When the task completes, the toolbar's action buttons
+    /// are enabled and the status switches from "未识别" to "已取词 · Vision".
+    /// </summary>
+    /// <returns>The OCR'd text (trimmed), or null/empty if OCR failed.</returns>
+    private async Task<string?> EnsureOceanEyesOcrAsync()
+    {
+        // Snapshot the task under a null-check. Two action keys arriving in
+        // quick succession could both see null and both start a task — but the
+        // hook thread is single-threaded (one key at a time), so this race is
+        // impossible in practice. Belt-and-suspenders: Interlocked compare.
+        Task<string?>? task = _oceanEyesOcrTask;
+        if (task is null)
+        {
+            var rect = _oceanEyesRect;
+            task = CaptureAndRecognizeRegionAsync(rect.X, rect.Y, rect.W, rect.H, CancellationToken.None);
+            _oceanEyesOcrTask = task;
+            _logger.Info("OceanEyes", $"Lazy OCR started for region {rect.W}x{rect.H}.");
+        }
+
+        string? text;
+        try
+        {
+            text = await task.ConfigureAwait(true);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("OceanEyes", "Lazy OCR task failed.", exception);
+            text = null;
+        }
+
+        // Cache + arm only if still active (user may have Esc'd during OCR).
+        if (Volatile.Read(ref _oceanEyesActive) == 0)
+        {
+            return text;
+        }
+
+        _oceanEyesOcrText = text;
+        Volatile.Write(ref _oceanEyesOcrDone, 1);
+        FeedOceanEyesCapture(text);
+        return text;
+    }
+
+    /// <summary>
+    /// R40/R41: feeds the OCR'd text into the existing toolbar pipeline. Called
+    /// by <see cref="EnsureOceanEyesOcrAsync"/> when the lazy OCR completes.
+    /// Enables the action buttons and lets F/J/Z/R/C all act on the recognized
+    /// text via the unchanged RunActionAsync / TryInvokeBuiltinToolbarShortcut
+    /// paths.
+    /// </summary>
+    public void FeedOceanEyesCapture(string? ocrText)
+    {
+        // If the user already dismissed the toolbar (Esc) before OCR landed,
+        // the OCR result is dropped — there's no visible toolbar to update.
+        if (Volatile.Read(ref _oceanEyesActive) == 0)
+        {
+            _oceanEyesPng = null;
+            return;
+        }
+
+        string text = ocrText?.Trim() ?? string.Empty;
+        var result = new CaptureResult(
+            string.IsNullOrEmpty(text) ? null : text,
+            CaptureSource.Vision,
+            IsAmbiguous: false);
+
+        try
+        {
+            _toolbarWindow.SetCaptureResult(result);
+            // _sessionManager.GetLastCapturedText() is what F/J/Z read via
+            // OnToolbarKeyPressed. Update it so the shortcuts see the OCR text
+            // without a re-capture. The manager exposes a setter through the
+            // CaptureResult path it normally drives itself; mirror it here.
+            _sessionManager.SeedLastCapturedText(result);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("OceanEyes", "FeedOceanEyesCapture failed to update toolbar.", exception);
+        }
+    }
+
+    /// <summary>
+    /// R40: writes the cached PNG to <c>SavePath/ocean-eyes-yyyyMMdd-HHmmss.png</c>
+    /// (if AutoSaveEnabled) and copies it to the clipboard (if
+    /// CopyToClipboardEnabled). Then hides the toolbar and clears the Ocean Eyes
+    /// state. Called from OnToolbarKeyPressed's Enter branch on the keyboard
+    /// hook thread → all UI work dispatched via Dispatcher.UIThread.Post.
+    /// </summary>
+    private void SaveOceanEyesScreenshot()
+    {
+        byte[]? png = _oceanEyesPng;
+        var settings = _oceanEyesCapture;
+        if (png is null)
+        {
+            // Nothing captured (shouldn't happen — flag is only set when png is).
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                if (settings.AutoSaveEnabled)
+                {
+                    string? directory = settings.SavePath;
+                    if (!string.IsNullOrEmpty(directory))
+                    {
+                        Directory.CreateDirectory(directory);
+                        string stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                        string file = Path.Combine(directory, $"ocean-eyes-{stamp}.png");
+                        File.WriteAllBytes(file, png);
+                        _logger.Info("OceanEyes", $"Saved screenshot: {file}");
+                    }
+                }
+
+                if (settings.CopyToClipboardEnabled)
+                {
+                    _ = Task.Run(() =>
+                    {
+                        try
+                        {
+                            using var clipboard = new Win32Clipboard();
+                            clipboard.SetPng(png);
+                            _logger.Info("OceanEyes", $"Copied {png.Length} PNG bytes to clipboard.");
+                        }
+                        catch (Exception exception)
+                        {
+                            _logger.Error("OceanEyes", "Clipboard copy failed.", exception);
+                        }
+                    });
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("OceanEyes", "SaveOceanEyesScreenshot failed.", exception);
+            }
+            finally
+            {
+                // Always dismiss the toolbar after Enter — saving is a terminal
+                // action (mirrors how F/J/Z hide the toolbar after RunActionAsync).
+                DismissOceanEyes();
+            }
+        });
+    }
+
+    /// <summary>
+    /// R40: hides the toolbar, disables the hook, and clears the Ocean Eyes
+    /// state. Called after Enter (save done) or Esc (cancel). Safe to call
+    /// multiple times (idempotent).
+    /// </summary>
+    private void DismissOceanEyes()
+    {
+        Volatile.Write(ref _oceanEyesActive, 0);
+        _oceanEyesPng = null;
+        // R41: clear lazy-OCR state so the next Ocean Eyes session starts fresh.
+        _oceanEyesOcrTask = null;
+        _oceanEyesOcrText = null;
+        Volatile.Write(ref _oceanEyesOcrDone, 0);
+        _windowHost.Hide();
+        _keyboardHook.SetEnabled(false);
+    }
+
+    /// <summary>
+    /// Returns the most recently captured selection text (from the last
+    /// selection session), if any. The chord flow uses this to seed the
+    /// quick-tools panel when the user chords over already-selected text.
+    /// Falls back to the clipboard when no BYH session has captured text yet
+    /// — the user often selects text in an app that doesn't trigger a BYH
+    /// toolbar (different policy, or selection via keyboard), but the text is
+    /// on the clipboard after Ctrl+C. Best-effort; swallows clipboard errors.
+    /// </summary>
+    public string? GetLastCapturedText()
+    {
+        string? text = _sessionManager.GetLastCapturedText();
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            return text;
+        }
+
+        // Clipboard fallback: best-effort read so the chord flow works even
+        // when no BYH selection session fired (e.g. user selected text in an
+        // app whose capture policy is off, then Ctrl+C'd).
+        try
+        {
+            using var clipboard = new Win32Clipboard();
+            string? clip = clipboard.GetText();
+            return string.IsNullOrWhiteSpace(clip) ? null : clip.Trim();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Runs the built-in translate action on the given text (used by the
+    /// quick-tools panel's "Translate" button). Hides the toolbar first so the
+    /// result window is the focus.
+    /// </summary>
+    public void TranslateAsync(string sourceText)
+    {
+        OnTranslateRequested(sourceText);
+    }
+
+    private IReadOnlyList<PolicyRule> LoadUserCapturePolicies(string path)
+    {
+        try
+        {
+            IReadOnlyList<PolicyRule> rules = CapturePolicyConfigurationLoader.LoadIfExists(path);
+            if (rules.Count > 0)
+            {
+                _logger.Info("CapturePolicy", $"Loaded {rules.Count} user capture policy rules.");
+            }
+
+            return rules;
+        }
+        catch (CapturePolicyConfigurationException exception)
+        {
+            _logger.Error(
+                "CapturePolicy",
+                "User capture policy file was rejected; safe defaults remain active.",
+                exception);
+            return [];
+        }
+    }
+
+    /// <summary>Loads providers.json into a mutable config (empty on missing/invalid).</summary>
+    private MutableProviderConfiguration LoadProviderConfig(ByhApplicationPaths paths)
+    {
+        try
+        {
+            ProviderConfiguration loaded = ProviderConfigurationLoader.LoadIfExists(paths.ProvidersFile);
+            return new MutableProviderConfiguration(loaded.DefaultProviderId, loaded.Providers);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("Translation", "Provider config rejected; using empty config.", exception);
+            return new MutableProviderConfiguration();
+        }
+    }
+
+    /// <summary>
+    /// Loads the global prompt-templates.json. Missing/corrupt file falls back
+    /// to built-in defaults (logged, no crash).
+    /// </summary>
+    private PromptTemplateSet LoadPromptTemplates(ByhApplicationPaths paths)
+    {
+        try
+        {
+            return PromptTemplatesStore.LoadIfExists(paths.PromptTemplatesFile);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("PromptTemplates", "Prompt template file rejected; using built-in defaults.", exception);
+            return PromptTemplateDefaults.CreateDefault();
+        }
+    }
+
+    /// <summary>
+    /// Loads launcher-entries.json. Missing/corrupt file falls back to an empty
+    /// set (logged, no crash). User-added entries only — no built-ins.
+    /// </summary>
+    private LauncherEntrySet LoadLauncherEntries(ByhApplicationPaths paths)
+    {
+        try
+        {
+            return LauncherEntryStore.LoadIfExists(paths.LauncherEntriesFile);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("Launcher", "Launcher entries file rejected; using empty set.", exception);
+            return LauncherEntryDefaults.CreateDefault();
+        }
+    }
+
+    /// <summary>Resolves the provider entry that should be active right now.</summary>
+    private ProviderProfileEntry? ResolveDefaultEntry()
+    {
+        if (!string.IsNullOrEmpty(_providerConfig.DefaultProviderId))
+        {
+            ProviderProfileEntry? byId = _providerConfig.FindById(_providerConfig.DefaultProviderId);
+            if (byId is not null) return byId;
+        }
+        return _providerConfig.Providers.FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Hot-swaps the active provider to the given entry. Disposes the old
+    /// provider, injects the new one into the session manager, and updates the
+    /// label/reference fields. If entry is null, falls back to MyMemory.
+    /// </summary>
+    private void SwitchToProvider(ProviderProfileEntry? entry, bool logOnMiss = false)
+    {
+        // Dispose the old provider first.
+        _disposableProvider?.Dispose();
+        _disposableProvider = null;
+
+        if (entry is null)
+        {
+            if (logOnMiss)
+            {
+                _logger.Info("Translation", "No provider configured; using MyMemory test fallback.");
+            }
+            _translationProvider = new MyMemoryTranslationProvider();
+            _apiKeyReference = null;
+            _providerLabel = "MyMemory 测试提供器";
+        }
+        else
+        {
+            var options = new OpenAiCompatibleProviderOptions
+            {
+                Id = entry.Id,
+                DisplayName = entry.Name,
+                BaseUrl = entry.BaseUrl,
+                ApiKeyReference = entry.ApiKeyReference,
+                DefaultModel = entry.DefaultModel,
+                ChatCompletionsPath = entry.ChatCompletionsPath,
+                Timeout = TimeSpan.FromSeconds(entry.TimeoutSeconds),
+                MaxSourceCharacters = entry.MaxSourceCharacters,
+                SystemPrompt = entry.SystemPrompt,
+            };
+            var streaming = new OpenAiCompatibleStreamingProvider(options, _secretStore);
+            _translationProvider = streaming;
+            _disposableProvider = streaming;
+            _apiKeyReference = entry.ApiKeyReference;
+            _providerLabel = $"{entry.Name} · {entry.DefaultModel}";
+            _logger.Info("Translation", $"Switched to provider '{entry.Id}' (model {entry.DefaultModel}).");
+        }
+
+        // If the manager already exists (not first construction), hot-swap it.
+        // On first construction the manager is built AFTER this method, so we
+        // skip the ReplaceProvider call — the manager gets the right provider
+        // at construction time.
+        if (_translationManager is not null)
+        {
+            _translationManager.ReplaceProvider(_translationProvider);
+        }
+    }
+
+    // ── Public query methods for the settings UI ──
+
+    public IReadOnlyList<ProviderProfileEntry> GetProviders() => _providerConfig.Providers;
+
+    public string? GetCurrentProviderId() => _providerConfig.DefaultProviderId;
+
+    public string GetProviderLabel() => _providerLabel;
+
+    // ── R24 track B: vision OCR settings (read/written by the settings UI) ──
+
+    public VisionCaptureSettings GetVisionSettings() => _visionSettings;
+
+    /// <summary>
+    /// Updates the vision OCR settings, persists them to vision.json, and
+    /// (re)wires the vision tier. Returns false if persistence failed.
+    /// </summary>
+    public bool UpdateVisionSettings(VisionCaptureSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        _visionSettings = settings;
+        try
+        {
+            VisionCaptureStore.Save(settings, _paths.VisionCaptureFile);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("VisionCapture", "Failed to persist vision.json.", exception);
+            // Still apply in-memory so the UI reflects intent; will not survive restart.
+        }
+
+        ApplyVisionCapture();
+        return true;
+    }
+
+    // ── R24 region-select OCR (chord → draw-region path) ──
+
+    /// <summary>
+    /// R24: returns the UIA bounding box of the element under the given point,
+    /// to pre-fill the region-select overlay. Null when vision is disabled or
+    /// UIA can't resolve a box (canvas/games/scanned PDF) — the overlay then
+    /// starts in free-draw mode.
+    /// </summary>
+    public Rect? GetInitialRegionAt(int x, int y)
+    {
+        if (!_visionSettings.Enabled || _visionBackend is null)
+        {
+            return null;
+        }
+
+        return _visionBackend.GetElementBoundsAt(x, y);
+    }
+
+    /// <summary>
+    /// R24: returns text from the given screen region, trying UI Automation
+    /// first and falling back to cloud OCR. Used by the chord → draw-region
+    /// flow. UIA is preferred when the region covers real desktop controls
+    /// (browser, editor, list, dialog) — it's instant, free, and returns
+    /// structurally clean text with no model-hallucinated markdown wrappers.
+    /// OCR is the fallback for regions over images, video, canvas, scanned
+    /// PDFs, or any content UIA can't navigate.
+    /// </summary>
+    /// <remarks>
+    /// Default path is OCR only — it captures exactly the drawn rectangle and
+    /// is trustworthy on every kind of content. The UIA tier (which reads
+    /// structured text from desktop controls inside the region) is opt-in via
+    /// <see cref="VisionCaptureSettings.UiaPrefillEnabled"/>: it's faster and
+    /// cleaner when it works, but the ancestor-walk can return text from
+    /// outside the drawn box on apps whose UIA tree doesn't match the visual
+    /// layout. OCR is the safe default. Returns null only when both tiers fail
+    /// or vision is disabled. Never throws — the caller shows "识别失败" on null.
+    /// </remarks>
+    public async Task<string?> CaptureAndRecognizeRegionAsync(
+        int x, int y, int width, int height, CancellationToken token)
+    {
+        if (!_visionSettings.Enabled)
+        {
+            return null;
+        }
+
+        // Opt-in UIA tier. Disabled by default because the ancestor-walk can
+        // return text from outside the drawn box on apps whose UIA container
+        // structure doesn't match the visual layout. OCR is the trustworthy
+        // default. Users who want the faster UIA path on simple desktop apps
+        // can enable it via the "UIA 预填框" toggle in settings (the same
+        // toggle controls the prefill box — they're a package deal).
+        if (_visionSettings.UiaPrefillEnabled && _visionBackend is not null)
+        {
+            var region = new Rect(x, y, width, height);
+            try
+            {
+                IReadOnlyList<string> texts = _visionBackend.GetTextsInRegion(region);
+                if (texts.Count > 0)
+                {
+                    string joined = string.Join('\n', texts).Trim();
+                    if (!string.IsNullOrEmpty(joined))
+                    {
+                        _logger.Info("RegionOcr", $"UIA tier hit: {texts.Count} text element(s).");
+                        return joined;
+                    }
+                }
+                _logger.Info("RegionOcr", "UIA tier empty; falling back to OCR.");
+            }
+            catch (Exception exception)
+            {
+                // UIA failures are non-fatal — fall through to OCR.
+                _logger.Error("RegionOcr", "UIA tier failed; falling back to OCR.", exception);
+            }
+        }
+
+        // Default tier: cloud OCR. Captures exactly the drawn rectangle, so
+        // the result is always within the user's selection regardless of the
+        // app's UIA tree structure.
+        if (_visionOcrClient is null)
+        {
+            return null;
+        }
+
+        string? dataUri = ScreenRegionCapture.CaptureAsDataUri(x, y, width, height);
+        if (string.IsNullOrEmpty(dataUri))
+        {
+            _logger.Info("RegionOcr", "Screen capture returned empty data URI.");
+            return null;
+        }
+
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
+
+        try
+        {
+            string text = await _visionOcrClient
+                .RecognizeAsync(dataUri, timeout.Token)
+                .ConfigureAwait(false);
+            text = text.Trim();
+            return string.IsNullOrEmpty(text) ? null : text;
+        }
+        catch (OperationCanceledException) when (!token.IsCancellationRequested)
+        {
+            _logger.Info("RegionOcr", "Region OCR timed out (10s).");
+            return null;
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("RegionOcr", "Region OCR failed.", exception);
+            return null;
+        }
+    }
+
+    public async Task<bool> HasApiKeyAsync(string? apiKeyReference = null)
+    {
+        string? reference = apiKeyReference ?? _apiKeyReference;
+        if (string.IsNullOrEmpty(reference))
+        {
+            return false;
+        }
+        string? key = await _secretStore.GetAsync(reference).ConfigureAwait(false);
+        return !string.IsNullOrWhiteSpace(key);
+    }
+
+    /// <summary>
+    /// Saves an API key to DPAPI storage for the given secret reference. If the
+    /// reference matches the active provider, hot-swaps so it takes effect
+    /// immediately (no restart).
+    /// </summary>
+    public async Task<bool> SaveApiKeyAsync(string apiKeyReference, string keyValue)
+    {
+        if (string.IsNullOrEmpty(apiKeyReference))
+        {
+            _logger.Error("Translation", "Cannot save API key: empty reference.");
+            return false;
+        }
+
+        try
+        {
+            await _secretStore.SetAsync(apiKeyReference, keyValue).ConfigureAwait(false);
+            _logger.Info("Translation", $"API key saved for {apiKeyReference}.");
+
+            // If this is the active provider's key, hot-swap so it takes effect now.
+            if (apiKeyReference == _apiKeyReference)
+            {
+                ProviderProfileEntry? current = ResolveDefaultEntry();
+                if (current is not null)
+                {
+                    SwitchToProvider(current);
+                }
+            }
+            return true;
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Translation", "Failed to save API key.", exception);
+            return false;
+        }
+    }
+
+    // ── Public CRUD methods for the settings UI ──
+
+    public Task<bool> AddProviderAsync(ProviderProfileEntry entry)
+    {
+        try
+        {
+            if (_providerConfig.FindById(entry.Id) is not null)
+            {
+                _logger.Error("Translation", $"Provider '{entry.Id}' already exists.");
+                return Task.FromResult(false);
+            }
+            _providerConfig.Providers.Add(entry);
+            PersistConfig();
+            _logger.Info("Translation", $"Added provider '{entry.Id}'.");
+            return Task.FromResult(true);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Translation", "Failed to add provider.", exception);
+            return Task.FromResult(false);
+        }
+    }
+
+    public Task<bool> UpdateProviderAsync(ProviderProfileEntry entry)
+    {
+        try
+        {
+            int index = _providerConfig.Providers.FindIndex(
+                p => string.Equals(p.Id, entry.Id, StringComparison.OrdinalIgnoreCase));
+            if (index < 0)
+            {
+                _logger.Error("Translation", $"Provider '{entry.Id}' not found for update.");
+                return Task.FromResult(false);
+            }
+            _providerConfig.Providers[index] = entry;
+            PersistConfig();
+
+            // If this is the active provider, hot-swap with updated fields.
+            if (string.Equals(_providerConfig.DefaultProviderId, entry.Id, StringComparison.OrdinalIgnoreCase))
+            {
+                SwitchToProvider(entry);
+            }
+            _logger.Info("Translation", $"Updated provider '{entry.Id}'.");
+            return Task.FromResult(true);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Translation", "Failed to update provider.", exception);
+            return Task.FromResult(false);
+        }
+    }
+
+    public async Task<bool> DeleteProviderAsync(string id)
+    {
+        try
+        {
+            int index = _providerConfig.Providers.FindIndex(
+                p => string.Equals(p.Id, id, StringComparison.OrdinalIgnoreCase));
+            if (index < 0)
+            {
+                return false;
+            }
+
+            // Clean up the secret for this provider.
+            ProviderProfileEntry entry = _providerConfig.Providers[index];
+            if (!string.IsNullOrEmpty(entry.ApiKeyReference))
+            {
+                await _secretStore.DeleteAsync(entry.ApiKeyReference).ConfigureAwait(false);
+            }
+
+            _providerConfig.Providers.RemoveAt(index);
+            bool wasDefault = string.Equals(_providerConfig.DefaultProviderId, id, StringComparison.OrdinalIgnoreCase);
+            if (wasDefault)
+            {
+                _providerConfig.DefaultProviderId = _providerConfig.Providers.FirstOrDefault()?.Id;
+            }
+            PersistConfig();
+
+            // If we just deleted the active provider, switch to the new default.
+            if (wasDefault)
+            {
+                SwitchToProvider(ResolveDefaultEntry(), logOnMiss: true);
+            }
+
+            _logger.Info("Translation", $"Deleted provider '{id}'.");
+            return true;
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Translation", "Failed to delete provider.", exception);
+            return false;
+        }
+    }
+
+    /// <summary>Sets the default provider and hot-swaps to it immediately.</summary>
+    public Task<bool> SetDefaultProviderAsync(string id)
+    {
+        try
+        {
+            if (_providerConfig.FindById(id) is not { } entry)
+            {
+                _logger.Error("Translation", $"Provider '{id}' not found.");
+                return Task.FromResult(false);
+            }
+            _providerConfig.DefaultProviderId = id;
+            PersistConfig();
+            SwitchToProvider(entry);
+            _logger.Info("Translation", $"Default provider set to '{id}'.");
+            return Task.FromResult(true);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Translation", "Failed to set default provider.", exception);
+            return Task.FromResult(false);
+        }
+    }
+
+    private void PersistConfig()
+    {
+        try
+        {
+            ProviderConfigurationLoader.Save(_providerConfig.ToImmutable(), _paths.ProvidersFile);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("Translation", "Failed to persist providers.json.", exception);
+        }
+    }
+
+    // ── Prompt template management ──
+
+    /// <summary>Returns the current global prompt templates (snapshot copy).</summary>
+    public PromptTemplateSet GetPromptTemplates() => _promptTemplates;
+
+    /// <summary>
+    /// Updates one action's prompt (preserving its current thinking flag),
+    /// persists to prompt-templates.json, and returns success. Translate's
+    /// empty string means "use provider built-in".
+    /// </summary>
+    public Task<bool> SavePromptTemplateAsync(string actionId, string prompt) =>
+        SavePromptTemplateAsync(actionId, prompt, GetPromptTemplates().Find(actionId)?.ThinkingEnabled ?? false);
+
+    /// <summary>
+    /// Updates one action's prompt AND thinking flag together, persists to
+    /// prompt-templates.json. Used by the edit window, which saves both fields
+    /// in one go.
+    /// </summary>
+    public Task<bool> SavePromptTemplateAsync(string actionId, string prompt, bool thinkingEnabled)
+        => SavePromptTemplateAsync(actionId, prompt, thinkingEnabled,
+            GetPromptTemplates().Find(actionId)?.Shortcut);
+
+    /// <summary>
+    /// Updates one action's prompt, thinking flag, AND single-character toolbar
+    /// shortcut together, persists to prompt-templates.json. Pass <c>null</c>
+    /// for <paramref name="shortcut" /> to clear the binding. Used by the edit
+    /// window (R34), which commits all three fields in one save.
+    /// </summary>
+    public Task<bool> SavePromptTemplateAsync(string actionId, string prompt, bool thinkingEnabled, string? shortcut)
+    {
+        try
+        {
+            if (!_promptTemplates.TrySet(actionId, prompt, thinkingEnabled, shortcut))
+            {
+                _logger.Error("PromptTemplates", $"Unknown action id '{actionId}'.");
+                return Task.FromResult(false);
+            }
+            PromptTemplatesStore.Save(_promptTemplates, _paths.PromptTemplatesFile);
+            string? norm = _promptTemplates.Find(actionId)?.Shortcut;
+            _logger.Info("PromptTemplates",
+                $"Updated prompt for action '{actionId}' (thinking={thinkingEnabled}, shortcut={norm ?? "<none>"}).");
+            return Task.FromResult(true);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("PromptTemplates", "Failed to persist prompt-templates.json.", exception);
+            return Task.FromResult(false);
+        }
+    }
+
+    /// <summary>Resets one action's prompt to the built-in default + persists.</summary>
+    public Task<bool> ResetPromptTemplateAsync(string actionId)
+    {
+        var defaults = PromptTemplateDefaults.CreateDefault();
+        PromptTemplate? @default = defaults.Find(actionId);
+        if (@default is null)
+        {
+            return Task.FromResult(false);
+        }
+        // Reset also restores the built-in default shortcut (F/J/Z) so a
+        // full "恢复默认" returns the template to its shipped state.
+        return SavePromptTemplateAsync(actionId, @default.Prompt, @default.ThinkingEnabled, @default.Shortcut);
+    }
+
+    /// <summary>
+    /// Adds a new user custom function. Generates a stable <c>custom-*</c> id,
+    /// appends to the template set, and persists. Returns the new action id on
+    /// success, or null if the add failed (e.g. duplicate name handling).
+    /// </summary>
+    public Task<string?> AddPromptTemplateAsync(string name, string prompt, bool thinkingEnabled)
+        => AddPromptTemplateAsync(name, prompt, thinkingEnabled, shortcut: null);
+
+    /// <summary>
+    /// Adds a new user custom function with an optional single-character toolbar
+    /// shortcut. Generates a stable <c>custom-*</c> id, appends to the template
+    /// set, and persists. Returns the new action id on success, or null if the
+    /// add failed. Used by the edit window's "new" mode (R34).
+    /// </summary>
+    public Task<string?> AddPromptTemplateAsync(string name, string prompt, bool thinkingEnabled, string? shortcut)
+    {
+        try
+        {
+            string id = PromptActionIds.CustomPrefix + Guid.NewGuid().ToString("N")[..8];
+            string? normalizedShortcut = string.IsNullOrWhiteSpace(shortcut) ? null : shortcut.Trim().ToUpperInvariant();
+            var template = new PromptTemplate(id, name, prompt, thinkingEnabled, normalizedShortcut);
+            if (!_promptTemplates.Add(template))
+            {
+                _logger.Error("PromptTemplates", $"Failed to add custom function '{name}'.");
+                return Task.FromResult<string?>(null);
+            }
+            PromptTemplatesStore.Save(_promptTemplates, _paths.PromptTemplatesFile);
+            _logger.Info("PromptTemplates",
+                $"Added custom function '{name}' (id={id}, thinking={thinkingEnabled}, shortcut={normalizedShortcut ?? "<none>"}).");
+            return Task.FromResult<string?>(id);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("PromptTemplates", "Failed to persist prompt-templates.json.", exception);
+            return Task.FromResult<string?>(null);
+        }
+    }
+
+    /// <summary>
+    /// Deletes a user custom function. Built-in actions (translate/summarize/
+    /// explain) cannot be deleted — returns false. Returns true on success.
+    /// </summary>
+    public Task<bool> DeletePromptTemplateAsync(string actionId)
+    {
+        try
+        {
+            if (!_promptTemplates.Remove(actionId))
+            {
+                _logger.Info("PromptTemplates", $"Cannot delete '{actionId}' (built-in or not found).");
+                return Task.FromResult(false);
+            }
+            PromptTemplatesStore.Save(_promptTemplates, _paths.PromptTemplatesFile);
+            _logger.Info("PromptTemplates", $"Deleted custom function '{actionId}'.");
+            return Task.FromResult(true);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("PromptTemplates", "Failed to persist prompt-templates.json.", exception);
+            return Task.FromResult(false);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // R23 launcher entries (quick-launch software/URLs).
+    // Mirrors the prompt-template CRUD pattern: in-memory set + atomic persist
+    // on every change. Failures log + return false but do NOT roll back memory
+    // (consistent with the rest of the runtime).
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>Snapshot of the current launcher entries, in display order.</summary>
+    public LauncherEntrySet GetLauncherEntries() => _launcherEntries;
+
+    /// <summary>
+    /// Adds a new launcher entry. Generates a stable <c>launcher-*</c> id,
+    /// appends to the set, and persists. Returns the new id on success, or
+    /// null if the add failed.
+    /// </summary>
+    public Task<string?> AddLauncherEntryAsync(
+        string name, LauncherKind kind, string target, string arguments, string workingDirectory)
+    {
+        try
+        {
+            string id = LauncherEntryIds.CustomPrefix + Guid.NewGuid().ToString("N")[..8];
+            var entry = new LauncherEntry(id, name, kind, target, arguments, workingDirectory);
+            if (!_launcherEntries.Add(entry))
+            {
+                _logger.Error("Launcher", $"Failed to add launcher entry '{name}'.");
+                return Task.FromResult<string?>(null);
+            }
+            LauncherEntryStore.Save(_launcherEntries, _paths.LauncherEntriesFile);
+            _logger.Info("Launcher", $"Added entry '{name}' (id={id}, kind={kind}).");
+            return Task.FromResult<string?>(id);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("Launcher", "Failed to persist launcher-entries.json.", exception);
+            return Task.FromResult<string?>(null);
+        }
+    }
+
+    /// <summary>
+    /// Updates an existing launcher entry (looked up by id). All fields are
+    /// replaced with the supplied values, including the name (the editor allows
+    /// renaming). Returns false if the id was not found.
+    /// </summary>
+    public Task<bool> SaveLauncherEntryAsync(
+        string id, string name, LauncherKind kind, string target,
+        string arguments, string workingDirectory)
+    {
+        try
+        {
+            LauncherEntry? existing = _launcherEntries.Find(id);
+            if (existing is null)
+            {
+                _logger.Error("Launcher", $"Unknown launcher id '{id}'.");
+                return Task.FromResult(false);
+            }
+            var updated = existing with
+            {
+                Name = name,
+                Kind = kind,
+                Target = target,
+                Arguments = arguments,
+                WorkingDirectory = workingDirectory,
+            };
+            if (!_launcherEntries.Update(updated))
+            {
+                return Task.FromResult(false);
+            }
+            LauncherEntryStore.Save(_launcherEntries, _paths.LauncherEntriesFile);
+            _logger.Info("Launcher", $"Updated entry '{name}' (id={id}).");
+            return Task.FromResult(true);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("Launcher", "Failed to persist launcher-entries.json.", exception);
+            return Task.FromResult(false);
+        }
+    }
+
+    /// <summary>Deletes the entry with the given id. Returns true on success.</summary>
+    public Task<bool> DeleteLauncherEntryAsync(string id)
+    {
+        try
+        {
+            if (!_launcherEntries.Remove(id))
+            {
+                _logger.Info("Launcher", $"Cannot delete '{id}' (not found).");
+                return Task.FromResult(false);
+            }
+            LauncherEntryStore.Save(_launcherEntries, _paths.LauncherEntriesFile);
+            _logger.Info("Launcher", $"Deleted entry '{id}'.");
+            return Task.FromResult(true);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("Launcher", "Failed to persist launcher-entries.json.", exception);
+            return Task.FromResult(false);
+        }
+    }
+
+    /// <summary>
+    /// Moves the entry by <paramref name="delta"/> positions (negative = up).
+    /// Clamped to list bounds. Returns true if the entry was found (no-op moves
+    /// at the edges still return true).
+    /// </summary>
+    public Task<bool> MoveLauncherEntryAsync(string id, int delta)
+    {
+        try
+        {
+            if (!_launcherEntries.Move(id, delta))
+            {
+                return Task.FromResult(false);
+            }
+            LauncherEntryStore.Save(_launcherEntries, _paths.LauncherEntriesFile);
+            return Task.FromResult(true);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("Launcher", "Failed to persist launcher-entries.json.", exception);
+            return Task.FromResult(false);
+        }
+    }
+
+    /// <summary>
+    /// Expands {clip}/{sel} in the entry's arguments and reports any {prompt:...}
+    /// placeholders the caller must ask the user to fill before launching. When
+    /// <see cref="LauncherLaunchResult.NeedsPrompt"/> is true, the caller shows
+    /// the prompts, collects answers, and calls
+    /// <see cref="CompleteLauncherLaunchAsync"/> with the answers.
+    /// </summary>
+    public Task<LauncherLaunchResult> StartLauncherLaunchAsync(
+        string entryId, string? clipText, string? selectedText)
+    {
+        LauncherEntry? entry = _launcherEntries.Find(entryId);
+        if (entry is null)
+        {
+            return Task.FromResult(new LauncherLaunchResult(
+                Success: false, ErrorMessage: $"找不到启动项 '{entryId}'。", Prompts: Array.Empty<string>(), NeedsPrompt: false));
+        }
+
+        ParameterReplaceResult expanded = ParameterReplace.Expand(entry.Arguments, clipText, selectedText);
+        if (expanded.NeedsPrompt)
+        {
+            // Stash the partially-expanded args for the follow-up call. The
+            // stash is single-slot — the UI is modal, so only one launch can
+            // be pending at a time per runtime instance.
+            _pendingLaunch = (entryId, expanded.ExpandedArguments);
+            return Task.FromResult(new LauncherLaunchResult(
+                Success: false, ErrorMessage: null, Prompts: expanded.Prompts, NeedsPrompt: true));
+        }
+
+        // No prompt needed: launch immediately.
+        string? err = LauncherRunner.Start(entry, expanded.ExpandedArguments);
+        _pendingLaunch = null;
+        return Task.FromResult(new LauncherLaunchResult(
+            Success: err is null, ErrorMessage: err, Prompts: Array.Empty<string>(), NeedsPrompt: false));
+    }
+
+    /// <summary>
+    /// Completes a launch that returned <see cref="LauncherLaunchResult.NeedsPrompt"/>
+    /// by substituting the user's answers into the {prompt:...} placeholders and
+    /// starting the entry. Returns null on success, or an error message.
+    /// </summary>
+    public Task<string?> CompleteLauncherLaunchAsync(IReadOnlyList<string> answers)
+    {
+        if (_pendingLaunch is not { } pending)
+        {
+            return Task.FromResult<string?>("没有待完成的启动操作。");
+        }
+        LauncherEntry? entry = _launcherEntries.Find(pending.EntryId);
+        if (entry is null)
+        {
+            _pendingLaunch = null;
+            return Task.FromResult<string?>($"找不到启动项 '{pending.EntryId}'。");
+        }
+        string finalArgs = ParameterReplace.ApplyPromptValues(pending.ExpandedArgs, answers);
+        string? err = LauncherRunner.Start(entry, finalArgs);
+        _pendingLaunch = null;
+        return Task.FromResult(err);
+    }
+
+    /// <summary>Cancels any pending launch (e.g. user closed the prompt dialog).</summary>
+    public void CancelPendingLaunch() => _pendingLaunch = null;
+
+    // Single-slot stash for a launch awaiting user prompt answers. Nullable so
+    // "no pending" is cleanly null (ValueTuple isn't nullable by default).
+    private (string EntryId, string ExpandedArgs)? _pendingLaunch;
+
+    /// <summary>
+    /// Runs a built-in action (translate/summarize/explain) against the given
+    /// text using the global prompt template for that action. Each action has
+    /// an editable default; translate falls back to the provider's built-in
+    /// template only when its prompt is cleared to empty.
+    /// </summary>
+    public void RunActionAsync(string actionId, string selectedText)
+    {
+        PromptTemplate? template = _promptTemplates.Find(actionId);
+        if (template is null)
+        {
+            return;
+        }
+
+        // All actions: use the template prompt. Translate with an empty prompt
+        // → null SystemPrompt → provider built-in translation template.
+        string? systemPrompt = string.IsNullOrWhiteSpace(template.Prompt) ? null : template.Prompt;
+
+        // Use the shared language selector so translate-direction logic stays
+        // consistent with the built-in path; then attach the template prompt
+        // and the per-action thinking flag (the single source of truth — the
+        // provider no longer carries its own thinking setting).
+        TranslationRequest request = TranslationLanguageSelector.CreateRequest(selectedText);
+        if (systemPrompt is not null)
+        {
+            request = request with { SystemPrompt = systemPrompt };
+        }
+        request = request with { ThinkingEnabled = template.ThinkingEnabled };
+
+        _windowHost.Hide();
+        // Action invoked → toolbar hidden → stop the keyboard hook so it
+        // doesn't filter typing in the source app anymore. Matches the
+        // start/stop pairing in ToolbarSessionView.
+        StopKeyboardHookQuiet();
+        TrackSessionTask(_translationManager.StartOrReplaceAsync(request));
+    }
+
+    /// <summary>
+    /// Disables the keyboard hook's shortcut dispatching, swallowing failures.
+    /// The hook itself stays installed for the whole app lifetime; this only
+    /// flips the enable flag so typing in the source app is not filtered
+    /// after the toolbar disappears. Call from any code path that hides the
+    /// toolbar without going through <see cref="ToolbarSessionView.HideToolbar" />
+    /// (e.g. <see cref="RunActionAsync" />, <see cref="RunPromptAsync" />).
+    /// </summary>
+    private void StopKeyboardHookQuiet()
+    {
+        // R40: any path that hides the selection toolbar must also clear the
+        // Ocean Eyes state, otherwise the cached PNG + flag would linger into
+        // the next (selection-flow) toolbar session and Enter would wrongly
+        // try to save a stale screenshot. DismissOceanEyes is idempotent.
+        if (Volatile.Read(ref _oceanEyesActive) != 0)
+        {
+            DismissOceanEyes();
+        }
+        try
+        {
+            _keyboardHook.SetEnabled(false);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("KeyboardHook", "Failed to disable keyboard hook.", exception);
+        }
+    }
+
+    /// <summary>
+    /// R38 fix: hides the selection toolbar and disables its keyboard hook
+    /// without starting a translation session. Used when the toolbar's "Prompt"
+    /// button is clicked — that opens the Prompt input window (handled by the
+    /// caller in App.axaml.cs), and the toolbar itself must disappear first so
+    /// the two windows don't coexist on screen. This is exactly the first two
+    /// steps of <see cref="RunActionAsync"/> / <see cref="RunPromptAsync"/>
+    /// (hide + disable hook), minus the translation kickoff (the user still
+    /// needs to type their prompt).
+    /// </summary>
+    public void HideToolbarAndDisableHook()
+    {
+        _windowHost.Hide();
+        StopKeyboardHookQuiet();
+    }
+
+    private void OnTranslateRequested(string sourceText)
+    {
+        // Honor a user-customized translate prompt; if empty, RunActionAsync
+        // passes null SystemPrompt and the provider uses its built-in template.
+        RunActionAsync(PromptActionIds.Translate, sourceText);
+    }
+
+    /// <summary>
+    /// R34: keyboard-shortcut dispatcher for the selection toolbar. Called by the
+    /// low-level keyboard hook (on its background thread) for every key-down
+    /// while the toolbar is visible. Returns <c>true</c> to swallow the key
+    /// (block it from the focused source app), <c>false</c> to pass it through.
+    /// <para>
+    /// Behavior:
+    ///   • Bound single-character (A-Z) → fire the matching action + swallow.
+    ///     If no captured text exists, the key passes through (don't eat typing
+    ///     when there's nothing to act on).
+    ///   • R37/R41: if no user template is bound to R/C, those keys fall through
+    ///     to built-in toolbar shortcuts — R = Prompt, C = Copy — and swallow
+    ///     only if the action actually fires (both require captured text).
+    ///     These actions keep the toolbar visible. (R41: V/Paste removed.)
+    ///   • Esc → hide the toolbar + swallow (escape hatch if the user changed
+    ///     their mind).
+    ///   • Any other key → pass through (so the source app keeps working while
+    ///     the toolbar is up — e.g. backspace, arrows, digits).
+    /// </para>
+    /// </summary>
+    private bool OnToolbarKeyPressed(int vkCode)
+    {
+        const int vkEscape = 0x1B;
+        if (vkCode == vkEscape)
+        {
+            try
+            {
+                // R40: Esc clears the Ocean Eyes state too so a leftover
+                // cached PNG / flag doesn't fire on the next session. Idempotent
+                // — DismissOceanEyes is a no-op when the flag is already 0.
+                DismissOceanEyes();
+                _windowHost.Hide();
+                _keyboardHook.SetEnabled(false);
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("KeyboardHook", "Failed to dismiss toolbar on Esc.", exception);
+            }
+            return true;
+        }
+
+        // R40 Ocean Eyes: Enter saves the cached PNG (if AutoSaveEnabled) and
+        // copies it to the clipboard (if CopyToClipboardEnabled), then dismisses
+        // the toolbar. Only fires when the Ocean Eyes flag is set — the
+        // selection flow's Enter passes through unchanged (source app keeps its
+        // Enter, e.g. newline in an editor).
+        const int vkReturn = 0x0D;
+        if (vkCode == vkReturn && Volatile.Read(ref _oceanEyesActive) != 0)
+        {
+            try
+            {
+                _logger.Info("KeyboardHook", "Ocean Eyes: Enter → save screenshot.");
+                SaveOceanEyesScreenshot();
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("KeyboardHook", "Ocean Eyes Enter failed.", exception);
+                DismissOceanEyes();
+            }
+            return true;
+        }
+
+        // Only single-character A-Z (0x41-0x5A) are eligible for shortcuts.
+        if (vkCode < 0x41 || vkCode > 0x5A)
+        {
+            return false;
+        }
+
+        string key = ((char)vkCode).ToString();
+
+        // R41 Ocean Eyes lazy OCR: in Ocean Eyes mode, action keys (F/J/Z/R/C
+        // or any user-bound A-Z) must NOT fire until OCR has produced text.
+        // Two cases:
+        //   • OCR already done (cache hit) → fall through to normal dispatch
+        //     (PromptTemplate lookup → RunActionAsync). Zero added latency.
+        //   • OCR not yet done → swallow the key now, kick off EnsureOceanEyesOcrAsync,
+        //     and when it completes, re-dispatch THIS key on the UI thread.
+        //     Subsequent keys find _oceanEyesOcrDone==1 and take the fast path.
+        if (Volatile.Read(ref _oceanEyesActive) != 0 &&
+            Volatile.Read(ref _oceanEyesOcrDone) == 0)
+        {
+            // Capture the key for the async redispatch. Fire-and-forget: the
+            // hook thread can't block on OCR (~1s) without freezing the user's
+            // keyboard, so we swallow now and redispatch later.
+            string pendingKey = key;
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    string? ocrText = await EnsureOceanEyesOcrAsync().ConfigureAwait(true);
+                    if (string.IsNullOrEmpty(ocrText))
+                    {
+                        // OCR failed — leave the toolbar in "识别失败" state.
+                        // User can Esc or right-click to redraw.
+                        Dispatcher.UIThread.Post(() =>
+                            _toolbarWindow.SetDiagnosticStatus("识别失败 · Esc 退出 / 右键重画"));
+                        return;
+                    }
+                    // OCR succeeded: redispatch the original key on the UI thread
+                    // so it flows through the normal PromptTemplate / builtin
+                    // shortcut path with the cached text now in _sessionManager.
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (Volatile.Read(ref _oceanEyesActive) == 0)
+                        {
+                            return; // user dismissed during OCR
+                        }
+                        DispatchToolbarActionKey(pendingKey);
+                    });
+                }
+                catch (Exception exception)
+                {
+                    _logger.Error("OceanEyes", "Lazy OCR redispatch failed.", exception);
+                }
+            });
+            return true; // swallow the key — redispatch will handle it
+        }
+
+        // R41: OCR done (or selection-flow mode) → dispatch the key through the
+        // normal path. Extracted to DispatchToolbarActionKey so the lazy-OCR
+        // redispatch (above) reuses the exact same logic on the UI thread.
+        return DispatchToolbarActionKey(key);
+    }
+
+    /// <summary>
+    /// R41: dispatches an A-Z toolbar action key through the PromptTemplate
+    /// lookup (F/J/Z/custom) → RunActionAsync, or the builtin shortcut fallback
+    /// (R/C). Returns true if swallowed, false if passed through. Called from:
+    /// <list type="bullet">
+    ///   <item><see cref="OnToolbarKeyPressed"/> after the Ocean Eyes lazy-OCR
+    ///   gate passes (OCR done, or selection-flow mode).</item>
+    ///   <item>The lazy-OCR completion callback (Dispatcher.UIThread.Post) to
+    ///   redispatch the original key once OCR text is cached.</item>
+    /// </list>
+    /// Must run on the UI thread (RunActionAsync / TryInvokeBuiltinToolbarShortcut
+    /// touch UI + _sessionManager).
+    /// </summary>
+    private bool DispatchToolbarActionKey(string key)
+    {
+        PromptTemplate? template;
+        try
+        {
+            template = _promptTemplates.FindByShortcut(key);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("KeyboardHook", $"FindByShortcut('{key}') failed.", exception);
+            return false;
+        }
+
+        if (template is null)
+        {
+            // R37: 内建工具栏快捷键 R/C 作为"用户未配置该键"时的兜底。它们
+            // 不是 PromptTemplate（不属于翻译/总结/解释任一动作），而是工具栏
+            // 自身的复制/提示按钮。两者都需已取词（按钮本身也 disabled 直到
+            // 取词成功）。与 F/J/Z 不同：这两个动作不隐藏工具栏（用户可能
+            // 复制完继续翻译），所以不调 SetEnabled(false)。
+            return TryInvokeBuiltinToolbarShortcut(key);
+        }
+
+        string? text = _sessionManager.GetLastCapturedText();
+        if (string.IsNullOrEmpty(text))
+        {
+            // Toolbar is visible but the last capture yielded nothing (e.g. the
+            // user dragged over unselectable content). Pass the key through so
+            // we don't eat typing that the user might be doing in the source app.
+            return false;
+        }
+
+        try
+        {
+            _logger.Info("KeyboardHook",
+                $"Shortcut '{key}' → action '{template.Id}' ('{template.Name}').");
+            RunActionAsync(template.Id, text);
+            // RunActionAsync hides the toolbar; disable dispatching so the
+            // next keystroke goes to the source app, not the shortcut handler.
+            _keyboardHook.SetEnabled(false);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("KeyboardHook",
+                $"Failed to run action '{template.Id}' for shortcut '{key}'.", exception);
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// R37: 工具栏内建快捷键（默认 R/C/V，用户可在设置里改）的派发。在
+    /// <see cref="OnToolbarKeyPressed"/> 中，当用户未给该键配置自定义
+    /// PromptTemplate 时作为兜底入口。三个动作各自映射到一个工具栏按钮：
+    /// <list type="bullet">
+    ///   <item>PromptKey（默认 R）→ 打开提示词窗口（需已取词，否则透传）。</item>
+    ///   <item>CopyKey（默认 C）→ 复制选中文本到剪贴板（需已取词，否则透传）。</item>
+    /// </list>
+    /// 返回 true 吞键，false 透传。R41: PasteKey 已删除。两个动作都不隐藏工具栏（用户可能复制完继续
+    /// 做别的动作），所以不调 <c>_keyboardHook.SetEnabled(false)</c>。
+    ///
+    /// <para>
+    /// <b>线程模型（关键）</b>：本方法跑在 keyboard hook 的后台线程上
+    /// （<c>WH_KEYBOARD_LL</c> 回调），而复制/提示最终要调 Avalonia UI 线程
+    /// API（<c>clipboard.SetTextAsync</c>、显示 PromptWindow）。直接同步调
+    /// UI API 会崩（C 崩）或静默无效（R 没反应）。所以：
+    /// <list type="number">
+    ///   <item>吞键判断在 hook 线程同步完成——读 <see cref="GetLastCapturedText"/>
+    ///     （线程安全）判断 R/C 是否有文本可操作；V 恒吞。</item>
+    ///   <item>实际 UI 操作用 <c>Dispatcher.UIThread.Post</c> fire-and-forget
+    ///     派发到 UI 线程（不阻塞 hook 线程，避免 <c>InvokeAsync</c> 同步等
+    ///     待可能的死锁）。这是 codebase 的标准模式（见 App.axaml.cs 多处
+    ///     chord/hotkey → UI 派发）。</item>
+    /// </list>
+    /// </para>
+    /// </summary>
+    private bool TryInvokeBuiltinToolbarShortcut(string key)
+    {
+        // Snapshot the current bindings (reference swap is atomic, so a settings
+        // update from the UI thread mid-dispatch is safe — we use a consistent
+        // snapshot for the whole decision).
+        ToolbarShortcutSettings bindings = _toolbarShortcuts;
+
+        // Resolve which built-in action (if any) this key is bound to. Null key
+        // in settings = that action's shortcut is disabled.
+        // R41: Paste removed — only Prompt + Copy remain.
+        bool isCopy = KeysEqual(key, bindings.CopyKey);
+        bool isPrompt = !isCopy && KeysEqual(key, bindings.PromptKey);
+        if (!isCopy && !isPrompt)
+        {
+            return false;  // Not bound to any built-in toolbar shortcut — pass through.
+        }
+
+        // Pre-dispatch swallow decision (must be synchronous on the hook thread;
+        // we can't block on the UI thread). Both Copy and Prompt need captured
+        // text — mirror the buttons' IsEnabled. When empty, return false so the
+        // key reaches the source app (don't eat typing the user might be doing).
+        string? captured = _sessionManager.GetLastCapturedText();
+        if (string.IsNullOrEmpty(captured))
+        {
+            return false;
+        }
+
+        // Dispatch the UI-touching work to the UI thread. Post is fire-and-forget;
+        // we've already decided to swallow, so we don't need the call's result.
+        try
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    if (isCopy)
+                    {
+                        _toolbarWindow.InvokeCopyShortcut();
+                    }
+                    else
+                    {
+                        _toolbarWindow.InvokePromptShortcut();
+                    }
+                }
+                catch (Exception exception)
+                {
+                    _logger.Error("KeyboardHook",
+                        $"Built-in toolbar shortcut '{key}' failed on UI thread.", exception);
+                }
+            });
+        }
+        catch (Exception exception)
+        {
+            // Dispatcher.Post itself should not throw, but guard anyway so a
+            // shutdown race never crashes the hook thread (which would kill the
+            // whole keyboard hook chain for the session).
+            _logger.Error("KeyboardHook",
+                $"Failed to dispatch built-in toolbar shortcut '{key}'.", exception);
+            return false;
+        }
+
+        _logger.Info("KeyboardHook", $"Built-in toolbar shortcut '{key}' dispatched.");
+        return true;
+    }
+
+    /// <summary>
+    /// Ordinal case-insensitive compare against a possibly-null shortcut key.
+    /// Null/empty key = disabled, so it never matches a real pressed key.
+    /// </summary>
+    private static bool KeysEqual(string pressedKey, string? boundKey)
+    {
+        return !string.IsNullOrEmpty(boundKey) &&
+               pressedKey.Equals(boundKey, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Runs a custom user prompt against the captured selection, using the
+    /// active provider. The user's prompt becomes the system message; the
+    /// selected text becomes the fenced user message. Direction defaults to
+    /// → Simplified Chinese for non-Chinese source, → English for Chinese
+    /// source (purely for the result-window language badge; the prompt itself
+    /// controls the actual behavior).
+    /// </summary>
+    public void RunPromptAsync(string selectedText, string userPrompt)
+    {
+        bool hasCjk = selectedText.Any(c => c >= 0x4E00 && c <= 0x9FFF);
+        var request = new TranslationRequest(
+            selectedText,
+            hasCjk ? "zh-CN" : "en",
+            hasCjk ? "en" : "zh-CN")
+        {
+            SystemPrompt = userPrompt,
+        };
+
+        _windowHost.Hide();
+        StopKeyboardHookQuiet();
+        TrackSessionTask(_translationManager.StartOrReplaceAsync(request));
+    }
+
+    private void OnRetryRequested()
+    {
+        TrackSessionTask(_translationManager.RetryAsync());
+    }
+
+    /// <summary>
+    /// Replaces the originally selected text in the source app with the
+    /// translated text: writes the translation to the clipboard, hides the
+    /// result window (so the source app regains foreground), then injects a
+    /// Ctrl+V chord. The 80ms delay lets the OS complete the focus switch
+    /// before the paste lands.
+    /// </summary>
+    private async void OnReplaceRequested()
+    {
+        string? translated = _resultWindow.GetTranslatedText();
+        if (string.IsNullOrEmpty(translated))
+        {
+            return;
+        }
+
+        var clipboard = (_resultWindow as Avalonia.Controls.TopLevel)?.Clipboard;
+        if (clipboard is null)
+        {
+            _logger.Error("Replace", "Clipboard unavailable; aborting replace.");
+            return;
+        }
+
+        try
+        {
+            await clipboard.SetTextAsync(translated);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Replace", "Failed to write translation to clipboard.", exception);
+            return;
+        }
+
+        // Hide so the source window becomes foreground again and receives the
+        // injected Ctrl+V. Must happen before SendPasteChord.
+        _resultWindow.Hide();
+
+        await Task.Delay(80);
+
+        try
+        {
+            var injector = new SendInputHelper();
+            injector.SendPasteChord();
+            _logger.Info("Replace", "Injected Ctrl+V to replace selection with translation.");
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Replace", "Failed to inject Ctrl+V paste chord.", exception);
+        }
+
+        TrackSessionTask(_translationManager.CancelAndHideAsync());
+    }
+
+    private void OnResultCloseRequested()
+    {
+        TrackSessionTask(_translationManager.CancelAndHideAsync());
+    }
+
+    public void Start()
+    {
+        _windowHost.Hide();
+        _mouseHook.MouseEvent += OnMouseEvent;
+        // R41: Ocean Eyes 右键拦截。工具栏可见时右键应触发"重画"而非让源
+        // 应用弹右键菜单。在 hook 线程同步决定吞/不吞，避免右键先到源应用。
+        _mouseHook.SwallowCheck += OnMouseSwallowCheck;
+
+        try
+        {
+            _mouseHook.Start();
+            _logger.Info("Runtime", "Phase 1 selection runtime started.");
+        }
+        catch (Exception exception)
+        {
+            _toolbarWindow.SetDiagnosticStatus("鼠标钩子启动失败");
+            _logger.Error("Runtime", "Mouse hook startup failed.", exception);
+        }
+
+        // Install the persistent keyboard hook AFTER the mouse hook is running
+        // and the runtime is otherwise ready. Doing this in the ctor (before
+        // the clipboard message window is created) caused intermittent
+        // "Clipboard message window startup timed out" crashes — see the note
+        // in the constructor. Start() is called once at app startup after the
+        // ctor completes, so this is still effectively a single install for
+        // the whole app lifetime. The hook stays disabled (SetEnabled=false
+        // by default) until the toolbar is shown.
+        try
+        {
+            _keyboardHook.Start();
+            _logger.Info("KeyboardHook", "Persistent keyboard hook installed at runtime start.");
+        }
+        catch (Exception exception)
+        {
+            // Non-fatal: toolbar still works via mouse clicks, just no keyboard shortcuts.
+            _logger.Error("KeyboardHook", "Failed to install persistent keyboard hook; shortcuts disabled.", exception);
+        }
+    }
+
+    /// <summary>
+    /// R41: mouse-hook swallow check. Returns true to block the event from the
+    /// source app. Used to intercept right-click while the Ocean Eyes toolbar
+    /// is up: instead of letting the source app pop its context menu, we
+    /// dismiss the toolbar (clear OCR cache) + ask App.axaml.cs to reset the
+    /// overlay so the user can redraw.
+    /// </summary>
+    /// <remarks>
+    /// Runs on the hook thread — must be fast + never throw. The overlay reset
+    /// is fire-and-forget via <see cref="RegionResetRequested"/>; subscribers
+    /// marshal to the UI thread themselves.
+    /// </remarks>
+    private bool OnMouseSwallowCheck(MouseEventData mouseEvent)
+    {
+        // Only interested in right-clicks, and only while Ocean Eyes is active.
+        // The selection flow (划词 toolbar) doesn't intercept right-click — the
+        // user may right-click inside the source app for its own menu while the
+        // 划词 toolbar is up.
+        if (mouseEvent.Message != MouseMessageType.RightButtonDown)
+        {
+            return false;
+        }
+        if (Volatile.Read(ref _oceanEyesActive) == 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            // Hide toolbar + clear OCR cache. The overlay reset is a UI-thread
+            // concern — raise the event and let App.axaml.cs call _regionOverlay.Reset().
+            DismissOceanEyes();
+            RegionResetRequested?.Invoke();
+            _logger.Info("OceanEyes", "Right-click swallowed → region reset requested.");
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("OceanEyes", "Right-click swallow handler failed.", exception);
+        }
+        return true;
+    }
+
+    private void OnMouseEvent(MouseEventData mouseEvent)
+    {
+        if (mouseEvent.IsInjected && mouseEvent.ExtraInfo == OurInjectedInputMarker)
+        {
+            return;
+        }
+
+        // Feed every event to the chord detector first. A chord (both buttons
+        // down together) takes priority over normal selection / dismiss logic —
+        // when a chord fires we bail out before the outside-click dismiss runs,
+        // so the chord gesture isn't mistaken for a click-away.
+        bool chordFired = _chordDetector.OnMouseEvent(mouseEvent);
+        if (chordFired && Volatile.Read(ref _mouseChordEnabled) != 0)
+        {
+            return;
+        }
+
+        if (mouseEvent.Message == MouseMessageType.LeftButtonDown &&
+            _windowHost.IsVisible &&
+            !_windowHost.ContainsScreenPoint(mouseEvent.X, mouseEvent.Y))
+        {
+            TrackSessionTask(_sessionManager.DismissCurrentSessionAsync());
+        }
+
+        WindowsWindowContext context = _contextProvider.GetContext(mouseEvent.X, mouseEvent.Y);
+        SelectionGesture? gesture = _gestureClassifier.Process(
+            mouseEvent,
+            context.RootWindowHandle,
+            context.ProcessId);
+
+        if (gesture is null)
+        {
+            return;
+        }
+
+        if (!_capturePolicyProvider.Resolve(gesture.SourceProcessId).DetectionEnabled)
+        {
+            return;
+        }
+
+        TrackSessionTask(_sessionManager.StartOrReplaceSessionAsync(gesture));
+    }
+
+    private void TrackSessionTask(Task task)
+    {
+        lock (_taskGate)
+        {
+            _sessionTasks.Add(task);
+        }
+
+        _ = task.ContinueWith(
+            completedTask =>
+            {
+                if (completedTask.IsFaulted)
+                {
+                    _logger.Error("Session", "Selection session failed.", completedTask.Exception);
+                }
+
+                lock (_taskGate)
+                {
+                    _sessionTasks.Remove(completedTask);
+                }
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
+    }
+
+    public void Dispose()
+    {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0)
+        {
+            return;
+        }
+
+        _mouseHook.MouseEvent -= OnMouseEvent;
+        _mouseHook.SwallowCheck -= OnMouseSwallowCheck;
+        _keyboardHook.KeyPressed -= OnToolbarKeyPressed;
+        _toolbarWindow.TranslateRequested -= OnTranslateRequested;
+        _resultWindow.RetryRequested -= OnRetryRequested;
+        _resultWindow.ReplaceRequested -= OnReplaceRequested;
+        _resultWindow.CloseRequested -= OnResultCloseRequested;
+        _mouseHook.Dispose();
+        _keyboardHook.Dispose();
+        _sessionManager.Dispose();
+        _translationManager.Dispose();
+        _disposableProvider?.Dispose();
+        _visionOcrClient?.Dispose();
+        _visionBackend?.Dispose();
+        _textCapture.Dispose();
+        _logger.Info("Runtime", "Phase 1 selection runtime stopped.");
+    }
+
+    private sealed class ToolbarSessionView : ISelectionSessionView
+    {
+        private readonly ToolbarWindow _window;
+        private readonly IWindowFocusController _windowHost;
+        // R34: optional hooks so the runtime can start/stop the low-level
+        // keyboard hook alongside the toolbar's visibility. Null = no-op.
+        private readonly Action? _onToolbarShown;
+        private readonly Action? _onToolbarHidden;
+
+        public ToolbarSessionView(
+            ToolbarWindow window,
+            IWindowFocusController windowHost,
+            Action? onToolbarShown = null,
+            Action? onToolbarHidden = null)
+        {
+            _window = window;
+            _windowHost = windowHost;
+            _onToolbarShown = onToolbarShown;
+            _onToolbarHidden = onToolbarHidden;
+        }
+
+        public void ShowToolbar(SelectionGesture gesture)
+        {
+            _window.ShowPending(gesture);
+            // R35: Anchor the toolbar at the true bottom-right corner of the
+            // drag rectangle so it works no matter which direction the user
+            // dragged (LTR selection ends at mouse-up; RTL/upward selections
+            // end at mouse-down — taking max of both yields the right corner).
+            int anchorX = Math.Max(gesture.MouseUpX, gesture.MouseDownX);
+            int anchorY = Math.Max(gesture.MouseUpY, gesture.MouseDownY);
+            // ClampAnchor turns the anchor into the final window top-left,
+            // handling: (a) the +16 offset, (b) flipping to the opposite side
+            // of the anchor if it would overflow the screen right/bottom edge,
+            // (c) clamping the top-left to the working area so the toolbar
+            // never sits under the taskbar or in a monitor gap.
+            Avalonia.PixelPoint topLeft = _window.ClampAnchor(anchorX, anchorY);
+            _windowHost.ShowAtNoActivatePoint(topLeft.X, topLeft.Y);
+            _onToolbarShown?.Invoke();
+        }
+
+        public void HideToolbar()
+        {
+            _windowHost.Hide();
+            _onToolbarHidden?.Invoke();
+        }
+
+        public void SetCaptureResult(CaptureResult result)
+        {
+            _window.SetCaptureResult(result);
+        }
+    }
+
+    private sealed class ResultTranslationView : ITranslationSessionView
+    {
+        private readonly ResultWindow _window;
+
+        public ResultTranslationView(ResultWindow window)
+        {
+            _window = window;
+        }
+
+        public void ShowLoading(TranslationRequest request, string providerName) =>
+            _window.ShowLoading(request, providerName);
+
+        public void ShowResult(TranslationResult result) =>
+            _window.ShowResult(result);
+
+        public void AppendPartialResult(string chunk) =>
+            _window.AppendPartialResult(chunk);
+
+        public void ShowError(string userMessage) =>
+            _window.ShowError(userMessage);
+
+        public void Hide() => _window.Hide();
+    }
+
+}

@@ -1,0 +1,569 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!--
+    BYH / Ivory Jade
+
+    The palette is intentionally semantic. Windows and controls consume brush
+    keys rather than raw colors so a future theme can replace this dictionary
+    without rewriting every view.
+  -->
+  <Styles.Resources>
+    <ResourceDictionary>
+      <!-- Foundations -->
+      <Color x:Key="ByhColorBackground">#FFF8F6F1</Color>
+      <Color x:Key="ByhColorSurface">#FFFFFDFC</Color>
+      <Color x:Key="ByhColorSurfaceSecondary">#FFF2EADF</Color>
+      <Color x:Key="ByhColorSurfaceSelected">#FFE7EDCF</Color>
+
+      <!-- Brand -->
+      <Color x:Key="ByhColorPrimary">#FF667731</Color>
+      <Color x:Key="ByhColorPrimaryHover">#FF4C5721</Color>
+      <Color x:Key="ByhColorPrimarySoft">#FFCFDE96</Color>
+      <Color x:Key="ByhColorAccent">#FF9F5E30</Color>
+      <Color x:Key="ByhColorAccentHover">#FF6E3519</Color>
+      <Color x:Key="ByhColorAccentSoft">#FFE8D3B8</Color>
+      <Color x:Key="ByhColorGold">#FFC2A36D</Color>
+
+      <!-- Typography -->
+      <Color x:Key="ByhColorTextPrimary">#FF3A2417</Color>
+      <Color x:Key="ByhColorTextSecondary">#FF7D604A</Color>
+      <Color x:Key="ByhColorTextPlaceholder">#FFA58C78</Color>
+      <Color x:Key="ByhColorTextOnPrimary">#FFFFFFFF</Color>
+
+      <!-- Structure -->
+      <Color x:Key="ByhColorBorder">#FFE1C4A3</Color>
+      <Color x:Key="ByhColorBorderSubtle">#FFE7DDCC</Color>
+      <Color x:Key="ByhColorDisabled">#FFD8CCBE</Color>
+
+      <!-- Feedback -->
+      <Color x:Key="ByhColorSuccess">#FF667731</Color>
+      <Color x:Key="ByhColorSuccessSoft">#FFEDF2DC</Color>
+      <Color x:Key="ByhColorWarning">#FFA76524</Color>
+      <Color x:Key="ByhColorWarningSoft">#FFF7E7CF</Color>
+      <Color x:Key="ByhColorError">#FFA44E3F</Color>
+      <Color x:Key="ByhColorErrorSoft">#FFF5DEDA</Color>
+      <Color x:Key="ByhColorInfo">#FF55737A</Color>
+      <Color x:Key="ByhColorInfoSoft">#FFDFEAEC</Color>
+      <Color x:Key="ByhColorFocus">#FF899845</Color>
+
+      <!-- Keep Fluent controls (checkboxes, toggles, progress) on-brand.
+           R43: shifted the whole ramp from brand olive to noble gold so the
+           FluentTheme TextBox focus ring, checkbox checks, toggle thumbs,
+           progress bars, etc. all read as polished gold rather than olive.
+           Mid-tone #D9C28A is the champagne gold body; light variants
+           brighten toward silver-champagne (#F4E7C8 / #FCF7EA) for hover
+           and background washes; dark variants deepen toward bronze
+           (#B89A5C / #8B6E3A) for pressed and text-on-light states. -->
+      <Color x:Key="SystemAccentColor">#FFD9C28A</Color>
+      <Color x:Key="SystemAccentColorLight1">#FFF4E7C8</Color>
+      <Color x:Key="SystemAccentColorLight2">#FFFCF7EA</Color>
+      <Color x:Key="SystemAccentColorLight3">#FFFCF7EA</Color>
+      <Color x:Key="SystemAccentColorDark1">#FFB89A5C</Color>
+      <Color x:Key="SystemAccentColorDark2">#FF8B6E3A</Color>
+      <Color x:Key="SystemAccentColorDark3">#FF8B6E3A</Color>
+
+      <!-- Public semantic brushes -->
+      <SolidColorBrush x:Key="ByhBackgroundBrush" Color="{StaticResource ByhColorBackground}" />
+      <SolidColorBrush x:Key="ByhSurfaceBrush" Color="{StaticResource ByhColorSurface}" />
+      <SolidColorBrush x:Key="ByhSurfaceSecondaryBrush" Color="{StaticResource ByhColorSurfaceSecondary}" />
+      <SolidColorBrush x:Key="ByhSurfaceSelectedBrush" Color="{StaticResource ByhColorSurfaceSelected}" />
+      <SolidColorBrush x:Key="ByhPrimaryBrush" Color="{StaticResource ByhColorPrimary}" />
+      <SolidColorBrush x:Key="ByhPrimaryHoverBrush" Color="{StaticResource ByhColorPrimaryHover}" />
+      <SolidColorBrush x:Key="ByhPrimarySoftBrush" Color="{StaticResource ByhColorPrimarySoft}" />
+      <SolidColorBrush x:Key="ByhAccentBrush" Color="{StaticResource ByhColorAccent}" />
+      <SolidColorBrush x:Key="ByhAccentHoverBrush" Color="{StaticResource ByhColorAccentHover}" />
+      <SolidColorBrush x:Key="ByhAccentSoftBrush" Color="{StaticResource ByhColorAccentSoft}" />
+      <SolidColorBrush x:Key="ByhGoldBrush" Color="{StaticResource ByhColorGold}" />
+      <SolidColorBrush x:Key="ByhTextPrimaryBrush" Color="{StaticResource ByhColorTextPrimary}" />
+      <SolidColorBrush x:Key="ByhTextSecondaryBrush" Color="{StaticResource ByhColorTextSecondary}" />
+      <SolidColorBrush x:Key="ByhTextPlaceholderBrush" Color="{StaticResource ByhColorTextPlaceholder}" />
+      <SolidColorBrush x:Key="ByhTextOnPrimaryBrush" Color="{StaticResource ByhColorTextOnPrimary}" />
+      <SolidColorBrush x:Key="ByhBorderBrush" Color="{StaticResource ByhColorBorder}" />
+      <SolidColorBrush x:Key="ByhBorderSubtleBrush" Color="{StaticResource ByhColorBorderSubtle}" />
+      <SolidColorBrush x:Key="ByhDisabledBrush" Color="{StaticResource ByhColorDisabled}" />
+      <SolidColorBrush x:Key="ByhSuccessBrush" Color="{StaticResource ByhColorSuccess}" />
+      <SolidColorBrush x:Key="ByhSuccessSoftBrush" Color="{StaticResource ByhColorSuccessSoft}" />
+      <SolidColorBrush x:Key="ByhWarningBrush" Color="{StaticResource ByhColorWarning}" />
+      <SolidColorBrush x:Key="ByhWarningSoftBrush" Color="{StaticResource ByhColorWarningSoft}" />
+      <SolidColorBrush x:Key="ByhErrorBrush" Color="{StaticResource ByhColorError}" />
+      <SolidColorBrush x:Key="ByhErrorSoftBrush" Color="{StaticResource ByhColorErrorSoft}" />
+      <SolidColorBrush x:Key="ByhInfoBrush" Color="{StaticResource ByhColorInfo}" />
+      <SolidColorBrush x:Key="ByhInfoSoftBrush" Color="{StaticResource ByhColorInfoSoft}" />
+      <SolidColorBrush x:Key="ByhFocusBrush" Color="{StaticResource ByhColorFocus}" />
+      <SolidColorBrush x:Key="ByhFocusRingBrush" Color="#38667731" />
+
+      <!--
+        Alpha variants derive only from approved tokens:
+        surface(F2), gold(99), text-primary(B3/F2), border-subtle(CC),
+        focus(33). Avalonia XAML has no alpha-rebinding syntax, so these remain
+        explicit theme tokens and must change with their named base colors.
+      -->
+      <SolidColorBrush x:Key="ByhFloatingSurfaceBrush" Color="#F2FFFDFC" />
+      <SolidColorBrush x:Key="ByhFloatingBorderBrush" Color="#52C2A36D" />
+      <SolidColorBrush x:Key="ByhPorcelainBorderBrush" Color="#4DE1C4A3" />
+      <SolidColorBrush x:Key="ByhHairlineBrush" Color="#38C2A36D" />
+      <SolidColorBrush x:Key="ByhPearlGlowBrush" Color="#73FFFDFC" />
+      <SolidColorBrush x:Key="ByhOverlayDimBrush" Color="#B3000000" />
+      <SolidColorBrush x:Key="ByhOverlayPanelBrush" Color="#F23A2417" />
+      <SolidColorBrush x:Key="ByhOverlaySecondaryTextBrush" Color="#CCE7DDCC" />
+      <SolidColorBrush x:Key="ByhCaptureSelectionBrush" Color="#33899845" />
+      <SolidColorBrush x:Key="ByhCaptureStrokeBrush" Color="#FF899845" />
+      <SolidColorBrush x:Key="ByhCaptureHandleBrush" Color="#FFC2A36D" />
+
+      <!-- High-fidelity Ivory Jade materials. These stay within the approved
+           palette while adding the soft sheen visible in the reference. -->
+      <LinearGradientBrush x:Key="ByhCreamSheenBrush"
+                           StartPoint="0%,0%"
+                           EndPoint="100%,100%">
+        <GradientStop Color="#FFFFFEFA" Offset="0" />
+        <GradientStop Color="#FFFFF9EF" Offset="0.48" />
+        <GradientStop Color="#FFF7EBDD" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="ByhPearlInsetBrush"
+                           StartPoint="0%,0%"
+                           EndPoint="0%,100%">
+        <GradientStop Color="#F8FFFDFC" Offset="0" />
+        <GradientStop Color="#F4F2EADF" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="ByhGoldNavBrush"
+                           StartPoint="0%,0%"
+                           EndPoint="100%,100%">
+        <GradientStop Color="#FFEBCB91" Offset="0" />
+        <GradientStop Color="#FFD5A35C" Offset="0.55" />
+        <GradientStop Color="#FFB8752D" Offset="1" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="ByhJadeSheenBrush"
+                           StartPoint="0%,0%"
+                           EndPoint="100%,100%">
+        <GradientStop Color="#FF899845" Offset="0" />
+        <GradientStop Color="#FF667731" Offset="0.55" />
+        <GradientStop Color="#FF4C5721" Offset="1" />
+      </LinearGradientBrush>
+      <!-- R43 Spotlight noble-metal lace: cool champagne gradient that reads
+           as polished metal rather than warm yellow gold. Highlight #F4E7C8
+           (silver-champagne) → mid #D9C28A (metal body) → shadow #B89A5C
+           (bronze depth). The diagonal sweep simulates directional sheen. -->
+      <LinearGradientBrush x:Key="ByhSpotlightGoldBrush"
+                           StartPoint="0%,0%"
+                           EndPoint="100%,100%">
+        <GradientStop Color="#FFF4E7C8" Offset="0" />
+        <GradientStop Color="#FFD9C28A" Offset="0.5" />
+        <GradientStop Color="#FFB89A5C" Offset="1" />
+      </LinearGradientBrush>
+
+      <CornerRadius x:Key="ByhRadiusSmall">8</CornerRadius>
+      <CornerRadius x:Key="ByhRadiusMedium">12</CornerRadius>
+      <CornerRadius x:Key="ByhRadiusLarge">18</CornerRadius>
+      <BoxShadows x:Key="ByhShadowSmall">0 1 3 0 #0D4A2B19</BoxShadows>
+      <BoxShadows x:Key="ByhShadowMedium">0 7 22 0 #104A2B19</BoxShadows>
+      <BoxShadows x:Key="ByhShadowPearl">0 5 18 0 #149F5E30</BoxShadows>
+      <FontFamily x:Key="ByhDisplayFontFamily">Georgia</FontFamily>
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <!-- Foundations -->
+  <Style Selector="Window">
+    <Setter Property="Background" Value="{DynamicResource ByhBackgroundBrush}" />
+    <Setter Property="TextElement.Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.Secondary">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.Muted">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextPlaceholderBrush}" />
+  </Style>
+  <Style Selector="TextBlock.Accent">
+    <Setter Property="Foreground" Value="{DynamicResource ByhAccentHoverBrush}" />
+  </Style>
+  <Style Selector="TextBlock.DisplayTitle">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource ByhDisplayFontFamily}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="TextBlock.Kicker">
+    <Setter Property="Foreground" Value="{DynamicResource ByhAccentBrush}" />
+    <Setter Property="FontSize" Value="9" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="LetterSpacing" Value="1.4" />
+  </Style>
+  <Style Selector="TextBlock.FeedbackSuccess">
+    <Setter Property="Foreground" Value="{DynamicResource ByhSuccessBrush}" />
+  </Style>
+  <Style Selector="TextBlock.FeedbackError">
+    <Setter Property="Foreground" Value="{DynamicResource ByhErrorBrush}" />
+  </Style>
+  <Style Selector="TextBlock.FeedbackInfo">
+    <Setter Property="Foreground" Value="{DynamicResource ByhInfoBrush}" />
+  </Style>
+
+  <!-- Surfaces -->
+  <Style Selector="Border.Card">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusMedium}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource ByhShadowSmall}" />
+  </Style>
+  <Style Selector="Border.CardWarm">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusMedium}" />
+  </Style>
+  <Style Selector="Border.PearlCard">
+    <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
+    <Setter Property="BorderBrush" Value="#66D9C28A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #B8FFFEFA, inset 0 0 0 2 #42F4E7C8, 0 5 15 0 #124A2B19" />
+  </Style>
+  <Style Selector="Border.PearlInset">
+    <Setter Property="Background" Value="{DynamicResource ByhPearlInsetBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPorcelainBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+  </Style>
+  <Style Selector="Border.DecorativeFrame">
+    <Setter Property="Background" Value="#CFFFFDFC" />
+    <Setter Property="BorderBrush" Value="#72D9C28A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="24" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #B8FFFEFA, inset 0 0 0 2 #38F4E7C8, 0 2 3 0 #0FFFFDFC, 0 8 24 0 #174A2B19" />
+  </Style>
+  <Style Selector="Border.SettingsFrame">
+    <Setter Property="Background" Value="#F7FFFDFC" />
+    <Setter Property="BorderBrush" Value="#66D9C28A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="22" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #C7FFFEFA, inset 0 0 0 2 #35F4E7C8, 0 2 3 0 #10FFFDFC, 0 8 24 0 #164A2B19" />
+  </Style>
+  <Style Selector="Border.PorcelainCard">
+    <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
+    <Setter Property="BorderBrush" Value="#5CD9C28A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #AFFFFEFA, inset 0 0 0 2 #30F4E7C8, 0 4 13 0 #104A2B19" />
+  </Style>
+  <Style Selector="Border.GemPortrait">
+    <Setter Property="Background" Value="{DynamicResource ByhPearlGlowBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhFloatingBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="72" />
+    <Setter Property="BoxShadow" Value="0 8 28 0 #189F5E30" />
+  </Style>
+  <Style Selector="Border.StatusPill">
+    <Setter Property="Background" Value="#D9FFFDFC" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPorcelainBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+  </Style>
+  <Style Selector="Border.Badge">
+    <Setter Property="Background" Value="{DynamicResource ByhAccentSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
+  </Style>
+  <Style Selector="Border.FloatingSurface">
+    <Setter Property="Background" Value="{DynamicResource ByhFloatingSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhFloatingBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusMedium}" />
+    <Setter Property="BoxShadow" Value="{DynamicResource ByhShadowMedium}" />
+  </Style>
+
+  <!-- R32 Spotlight launcher-search panel: row + active-state classes.
+       R43: Active state hardened — SurfaceSelected fill + Primary border + a
+       left accent bar (inset BoxShadow) so the selected row reads at a glance
+       even when the panel is small and the list is dense. -->
+  <!-- TASK-011: Nav tower close double-line frame — tight 5 px inner margin,
+       dual 1 px gold strokes with a warm ivory gap, soft pearl shadow.
+       Replaces the wide-gap DecorativeFrame+SettingsFrame nesting. -->
+  <Style Selector="Border.NavTowerFrame">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Padding" Value="5" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #FFFFFDFC, inset 0 0 0 2 #FFE1C4A3, 0 3 10 0 #124A2B19" />
+  </Style>
+
+  <!-- TASK-011: FlatRail — used on the left concept/color/workflow column.
+       No rounded outer frame; background only. The gold vertical rule is
+       applied inline in the view. -->
+  <Style Selector="Border.FlatRail">
+    <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
+  </Style>
+
+  <Style Selector="Border.SpotlightRow">
+    <Setter Property="Transitions">
+      <Setter.Value>
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.08" />
+          <BrushTransition Property="Background" Duration="0:0:0.08" />
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.08" />
+        </Transitions>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Border.SpotlightRow:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+  </Style>
+  <!-- R43 Spotlight selection: refined solid-gold double-line filigree,
+     uniform on ALL four sides. No gradient, no asymmetric left rail (the
+     rail was the "thick orange-yellow" the user rejected). Layers painted
+     from outside in:
+       - 1px outer border = mid champagne gold #D9C28A (the frame).
+       - 1px champagne gap (#FCF7EA) — matches Background, reads as a
+         hairline channel between the two gold lines.
+       - 1px bright gold inner line (#F4E7C8) — the glint that makes it
+         read as delicate filigree rather than a flat slab.
+     Total frame ~3px on every side. -->
+  <Style Selector="Border.SpotlightRow.Active">
+    <Setter Property="Background" Value="#FFFCF7EA" />
+    <Setter Property="BorderBrush" Value="#FFD9C28A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 2 #FFFCF7EA, inset 0 0 0 3 #FFF4E7C8" />
+  </Style>
+  <!-- Keep the Active fill even while hovered, so the keyboard selection stays
+       readable when the user happens to move the mouse over another row. -->
+  <Style Selector="Border.SpotlightRow.Active:pointerover">
+    <Setter Property="Background" Value="#FFFCF7EA" />
+  </Style>
+  <!-- Name in Bold + deep bronze — bookish, pairs with the gold frame. -->
+  <Style Selector="Border.SpotlightRow.Active TextBlock.SpotlightRowName">
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="#FFB89A5C" />
+  </Style>
+
+  <!-- R43 Spotlight search box wrapper Border: identical gold-lace frame as
+       Border.SpotlightRow.Active — 1px gold outer border + champagne gap +
+       bright-gold inner glint, all via inset BoxShadow. The inner TextBox
+       is fully borderless/transparent; this Border is the sole frame.
+       Wraps ONLY the TextBox (not the lightning icon), tightly. -->
+  <Style Selector="Border.SpotlightGoldFrame">
+    <Setter Property="Background" Value="#FFFCF7EA" />
+    <Setter Property="BorderBrush" Value="#FFD9C28A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 2 #FFFCF7EA, inset 0 0 0 3 #FFF4E7C8" />
+  </Style>
+
+  <!-- Inputs -->
+  <Style Selector="TextBox">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource ByhTextPlaceholderBrush}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource ByhPrimaryBrush}" />
+    <Setter Property="SelectionBrush" Value="{DynamicResource ByhPrimarySoftBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="TextBox:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPrimaryBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+
+  <!-- R43 Spotlight search box: the TextBox is fully borderless and
+       transparent — the gold-lace frame is owned SOLELY by the wrapping
+       Border.SpotlightGoldFrame. We must zero out every border property
+       on the TextBox itself (BorderThickness + BorderBrush + Background)
+       AND also override the FluentTheme's TextControl resource keys that
+       the TextBox template uses internally to paint its own frame, so
+       only ONE frame (the outer Border's gold lace) is visible.
+       Defined AFTER the global TextBox / TextBox:focus rules so same-
+       specificity document order resolves in our favour. -->
+  <Style Selector="TextBox.SpotlightSearch">
+    <Style.Resources>
+      <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrushDisabled" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="Transparent" />
+    </Style.Resources>
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="PlaceholderForeground" Value="#FFA89788" />
+    <Setter Property="CaretBrush" Value="#FFB89A5C" />
+    <Setter Property="SelectionBrush" Value="#66B89A5C" />
+    <Setter Property="SelectionForegroundBrush" Value="#FFFCF7EA" />
+  </Style>
+  <Style Selector="TextBox.SpotlightSearch:focus">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="TextBox.SpotlightSearch:focus /template/ ContentPresenter">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+    <Setter Property="PlaceholderForeground" Value="{DynamicResource ByhTextPlaceholderBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
+  </Style>
+  <Style Selector="ComboBox:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPrimaryBrush}" />
+  </Style>
+  <Style Selector="NumericUpDown">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
+  </Style>
+  <Style Selector="CheckBox">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="ToggleSwitch">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="ProgressBar">
+    <Setter Property="Foreground" Value="{DynamicResource ByhPrimaryBrush}" />
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSelectedBrush}" />
+  </Style>
+
+  <!-- Buttons: secondary is the quiet default; real actions opt into Primary. -->
+  <Style Selector="Button">
+    <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhAccentHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
+  </Style>
+  <Style Selector="Button:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+  </Style>
+  <Style Selector="Button:pressed">
+    <Setter Property="Background" Value="{DynamicResource ByhAccentSoftBrush}" />
+  </Style>
+  <Style Selector="Button:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhFocusBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Button:disabled">
+    <Setter Property="Background" Value="{DynamicResource ByhDisabledBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhDisabledBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextPlaceholderBrush}" />
+  </Style>
+
+  <Style Selector="Button.Primary">
+    <Setter Property="Background" Value="{DynamicResource ByhJadeSheenBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPrimaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.Primary:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhPrimaryHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPrimaryHoverBrush}" />
+  </Style>
+  <Style Selector="Button.Primary:pressed">
+    <Setter Property="Background" Value="{DynamicResource ByhPrimaryHoverBrush}" />
+  </Style>
+  <Style Selector="Button.Danger">
+    <Setter Property="Background" Value="{DynamicResource ByhErrorBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhErrorBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.Danger:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhAccentHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhAccentHoverBrush}" />
+  </Style>
+  <Style Selector="Button.DangerQuiet">
+    <Setter Property="Background" Value="{DynamicResource ByhErrorSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhErrorSoftBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhErrorBrush}" />
+  </Style>
+  <Style Selector="Button.DangerQuiet:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhErrorBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhErrorBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.Ghost">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.Ghost:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderSubtleBrush}" />
+  </Style>
+  <Style Selector="Button.Ghost:pressed">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSelectedBrush}" />
+  </Style>
+
+  <!-- Reference-style settings navigation: restrained line icons, quiet ivory
+       rows, and a warm-gold active state. -->
+  <Style Selector="Button.SettingsNav">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Padding" Value="14,11" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="Button.SettingsNav:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+  </Style>
+  <Style Selector="Button.SettingsNav:pressed">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSelectedBrush}" />
+  </Style>
+  <Style Selector="Button.SettingsNav.Active">
+    <Setter Property="Background" Value="{DynamicResource ByhGoldNavBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.SettingsNav:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhFocusBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Button.SettingsNav Path.NavIcon">
+    <Setter Property="Width" Value="17" />
+    <Setter Property="Height" Value="17" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="Fill" Value="Transparent" />
+    <Setter Property="Stroke" Value="{DynamicResource ByhAccentBrush}" />
+    <Setter Property="StrokeThickness" Value="1.35" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.SettingsNav.Active Path.NavIcon">
+    <Setter Property="Stroke" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+  </Style>
+  <!-- Class + focus selectors outrank normal class styles, preserving a
+       visible keyboard-focus indicator on every semantic button variant. -->
+  <Style Selector="Button.Primary:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPrimarySoftBrush}" />
+    <Setter Property="BorderThickness" Value="3" />
+  </Style>
+  <Style Selector="Button.Danger:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhFocusBrush}" />
+    <Setter Property="BorderThickness" Value="3" />
+  </Style>
+  <Style Selector="Button.DangerQuiet:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhFocusBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="Button.Ghost:focus">
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhFocusBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+
+  <!-- Menus inherit the light material instead of Fluent's default variant. -->
+  <Style Selector="ContextMenu">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderSubtleBrush}" />
+  </Style>
+  <Style Selector="MenuItem">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+  </Style>
+</Styles>

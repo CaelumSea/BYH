@@ -1,0 +1,1147 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
+        x:Class="SelectionAssistant.UI.Views.SettingsWindow"
+        Title="BYH · Settings"
+        Width="1320"
+        Height="800"
+        MinWidth="1240"
+        MinHeight="680"
+        CanResize="True"
+        Background="{DynamicResource ByhBackgroundBrush}"
+        WindowStartupLocation="CenterScreen"
+        KeyDown="OnWindowKeyDown">
+  <Grid ColumnDefinitions="190,170,*,270"
+        RowDefinitions="*,260"
+        ColumnSpacing="12"
+        RowSpacing="12"
+        Margin="12">
+
+    <!-- TASK-011: Navigation tower — ornament moved inside the inner frame
+         behind all content; NavTowerFrame provides the close double-line
+         treatment (5 px inner gap, dual gold strokes, warm shadow). -->
+    <Border Grid.Column="1"
+            Grid.Row="0"
+            Classes="NavTowerFrame"
+            ClipToBounds="True">
+      <Grid>
+        <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
+               Stretch="UniformToFill"
+               Opacity="0.18"
+               IsHitTestVisible="False" />
+        <Grid Margin="10,10,10,8" RowDefinitions="Auto,*">
+        <StackPanel Grid.Row="0" Spacing="5" Margin="4,0,4,12">
+          <Border Width="56"
+                  Height="56"
+                  HorizontalAlignment="Center"
+                  Background="{DynamicResource ByhSurfaceBrush}"
+                  BorderBrush="{DynamicResource ByhHairlineBrush}"
+                  BorderThickness="1"
+                  CornerRadius="28"
+                  ClipToBounds="True">
+            <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
+                   Width="76"
+                   Height="76"
+                   Stretch="UniformToFill"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Text="BYH"
+                     Classes="DisplayTitle"
+                     FontSize="23"
+                     HorizontalAlignment="Center" />
+          <TextBlock Text="By Your Hand"
+                     Classes="Secondary"
+                     FontSize="11"
+                     HorizontalAlignment="Center" />
+          <Border Width="36"
+                  Height="2"
+                  HorizontalAlignment="Center"
+                  Background="{DynamicResource ByhGoldBrush}"
+                  CornerRadius="1" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Spacing="5" VerticalAlignment="Top">
+
+          <Button x:Name="GeneralNavButton"
+                  Classes="SettingsNav Active"
+                  Padding="12,10"
+                  Click="OnShowGeneralClick">
+            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
+              <Path Classes="NavIcon"
+                    Data="M3,10 L12,3 L21,10 M5,9 L5,20 L19,20 L19,9 M9,20 L9,14 L15,14 L15,20" />
+              <TextBlock Grid.Column="1" Text="General" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
+          <Button x:Name="ProviderNavButton"
+                  Classes="SettingsNav"
+                  Padding="12,10"
+                  Click="OnShowProviderClick">
+            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
+              <Path Classes="NavIcon"
+                    Data="M4,5 L20,5 L20,19 L4,19 Z M8,9 L16,9 M8,13 L16,13 M8,17 L13,17" />
+              <TextBlock Grid.Column="1" Text="Translation" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
+          <Button x:Name="FunctionsNavButton"
+                  Classes="SettingsNav"
+                  Padding="12,10"
+                  Click="OnShowFunctionsClick">
+            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
+              <Path Classes="NavIcon"
+                    Data="M12,3 L14.7,8.3 L20.5,9.2 L16.3,13.3 L17.3,19 L12,16.3 L6.7,19 L7.7,13.3 L3.5,9.2 L9.3,8.3 Z" />
+              <TextBlock Grid.Column="1" Text="Actions" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
+          <Button x:Name="VisionNavButton"
+                  Classes="SettingsNav"
+                  Padding="12,10"
+                  Click="OnShowVisionClick">
+            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
+              <Path Classes="NavIcon"
+                    Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
+              <TextBlock Grid.Column="1" Text="Vision" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
+          <Button x:Name="LauncherNavButton"
+                  Classes="SettingsNav"
+                  Padding="12,10"
+                  Click="OnShowLauncherClick">
+            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
+              <Path Classes="NavIcon"
+                    Data="M13,2 L4,13 L11,13 L10,22 L20,10 L13,10 Z" />
+              <TextBlock Grid.Column="1" Text="Launcher" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+        </StackPanel>
+
+          </Grid>
+      </Grid>
+    </Border>
+
+
+    <!-- Main work pane: the selected settings category remains independently scrollable. -->
+    <Border Grid.Column="2"
+            Grid.Row="0"
+            Classes="DecorativeFrame SettingsFrame"
+            ClipToBounds="True">
+    <Grid RowDefinitions="Auto,*">
+      <Image Grid.RowSpan="2"
+             Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
+             Stretch="UniformToFill"
+             Opacity="0.055"
+             IsHitTestVisible="False" />
+      <Border Grid.Row="0"
+              Background="{DynamicResource ByhCreamSheenBrush}"
+              BorderBrush="{DynamicResource ByhHairlineBrush}"
+              BorderThickness="0,0,0,1"
+              Padding="26,17,24,15">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="20" RowSpacing="12">
+          <StackPanel Spacing="3">
+            <TextBlock Text="WELCOME BACK" Classes="Kicker" />
+            <StackPanel Orientation="Horizontal" Spacing="9">
+              <TextBlock x:Name="PageTitleText"
+                         Text="General"
+                         Classes="DisplayTitle"
+                         FontSize="24" />
+              <TextBlock Text="✦"
+                         Foreground="{DynamicResource ByhGoldBrush}"
+                         FontSize="16"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock x:Name="PageSubtitleText"
+                       Text="Hotkeys, capture behavior, and runtime status."
+                       Classes="Secondary"
+                       FontSize="10" />
+          </StackPanel>
+          <Border Grid.Column="1"
+                  Classes="Badge"
+                  VerticalAlignment="Center"
+                  Padding="7,4">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border Width="24" Height="24" CornerRadius="12" ClipToBounds="True">
+                <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
+                       Width="32"
+                       Height="32"
+                       Stretch="UniformToFill"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+              </Border>
+              <TextBlock Text="IVORY JADE"
+                         Classes="Accent"
+                         FontSize="9"
+                         FontWeight="SemiBold"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
+            <Border Classes="StatusPill" Padding="10,5">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Border Width="6" Height="6" CornerRadius="3"
+                        Background="{DynamicResource ByhSuccessBrush}"
+                        VerticalAlignment="Center" />
+                <TextBlock Text="LOCAL FIRST" Classes="Accent" FontSize="8" FontWeight="SemiBold" />
+              </StackPanel>
+            </Border>
+            <Border Classes="StatusPill" Padding="10,5">
+              <TextBlock Text="INSTANT CAPTURE" Classes="Secondary" FontSize="8" FontWeight="SemiBold" />
+            </Border>
+            <Border Classes="StatusPill" Padding="10,5">
+              <TextBlock Text="WINDOWS NATIVEAOT" Classes="Secondary" FontSize="8" FontWeight="SemiBold" />
+            </Border>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <ScrollViewer x:Name="SettingsContentScroll"
+                    Grid.Row="1"
+                    Padding="28,24,28,28"
+                    HorizontalScrollBarVisibility="Disabled">
+        <Grid>
+
+        <!-- General -->
+        <StackPanel x:Name="GeneralSection" Spacing="16">
+          <Border Classes="PearlCard" Padding="18">
+            <StackPanel Spacing="16">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="Ocean Eyes Trigger"
+                             FontSize="15"
+                             FontWeight="SemiBold" />
+                  <TextBlock Text="F Translate · J Explain · Z Summarize · R Prompt · C Copy · Enter Save · Esc Close"
+                             Classes="Muted"
+                             FontSize="10"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+                <ToggleSwitch x:Name="KeyboardShortcutToggle"
+                              Grid.Column="1"
+                              OnContent="On"
+                              OffContent="Off"
+                              IsChecked="True"
+                              VerticalAlignment="Center" />
+              </Grid>
+
+              <Border Classes="PearlInset" Padding="14">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="Hotkey"
+                             Classes="Secondary"
+                             FontSize="11"
+                             FontWeight="SemiBold" />
+                  <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,120" ColumnSpacing="10">
+                    <CheckBox Grid.Column="0" x:Name="CtrlModifierCheckBox" Content="Ctrl" IsChecked="True" />
+                    <CheckBox Grid.Column="1" x:Name="AltModifierCheckBox" Content="Alt" IsChecked="True" />
+                    <CheckBox Grid.Column="2" x:Name="ShiftModifierCheckBox" Content="Shift" />
+                    <CheckBox Grid.Column="3" x:Name="WinModifierCheckBox" Content="Win" />
+                    <ComboBox Grid.Column="5" x:Name="ShortcutKeyComboBox" SelectedIndex="16" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <Button Content="Save Hotkey"
+                        Classes="Primary"
+                        Click="OnSaveOceanEyesTriggerClick" />
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock x:Name="ShortcutStatusText"
+                             Text="Current: Ctrl+Alt+Q"
+                             FontSize="11" />
+                </StackPanel>
+              </Grid>
+
+              <Border BorderBrush="{DynamicResource ByhBorderSubtleBrush}"
+                      BorderThickness="0,1,0,0"
+                      Padding="0,14,0,0">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="Legacy Mouse Chord"
+                               FontSize="11"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="May conflict with application context menus."
+                               Classes="Muted"
+                               FontSize="9"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                  <ToggleSwitch x:Name="MouseChordToggle"
+                                Grid.Column="1"
+                                OnContent="On"
+                                OffContent="Off"
+                                IsChecked="False"
+                                VerticalAlignment="Center" />
+                </Grid>
+              </Border>
+            </StackPanel>
+          </Border>
+
+          <!-- R37: toolbar built-in shortcut keys (Prompt/Copy/Paste).
+               Defaults R/C/V; each can be cleared to disable that shortcut.
+               These run as fallback when no user PromptTemplate is bound to
+               the same key (PromptTemplate shortcuts always win). -->
+          <Border Classes="PearlCard" Padding="18">
+            <StackPanel Spacing="14">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Toolbar Shortcuts"
+                           FontSize="15"
+                           FontWeight="SemiBold" />
+              </StackPanel>
+
+              <Border Classes="PearlInset" Padding="14">
+                <Grid ColumnDefinitions="Auto,60,*" RowDefinitions="Auto,Auto"
+                      RowSpacing="10" ColumnSpacing="12">
+                  <TextBlock Grid.Row="0" Grid.Column="0"
+                             Text="Prompt"
+                             Classes="Secondary"
+                             FontSize="11"
+                             VerticalAlignment="Center" />
+                  <TextBox  Grid.Row="0" Grid.Column="1"
+                            x:Name="PromptShortcutInput"
+                            MaxLength="1"
+                            FontSize="13"
+                            HorizontalAlignment="Stretch"
+                            PlaceholderText="None" />
+                  <TextBlock Grid.Row="0" Grid.Column="2"
+                             Text="Open prompt window"
+                             Classes="Muted"
+                             FontSize="10"
+                             VerticalAlignment="Center" />
+
+                  <TextBlock Grid.Row="1" Grid.Column="0"
+                             Text="Copy"
+                             Classes="Secondary"
+                             FontSize="11"
+                             VerticalAlignment="Center" />
+                  <TextBox  Grid.Row="1" Grid.Column="1"
+                            x:Name="CopyShortcutInput"
+                            MaxLength="1"
+                            FontSize="13"
+                            HorizontalAlignment="Stretch"
+                            PlaceholderText="None" />
+                  <TextBlock Grid.Row="1" Grid.Column="2"
+                             Text="Copy selected text"
+                             Classes="Muted"
+                             FontSize="10"
+                             VerticalAlignment="Center" />
+                </Grid>
+              </Border>
+
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <Button Content="Save Shortcuts"
+                        Classes="Primary"
+                        Click="OnSaveToolbarShortcutsClick" />
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock x:Name="ToolbarShortcutsStatusText"
+                             Text="Current: Prompt R · Copy C"
+                             FontSize="11" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <!-- R40 Ocean Eyes: screenshot save settings. Path is configurable;
+               AutoSave writes a PNG to disk on Enter; CopyToClipboard also
+               pushes the PNG to the clipboard; UiaAssist snaps the preselection
+               box to the element under the cursor while drawing. -->
+          <Border Classes="PearlCard" Padding="18">
+            <StackPanel Spacing="14">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Ocean Eyes Capture"
+                           FontSize="15"
+                           FontWeight="SemiBold" />
+              </StackPanel>
+
+              <Border Classes="PearlInset" Padding="14">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="Save Location"
+                             Classes="Secondary"
+                             FontSize="11"
+                             FontWeight="SemiBold" />
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <TextBox x:Name="OceanEyesSavePathTextBox"
+                             Grid.Column="0"
+                             PlaceholderText="%USERPROFILE%\Pictures\Ocean Eyes"
+                             FontSize="11" />
+                    <Button Grid.Column="1"
+                            Content="Browse…"
+                            Classes="Ghost"
+                            Click="OnBrowseOceanEyesSavePathClick" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="Auto-save File"
+                             FontSize="11"
+                             FontWeight="SemiBold" />
+                </StackPanel>
+                <ToggleSwitch x:Name="OceanEyesAutoSaveToggle"
+                              Grid.Column="1"
+                              OnContent="On"
+                              OffContent="Off"
+                              IsChecked="True"
+                              VerticalAlignment="Center" />
+              </Grid>
+
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="Copy to Clipboard"
+                             FontSize="11"
+                             FontWeight="SemiBold" />
+                </StackPanel>
+                <ToggleSwitch x:Name="OceanEyesClipboardToggle"
+                              Grid.Column="1"
+                              OnContent="On"
+                              OffContent="Off"
+                              IsChecked="True"
+                              VerticalAlignment="Center" />
+              </Grid>
+
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="Snap to Controls (UIA)"
+                             FontSize="11"
+                             FontWeight="SemiBold" />
+                </StackPanel>
+                <ToggleSwitch x:Name="OceanEyesUiaAssistToggle"
+                              Grid.Column="1"
+                              OnContent="On"
+                              OffContent="Off"
+                              IsChecked="True"
+                              VerticalAlignment="Center" />
+              </Grid>
+
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <Button Content="Save Capture Settings"
+                        Classes="Primary"
+                        Click="OnSaveOceanEyesCaptureClick" />
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock x:Name="OceanEyesCaptureStatusText"
+                             Text="Current: Default location"
+                             FontSize="11" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </Border>
+
+        </StackPanel>
+
+        <!-- Translation providers -->
+        <StackPanel x:Name="ProviderSection" IsVisible="False" Spacing="16">
+          <Border x:Name="EditFormBorder" Classes="PearlCard" Padding="18">
+            <StackPanel Spacing="16">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="Provider Profiles"
+                             FontSize="15"
+                             FontWeight="SemiBold" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Content="＋ Add Provider"
+                        Click="OnAddProviderClick" />
+              </Grid>
+
+              <StackPanel Spacing="6">
+                <TextBlock Text="Editing"
+                           Classes="Secondary"
+                           FontSize="10"
+                           FontWeight="SemiBold" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                  <ComboBox x:Name="ProviderComboBox"
+                            HorizontalAlignment="Stretch"
+                            SelectionChanged="OnProviderSelectionChanged">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="views:ProviderOption">
+                        <TextBlock Text="{Binding DisplayLabel}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                  <TextBlock x:Name="EditingProviderNameHint"
+                             Grid.Column="1"
+                             Classes="Muted"
+                             FontSize="10"
+                             VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
+
+              <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="12">
+                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="6">
+                  <TextBlock Text="Name" Classes="Muted" FontSize="10" />
+                  <TextBox x:Name="NameInput" />
+                </StackPanel>
+                <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6">
+                  <TextBlock Text="Model" Classes="Muted" FontSize="10" />
+                  <TextBox x:Name="ModelInput" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="0" Spacing="6">
+                  <TextBlock Text="Base URL" Classes="Muted" FontSize="10" />
+                  <TextBox x:Name="BaseUrlInput" />
+                </StackPanel>
+                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="6">
+                  <TextBlock Text="Chat Path" Classes="Muted" FontSize="10" />
+                  <TextBox x:Name="ChatPathInput" PlaceholderText="chat/completions" />
+                </StackPanel>
+              </Grid>
+
+              <StackPanel Spacing="6">
+                <TextBlock Text="System Prompt (blank uses the built-in translation prompt)"
+                           Classes="Muted"
+                           FontSize="10" />
+                <TextBox x:Name="SystemPromptInput"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         Height="78" />
+              </StackPanel>
+
+              <Border Classes="PearlInset" Padding="14">
+                <StackPanel Spacing="7">
+                  <TextBlock Text="API Key"
+                             FontSize="11"
+                             FontWeight="SemiBold" />
+                  <TextBlock Text="Encrypted with Windows DPAPI."
+                             Classes="Muted"
+                             FontSize="9" />
+                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                    <TextBox x:Name="ApiKeyInput"
+                             PlaceholderText="sk-..."
+                             PasswordChar="•" />
+                    <Button Grid.Column="1" Content="Show" Click="OnToggleVisibilityClick" />
+                    <Button Grid.Column="2" Content="Save Key" Classes="Primary" Click="OnSaveKeyClick" />
+                  </Grid>
+                  <TextBlock x:Name="ApiKeyStatusText"
+                             Classes="Muted"
+                             Text="Not set"
+                             FontSize="10" />
+                </StackPanel>
+              </Border>
+
+              <Grid ColumnDefinitions="150,*" ColumnSpacing="16">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="Timeout (seconds)" Classes="Muted" FontSize="10" />
+                  <NumericUpDown x:Name="TimeoutInput"
+                                 Minimum="10"
+                                 Maximum="300"
+                                 Value="60" />
+                </StackPanel>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Bottom"
+                            Spacing="8">
+                  <Button Content="Delete"
+                          Classes="DangerQuiet"
+                          Click="OnDeleteProviderClick" />
+                  <Button Content="Set Active" Click="OnSetActiveClick" />
+                  <Button Content="Save Profile"
+                          Classes="Primary"
+                          Click="OnSaveProviderClick" />
+                </StackPanel>
+              </Grid>
+
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- Prompt functions -->
+        <StackPanel x:Name="FunctionsSection" IsVisible="False" Spacing="16">
+          <Border x:Name="PromptTemplatesCard" Classes="PearlCard" Padding="18">
+            <StackPanel Spacing="14">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="Actions &amp; Prompts"
+                             FontSize="15"
+                             FontWeight="SemiBold" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Content="＋ Add Action"
+                        Classes="Primary"
+                        Click="OnAddFunctionClick" />
+              </Grid>
+
+              <Border BorderBrush="{DynamicResource ByhBorderSubtleBrush}"
+                      BorderThickness="0,1,0,0"
+                      Padding="0,10,0,0">
+                <ItemsControl x:Name="FunctionsList">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="views:PromptFunctionRow">
+                      <Grid ColumnDefinitions="*,Auto,Auto"
+                            ColumnSpacing="10"
+                            Margin="0,5">
+                        <TextBlock Grid.Column="0"
+                                   Text="{Binding Name}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="1"
+                                Content="Edit"
+                                Classes="Ghost"
+                                Padding="10,4"
+                                FontSize="10"
+                                Command="{Binding EditCommand}" />
+                        <Button Grid.Column="2"
+                                Content="Delete"
+                                Classes="DangerQuiet"
+                                Padding="10,4"
+                                FontSize="10"
+                                Command="{Binding DeleteCommand}"
+                                IsVisible="{Binding !IsBuiltIn}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Border>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- Vision OCR -->
+        <StackPanel x:Name="VisionSection" IsVisible="False" Spacing="16">
+          <Border Classes="PearlCard" Padding="18">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+              <StackPanel Spacing="4">
+                <TextBlock Text="Vision Recognition"
+                           FontSize="15"
+                           FontWeight="SemiBold" />
+              </StackPanel>
+              <ToggleSwitch x:Name="VisionEnabledToggle"
+                            Grid.Column="1"
+                            OnContent="On"
+                            OffContent="Off"
+                            IsChecked="True"
+                            VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+
+          <Border Classes="PearlCard" Padding="18">
+            <StackPanel Spacing="14">
+              <TextBlock Text="OCR Model"
+                         FontSize="13"
+                         FontWeight="SemiBold" />
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                <StackPanel Grid.Column="0" Spacing="6">
+                  <TextBlock Text="Provider" Classes="Muted" FontSize="10" />
+                  <ComboBox x:Name="VisionProviderComboBox"
+                            HorizontalAlignment="Stretch">
+                    <ComboBox.ItemTemplate>
+                      <DataTemplate x:DataType="views:ProviderOption">
+                        <TextBlock Text="{Binding DisplayLabel}" />
+                      </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                  </ComboBox>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Text="Model" Classes="Muted" FontSize="10" />
+                  <ComboBox x:Name="VisionModelComboBox"
+                            HorizontalAlignment="Stretch"
+                            IsEditable="True" />
+                </StackPanel>
+              </Grid>
+              <StackPanel Spacing="6">
+                <TextBlock Text="Prompt" Classes="Muted" FontSize="10" />
+                <TextBox x:Name="VisionPromptInput"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         Height="68"
+                         PlaceholderText="Free OCR. (DeepSeek-OCR default)" />
+              </StackPanel>
+            </StackPanel>
+          </Border>
+
+          <Border Classes="PearlCard" Padding="18">
+            <StackPanel Spacing="16">
+              <TextBlock Text="Recognition Strategy"
+                         FontSize="13"
+                         FontWeight="SemiBold" />
+
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="UI Automation Prefill (Experimental)"
+                             FontSize="11"
+                             FontWeight="SemiBold" />
+                </StackPanel>
+                <ToggleSwitch x:Name="VisionUiaPrefillToggle"
+                              Grid.Column="1"
+                              OnContent="On"
+                              OffContent="Off"
+                              IsChecked="False"
+                              VerticalAlignment="Center" />
+              </Grid>
+
+              <Border BorderBrush="{DynamicResource ByhBorderSubtleBrush}"
+                      BorderThickness="0,1,0,0"
+                      Padding="0,14,0,0">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="Disable Model Thinking"
+                               FontSize="11"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="Recommended for Qwen 3.x."
+                               Classes="Muted"
+                               FontSize="9"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                  <ToggleSwitch x:Name="VisionDisableThinkingToggle"
+                                Grid.Column="1"
+                                OnContent="Disabled"
+                                OffContent="Allowed"
+                                IsChecked="False"
+                                VerticalAlignment="Center" />
+                </Grid>
+              </Border>
+            </StackPanel>
+          </Border>
+
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Save Vision Settings"
+                    Classes="Primary"
+                    Click="OnSaveVisionClick" />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- Launcher -->
+        <StackPanel x:Name="LauncherSection" IsVisible="False" Spacing="16">
+          <Border Classes="PearlCard" Padding="18">
+            <StackPanel Spacing="14">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="Launcher"
+                             FontSize="15"
+                             FontWeight="SemiBold" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Content="＋ Add Launcher"
+                        Classes="Primary"
+                        Click="OnAddLauncherClick" />
+              </Grid>
+
+              <Border BorderBrush="{DynamicResource ByhBorderSubtleBrush}"
+                      BorderThickness="0,1,0,0"
+                      Padding="0,10,0,0">
+                <ItemsControl x:Name="LauncherList">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="views:LauncherEntryRow">
+                      <Grid ColumnDefinitions="32,*,Auto,Auto,Auto,Auto"
+                            ColumnSpacing="10"
+                            Margin="0,5">
+                        <Border Grid.Column="0"
+                                Width="24" Height="24"
+                                CornerRadius="4"
+                                ClipToBounds="True">
+                          <Image Source="{Binding Icon}"
+                                 Width="24" Height="24" />
+                        </Border>
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding Name}"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" />
+                        <Button Grid.Column="2"
+                                Content="↑"
+                                Classes="Ghost"
+                                Padding="8,4"
+                                FontSize="10"
+                                Command="{Binding MoveUpCommand}" />
+                        <Button Grid.Column="3"
+                                Content="↓"
+                                Classes="Ghost"
+                                Padding="8,4"
+                                FontSize="10"
+                                Command="{Binding MoveDownCommand}" />
+                        <Button Grid.Column="4"
+                                Content="Edit"
+                                Classes="Ghost"
+                                Padding="10,4"
+                                FontSize="10"
+                                Command="{Binding EditCommand}" />
+                        <Button Grid.Column="5"
+                                Content="Delete"
+                                Classes="DangerQuiet"
+                                Padding="10,4"
+                                FontSize="10"
+                                Command="{Binding DeleteCommand}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Border>
+            </StackPanel>
+          </Border>
+
+          <!-- R32 Spotlight launcher-search shortcut card -->
+          <Border Classes="PearlCard" Padding="18">
+            <StackPanel Spacing="14">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="Spotlight Hotkey"
+                             FontSize="15"
+                             FontWeight="SemiBold" />
+                </StackPanel>
+                <ToggleSwitch x:Name="SpotlightKeyboardShortcutToggle"
+                              Grid.Column="1"
+                              OnContent="On"
+                              OffContent="Off"
+                              IsChecked="True"
+                              VerticalAlignment="Center" />
+              </Grid>
+
+              <Border Classes="PearlInset" Padding="14">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="Hotkey"
+                             Classes="Secondary"
+                             FontSize="11"
+                             FontWeight="SemiBold" />
+                  <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,120" ColumnSpacing="10">
+                    <CheckBox Grid.Column="0" x:Name="SpotlightCtrlModifierCheckBox" Content="Ctrl" IsChecked="True" />
+                    <CheckBox Grid.Column="1" x:Name="SpotlightAltModifierCheckBox" Content="Alt" IsChecked="True" />
+                    <CheckBox Grid.Column="2" x:Name="SpotlightShiftModifierCheckBox" Content="Shift" />
+                    <CheckBox Grid.Column="3" x:Name="SpotlightWinModifierCheckBox" Content="Win" />
+                    <ComboBox Grid.Column="5" x:Name="SpotlightShortcutKeyComboBox" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <Button Content="Save Hotkey"
+                        Classes="Primary"
+                        Click="OnSaveSpotlightTriggerClick" />
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock x:Name="SpotlightShortcutStatusText"
+                             Text="Current: Ctrl+Alt+Space"
+                             FontSize="11" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+        </Grid>
+      </ScrollViewer>
+
+    </Grid>
+    </Border>
+
+    <!-- TASK-011: Left concept rail — flat full-height column, no rounded
+         outer frame. A slightly thicker antique-gold right rule separates
+         it from the rest of the layout. Internal section dividers preserved. -->
+    <Border Grid.Column="0"
+            Grid.RowSpan="2"
+            Classes="FlatRail"
+            BorderBrush="{DynamicResource ByhGoldBrush}"
+            BorderThickness="0,0,1.5,0"
+            CornerRadius="0"
+            ClipToBounds="True">
+      <Grid RowDefinitions="1*,1*,1*,Auto">
+        <Image Grid.RowSpan="4"
+               Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
+               Stretch="UniformToFill"
+               Opacity="0.13"
+               IsHitTestVisible="False" />
+        <Border BorderBrush="{DynamicResource ByhHairlineBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="20">
+          <StackPanel Spacing="8" VerticalAlignment="Center">
+            <TextBlock Text="PRODUCT CONCEPT"
+                       FontFamily="Georgia"
+                       FontSize="14"
+                       Foreground="{DynamicResource ByhTextPrimaryBrush}" />
+            <TextBlock Text="Instant · Portable · Quiet"
+                       Classes="Secondary"
+                       FontSize="10" />
+            <TextBlock Text="Selection tools and everyday actions, always within reach."
+                       Classes="Secondary"
+                       FontSize="10"
+                       LineHeight="16"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+
+        <Border Grid.Row="1"
+                BorderBrush="{DynamicResource ByhHairlineBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="20,18">
+          <StackPanel Spacing="12" VerticalAlignment="Center">
+            <TextBlock Text="COLOR LANGUAGE"
+                       FontFamily="Georgia"
+                       FontSize="13" />
+            <Grid ColumnDefinitions="34,*" RowDefinitions="Auto,Auto,Auto,Auto"
+                  ColumnSpacing="10" RowSpacing="8">
+              <Border Grid.Row="0" Width="32" Height="18" CornerRadius="6"
+                      Background="{DynamicResource ByhSurfaceBrush}"
+                      BorderBrush="{DynamicResource ByhBorderBrush}" BorderThickness="1" />
+              <TextBlock Grid.Row="0" Grid.Column="1" Text="Porcelain ivory" FontSize="10" VerticalAlignment="Center" />
+              <Border Grid.Row="1" Width="32" Height="18" CornerRadius="6"
+                      Background="{DynamicResource ByhPrimaryBrush}" />
+              <TextBlock Grid.Row="1" Grid.Column="1" Text="Action jade" FontSize="10" VerticalAlignment="Center" />
+              <Border Grid.Row="2" Width="32" Height="18" CornerRadius="6"
+                      Background="{DynamicResource ByhGoldBrush}" />
+              <TextBlock Grid.Row="2" Grid.Column="1" Text="Antique gold" FontSize="10" VerticalAlignment="Center" />
+              <Border Grid.Row="3" Width="32" Height="18" CornerRadius="6"
+                      Background="{DynamicResource ByhAccentBrush}" />
+              <TextBlock Grid.Row="3" Grid.Column="1" Text="Caramel detail" FontSize="10" VerticalAlignment="Center" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="2" Margin="20,18" Spacing="12" VerticalAlignment="Center">
+          <TextBlock Text="WORKFLOW"
+                     FontFamily="Georgia"
+                     FontSize="13" />
+          <StackPanel Spacing="7">
+            <TextBlock Text="01  Select text" FontSize="10" />
+            <TextBlock Text="02  Open Ocean Eyes" FontSize="10" />
+            <TextBlock Text="03  Translate or act" FontSize="10" />
+          </StackPanel>
+          <Border Classes="PearlInset" Padding="11" Margin="0,6,0,0">
+            <TextBlock Text="Local settings · DPAPI-encrypted keys"
+                       Classes="Muted"
+                       FontSize="9"
+                       LineHeight="14"
+                       TextWrapping="Wrap" />
+          </Border>
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Margin="20,10,20,20" Spacing="8">
+          <Border Width="54" Height="54" CornerRadius="27"
+                  BorderBrush="{DynamicResource ByhHairlineBrush}" BorderThickness="1"
+                  ClipToBounds="True" HorizontalAlignment="Center">
+            <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
+                   Width="72"
+                   Height="72"
+                   Stretch="UniformToFill"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Text="BY YOUR HAND"
+                     Classes="Accent"
+                     FontSize="9"
+                     FontWeight="SemiBold"
+                     HorizontalAlignment="Center" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Portrait-led welcome card plus real runtime summary. The character art
+         is the actual BYH app icon supplied by the user, not decorative mock data. -->
+    <Border Grid.Column="3"
+            Grid.Row="0"
+            Classes="DecorativeFrame SettingsFrame"
+            Background="{DynamicResource ByhCreamSheenBrush}"
+            ClipToBounds="True">
+      <Grid RowDefinitions="178,*,Auto">
+        <Image Grid.RowSpan="3"
+               Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
+               Stretch="UniformToFill"
+               Opacity="0.15"
+               IsHitTestVisible="False" />
+
+        <Border ClipToBounds="True">
+          <Grid>
+            <Border Width="166"
+                    Height="166"
+                    CornerRadius="83"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Margin="0,-26,-24,0"
+                    Background="#59F2EADF"
+                    BorderBrush="{DynamicResource ByhHairlineBrush}"
+                    BorderThickness="1" />
+            <StackPanel Margin="20,27,116,16" Spacing="4">
+              <TextBlock Text="GOOD MORNING" Classes="Kicker" />
+              <TextBlock Text="BYH"
+                         Classes="DisplayTitle"
+                         FontSize="21"
+                         TextWrapping="Wrap" />
+              <TextBlock Text="Quiet, quick, within reach."
+                         Classes="Secondary"
+                         FontSize="9"
+                         TextWrapping="Wrap" />
+            </StackPanel>
+            <Border Classes="GemPortrait"
+                    Width="134"
+                    Height="134"
+                    Padding="3"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,5,2">
+              <Image Source="avares://BYH/Assets/app-icon.png"
+                     Stretch="Uniform" />
+            </Border>
+            <Border Classes="Badge"
+                    Padding="8,4"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Bottom"
+                    Margin="20,0,0,18">
+              <TextBlock Text="IVORY JADE" Classes="Accent" FontSize="8" FontWeight="SemiBold" />
+            </Border>
+          </Grid>
+        </Border>
+
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="14,8,14,8" Spacing="8">
+            <StackPanel Spacing="2" Margin="4,0,0,2">
+              <TextBlock Text="Current setup" Classes="DisplayTitle" FontSize="15" />
+            </StackPanel>
+            <Border Classes="PorcelainCard" Padding="12,10">
+              <StackPanel Spacing="9">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="TRANSLATION PROVIDER" Classes="Muted" FontSize="8" FontWeight="SemiBold" />
+                  <TextBlock x:Name="SummaryProviderText"
+                             Text="Loading…"
+                             FontSize="10"
+                             FontWeight="SemiBold"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+                <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
+                <StackPanel Spacing="3">
+                  <TextBlock Text="OCEAN EYES HOTKEY" Classes="Muted" FontSize="8" FontWeight="SemiBold" />
+                  <TextBlock x:Name="SummaryShortcutText"
+                             Text="Loading…"
+                             FontSize="10"
+                             FontWeight="SemiBold"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+                <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
+                <StackPanel Spacing="3">
+                  <TextBlock Text="VISION OCR" Classes="Muted" FontSize="8" FontWeight="SemiBold" />
+                  <TextBlock x:Name="SummaryVisionText"
+                             Text="Loading…"
+                             FontSize="10"
+                             FontWeight="SemiBold"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+
+        <Border Grid.Row="2" Margin="14,8,14,14" Classes="Badge" Padding="10,7">
+          <TextBlock Text="LOCAL FIRST · PRIVACY READY"
+                     Classes="Accent"
+                     FontSize="8"
+                     HorizontalAlignment="Center" />
+        </Border>
+      </Grid>
+    </Border>
+
+    <!-- Reference bottom strip: useful, real controls instead of invented metrics. -->
+    <Border Grid.Column="1"
+            Grid.ColumnSpan="2"
+            Grid.Row="1"
+            Classes="DecorativeFrame SettingsFrame"
+            Background="{DynamicResource ByhCreamSheenBrush}"
+            ClipToBounds="True">
+      <!-- R30 follow-up: the reference composition treats the lower area as one coherent
+           pane: a quiet title band above grouped content.  Keep the three real
+           modules, but remove the nested card-per-module rhythm. -->
+      <Grid RowDefinitions="Auto,*">
+        <Border Grid.Row="0"
+                Background="{DynamicResource ByhSurfaceBrush}"
+                BorderThickness="0"
+                Padding="18,10,16,4">
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+            <StackPanel Spacing="2">
+              <TextBlock Text="SYSTEM OVERVIEW"
+                         FontFamily="Georgia"
+                         FontSize="12" />
+            </StackPanel>
+            <TextBlock Grid.Column="1"
+                       Text="BYH · LOCAL FIRST"
+                       Classes="Kicker"
+                       FontSize="8"
+                       VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+
+
+        <Border Grid.Row="1"
+                Background="{DynamicResource ByhSurfaceBrush}"
+                Padding="16,6,16,13">
+          <Grid ColumnDefinitions="0.72*,1,0.8*,1,1.18*">
+            <StackPanel Grid.Column="0" Spacing="9" Margin="2,0,14,0">
+              <TextBlock Text="Runtime" FontFamily="Georgia" FontSize="13" />
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                <Border Width="9" Height="9" CornerRadius="5"
+                        Background="{DynamicResource ByhSuccessBrush}"
+                        VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Spacing="2">
+                  <TextBlock Text="Background capture active" FontSize="11" FontWeight="SemiBold" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+
+            <Border Grid.Column="1"
+                    Width="1"
+                    Background="{DynamicResource ByhHairlineBrush}"
+                    HorizontalAlignment="Center" />
+
+            <StackPanel Grid.Column="2" Spacing="7" Margin="16,0">
+              <TextBlock Text="Theme" FontFamily="Georgia" FontSize="13" />
+              <TextBlock Text="Ivory Jade" FontSize="11" FontWeight="SemiBold" />
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <Border Width="22" Height="13" CornerRadius="5"
+                        Background="{DynamicResource ByhSurfaceBrush}"
+                        BorderBrush="{DynamicResource ByhBorderBrush}"
+                        BorderThickness="1" />
+                <Border Width="22" Height="13" CornerRadius="5"
+                        Background="{DynamicResource ByhPrimaryBrush}" />
+                <Border Width="22" Height="13" CornerRadius="5"
+                        Background="{DynamicResource ByhGoldBrush}" />
+                <Border Width="22" Height="13" CornerRadius="5"
+                        Background="{DynamicResource ByhAccentBrush}" />
+              </StackPanel>
+            </StackPanel>
+
+            <Border Grid.Column="3"
+                    Width="1"
+                    Background="{DynamicResource ByhHairlineBrush}"
+                    HorizontalAlignment="Center" />
+
+            <Grid Grid.Column="4"
+                  RowDefinitions="Auto,*,Auto"
+                  Margin="16,0,2,0">
+              <TextBlock Text="Diagnostics" FontFamily="Georgia" FontSize="13" />
+              <TextBlock x:Name="PolicyPathText"
+                         Grid.Row="1"
+                         Margin="0,7,0,5"
+                         Classes="Muted"
+                         FontSize="9"
+                         TextWrapping="Wrap"
+                         TextTrimming="CharacterEllipsis"
+                         MaxLines="2" />
+              <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+                <Button Content="Config Folder" Click="OnOpenConfigDirectoryClick" />
+                <Button Content="Log Folder" Click="OnOpenLogDirectoryClick" />
+              </StackPanel>
+            </Grid>
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
+
+    <Border Grid.Column="3"
+            Grid.Row="1"
+            Classes="DecorativeFrame SettingsFrame"
+            Background="{DynamicResource ByhCreamSheenBrush}"
+            Padding="16">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <StackPanel Spacing="3">
+          <TextBlock Text="Window controls" FontFamily="Georgia" FontSize="13" />
+          <TextBlock Text="v0.1 · Windows NativeAOT" Classes="Muted" FontSize="9" />
+        </StackPanel>
+        <TextBlock Grid.Row="1"
+                   Text="Hide keeps BYH running. Exit stops all background services."
+                   Classes="Secondary"
+                   FontSize="9"
+                   TextWrapping="Wrap"
+                   VerticalAlignment="Center" />
+        <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="8">
+          <Button Content="Hide" Classes="Ghost" Click="OnHideClick" />
+          <Button Grid.Column="1" Content="Exit BYH" Classes="DangerQuiet" Click="OnExitClick" />
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

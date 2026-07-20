@@ -1,0 +1,50 @@
+project: BYH
+workspace: C:\dvr\gh-kb
+updated: '2026-07-20T11:44:24'
+secretary_focus: REQ-009
+adopted: true
+adopted_from: C:\dvr\gh-kb\selection-assistant
+adopted_at: '2026-07-18T13:49:50'
+requirements:
+- id: REQ-001
+  title: 自定义全局快捷键触发 QuickTools
+  status: done
+  progress: 1/1
+- id: REQ-002
+  title: Ivory Jade 主题系统与全界面落地
+  status: done
+  progress: 3/3
+- id: REQ-003
+  title: 重构设置页信息架构与默认窗口尺寸
+  status: done
+  progress: 1/1
+- id: REQ-004
+  title: 设置页参考图同构多窗格布局
+  status: done
+  progress: 1/1
+- id: REQ-005
+  title: 设置页 Ivory Jade 视觉精修与 APP icon 头像
+  status: done
+  progress: 1/1
+- id: REQ-006
+  title: 设置页柔和边界、宝石裁切与侧栏比例修正
+  status: done
+  progress: 1/1
+- id: REQ-007
+  title: 设置页中央底栏参考图式上下分区优化
+  status: done
+  progress: 1/1
+- id: REQ-008
+  title: Settings UI English and dimensional frame refinement
+  status: done
+  progress: 1/1
+- id: REQ-009
+  title: 设置页框架比例与双层边框精修
+  status: done
+  progress: 1/1
+phase: done
+next_step: score
+plan_confirmed_via: quick-user
+plan_confirmed_at: '2026-07-20T11:16:19'
+mode: quick
+plan_confirmed_evidence: 用户确认：导航背景重心保持在下，直接移入内框；取消圆角的是最左侧栏。

@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- net10.0-windows: Windows 专用 TFM,允许使用 Win32 互操作 / UIA / WPF 互操作 -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <UseWindowsForms>false</UseWindowsForms>
+    <UseWPF>false</UseWPF>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- UIA 需要 Windows Desktop 中的 COM 互操作支持 -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- DPAPI (DataProtectionScope.CurrentUser) 用于加密存储 API 密钥 (§11.3)。 -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="9.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SelectionAssistant.Platform.Abstractions\SelectionAssistant.Platform.Abstractions.csproj" />
+    <ProjectReference Include="..\SelectionAssistant.Core\SelectionAssistant.Core.csproj" />
+  </ItemGroup>
+
+</Project>

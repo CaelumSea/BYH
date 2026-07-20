@@ -1,0 +1,70 @@
+# =============================================================================
+# BYH (SelectionAssistant) — .gitignore
+# =============================================================================
+# 策略说明（见 docs/git-workflow.md）：
+#   - bin/ obj/ 是构建中间产物，9 个 csproj 共 ~1.8 GB，必排除
+#   - artifacts/ 保留（含 BYH.exe，是项目契约的一部分）
+#   - 用户运行时数据在仓库外：%LOCALAPPDATA%\BYH\，不在此文件管辖
+# =============================================================================
+
+## --- .NET 构建产物 ---
+**/bin/
+**/obj/
+project.assets.json
+project.nuget.cache
+*.nuget.dgspec.json
+*.nuget.g.props
+*.nuget.g.targets
+*.csproj.nuget.*
+
+## --- NuGet ---
+*.nupkg
+*.snupkg
+.nuget/
+
+## --- 测试 / 覆盖率 ---
+TestResults/
+[Tt]est[Rr]esult*/
+*.coverage
+*.coveragexml
+*.trx
+*.trx.binlog
+
+## --- IDE / 编辑器 ---
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+*.swp
+*~
+
+## --- 操作系统垃圾 ---
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+## --- 日志 ---
+*.log
+diag.log
+
+## --- 散落备份（handoff / reqbase 流程中常见） ---
+*.bak
+*.bak-*
+*.diag
+*.experiment-bak
+*.orig
+*.rej
+
+## --- 发布临时目录（保留 artifacts/publish/，但 publish 子工作目录里的中间文件排除） ---
+artifacts/publish/tmp/
+
+## --- 严禁纳入的本地密钥文件（防御性 —— 真实密钥在 %LOCALAPPDATA%\BYH\secrets\） ---
+secrets.json
+secrets.yaml
+*.secret
+*.apikey
+.env
+.env.*

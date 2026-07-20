@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Providers 依赖 Core 取翻译契约（TranslationRequest/TranslationDelta/异常类型） -->
+    <ProjectReference Include="..\SelectionAssistant.Core\SelectionAssistant.Core.csproj" />
+    <!-- 依赖平台抽象取 ISecretStore（解析 secret:// 密钥引用） -->
+    <ProjectReference Include="..\SelectionAssistant.Platform.Abstractions\SelectionAssistant.Platform.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- SSE 帧解析器是 internal 实现细节，测试项目需要可见性来覆盖 7 种 case。 -->
+    <InternalsVisibleTo Include="SelectionAssistant.Providers.Tests" />
+  </ItemGroup>
+
+</Project>

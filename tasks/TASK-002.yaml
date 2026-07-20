@@ -1,0 +1,42 @@
+id: TASK-002
+requirement: REQ-002
+title: 视觉烟测、回归测试、发布与文档交接
+status: done
+created: '2026-07-18T14:34:19'
+updated: '2026-07-18T15:19:00'
+satisfies:
+- AC-5
+description: '执行完整 Release 测试、NativeAOT 发布、发布版启动/热键烟测，并同步主题架构、交接和路线图文档。
+
+  '
+handoff: '最终产物为 artifacts/publish/win-x64-nativeuia/SelectionAssistant.App.exe（26,460,160
+  bytes）。
+
+  发布版当前已启动，PID 50004，Settings 和 QuickTools 均验证可见。
+
+  下一步仍是安装包/代码签名/开机启动；R23 快捷命令继续暂缓。
+
+  '
+execution_log:
+- step: 1
+  action: 运行完整 Release 自动测试
+  command: dotnet test SelectionAssistant.slnx -c Release --nologo
+  result: '162/162 passed: Core 86, Providers 35, Windows 41'
+- step: 2
+  action: 发布 win-x64 NativeAOT 到标准产物目录
+  command: dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj
+    -c Release -r win-x64 --nologo -o artifacts/publish/win-x64-nativeuia
+  result: success; 0 AOT/trim warnings; exe 26,460,160 bytes
+- step: 3
+  action: 实际启动发布版并验证 Settings 与全局热键回调后的 QuickTools
+  result: PID 50004; both BYH · Settings and BYH · Quick Tools visible
+- step: 4
+  action: 写入主题规范和验证报告
+  artifact: docs/architecture/08-theme-system.md; output/TASK-002-theme-verification.md
+- step: 5
+  action: 同步架构总览、窗口文档、构建文档、当前交接和路线图
+  artifact: docs/architecture/00-architecture-overview.md; docs/architecture/02-windowing.md;
+    docs/architecture/07-build-publish-run.md; handoff/00-CURRENT-HANDOFF.md; handoff/BACKLOG-roadmap.md
+- step: 6
+  action: 用 xiaomi-mimo/mimo-v2.5-pro 做主题特异性复核并修复语义按钮键盘焦点
+  result: 无 P0；新增 Primary/Danger/DangerQuiet/Ghost:focus 高特异性样式；复测 162/162 并重发 NativeAOT

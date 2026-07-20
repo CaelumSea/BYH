@@ -1,0 +1,47 @@
+id: TASK-005
+requirement: REQ-003
+title: 实施参考图导向的侧栏分区设置页并完成视觉回归
+status: done
+created: '2026-07-18T15:26:30'
+updated: '2026-07-18T16:04:05'
+satisfies:
+- AC-1
+- AC-2
+- AC-3
+- AC-4
+- AC-5
+description: '参考用户提供的奶油象牙与翡翠金色效果图，重构 SettingsWindow 的信息架构、间距和默认尺寸；保持 Ivory Jade 主题与现有功能逻辑。
+
+  '
+handoff: 'SettingsWindow 现为 1000×720、最小 860×600；固定四分区侧栏、右侧独立滚动、固定底栏。
+
+  最终视觉为第二轮高保真版：ivory-jade-emblem.jpg + ivory-jade-ornament.jpg、PearlCard/PearlInset/DecorativeFrame、暖金
+  SettingsNav.Active。
+
+  验证见 output/TASK-005-settings-v3-verification.md 与 artifacts/qa/ivory-jade-settings-v3*.png。
+
+  最终 NativeAOT exe 26,573,312 bytes；发布版 PID 54668 正在运行。
+
+
+  [自检修复] [visual_fidelity] 修复第一轮视觉只借鉴结构的问题；第二轮补齐玉石徽记、珠光花丝、奶油渐变、细金框和暖金活动导航；同时修复 Vision
+  Provider 显示对象结构与 OCR 提示词不可换行。'
+execution_log:
+- step: 1
+  action: 审查旧设置页并建立四分区信息架构
+  result: 默认 560×640 单列九卡片改为 1000×720 固定侧栏 + 独立内容页 + 固定底栏
+- step: 2
+  action: 实现常规、翻译服务、自定义功能、视觉识别导航与事件切换
+  result: Provider 与编辑表单合并；ShowAndScrollToPromptTemplates/SelectProviderForEditing
+    自动切页
+- step: 3
+  action: 根据用户反馈演化 AC-5 并重做高保真视觉
+  result: 内置 imagegen 生成玉石徽记/珠光花丝；加入奶油渐变、细金框、暖金活动导航
+- step: 4
+  action: 在 175% DPI 检查默认尺寸、最小尺寸与 Provider 表单
+  result: 最小外框 1529×1114 physical px；无横向重叠；底栏固定
+- step: 5
+  action: 运行完整自动测试与 win-x64 NativeAOT 发布
+  result: 162/162 passed；0 AOT/trim warnings；exe 26,573,312 bytes
+- step: 6
+  action: 启动最终发布版
+  result: PID 54668；BYH · Settings；Responding=True

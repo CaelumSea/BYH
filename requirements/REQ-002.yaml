@@ -1,0 +1,48 @@
+id: REQ-002
+title: Ivory Jade 主题系统与全界面落地
+status: done
+created: '2026-07-18T14:32:45'
+updated: '2026-07-18T15:08:06'
+score_kind: aesthetic
+aesthetic_template: frontend
+acceptance_criteria:
+- id: AC-1
+  text: 建立单一 Ivory Jade Avalonia 资源词典，完整覆盖用户给出的基础、品牌、文字、结构、反馈与交互色值；验证：检查主题资源文件的键和值并成功编译。
+  satisfied_by:
+  - TASK-003
+- id: AC-2
+  text: 设置、提示、模板编辑、翻译结果、工具条与 QuickTools 全部消费语义资源，旧深色硬编码不再残留；验证：静态扫描 Views 与逐窗视觉检查。
+  satisfied_by:
+  - TASK-004
+- id: AC-3
+  text: 按钮、输入框、卡片、导航/选中、禁用、焦点、成功、警告、错误和信息状态符合 Ivory Jade 组件规范，玉色只强调操作、金色仅作小面积高级细节；验证：样式资源审查与交互烟测。
+  satisfied_by:
+  - TASK-003
+- id: AC-4
+  text: 透明悬浮窗与 OCR 选区在不同桌面背景上仍清晰可辨，且不改变任何既有交互行为；验证：QuickTools/overlay 烟测与自动化测试。
+  satisfied_by:
+  - TASK-004
+- id: AC-5
+  text: 完整测试套件与 win-x64 NativeAOT 发布通过，最终可执行程序可打开设置页并触发 QuickTools；验证：dotnet test、dotnet
+    publish 与实际运行。
+  satisfied_by:
+  - TASK-002
+tasks:
+- id: TASK-002
+  title: 视觉烟测、回归测试、发布与文档交接
+  status: done
+- id: TASK-003
+  title: 建立 Ivory Jade 主题资源与组件样式
+  status: done
+- id: TASK-004
+  title: 迁移全部用户界面并处理透明悬浮层
+  status: done
+aesthetic_score:
+  scored_at: ''
+  scored_by: ''
+  dimensions: {}
+  total: null
+aesthetic_notes: []
+aligned_via: ask-user
+aligned_at: '2026-07-18T14:34:19'
+aligned_evidence: 用户提供完整 Ivory Jade 色板、语义色、组件状态和使用原则，并要求接下来设计该主题。

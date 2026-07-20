@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:anim="clr-namespace:Avalonia.Animation;assembly=Avalonia.Base"
+        x:Class="SelectionAssistant.UI.Views.PinnedScreenshotWindow"
+        Title="BYH · Pinned"
+        SizeToContent="WidthAndHeight"
+        CanResize="False"
+        ShowActivated="False"
+        ShowInTaskbar="False"
+        WindowDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        Background="Transparent"
+        Topmost="True"
+        Opacity="0">
+  <!-- R46 v13: 回滚到 v9 的侧面滑入（用户决定 v8-v12 的 scale 弹性动画探索搁置）。
+       TranslateTransform 从右下方屏幕外滑入到 (0,0) 目标位置。
+       CubicEaseOut 300ms 快速减速。Opacity 配合凘入。 -->
+  <Window.Transitions>
+    <anim:Transitions>
+      <anim:DoubleTransition Property="Opacity" Duration="0:0:0.25"/>
+    </anim:Transitions>
+  </Window.Transitions>
+  <Window.RenderTransform>
+    <TranslateTransform X="400" Y="100" />
+  </Window.RenderTransform>
+  <Border x:Name="Frame"
+          Background="Transparent"
+          BorderBrush="Transparent"
+          BorderThickness="0"
+          CornerRadius="8"
+          Padding="0"
+          ClipToBounds="True">
+    <LayoutTransformControl x:Name="Scaler">
+      <Image x:Name="ScreenshotImage"
+             Stretch="None" />
+    </LayoutTransformControl>
+  </Border>
+</Window>

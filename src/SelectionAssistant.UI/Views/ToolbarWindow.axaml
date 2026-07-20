@@ -1,0 +1,133 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
+        x:Class="SelectionAssistant.UI.Views.ToolbarWindow"
+  Title="BYH"
+  SizeToContent="WidthAndHeight"
+        CanResize="False"
+        ShowActivated="False"
+        ShowInTaskbar="False"
+        WindowDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent"
+        Topmost="True">
+  <Border Classes="FloatingSurface"
+          Padding="6,3">
+    <StackPanel Spacing="2">
+
+      <!-- Main row: core actions + status + "more" toggle.
+           The status column is a star column with a MinWidth so the button
+           cluster on the left stays a fixed, evenly-spaced block while the
+           status text fills the remaining space and right-aligns. This keeps
+           the toolbar shape stable as the status message changes length. -->
+      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="4">
+        <Button x:Name="TranslateButton"
+                Classes="Primary"
+                Grid.Column="0"
+                Content="翻译"
+                Padding="8,3"
+                FontSize="11"
+                IsEnabled="False"
+                Click="OnTranslateClick" />
+        <Button x:Name="ExplainButton"
+                Classes="Ghost"
+                Grid.Column="1"
+                Content="解释"
+                Padding="8,3"
+                FontSize="11"
+                IsEnabled="False"
+                Click="OnExplainClick" />
+        <Button x:Name="SummarizeButton"
+                Classes="Ghost"
+                Grid.Column="2"
+                Content="总结"
+                Padding="8,3"
+                FontSize="11"
+                IsEnabled="False"
+                Click="OnSummarizeClick" />
+        <Button x:Name="PromptButton"
+                Classes="Ghost"
+                Grid.Column="3"
+                Content="Prompt"
+                Padding="8,3"
+                FontSize="11"
+                IsEnabled="False"
+                Click="OnPromptClick"
+                ToolTip.Tip="提示词（快捷键 R）" />
+        <Button x:Name="CopyButton"
+                Classes="Ghost"
+                Grid.Column="4"
+                Content="复制"
+                Padding="8,3"
+                FontSize="11"
+                IsEnabled="False"
+                Click="OnCopyClick"
+                ToolTip.Tip="复制（快捷键 C）" />
+        <!-- R39: 状态区双层。WordmarkImage 取词成功时显示透明底 "By Your Hand"
+             艺术字 wordmark（替换 R37 的 TextBlock 文字版——真实手写体比 Italic
+             Georgia 更贴合品牌图样）；StatusText 保留其它状态（取词中/暂未取到/
+             诊断错误）。两个控件叠在同一个 Grid 单元里，由 code-behind 互斥切换
+             IsVisible。图片右对齐，高度固定为 28（约等于工具栏行高）以稳定布局。 -->
+        <StackPanel Grid.Column="5"
+                    MinWidth="80"
+                    MaxHeight="42"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    VerticalAlignment="Center"
+                    HorizontalAlignment="Stretch">
+          <TextBlock x:Name="StatusText"
+                     Classes="Secondary"
+                     Text="等待选词"
+                     FontSize="12"
+                     TextTrimming="CharacterEllipsis"
+                     VerticalAlignment="Center"
+                     HorizontalAlignment="Left"
+                     IsVisible="True" />
+          <Image x:Name="WordmarkImage"
+                 Source="avares://SelectionAssistant.UI/Assets/Theme/byh-wordmark.png"
+                 Height="28"
+                 VerticalAlignment="Center"
+                 HorizontalAlignment="Right"
+                 Stretch="Uniform"
+                 IsVisible="False" />
+          <!-- R42: Ocean Eyes signature — replaces buttons in OE mode. -->
+          <Image x:Name="OceanEyesSignature"
+                 Source="avares://SelectionAssistant.UI/Assets/Theme/ocean-eyes-signature.png"
+                 Height="44"
+                 VerticalAlignment="Center"
+                 HorizontalAlignment="Right"
+                 Stretch="Uniform"
+                 IsVisible="False" />
+        </StackPanel>
+        <!-- "More" toggle: visible only when there are custom functions. -->
+        <Button x:Name="MoreButton"
+                Classes="Ghost"
+                Grid.Column="6"
+                Content="▼"
+                Padding="6,3"
+                FontSize="10"
+                IsVisible="False"
+                Click="OnMoreClick" />
+      </Grid>
+
+      <!-- Collapsed row: custom functions (only built-in translate/summarize/
+           explain are in the main row; any user-added custom-* functions appear
+           here when expanded). -->
+      <ItemsControl x:Name="MoreActionsList"
+                    IsVisible="False">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="views:PromptFunctionRow">
+            <Button Content="{Binding Name}"
+                    Classes="Ghost"
+                    Padding="5,2"
+                    FontSize="11"
+                    Margin="0,1"
+                    Command="{Binding RunCommand}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+    </StackPanel>
+  </Border>
+</Window>

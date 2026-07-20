@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "enabled": true,
+  "providerId": "siliconflow",
+  "model": "Qwen/Qwen3.5-4B",
+  "disableThinking": true,
+  "ocrPrompt": "Free OCR."
+}

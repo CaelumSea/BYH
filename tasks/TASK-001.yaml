@@ -1,0 +1,17 @@
+id: TASK-001
+requirement: REQ-001
+title: 实现可配置全局热键并默认关闭鼠标 chord
+status: done
+created: '2026-07-18T13:50:42'
+updated: '2026-07-18T14:19:07'
+satisfies:
+- AC-1
+- AC-2
+- AC-3
+- AC-4
+description: 实现可配置的 QuickTools 全局热键，默认 Ctrl+Alt+Q；左右键 chord 默认关闭但可在设置页重新启用，并完成持久化、冲突回滚、测试、NativeAOT 发布和交接记录。
+handoff: |
+  已完成。验证证据见 output/TASK-001-verification.md；快捷键配置保存在 %LOCALAPPDATA%\BYH\quick-tools.json。
+execution_log:
+- '2026-07-18: 实现热键配置、持久化、冲突回滚与 chord 开关。'
+- '2026-07-18: Release 测试 162/162 通过，Windows NativeAOT 发布成功并完成桌面验证。'
