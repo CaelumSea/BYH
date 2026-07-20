@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-20T13:00:00'
-secretary_focus: REQ-010
+updated: '2026-07-20T12:50:08'
+secretary_focus: REQ-012
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -50,9 +50,13 @@ requirements:
   title: 数字序号标注（Ocean Eyes numbered badges，R47）
   status: dispatched
   progress: 0/1
+- id: REQ-012
+  title: 设置页金属质感双圆角框
+  status: done
+  progress: 1/1
 phase: executing
 next_step: execute
 plan_confirmed_via: quick-user
 plan_confirmed_at: '2026-07-20T13:00:00'
 mode: quick
-plan_confirmed_evidence: 用户在 R44-R53 backlog 排序中选择本批做 R45（REQ-010）+ R47（REQ-011）；每 R 一个 task 分支串行合并避免 SelectionRuntime.OnToolbarKeyPressed 冲突。
+plan_confirmed_evidence: 用户明确要求研究并复现参考图的金属质感与双圆角框，并要求在独立 Git 任务分支完成。

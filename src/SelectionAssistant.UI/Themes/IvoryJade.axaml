@@ -113,11 +113,25 @@
       <!-- High-fidelity Ivory Jade materials. These stay within the approved
            palette while adding the soft sheen visible in the reference. -->
       <LinearGradientBrush x:Key="ByhCreamSheenBrush"
-                           StartPoint="0%,0%"
-                           EndPoint="100%,100%">
+                            StartPoint="0%,0%"
+                            EndPoint="100%,100%">
         <GradientStop Color="#FFFFFEFA" Offset="0" />
         <GradientStop Color="#FFFFF9EF" Offset="0.48" />
         <GradientStop Color="#FFF7EBDD" Offset="1" />
+      </LinearGradientBrush>
+      <!-- R54 reference-matched structural edge.  The changing luminance is
+           intentionally confined to the one-DIP outer stroke: bronze at the
+           tangent, champagne through the long runs, and a darker reflected
+           note near the lower-right corner.  The adjacent ivory and pale-gold
+           rings are supplied by MetallicFrame's inset shadows. -->
+      <LinearGradientBrush x:Key="ByhMetallicEdgeBrush"
+                           StartPoint="0%,0%"
+                           EndPoint="100%,100%">
+        <GradientStop Color="#FFAD7734" Offset="0" />
+        <GradientStop Color="#FFF2DCAF" Offset="0.18" />
+        <GradientStop Color="#FFD2AD6B" Offset="0.48" />
+        <GradientStop Color="#FFB77E35" Offset="0.76" />
+        <GradientStop Color="#FFEBD5A5" Offset="1" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="ByhPearlInsetBrush"
                            StartPoint="0%,0%"
@@ -223,19 +237,21 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="14" />
   </Style>
-  <Style Selector="Border.DecorativeFrame">
-    <Setter Property="Background" Value="#CFFFFDFC" />
-    <Setter Property="BorderBrush" Value="#72D9C28A" />
+  <!-- R54 structural frame: one real metallic gradient edge plus two inset
+       optical rings.  The first inset shadow repaints a two-DIP porcelain gap;
+       the second remains visible as a one-DIP pale-gold inner curve at 3 DIP.
+       Because both are rendered from the same rounded geometry, straight runs
+       and corners stay concentric without a wide nested-frame gutter. -->
+  <Style Selector="Border.MetallicFrame">
+    <Setter Property="Background" Value="#F9FFFDFC" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhMetallicEdgeBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="24" />
-    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #B8FFFEFA, inset 0 0 0 2 #38F4E7C8, 0 2 3 0 #0FFFFDFC, 0 8 24 0 #174A2B19" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 2 #FFFFFCF7, inset 0 0 0 3 #B8D9B97D, 0 1 1 0 #7AFFF8E8, 0 5 15 0 #176E3519, 0 10 28 0 #0D4A2B19" />
   </Style>
-  <Style Selector="Border.SettingsFrame">
-    <Setter Property="Background" Value="#F7FFFDFC" />
-    <Setter Property="BorderBrush" Value="#66D9C28A" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="22" />
-    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #C7FFFEFA, inset 0 0 0 2 #35F4E7C8, 0 2 3 0 #10FFFDFC, 0 8 24 0 #164A2B19" />
+  <Style Selector="Border.MetallicFrame.Compact">
+    <Setter Property="CornerRadius" Value="18" />
   </Style>
   <Style Selector="Border.PorcelainCard">
     <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
@@ -275,18 +291,6 @@
        R43: Active state hardened — SurfaceSelected fill + Primary border + a
        left accent bar (inset BoxShadow) so the selected row reads at a glance
        even when the panel is small and the list is dense. -->
-  <!-- TASK-011: Nav tower close double-line frame — tight 5 px inner margin,
-       dual 1 px gold strokes with a warm ivory gap, soft pearl shadow.
-       Replaces the wide-gap DecorativeFrame+SettingsFrame nesting. -->
-  <Style Selector="Border.NavTowerFrame">
-    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="16" />
-    <Setter Property="Padding" Value="5" />
-    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #FFFFFDFC, inset 0 0 0 2 #FFE1C4A3, 0 3 10 0 #124A2B19" />
-  </Style>
-
   <!-- TASK-011: FlatRail — used on the left concept/color/workflow column.
        No rounded outer frame; background only. The gold vertical rule is
        applied inline in the view. -->
