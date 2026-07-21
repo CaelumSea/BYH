@@ -149,20 +149,38 @@ public partial class GalleryWindow : Window
         InitPreviewTransform();
         Loaded += OnLoaded;
         Closed += OnClosed;
-        // R49 preview zoom: viewport resize needs to re-fit (so the picture
-        // stays centered/fit when the user resizes the window).
-        PreviewViewport.SizeChanged += (_, _) => RecalcFitAndApply();
+        // R49 preview zoom: LayoutUpdated fires after every layout pass, so
+        // it catches both window-resize AND the first time the overlay
+        // becomes visible (SizeChanged may NOT fire in that case because
+        // the viewport size was already set when the window opened — only
+        // its visibility changed). Each call is cheap (early-returns if
+        // state hasn't changed).
+        PreviewViewport.LayoutUpdated += (_, _) => RecalcFitAndApply();
     }
 
     /// <summary>
     /// Wires up <see cref="_previewTransformGroup"/> as PreviewImage's
-    /// RenderTransform and adds Scale + Translate in the right order
-    /// (scale first, then translate, so translate operates post-scale).
+    /// RenderTransform and adds Translate + Scale in the order that makes
+    /// the combined matrix <c>Translate * Scale</c>.
+    /// <para>
+    /// Avalonia's <c>TransformGroup.Value</c> is the product
+    /// <c>Children[0].Value * Children[1].Value * ...</c>, and matrix-times-
+    /// point applies the rightmost factor first. So with children ordered
+    /// <c>[Translate, Scale]</c>, a point <c>p</c> maps as
+    /// <c>Translate * (Scale * p)</c> — i.e. scale first (in image/pixel
+    /// space, anchored at the image origin), then translate (in viewport
+    /// space). This matches what all our fit/pan/zoom math assumes:
+    /// <c>viewportPoint = imagePoint * scale + translate</c>.
+    /// </para>
     /// </summary>
     private void InitPreviewTransform()
     {
-        _previewTransformGroup.Children.Add(_previewScale);
+        // CRITICAL: Translate MUST be added before Scale so the combined
+        // matrix is Translate * Scale. Adding Scale first would give
+        // Scale * Translate (translate-applied-first-in-image-space),
+        // which breaks every other calculation in this file.
         _previewTransformGroup.Children.Add(_previewTranslate);
+        _previewTransformGroup.Children.Add(_previewScale);
         PreviewImage.RenderTransform = _previewTransformGroup;
         PreviewImage.RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Absolute);
     }
@@ -378,7 +396,10 @@ public partial class GalleryWindow : Window
                 _previewBitmap = full;
                 PreviewImage.Source = full;
                 // Now that we know the bitmap's pixel size, recompute fit.
-                RecalcFitAndApply();
+                // Use Background priority so this runs after the layout pass
+                // triggered by the Source change — otherwise Bounds may
+                // still reflect the previous image's layout.
+                Dispatcher.UIThread.Post(RecalcFitAndApply, DispatcherPriority.Background);
             });
         });
     }
@@ -413,8 +434,13 @@ public partial class GalleryWindow : Window
             return; // viewport not laid out yet
         }
 
-        int iw = bmp.PixelSize.Width;
-        int ih = bmp.PixelSize.Height;
+        // Use Size (DIP) — NOT PixelSize. Avalonia's Image with Stretch=None
+        // measures at source.Size (DIP), and the RenderTransform operates in
+        // DIP space. On a high-DPI display a screenshot may carry DPI != 96,
+        // making PixelSize ≠ Size; using PixelSize would under-fit by the
+        // DPI ratio.
+        double iw = bmp.Size.Width;
+        double ih = bmp.Size.Height;
         if (iw <= 0 || ih <= 0)
         {
             return;
@@ -468,8 +494,9 @@ public partial class GalleryWindow : Window
         }
 
         double s = _fitScale * _userZoom;
-        double scaledW = bmp.PixelSize.Width * s;
-        double scaledH = bmp.PixelSize.Height * s;
+        // DIP size — see RecalcFitAndApply for why not PixelSize.
+        double scaledW = bmp.Size.Width * s;
+        double scaledH = bmp.Size.Height * s;
 
         double minX, maxX, minY, maxY;
         if (scaledW <= vw)
