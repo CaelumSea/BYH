@@ -11,6 +11,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Infrastructure.Logging;
@@ -133,26 +134,36 @@ public partial class GalleryWindow : Window
     }
 
     /// <summary>
-    /// Computes the initial fit-to-window matrix and applies it. Mirrors
-    /// PanAndZoom's <c>CalculateMatrix</c> with <c>StretchMode.Uniform</c>:
-    /// scale = min(vw/iw, vh/ih), centered on the viewport.
+    /// Wires up the transform pipeline. Mirrors PanAndZoom's ZoomBorder:
+    /// RenderTransformOrigin is set to (0,0) Relative so the matrix's
+    /// translate components (M31, M32) map 1:1 to viewport coords. This
+    /// requires Image.Bounds to equal the bitmap's native DIP size —
+    /// achieved by wrapping Image in a Canvas (which gives infinite
+    /// available space during measure, defeating Avalonia 12's default
+    /// behavior of constraining Image to its parent's size even with
+    /// Stretch="None"). The transform itself is set via ApplyMatrix()
+    /// using TransformOperations.Builder (the modern Avalonia 12 API;
+    /// MatrixTransform is unreliable on NativeAOT).
     /// </summary>
     private void InitPreviewTransform()
     {
-        // RenderTransformOrigin is set in AXAML to (0,0). The matrix itself
-        // will encode all the scaling and translation.
-        PreviewImage.RenderTransform = new MatrixTransform(Matrix.Identity);
+        PreviewImage.RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Relative);
+        ApplyMatrix();
     }
 
     /// <summary>
-    /// Pushes <see cref="_matrix"/> to <c>PreviewImage.RenderTransform</c>.
-    /// MatrixTransform.Value is read-only in Avalonia 12, so we allocate a
-    /// new MatrixTransform each time (cheap — RenderTransform is a
-    /// StyledProperty, and updates are infrequent: only on wheel/drag events).
+    /// Pushes <see cref="_matrix"/> to PreviewImage.RenderTransform via
+    /// Avalonia 12's TransformOperations API. PanAndZoom uses this pattern
+    /// because plain MatrixTransform is unreliable on NativeAOT (sometimes
+    /// silently fails to apply). TransformOperations.Builder.AppendMatrix
+    /// produces a transform that always triggers a repaint.
     /// </summary>
     private void ApplyMatrix()
     {
-        PreviewImage.RenderTransform = new MatrixTransform(_matrix);
+        var builder = new TransformOperations.Builder(1);
+        builder.AppendMatrix(_matrix);
+        PreviewImage.RenderTransform = builder.Build();
+        PreviewImage.InvalidateVisual();
     }
 
     /// <summary>
@@ -488,8 +499,18 @@ public partial class GalleryWindow : Window
 
         e.Handled = true;
 
-        // Position in image (pre-transform) space — the matrix's input space.
-        Point cursor = e.GetPosition(PreviewImage);
+        // Use viewport coordinates (stable — viewport doesn't change with
+        // zoom), then inverse-transform through _matrix to get the image-
+        // space anchor point. Getting position relative to PreviewImage
+        // directly is unreliable because LayoutTransform changes Image's
+        // layout box, so the same screen point maps to different Image-
+        // local coords at different zoom levels.
+        Point cursorViewport = e.GetPosition(PreviewViewport);
+        if (!_matrix.TryInvert(out Matrix inverse))
+        {
+            return;
+        }
+        Point cursor = inverse.Transform(cursorViewport);
 
         double oldZoom = _matrix.M11;
         double factor = delta > 0 ? ZoomPerNotch : 1.0 / ZoomPerNotch;
@@ -555,13 +576,14 @@ public partial class GalleryWindow : Window
         double dy = current.Y - _panPrevious.Y;
         _panPrevious = current;
 
-        // Translate in viewport space — drag distance maps 1:1 to pan offset
-        // regardless of zoom. Prepend Translate(dx, dy) so the translation
-        // applies AFTER scaling (i.e. in viewport space).
-        // Translate * _matrix means: first apply _matrix (scale+pan), then
-        // translate by (dx, dy) — which is exactly what we want.
+        // Pan: drag distance maps 1:1 to viewport offset regardless of zoom.
+        // _matrix * translate gives M31 += dx (post-multiply translate in
+        // standard matrix algebra). Avalonia 12's `a * b` operator returns
+        // `b · a` (despite the source-looking name), so to post-multiply by
+        // translate we write `_matrix * translate` — verified empirically
+        // against the pan log (translate * _matrix was scaling dx by zoom).
         Matrix translate = new(1, 0, 0, 1, dx, dy);
-        _matrix = translate * _matrix;
+        _matrix = _matrix * translate;
         ApplyMatrix();
     }
 

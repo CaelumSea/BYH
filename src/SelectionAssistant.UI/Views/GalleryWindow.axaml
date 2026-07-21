@@ -158,15 +158,24 @@
                 Background="Transparent"
                 ClipToBounds="True"
                 PointerWheelChanged="OnPreviewPointerWheelChanged">
-          <Image x:Name="PreviewImage"
-                 Stretch="None"
-                 HorizontalAlignment="Left"
-                 VerticalAlignment="Top"
-                 RenderTransformOrigin="0,0"
-                 Cursor="SizeAll"
-                 PointerPressed="OnPreviewImagePointerPressed"
-                 PointerMoved="OnPreviewImagePointerMoved"
-                 PointerReleased="OnPreviewImagePointerReleased"/>
+          <!-- Canvas gives its child infinite available size during measure,
+               so Image Stretch=None can finally report its true native DIP
+               size (bitmap.Size) as its Bounds — not constrained to the
+               Border's size. Without Canvas, Avalonia 12 forces Image's
+               Bounds to the parent's size even with Stretch=None, which
+               silently re-introduces the "double scaling" problem (bitmap
+               gets fit into the layout box, then our RenderTransform scales
+               that result again). Canvas breaks the constraint chain. -->
+          <Canvas x:Name="PreviewCanvas"
+                  Background="Transparent"
+                  ClipToBounds="False">
+            <Image x:Name="PreviewImage"
+                   Stretch="None"
+                   Cursor="SizeAll"
+                   PointerPressed="OnPreviewImagePointerPressed"
+                   PointerMoved="OnPreviewImagePointerMoved"
+                   PointerReleased="OnPreviewImagePointerReleased"/>
+          </Canvas>
         </Border>
 
         <!-- Bottom bar: action buttons -->

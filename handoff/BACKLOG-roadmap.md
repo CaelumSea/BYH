@@ -6,6 +6,7 @@
 > **更新 2026-07-20 第四十三批（v2 终态）：撤销 R45 二维码（用户判定"不太用得上"，revert 0623e4c）；R52 磁力吸 + R48 标注工具集 落地。R48 走了两轮：v1（merge 9092d37）用户测试发现 3 个严重 bug（无拖拽实时预览 / pen-highlight 路径记录失效 / arrow 撤销计数错）→ revert 79a39a0 → v2（merge 702788c）重做，扩 IMouseHook 加 MouseMove 事件根本解决路径记录 + 加 live preview + 修 Arrow Tag(2)，reviewer 补 20 个回归测试覆盖 3 个 v1 失败模式。R52 也修了 GetWorkAreas 的 DPI 缩放 bug（WorkingArea 已是物理像素，不应再 ×RenderScaling，commit 633f066）。最终 main：316/316 测试通过，NativeAOT 0 警告，exe = 27,782,144 字节。**
 > **更新 2026-07-20 第四十四批（调研）：R54 剪贴板历史调研完成，规格定稿（v1 纯文本 + Smart auto-group + 50 图上限 + JSON 持久化）。基线内存实测 123MB（含完整 Ocean Eyes 功能），加 R54 预估 +3MB（+2.4%），用户感知不到。详见 §R54。**
 > **更新 2026-07-20 第四十六批：R49 截图相册落地（含托盘入口 + 双击预览 + 右键菜单）。Ocean Eyes 工具栏按 G **或** 托盘右键 → "Open Screenshot Gallery" 弹出标准窗口，瀑布流浏览 `%USERPROFILE%\Pictures\Ocean Eyes\` 历史截图（newest-first）。**双击 = 大图预览**（半透明遮罩 lightbox，底部按钮：复制/删除/打开目录），**右键 = 上下文菜单**（复制/查看/删除/资源管理器中显示），Delete 键删除，Enter 键预览，Esc 两级关闭（先预览后窗口）。不退出 Ocean Eyes（同 P 模式）。代码 +660 行（含 9 个 loader 单测），326/326 测试通过，NativeAOT 0 警告，exe +134KB（超 100KB 预算 34KB，已记录例外——Avalonia ItemsControl/WrapPanel/DataTemplate/ContextMenu/Separator 的 AOT 元数据是固有成本）。详见 §R49。**
+> **更新 2026-07-21 第四十七批：R49 预览缩放/平移 8 轮调试终态。双击预览图支持：滚轮缩放（fit/4 ~ fit×8，光标锚定）+ 左键拖动 1:1 跟手平移 + Esc 关闭。最终架构：`Border ClipToBounds > Canvas > Image Stretch=None` + `Image.RenderTransform = TransformOperations.Builder.AppendMatrix(_matrix)` + 单一 `_matrix` 自管 scale+translate（PanAndZoom `ZoomBorder` 模式）。踩了 6 个 Avalonia 12.1 NativeAOT 独立坑（详见 §R49 教训）：ScrollViewer 接管滚轮 / TransformGroup children 顺序 / LayoutTransformControl 不支持 Translate / Image Stretch=None 仍被父约束 / MatrixTransform 在 AOT 静默失效 / `Matrix *` 运算符语义反转。最终 exe 27,925,504 字节（+139KB vs R48 基线）。诊断方法：临时 `_logger.Info` + 读 `%LOCALAPPDATA%\BYH\logs\BYH.log`，停止猜测让数据说话。**
 > **更新 2026-07-21 第四十五批（R51 落地 → 同日撤销）：R51 截图美化（B 键）实施完成（纯软件 BGRA 合成，CleanShot X 风格的浮动截图 + 圆角 + 投射阴影），+24.5KB / 0 新依赖 / 340 测试全过。用户真机测试后判定"美化了啥 / 不搞了"——根因是 CleanShot X 模型对深色内容截图美化效果不明显（背景色被不透明原图完全遮盖，阴影 RGB 与深色内容相近不可辨）。本批同日 revert（commit 跟进）。撤销的代码：ScreenshotBeautifier.cs / BeautifyOceanEyesScreenshot / B 键分支 / BurnAnnotationsOntoBgra 拆分 / OceanEyesCaptureSettings +7 字段 / OceanEyesCaptureStore 读写扩展 / 22 个测试。教训：美化模型要默认走 iShot 风格（padding 也是香槟底色 + 图像居中 + 卡片整体阴影），而非 CleanShot X 浮动模型（padding 透明）。如未来重做 R51，参考 iShot 模型，并默认半径/padding 更大（≥16px / ≥48px）让效果在任何内容上都明显。**
 
 ---
@@ -356,7 +357,29 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
   - **三个事件回调**：`RequestCopy` / `RequestDelete` / `RequestReveal`。`GalleryWindow` 在 UI 层（`SelectionAssistant.UI`），不能引用 `Platform.Windows`（架构分层）。所有 OS 调用（剪贴板 / Explorer /select / 日志）由 `SelectionRuntime` 订阅处理。
   - **DisplayName 本地化**：今天/昨天/周X/yyyy-MM-dd HH:mm 四级相对时间，从文件名 `ocean-eyes-yyyyMMdd-HHmmss` 解析时间戳（解析失败回退 `File.GetLastWriteTime`）。
 - **超 100KB 预算的原因**：GalleryWindow 引入了 Avalonia 的 `ItemsControl` + `WrapPanel` + `DataTemplate` + `ContextMenu` + `MenuItem` + `Separator` + `INotifyPropertyChanged` + `Parallel.ForEach` + `Bitmap.DecodeToWidth` 这些新的 AOT 分析路径和反射元数据。这些是 Avalonia 数据绑定/菜单系统的固有成本，与功能本质绑定，无法压缩。+134KB 中约 +110KB 是 Avalonia 路径的 trim 元数据，~24KB 是新代码本身。
-- **未做（留 v2）**：Shift 多选删除；搜索框（按文件名/OCR 文本过滤）；回收站删除（`SHFileOperation` + `FOF_ALLOWUNDO`）；1000+ 图虚拟化（当前 `ItemsControl` + `WrapPanel` 不虚拟化，>200 张会有滚动卡顿）；预览的左右翻页键（←/→ 在预览中切换上一张/下一张）。
+- **预览缩放/平移的 8 轮调试教训（永久记录，2026-07-21）**：
+  - **需求**：双击缩略图 → 大图预览，滚轮缩放（光标锚定）、左键拖动平移。看似简单的功能，在 Avalonia 12.1 NativeAOT 上踩了 5 个独立坑，迭代 8 轮才修好。
+  - **坑 1：ScrollViewer 接管滚轮**。`ScrollViewer > Image Stretch="Uniform"` 看似天然 fit，但 Extent > Viewport 时 ScrollViewer 的 ScrollContentPresenter class handler 强制把滚轮变成垂直滚动，`e.Handled = true` 在 bubbling 阶段挡不住。**结论：滚轮 = zoom 的需求下，永远不用 ScrollViewer**。
+  - **坑 2：TransformGroup children 顺序**。两个 children `[Scale, Translate]`，组合矩阵是 `Scale · Translate`，按矩阵结合律 = 先 translate 再 scale（在 image space），但所有数学假设的是先 scale 再 translate（在 viewport space）。**结论：要么 swap children 顺序，要么用单一 `MatrixTransform`/`TransformOperations` 完全自控**。
+  - **坑 3：LayoutTransformControl 不支持 Translate**。它的 `ArrangeOverride` 公式 `-transformedRect.X + (finalSize - transformedRect)/2` 把 matrix 的 M31/M32 显式抵消（**设计行为，不是 bug**）。Scale 能用，Translate 永远不生效——拖拽时 matrix 数字在变但视觉不动 + 闪烁。**结论：LayoutTransformControl 只用于 Scale/Rotation/Skew，pan 必须用 RenderTransform**。
+  - **坑 4：Avalonia 12 的 Image 即使 `Stretch="None"`，layout box 也被父容器约束**。诊断日志显示 `Image.Bounds=900×546`（viewport 大小）而不是 bitmap 的 `2312×1563`——bitmap 内部被静默 fit 进 layout box，导致 RenderTransform 的 Scale 变成**第二次缩放**。**结论：Image 必须包在 `Canvas`（无限 available space）里，Bounds 才会等于 bitmap 真实 DIP 大小**。
+  - **坑 5：Avalonia 12 NativeAOT 上 `MatrixTransform` 静默失效**。`Image.RenderTransform = new MatrixTransform(matrix)` 在 Debug 跑得动，NativeAOT publish 后不生效（图片按原始像素 1:1 渲染）。**结论：必须用 `TransformOperations.Builder(1).AppendMatrix(matrix).Build()`，这是 Avalonia 12 的现代 API，MatrixTransform 是老的不可靠**。
+  - **坑 6：Avalonia 12 的 `Matrix.operator *(a, b)` 语义反转**。文档说是 "multiplies two matrices"，但 pan 日志显示 `Translate(dx, dy) * _matrix` 实际让 `M31 += dx * m11`（dx 被 zoom 缩放），而非预期的 `M31 += dx`。**结论：要 post-multiply translate，写 `_matrix * translate`（反向）**。这条最阴险——矩阵代数直觉会害你。
+  - **最终架构**（PanAndZoom `ZoomBorder` 模式）：
+    ```
+    Border ClipToBounds=True (viewport)
+      └─ Canvas (infinite available space, 让 Image 真实 layout)
+           └─ Image Stretch="None" HorizontalAlignment=Left VerticalAlignment=Top
+                 RenderTransformOrigin = RelativePoint(0, 0, RelativeUnit.Relative)
+                 RenderTransform = TransformOperations.Builder.AppendMatrix(_matrix).Build()
+    ```
+    - `_matrix`：单一 `Matrix` struct（M11/M12/M21/M22/M31/M32），同时管 scale + translate，无 TransformGroup 坑。
+    - `FitToWindow`：算 `zoom = min(vw/iw, vh/ih)`，居中 pan = `vw/2 - (iw/2)*zoom`。
+    - Wheel zoom-at-cursor：`cursor = _matrix.Inverse.Transform(e.GetPosition(viewport))`，`_matrix = ScaleAt(ratio, ratio, cursor.X, cursor.Y) * _matrix`。
+    - Pan：`_matrix = _matrix * Translate(dx, dy)`（注意是 `_matrix * translate`，不是 `translate * _matrix`）。
+    - `ApplyMatrix`：`TransformOperations.Builder.AppendMatrix(_matrix).Build()` + `InvalidateVisual()`。
+  - **诊断方法**：在 `FitToWindow`/`wheel`/`pan`/`ApplyMatrix` 里临时加 `_logger.Info` 打印 matrix 值 + Image.Bounds，让用户跑一次后读 `%LOCALAPPDATA%\BYH\logs\BYH.log`。**用户多轮报"还是不对"时，停止猜测，让数据说话**。
+- **未做（留 v2）**：Shift 多选删除；搜索框（按文件名/OCR 文本过滤）；回收站删除（`SHFileOperation` + `FOF_ALLOWUNDO`）；1000+ 图虚拟化（当前 `ItemsControl` + `WrapPanel` 不虚拟化，>200 张会有滚动卡顿）；预览的左右翻页键（←/→ 在预览中切换上一张/下一张）；预览缩放的双击放大/重置。
 
 #### R50 — 带壳截图（device mockup）
 
