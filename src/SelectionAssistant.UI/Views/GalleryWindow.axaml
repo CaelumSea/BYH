@@ -1,0 +1,81 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SelectionAssistant.UI.Views"
+        x:Class="SelectionAssistant.UI.Views.GalleryWindow"
+        x:DataType="vm:GalleryWindow"
+        Title="BYH · 截图相册"
+        Width="900" Height="640"
+        MinWidth="600" MinHeight="400"
+        CanResize="True"
+        ShowActivated="True"
+        ShowInTaskbar="True"
+        WindowDecorations="Full"
+        Background="#FFFCF7EA"
+        KeyDown="OnKeyDown">
+  <!-- R49: standard application window (not frameless) showing the user's
+       Ocean Eyes screenshot history. Ivory Jade background (#FFFCF7EA) to
+       match the rest of the app. Esc closes; Delete removes the selected
+       thumbnail's underlying file; double-click requests a copy-to-clipboard
+       via the RequestCopy event (the runtime handles the actual Win32 call). -->
+  <Grid RowDefinitions="Auto,*">
+    <!-- Top bar: title + count + hint -->
+    <Border Grid.Row="0" Padding="16,12" Background="#22FFFFFF">
+      <StackPanel Orientation="Horizontal" Spacing="12">
+        <TextBlock Text="📷 截图相册" FontWeight="SemiBold" FontSize="16"
+                   VerticalAlignment="Center"/>
+        <TextBlock x:Name="CountText" Classes="Secondary"
+                   FontSize="12" VerticalAlignment="Center"/>
+        <TextBlock Classes="Secondary"
+                   FontSize="12"
+                   Text="双击复制 · Delete 删除 · Esc 关闭"
+                   VerticalAlignment="Center"/>
+      </StackPanel>
+    </Border>
+
+    <!-- Thumbnail grid (wrap panel, fixed-width cells) -->
+    <ScrollViewer Grid.Row="1"
+                  HorizontalScrollBarVisibility="Disabled"
+                  VerticalScrollBarVisibility="Auto">
+      <ItemsControl x:Name="GalleryItems">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <WrapPanel ItemWidth="180" Orientation="Horizontal"/>
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:GalleryItemViewModel">
+            <Border Width="172" Height="142" Margin="4"
+                    CornerRadius="6"
+                    Background="#FFFFFFFF"
+                    BoxShadow="0 2 4 0 #20000000"
+                    PointerPressed="OnItemPointerPressed"
+                    PointerEntered="OnItemPointerEntered">
+              <StackPanel>
+                <Image Source="{Binding Thumbnail}"
+                       Width="172" Height="108"
+                       Stretch="UniformToFill"/>
+                <TextBlock Text="{Binding DisplayName}"
+                           Margin="8,4"
+                           FontSize="11"
+                           TextTrimming="CharacterEllipsis"/>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+
+    <!-- Empty state -->
+    <Border Grid.Row="1" x:Name="EmptyState" IsVisible="False"
+            HorizontalAlignment="Center" VerticalAlignment="Center"
+            Background="Transparent">
+      <StackPanel HorizontalAlignment="Center" Spacing="8">
+        <TextBlock Text="📭" FontSize="48" HorizontalAlignment="Center"/>
+        <TextBlock Text="还没有截图" FontSize="14" HorizontalAlignment="Center"
+                   Classes="Secondary"/>
+        <TextBlock x:Name="EmptyStatePath" FontSize="11"
+                   Classes="Secondary" HorizontalAlignment="Center"/>
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

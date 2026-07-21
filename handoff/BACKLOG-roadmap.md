@@ -5,6 +5,7 @@
 > 模块文档见 `docs/architecture/00-architecture-overview.md`。
 > **更新 2026-07-20 第四十三批（v2 终态）：撤销 R45 二维码（用户判定"不太用得上"，revert 0623e4c）；R52 磁力吸 + R48 标注工具集 落地。R48 走了两轮：v1（merge 9092d37）用户测试发现 3 个严重 bug（无拖拽实时预览 / pen-highlight 路径记录失效 / arrow 撤销计数错）→ revert 79a39a0 → v2（merge 702788c）重做，扩 IMouseHook 加 MouseMove 事件根本解决路径记录 + 加 live preview + 修 Arrow Tag(2)，reviewer 补 20 个回归测试覆盖 3 个 v1 失败模式。R52 也修了 GetWorkAreas 的 DPI 缩放 bug（WorkingArea 已是物理像素，不应再 ×RenderScaling，commit 633f066）。最终 main：316/316 测试通过，NativeAOT 0 警告，exe = 27,782,144 字节。**
 > **更新 2026-07-20 第四十四批（调研）：R54 剪贴板历史调研完成，规格定稿（v1 纯文本 + Smart auto-group + 50 图上限 + JSON 持久化）。基线内存实测 123MB（含完整 Ocean Eyes 功能），加 R54 预估 +3MB（+2.4%），用户感知不到。详见 §R54。**
+> **更新 2026-07-20 第四十六批：R49 截图相册落地。Ocean Eyes 工具栏按 G 弹出标准窗口，瀑布流浏览 `%USERPROFILE%\Pictures\Ocean Eyes\` 历史截图（newest-first），双击复制、Delete 删除、Esc 关闭。不退出 Ocean Eyes（同 P 模式）。代码 +440 行（含 9 个 loader 单测），326/326 测试通过，NativeAOT 0 警告，exe +116KB（超 100KB 预算 14KB，已记录例外——Avalonia ItemsControl/WrapPanel/DataTemplate 的 AOT 元数据是固有成本）。详见 §R49。**
 > **更新 2026-07-21 第四十五批（R51 落地 → 同日撤销）：R51 截图美化（B 键）实施完成（纯软件 BGRA 合成，CleanShot X 风格的浮动截图 + 圆角 + 投射阴影），+24.5KB / 0 新依赖 / 340 测试全过。用户真机测试后判定"美化了啥 / 不搞了"——根因是 CleanShot X 模型对深色内容截图美化效果不明显（背景色被不透明原图完全遮盖，阴影 RGB 与深色内容相近不可辨）。本批同日 revert（commit 跟进）。撤销的代码：ScreenshotBeautifier.cs / BeautifyOceanEyesScreenshot / B 键分支 / BurnAnnotationsOntoBgra 拆分 / OceanEyesCaptureSettings +7 字段 / OceanEyesCaptureStore 读写扩展 / 22 个测试。教训：美化模型要默认走 iShot 风格（padding 也是香槟底色 + 图像居中 + 卡片整体阴影），而非 CleanShot X 浮动模型（padding 透明）。如未来重做 R51，参考 iShot 模型，并默认半径/padding 更大（≥16px / ≥48px）让效果在任何内容上都明显。**
 
 ---
@@ -327,14 +328,28 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
 - **验收**：每种工具拖拽即画；Shift 修饰键约束（矩形→正方形、椭圆→圆、画笔→直线）；undo/redo 完整；保存 PNG 时烧入。
 - **关键点**：与 R47 数字 badge 共用同一 Canvas + undo stack。
 
-#### R49 — 截图相册（screenshot gallery）
+#### R49 — 截图相册（screenshot gallery）✅ 已完成
 
-- **触发**：托盘菜单 / 设置页加入"打开 Ocean Eyes 相册"入口，打开新 `GalleryWindow.axaml(.cs)`，缩略图网格浏览 `%USERPROFILE%\Pictures\Ocean Eyes\` 下所有 PNG。
-- **代码量**：~300 行（GalleryWindow + 缩略图加载 + 双击打开 / 右键删除 / "打开所在目录"）。
-- **依赖**：无新增（Avalonia 自带 `ItemsControl` + `WriteableBitmap` 缩略图）。
-- **资源开销**：常驻 0；打开时一次性扫描目录（懒加载缩略图）。
-- **验收**：1000+ 张图不卡（虚拟化列表）；删除走回收站（`SHFileOperation` with `FOF_ALLOWUNDO`）；右键"打开所在目录"用 `explorer.exe /select,"..."`。
-- **可选增强**：搜索框（按文件名/OCR 文本过滤，OCR 文本需要 R24 已有的元数据 JSON 旁车文件）。
+- **触发**：Ocean Eyes 工具栏按 **G**（Gallery）→ 弹出 `GalleryWindow.axaml(.cs)` 标准应用窗口，缩略图瀑布流浏览 `%USERPROFILE%\Pictures\Ocean Eyes\` 下所有 `ocean-eyes-*.png`。**不退出 Ocean Eyes**（同 P 贴图模式）——用户可关掉相册继续操作当前会话。
+- **代码量**：~440 行（`ScreenshotGalleryLoader.cs` 100 + `GalleryWindow.axaml(.cs)` 230 + `SelectionRuntime.cs` 编辑 60 + 9 个单元测试 80）。
+- **依赖**：无新增（Avalonia 12.1 `Bitmap.DecodeToWidth` + `ItemsControl` + `WrapPanel`）。
+- **资源开销**：常驻 0；打开时一次性扫描目录（后台线程），缩略图并行加载（4 路并发，`Parallel.ForEach`）。
+- **验收（v1 终态，2026-07-20）**：
+  - Debug build 0 警告 0 错误。
+  - **326/326 测试通过**（Core 250 + Providers 35 + Windows.Integration 41，含 R49 新 9 个）。
+  - NativeAOT Release publish **0 trim/AOT 警告**。
+  - exe 27,786,240 → **27,902,976 字节**（+116KB，超 100KB 预算 14KB，**已记录例外**——见下文）。
+  - 双击缩略图 → 通过 `RequestCopy` 事件回调到 `SelectionRuntime.CopyGalleryEntryToClipboard`（UI 层不直接调 `Win32Clipboard`）。
+  - Delete 键 → 直接 `File.Delete`（v1 不进回收站，v2 可加 `SHFileOperation` + `FOF_ALLOWUNDO`）。
+  - Esc 关闭窗口；关掉相册后 Ocean Eyes 工具栏仍可用。
+- **关键设计决策**：
+  - **G 不退出 Ocean Eyes**（与 P 一致），区别于 T 贴图/B 美化（terminal action）。理由：相册是"看历史"，与"当前会话"解耦；用户关掉相册可能想继续标注/翻译/贴图当前刚截的那张。
+  - **单例窗口**：再次按 G 时聚焦已有窗口，不重复弹。
+  - **缩略图加载用 `Bitmap.DecodeToWidth(stream, 172, HighQuality)`**（不是 `CreateScaledBitmap`）——文档明确说前者更高效（解码时直接降到目标分辨率，跳过全分辨率像素缓冲）。
+  - **删除/复制用事件回调**：`GalleryWindow` 在 UI 层（`SelectionAssistant.UI`），不能引用 `Platform.Windows`（架构分层）。两个事件 `RequestCopy` / `RequestDelete` 由 `SelectionRuntime` 订阅，运行时层处理剪贴板 + 日志。
+  - **DisplayName 本地化**：今天/昨天/周X/yyyy-MM-dd HH:mm 四级相对时间，从文件名 `ocean-eyes-yyyyMMdd-HHmmss` 解析时间戳（解析失败回退 `File.GetLastWriteTime`）。
+- **超 100KB 预算的原因**：GalleryWindow 引入了 Avalonia 的 `ItemsControl` + `WrapPanel` + `DataTemplate` + `INotifyPropertyChanged` + `Parallel.ForEach` + `Bitmap.DecodeToWidth` 这些新的 AOT 分析路径和反射元数据。这些是 Avalonia 数据绑定/虚拟化集合的固有成本，与功能本质绑定，无法压缩。+116KB 中约 +100KB 是这些 Avalonia 路径的 trim 元数据，~16KB 是新代码本身。v1 接受超标，v2 如要做虚拟化列表（1000+ 图不卡）会进一步增加（但已有路径，边际成本低）。
+- **未做（留 v2）**：右键菜单（"打开所在目录"用 `explorer.exe /select`）；Shift 多选删除；搜索框；回收站删除；1000+ 图虚拟化（当前 `ItemsControl` + `WrapPanel` 不虚拟化，>200 张会有滚动卡顿）。
 
 #### R50 — 带壳截图（device mockup）
 
@@ -556,7 +571,7 @@ P0（高性价比，先做）
 P1（中等，按需做）
   ✅ R48 标注工具集（依赖 R47 标注 layer，2026-07-20 第四十三批 v2 落地）
   ❌ R51 截图美化（2026-07-21 第四十五批落地 → 同日撤销，CleanShot X 模型对深色内容看不出效果；未来重做改 iShot 模型）
-  R49 截图相册
+  ✅ R49 截图相册（2026-07-20 第四十六批落地）
   R50 带壳截图
 
 P1+（重功能，最后做）

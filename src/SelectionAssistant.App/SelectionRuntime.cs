@@ -131,6 +131,11 @@ internal sealed class SelectionRuntime : IDisposable
     private readonly List<PinnedScreenshotWindow> _pinnedWindows = new();
     private readonly List<NoActivateWindowHost> _pinnedHosts = new();
 
+    // R49: screenshot gallery window. Singleton (G while one is already open
+    // just activates it). Set back to null in its Closed handler so a fresh
+    // G press creates a new window. Torn down on runtime Dispose.
+    private GalleryWindow? _galleryWindow;
+
     // R47: numbered badge annotation mode. _oceanEyesAnnotating is 1 while
     // the user is placing badges (between A-on and A-off/Esc). Volatile —
     // read on the keyboard + mouse hook threads, written from the UI thread.
@@ -424,7 +429,7 @@ internal sealed class SelectionRuntime : IDisposable
             MouseDownX: regionRightX, MouseDownY: regionTopY,
             MouseDownTimestampMs: 0, MouseUpTimestampMs: 0,
             SourceRootHwnd: 0, SourceProcessId: 0));
-        _toolbarWindow.SetDiagnosticStatus("未识别 · 按 F/J/Z/R/C 开始");
+        _toolbarWindow.SetDiagnosticStatus("未识别 · 按 F/J/Z/R/C/G 开始");
         // R42: Ocean Eyes mode — hide buttons, show signature.
         _toolbarWindow.SetOceanEyesSignatureMode();
 
@@ -1280,6 +1285,88 @@ internal sealed class SelectionRuntime : IDisposable
             catch (Exception exception)
             {
                 _logger.Error("OceanEyes", "Pin screenshot spawn failed.", exception);
+            }
+        });
+    }
+
+    /// <summary>
+    /// R49: opens the screenshot gallery. Browses the user's full
+    /// <c>ocean-eyes-*.png</c> history in <c>_oceanEyesCapture.SavePath</c>,
+    /// independent of the current Ocean Eyes session. Does NOT dismiss
+    /// Ocean Eyes — same pattern as Pin (T), the user can close the gallery
+    /// and keep working in the active session. Singleton: a second G press
+    /// while the gallery is already visible just activates the existing
+    /// window.
+    /// </summary>
+    private void ShowGallery()
+    {
+        // Snapshot the save path on the hook thread so the UI lambda is
+        // immune to settings changes racing in between.
+        string savePath = string.IsNullOrEmpty(_oceanEyesCapture.SavePath)
+            ? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                "Ocean Eyes")
+            : _oceanEyesCapture.Normalize().SavePath;
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
+            {
+                if (_galleryWindow is { } existing && existing.IsVisible)
+                {
+                    existing.Activate();
+                    return;
+                }
+                _galleryWindow?.Close();
+                var window = new GalleryWindow(savePath, _logger);
+                // Gallery→runtime callbacks: the UI layer can't reach
+                // Win32Clipboard (no Platform.Windows ref), so it hands the
+                // path back here for the actual clipboard set + logging.
+                window.RequestCopy += path => CopyGalleryEntryToClipboard(path);
+                window.RequestDelete += path =>
+                    _logger.Info("OceanEyes", $"Gallery: user deleted {path}");
+                window.Closed += (_, _) =>
+                {
+                    if (ReferenceEquals(_galleryWindow, window))
+                    {
+                        _galleryWindow = null;
+                    }
+                };
+                window.Show();
+                _galleryWindow = window;
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("OceanEyes", "Gallery spawn failed.", exception);
+            }
+        });
+    }
+
+    /// <summary>
+    /// R49: gallery "double-click to copy" handler. Reads the PNG from disk
+    /// and forwards it to the same Win32Clipboard.SetPng path used by
+    /// Enter-to-save and Copy-from-pinned. Background thread — clipboard
+    /// I/O must not block the UI thread.
+    /// </summary>
+    private void CopyGalleryEntryToClipboard(string filePath)
+    {
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                if (!File.Exists(filePath))
+                {
+                    _logger.Info("OceanEyes", $"Gallery copy: file vanished: {filePath}");
+                    return;
+                }
+                byte[] png = File.ReadAllBytes(filePath);
+                using var cb = new Win32Clipboard();
+                cb.SetPng(png);
+                _logger.Info("OceanEyes", $"Gallery: copied {filePath} ({png.Length} bytes) to clipboard.");
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("OceanEyes", "Gallery copy failed.", exception);
             }
         });
     }
@@ -2608,6 +2695,18 @@ internal sealed class SelectionRuntime : IDisposable
             return true;
         }
 
+        // R49 gallery: G opens the screenshot gallery (history browser for
+        // ocean-eyes-*.png in the save folder). Does NOT dismiss Ocean Eyes
+        // — the user can close the gallery and keep working in the current
+        // session. MUST be before the A-Z filter, same reason as A above.
+        const int vkGallery = 0x47; // 'G'
+        if (vkCode == vkGallery && Volatile.Read(ref _oceanEyesActive) != 0)
+        {
+            _logger.Info("OceanEyes", "Gallery: G → open screenshot gallery (no dismiss).");
+            ShowGallery();
+            return true;
+        }
+
         // Only single-character A-Z (0x41-0x5A) are eligible for shortcuts.
         if (vkCode < 0x41 || vkCode > 0x5A)
         {
@@ -3201,6 +3300,16 @@ internal sealed class SelectionRuntime : IDisposable
         catch (Exception exception)
         {
             _logger.Error("Runtime", "Pinned window cleanup failed.", exception);
+        }
+        // R49: close the gallery window if it happens to be open at shutdown.
+        try
+        {
+            _galleryWindow?.Close();
+            _galleryWindow = null;
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("Runtime", "Gallery window cleanup failed.", exception);
         }
         _textCapture.Dispose();
         _logger.Info("Runtime", "Phase 1 selection runtime stopped.");
