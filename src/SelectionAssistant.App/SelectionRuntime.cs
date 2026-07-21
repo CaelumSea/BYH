@@ -882,59 +882,13 @@ internal sealed class SelectionRuntime : IDisposable
             return png;
         }
 
-        byte[]? bgra = BurnAnnotationsOntoBgra(
-            png, rawBgra, regionW, regionH, items, dpiScale, originXDip, originYDip, out int width, out int height);
-        if (bgra is null)
-        {
-            return png; // Decode failed — return original.
-        }
-        return ScreenRegionCapture.EncodeBgraToPng(bgra, width, height);
-    }
-
-    /// <summary>
-    /// R48/R51: the burn-in core shared by <see cref="BurnAnnotationsIntoPng"/>
-    /// (PNG output) and <see cref="BeautifyOceanEyesScreenshot"/> (BGRA→beautify).
-    /// Resolves the working buffer (prefer the cached raw BGRA from capture;
-    /// fall back to PNG decode), clones it, draws every annotation in
-    /// <paramref name="items"/> onto the clone, and returns the burned-in
-    /// BGRA buffer with its dimensions via out params. Returns null if the
-    /// buffer could not be resolved.
-    /// </summary>
-    private static byte[]? BurnAnnotationsOntoBgra(
-        byte[]? png,
-        byte[]? rawBgra,
-        int regionW,
-        int regionH,
-        IReadOnlyList<IAnnotationItem> items,
-        double dpiScale,
-        double originXDip,
-        double originYDip,
-        out int width,
-        out int height)
-    {
-        width = height = 0;
-        if (items.Count == 0)
-        {
-            // No annotations to burn. Still return the source BGRA so callers
-            // (notably Beautify) get the unmodified buffer to work with.
-            if (rawBgra is { Length: > 0 } && regionW > 0 && regionH > 0
-                && rawBgra.Length == regionW * regionH * 4)
-            {
-                byte[] passthrough = (byte[])rawBgra.Clone();
-                width = regionW;
-                height = regionH;
-                return passthrough;
-            }
-            byte[]? decoded = png is null ? null : DecodePngToBgra(png, out width, out height);
-            return decoded;
-        }
-
         // Prefer the raw BGRA buffer captured alongside the PNG (R40+ capture
         // path always produces it). This bypasses Avalonia 12's
         // Bitmap.CopyPixels, which throws ArgumentOutOfRangeException('stride')
         // for many PNGs — without this, burn-in silently returned the original
         // PNG and saved screenshots had no annotations.
         byte[] bgra;
+        int width, height;
         if (rawBgra is { Length: > 0 } && regionW > 0 && regionH > 0
             && rawBgra.Length == regionW * regionH * 4)
         {
@@ -948,10 +902,10 @@ internal sealed class SelectionRuntime : IDisposable
         else
         {
             // Fallback: decode PNG → BGRA (may fail on Avalonia 12).
-            byte[]? decoded = png is null ? null : DecodePngToBgra(png, out width, out height);
+            byte[]? decoded = DecodePngToBgra(png, out width, out height);
             if (decoded is null || width <= 0 || height <= 0)
             {
-                return null; // decode failed
+                return png; // decode failed — return original
             }
             bgra = decoded;
         }
@@ -1045,7 +999,8 @@ internal sealed class SelectionRuntime : IDisposable
             }
         }
 
-        return bgra;
+        // Re-encode to PNG.
+        return ScreenRegionCapture.EncodeBgraToPng(bgra, width, height);
     }
 
     /// <summary>
@@ -1325,112 +1280,6 @@ internal sealed class SelectionRuntime : IDisposable
             catch (Exception exception)
             {
                 _logger.Error("OceanEyes", "Pin screenshot spawn failed.", exception);
-            }
-        });
-    }
-
-    /// <summary>
-    /// R51: composites the current Ocean Eyes capture (with any annotations
-    /// burned in) onto a larger canvas with padding, rounded corners, an
-    /// opaque background fill, and a soft drop shadow — then copies the
-    /// result to the clipboard (and writes to <c>SavePath</c> when
-    /// <c>AutoSaveEnabled</c>). B is a terminal action: <see cref="DismissOceanEyes"/>
-    /// runs right after, mirroring T/Pin.
-    /// <para>
-    /// Pipeline: take the cached BGRA buffer → burn annotations onto a clone
-    /// (via <see cref="BurnAnnotationsOntoBgra"/>, shared with the Enter path
-    /// — no double PNG decode) → <see cref="ScreenshotBeautifier.Beautify"/>
-    /// (pure software, no SkiaSharp) → re-encode PNG → clipboard + file.
-    /// </para>
-    /// </summary>
-    private void BeautifyOceanEyesScreenshot()
-    {
-        // Snapshot on the hook thread so the UI-thread Post sees stable
-        // references even if the Ocean Eyes session is dismissed in flight.
-        byte[]? png = _oceanEyesPng;
-        byte[]? bgra = _oceanEyesBgra;
-        var rect = _oceanEyesRect;
-        var settings = _oceanEyesCapture;
-        IReadOnlyList<IAnnotationItem> annotations =
-            _annotationSession?.Items ?? Array.Empty<IAnnotationItem>();
-
-        if (png is null || png.Length == 0)
-        {
-            _logger.Info("OceanEyes", "Beautify: no cached PNG, ignoring.");
-            return;
-        }
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            try
-            {
-                double dpiScale = _annotationOverlay?.RenderScaling ?? 1.0;
-                double originXDip = rect.X / dpiScale;
-                double originYDip = rect.Y / dpiScale;
-
-                // Step 1: burn annotations onto a clone of the cached BGRA
-                // (shared with the Enter save path — no PNG decode round-trip).
-                byte[]? burned = BurnAnnotationsOntoBgra(
-                    png, bgra, rect.W, rect.H,
-                    annotations, dpiScale, originXDip, originYDip,
-                    out int srcW, out int srcH);
-                if (burned is null || srcW <= 0 || srcH <= 0)
-                {
-                    _logger.Error("OceanEyes", "Beautify: failed to resolve BGRA buffer for burn-in.");
-                    return;
-                }
-
-                // Step 2: beautify (pure-software compositor).
-                var options = new BeautifyOptions
-                {
-                    Padding = settings.BeautifyPadding,
-                    CornerRadius = settings.BeautifyCornerRadius,
-                    BackgroundHex = settings.BeautifyBackgroundHex,
-                    ShadowOffsetX = settings.BeautifyShadowOffsetX,
-                    ShadowOffsetY = settings.BeautifyShadowOffsetY,
-                    ShadowBlurRadius = settings.BeautifyShadowBlurRadius,
-                    ShadowOpacity = settings.BeautifyShadowOpacity,
-                };
-                var (beautifiedBgra, outW, outH) = ScreenshotBeautifier.Beautify(burned, srcW, srcH, options);
-
-                // Step 3: re-encode to PNG.
-                byte[] finalPng = ScreenRegionCapture.EncodeBgraToPng(beautifiedBgra, outW, outH);
-
-                // Step 4: optional file save (mirrors Enter path).
-                if (settings.AutoSaveEnabled)
-                {
-                    string? directory = settings.SavePath;
-                    if (!string.IsNullOrEmpty(directory))
-                    {
-                        Directory.CreateDirectory(directory);
-                        string stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-                        string file = Path.Combine(directory, $"ocean-eyes-{stamp}.png");
-                        File.WriteAllBytes(file, finalPng);
-                        _logger.Info("OceanEyes", $"Saved beautified screenshot: {file}");
-                    }
-                }
-
-                // Step 5: copy beautified PNG to clipboard (always — B's primary
-                // purpose is "ready-to-paste" output). Background thread so
-                // clipboard I/O never blocks the UI thread.
-                byte[] clipPng = finalPng;
-                _ = Task.Run(() =>
-                {
-                    try
-                    {
-                        using var clipboard = new Win32Clipboard();
-                        clipboard.SetPng(clipPng);
-                        _logger.Info("OceanEyes", $"Copied {clipPng.Length} beautified PNG bytes to clipboard.");
-                    }
-                    catch (Exception exception)
-                    {
-                        _logger.Error("OceanEyes", "Beautify clipboard copy failed.", exception);
-                    }
-                });
-            }
-            catch (Exception exception)
-            {
-                _logger.Error("OceanEyes", "BeautifyOceanEyesScreenshot failed.", exception);
             }
         });
     }
@@ -2731,33 +2580,10 @@ internal sealed class SelectionRuntime : IDisposable
             return true;
         }
 
-        // R51 beautify: B composites padding + rounded corners + background
-        // + drop shadow onto the captured image, copies the result to the
-        // clipboard, and exits Ocean Eyes (terminal action, like T). Skips
-        // the OCR gate — beautify is a pure image op, OCR is irrelevant.
-        // MUST be before the A-Z filter (0x41-0x5A) — B=0x42 is in that
-        // range and the OCR-lazy gate would swallow it otherwise.
-        const int vkBeautify = 0x42; // 'B'
-        if (vkCode == vkBeautify && Volatile.Read(ref _oceanEyesActive) != 0)
-        {
-            try
-            {
-                _logger.Info("OceanEyes", "Beautify: B → beautify + copy + dismiss.");
-                BeautifyOceanEyesScreenshot();
-                DismissOceanEyes();
-            }
-            catch (Exception exception)
-            {
-                _logger.Error("OceanEyes", "Beautify failed.", exception);
-                DismissOceanEyes();
-            }
-            return true;
-        }
-
         // R47 annotation mode: A toggles numbered badge placement. Only fires
-        // during an active Ocean Eyes session (the selection flow doesn't need it).
-        // MUST be before the A-Z filter (0x41-0x5A) because A=0x41 is the first
-        // letter — the OCR-lazy gate below would swallow it otherwise.
+        // during an active Ocean Eyes session. MUST be before the A-Z filter
+        // (0x41-0x5A) because A=0x41 is the first letter — the OCR-lazy gate
+        // below would swallow it otherwise.
         const int vkAnnotate = 0x41; // 'A'
         if (vkCode == vkAnnotate && Volatile.Read(ref _oceanEyesActive) != 0)
         {

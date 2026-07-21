@@ -47,15 +47,6 @@ public static class OceanEyesCaptureStore
                 AutoSaveEnabled = ReadBoolean(root, "autoSaveEnabled", defaults.AutoSaveEnabled),
                 CopyToClipboardEnabled = ReadBoolean(root, "copyToClipboardEnabled", defaults.CopyToClipboardEnabled),
                 UiaAssistEnabled = ReadBoolean(root, "uiaAssistEnabled", defaults.UiaAssistEnabled),
-
-                // R51 beautify (optional — older v1 files fall back to defaults).
-                BeautifyPadding = ReadInt32(root, "beautifyPadding", defaults.BeautifyPadding),
-                BeautifyCornerRadius = ReadInt32(root, "beautifyCornerRadius", defaults.BeautifyCornerRadius),
-                BeautifyBackgroundHex = ReadString(root, "beautifyBackgroundHex", defaults.BeautifyBackgroundHex),
-                BeautifyShadowOffsetX = ReadInt32(root, "beautifyShadowOffsetX", defaults.BeautifyShadowOffsetX),
-                BeautifyShadowOffsetY = ReadInt32(root, "beautifyShadowOffsetY", defaults.BeautifyShadowOffsetY),
-                BeautifyShadowBlurRadius = ReadInt32(root, "beautifyShadowBlurRadius", defaults.BeautifyShadowBlurRadius),
-                BeautifyShadowOpacity = ReadDouble(root, "beautifyShadowOpacity", defaults.BeautifyShadowOpacity),
             }.Normalize();
             settings.Validate();
             return settings;
@@ -94,14 +85,6 @@ public static class OceanEyesCaptureStore
                 writer.WriteBoolean("autoSaveEnabled", settings.AutoSaveEnabled);
                 writer.WriteBoolean("copyToClipboardEnabled", settings.CopyToClipboardEnabled);
                 writer.WriteBoolean("uiaAssistEnabled", settings.UiaAssistEnabled);
-                // R51 beautify (always written; readers tolerate their absence).
-                writer.WriteNumber("beautifyPadding", settings.BeautifyPadding);
-                writer.WriteNumber("beautifyCornerRadius", settings.BeautifyCornerRadius);
-                writer.WriteString("beautifyBackgroundHex", settings.BeautifyBackgroundHex);
-                writer.WriteNumber("beautifyShadowOffsetX", settings.BeautifyShadowOffsetX);
-                writer.WriteNumber("beautifyShadowOffsetY", settings.BeautifyShadowOffsetY);
-                writer.WriteNumber("beautifyShadowBlurRadius", settings.BeautifyShadowBlurRadius);
-                writer.WriteNumber("beautifyShadowOpacity", settings.BeautifyShadowOpacity);
                 writer.WriteEndObject();
                 writer.Flush();
             }
@@ -135,25 +118,5 @@ public static class OceanEyesCaptureStore
         }
         string? text = value.GetString();
         return string.IsNullOrWhiteSpace(text) ? defaultValue : text;
-    }
-
-    private static int ReadInt32(JsonElement root, string name, int defaultValue)
-    {
-        if (!root.TryGetProperty(name, out JsonElement value)) return defaultValue;
-        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out int i))
-        {
-            return i;
-        }
-        throw new ProviderConfigurationException($"{name} 必须是整数。");
-    }
-
-    private static double ReadDouble(JsonElement root, string name, double defaultValue)
-    {
-        if (!root.TryGetProperty(name, out JsonElement value)) return defaultValue;
-        if (value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out double d))
-        {
-            return d;
-        }
-        throw new ProviderConfigurationException($"{name} 必须是数字。");
     }
 }
