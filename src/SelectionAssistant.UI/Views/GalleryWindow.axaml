@@ -126,18 +126,20 @@
           </Grid>
         </Border>
 
-        <!-- Image area: scrollable in case the screenshot is bigger than the window -->
-        <ScrollViewer Grid.Row="1"
-                      HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Auto"
-                      Background="Transparent">
-          <Image x:Name="PreviewImage"
-                 Stretch="Uniform"
-                 HorizontalAlignment="Center"
-                 VerticalAlignment="Center"
-                 Margin="20"
-                 PointerPressed="OnPreviewImagePointerPressed"/>
-        </ScrollViewer>
+        <!-- Image area: Stretch=Uniform fit-to-window. The Image must be a
+             direct child of the Grid row (not wrapped in ScrollViewer) —
+             ScrollViewer gives infinite available space, which makes Image
+             fall back to its raw pixel size and render huge/clipped on big
+             screenshots. If zoom-to-detail is needed later, swap to
+             LayoutTransformControl + ScaleTransform (mirrors
+             PinnedScreenshotWindow). -->
+        <Image x:Name="PreviewImage"
+               Grid.Row="1"
+               Stretch="Uniform"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"
+               Margin="20"
+               PointerPressed="OnPreviewImagePointerPressed"/>
 
         <!-- Bottom bar: action buttons -->
         <Border Grid.Row="2" Padding="20,10" Background="#33000000">
