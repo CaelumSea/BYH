@@ -126,20 +126,39 @@
           </Grid>
         </Border>
 
-        <!-- Image area: Stretch=Uniform fit-to-window. The Image must be a
-             direct child of the Grid row (not wrapped in ScrollViewer) —
-             ScrollViewer gives infinite available space, which makes Image
-             fall back to its raw pixel size and render huge/clipped on big
-             screenshots. If zoom-to-detail is needed later, swap to
-             LayoutTransformControl + ScaleTransform (mirrors
-             PinnedScreenshotWindow). -->
-        <Image x:Name="PreviewImage"
-               Grid.Row="1"
-               Stretch="Uniform"
-               HorizontalAlignment="Center"
-               VerticalAlignment="Center"
-               Margin="20"
-               PointerPressed="OnPreviewImagePointerPressed"/>
+        <!-- Image area: ScrollViewer + LayoutTransformControl + Image
+             Stretch="None". This is the only combination that gives both
+             fit-to-window at zoom=1x AND real scrollbars when zoomed in:
+
+              - Stretch="None" makes Image report its raw pixel size
+                (Stretch="Uniform" inside ScrollViewer breaks because the
+                ScrollViewer offers infinite available space)
+              - LayoutTransformControl.LayoutTransform = ScaleTransform
+                changes the Image's *layout* size, so ScrollViewer sees the
+                correct Extent and shows scrollbars when zoomed
+              - HorizontalScrollBarVisibility MUST be "Auto" — the default
+                "Disabled" silently clips horizontally
+              - Inner Grid with Center alignment keeps the image centered
+                when it's smaller than the viewport (zoomed out / small pic) -->
+        <ScrollViewer x:Name="PreviewScroll"
+                      Grid.Row="1"
+                      HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      Background="Transparent"
+                      PointerWheelChanged="OnPreviewPointerWheelChanged">
+          <Grid HorizontalAlignment="Center"
+                VerticalAlignment="Center">
+            <LayoutTransformControl x:Name="PreviewScaler">
+              <!-- ScaleTransform is assigned in code-behind (ctor) so we have
+                   a stable field reference; declaring it inline here would
+                   make PreviewScale unavailable to the generated partial. -->
+              <Image x:Name="PreviewImage"
+                     Stretch="None"
+                     Margin="20"
+                     PointerPressed="OnPreviewImagePointerPressed"/>
+            </LayoutTransformControl>
+          </Grid>
+        </ScrollViewer>
 
         <!-- Bottom bar: action buttons -->
         <Border Grid.Row="2" Padding="20,10" Background="#33000000">

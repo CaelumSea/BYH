@@ -9,6 +9,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using SelectionAssistant.Core.Capture;
@@ -40,6 +41,15 @@ public partial class GalleryWindow : Window
     /// <summary>Max concurrent thumbnail decodes. Bound to avoid disk thrash.</summary>
     private const int LoadParallelism = 4;
 
+    /// <summary>Multiply zoom by this per wheel notch (1.2 = ~5 notches to double).</summary>
+    private const double ZoomPerNotch = 1.2;
+
+    /// <summary>Minimum zoom relative to fit-to-window. 1.0 = exactly fit.</summary>
+    private const double MinZoom = 1.0;
+
+    /// <summary>Maximum zoom relative to fit-to-window. 8.0 = 8× the fit size.</summary>
+    private const double MaxZoom = 8.0;
+
     private readonly string _savePath;
     private readonly RedactedLogger _logger;
     private GalleryItemViewModel? _selected;
@@ -51,6 +61,28 @@ public partial class GalleryWindow : Window
     /// image memory immediately (not waiting on GC).
     /// </summary>
     private Bitmap? _previewBitmap;
+
+    /// <summary>
+    /// User zoom factor on top of the fit-to-window baseline. 1.0 = exactly
+    /// fit. Wheel changes this by <see cref="ZoomPerNotch"/> or its
+    /// reciprocal, clamped to [<see cref="MinZoom"/>, <see cref="MaxZoom"/>].
+    /// </summary>
+    private double _userZoom = 1.0;
+
+    /// <summary>
+    /// Scale that fits the current image into the preview viewport, capped
+    /// at 1.0 (no upscaling past native pixels). Recomputed on image load
+    /// and on viewport size change.
+    /// </summary>
+    private double _fitScale = 1.0;
+
+    /// <summary>
+    /// The ScaleTransform applied to <see cref="PreviewScaler"/>. Created in
+    /// the constructor and assigned to <c>PreviewScaler.LayoutTransform</c>
+    /// — declaring it inline in AXAML inside LayoutTransformControl's
+    /// LayoutTransform property doesn't expose it as a generated field.
+    /// </summary>
+    private readonly ScaleTransform _previewScale = new(1.0, 1.0);
 
     /// <summary>
     /// Raised with the absolute path of a PNG the user wants copied to the
@@ -80,6 +112,7 @@ public partial class GalleryWindow : Window
         _savePath = string.Empty;
         _logger = new RedactedLogger();
         GalleryItems.ItemsSource = _items;
+        PreviewScaler.LayoutTransform = _previewScale;
     }
 
     public GalleryWindow(string savePath, RedactedLogger logger)
@@ -88,8 +121,12 @@ public partial class GalleryWindow : Window
         _logger = logger ?? new RedactedLogger();
         InitializeComponent();
         GalleryItems.ItemsSource = _items;
+        PreviewScaler.LayoutTransform = _previewScale;
         Loaded += OnLoaded;
         Closed += OnClosed;
+        // R49 preview zoom: viewport resize needs to re-fit. Fires when the
+        // user resizes the window or first opens it (Bounds settles).
+        PreviewScroll.SizeChanged += (_, _) => RecalcFitAndApply();
     }
 
     private async void OnLoaded(object? sender, RoutedEventArgs e)
@@ -259,10 +296,14 @@ public partial class GalleryWindow : Window
         PreviewOverlay.IsVisible = true;
         _selected = vm;
 
-        // Clear any previous preview bitmap first.
+        // Clear any previous preview bitmap first. Reset zoom so the new
+        // image starts at fit-to-window (don't inherit the previous image's
+        // zoom level — different aspect ratios would confuse the user).
         _previewBitmap?.Dispose();
         _previewBitmap = null;
         PreviewImage.Source = null;
+        _userZoom = 1.0;
+        ApplyPreviewScale(resetOffset: true);
 
         string path = vm.Entry.FilePath;
         _ = Task.Run(() =>
@@ -291,6 +332,8 @@ public partial class GalleryWindow : Window
                 _previewBitmap?.Dispose();
                 _previewBitmap = full;
                 PreviewImage.Source = full;
+                // Now that we know the bitmap's pixel size, recompute fit.
+                RecalcFitAndApply();
             });
         });
     }
@@ -301,6 +344,124 @@ public partial class GalleryWindow : Window
         PreviewImage.Source = null;
         _previewBitmap?.Dispose();
         _previewBitmap = null;
+        _userZoom = 1.0;
+    }
+
+    /// <summary>
+    /// Recomputes <see cref="_fitScale"/> from the current viewport size and
+    /// the loaded bitmap's pixel size, then applies the combined
+    /// (<c>_fitScale * _userZoom</c>) scale. Called on image load and on
+    /// viewport size change (window resize).
+    /// </summary>
+    private void RecalcFitAndApply()
+    {
+        if (_previewBitmap is not { } bmp)
+        {
+            return;
+        }
+
+        double vw = PreviewScroll.Bounds.Width;
+        double vh = PreviewScroll.Bounds.Height;
+        if (vw <= 1 || vh <= 1)
+        {
+            return; // viewport not laid out yet
+        }
+
+        int iw = bmp.PixelSize.Width;
+        int ih = bmp.PixelSize.Height;
+        if (iw <= 0 || ih <= 0)
+        {
+            return;
+        }
+
+        // Subtract the Image's 20px margin from each side so the picture
+        // doesn't kiss the scrollbars/edges.
+        const double pad = 40.0;
+        double fit = Math.Min((vw - pad) / iw, (vh - pad) / ih);
+        if (fit > 1.0)
+        {
+            fit = 1.0; // don't upscale past 1:1
+        }
+        else if (fit < 0.05)
+        {
+            fit = 0.05; // floor to avoid divide-by-zero edge cases on tiny viewports
+        }
+        _fitScale = fit;
+        ApplyPreviewScale(resetOffset: false);
+    }
+
+    /// <summary>
+    /// Pushes <c>_fitScale * _userZoom</c> into <see cref="PreviewScale"/>.
+    /// When <paramref name="resetOffset"/> is true (new image opened), also
+    /// snaps scroll to top-left so the user starts at the corner.
+    /// </summary>
+    private void ApplyPreviewScale(bool resetOffset)
+    {
+        double s = _fitScale * _userZoom;
+        _previewScale.ScaleX = s;
+        _previewScale.ScaleY = s;
+        if (resetOffset)
+        {
+            PreviewScroll.Offset = new Vector(0, 0);
+        }
+    }
+
+    /// <summary>
+    /// Wheel-zoom on the preview. Up = zoom in, Down = zoom out. Multiplies
+    /// <see cref="_userZoom"/> by <see cref="ZoomPerNotch"/> per notch,
+    /// clamped to [<see cref="MinZoom"/>, <see cref="MaxZoom"/>]. The scroll
+    /// anchor is preserved so the point under the cursor stays put.
+    /// </summary>
+    private void OnPreviewPointerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        if (_previewBitmap is null)
+        {
+            return;
+        }
+
+        double delta = e.Delta.Y;
+        if (delta == 0)
+        {
+            return;
+        }
+
+        // Suppress the default scroll behavior — we're hijacking the wheel
+        // for zoom, not vertical pan.
+        e.Handled = true;
+
+        // Capture the cursor position (in viewport coordinates) and current
+        // scroll offset BEFORE applying the new scale, so we can compute the
+        // image-space point under the cursor and re-anchor it afterwards.
+        Point cursor = e.GetPosition(PreviewScroll);
+        Vector oldOffset = PreviewScroll.Offset;
+        double oldScale = _fitScale * _userZoom;
+
+        double factor = delta > 0 ? ZoomPerNotch : 1.0 / ZoomPerNotch;
+        _userZoom = Math.Clamp(_userZoom * factor, MinZoom, MaxZoom);
+        ApplyPreviewScale(resetOffset: false);
+
+        double newScale = _fitScale * _userZoom;
+        if (oldScale <= 0 || newScale <= 0)
+        {
+            return;
+        }
+
+        // Image-space point under the cursor before the zoom.
+        double imgX = (oldOffset.X + cursor.X) / oldScale;
+        double imgY = (oldOffset.Y + cursor.Y) / oldScale;
+
+        // Post the offset update so it runs AFTER LayoutTransformControl has
+        // committed its new Extent to the ScrollViewer (otherwise Offset
+        // would be clamped against the old extent). Background runs after
+        // layout but before input — Avalonia has no Layout priority value.
+        Dispatcher.UIThread.Post(() =>
+        {
+            double newX = imgX * newScale - cursor.X;
+            double newY = imgY * newScale - cursor.Y;
+            PreviewScroll.Offset = new Vector(
+                Math.Max(0, newX),
+                Math.Max(0, newY));
+        }, DispatcherPriority.Background);
     }
 
     private void OnPreviewOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
