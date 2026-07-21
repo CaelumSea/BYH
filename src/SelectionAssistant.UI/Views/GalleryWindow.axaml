@@ -128,22 +128,26 @@
 
         <!-- Image area: ScrollViewer + LayoutTransformControl + Image
              Stretch="None". This is the only combination that gives both
-             fit-to-window at zoom=1x AND real scrollbars when zoomed in:
+             fit-to-window at zoom=1x AND pannable extent when zoomed in:
 
               - Stretch="None" makes Image report its raw pixel size
                 (Stretch="Uniform" inside ScrollViewer breaks because the
                 ScrollViewer offers infinite available space)
               - LayoutTransformControl.LayoutTransform = ScaleTransform
                 changes the Image's *layout* size, so ScrollViewer sees the
-                correct Extent and shows scrollbars when zoomed
-              - HorizontalScrollBarVisibility MUST be "Auto" — the default
-                "Disabled" silently clips horizontally
+                correct Extent and supports panning
+              - ScrollBars are Hidden (not Disabled — Disabled would clip
+                the extent; Hidden keeps layout but hides the chrome)
+              - Wheel is hijacked for zoom; panning is left-button drag
+                (handled in OnPreviewImagePointerPressed/Moved/Released).
+                This is the standard "pro image viewer" UX (PS / FastStone /
+                IrfanView): wheel = zoom, drag = pan.
               - Inner Grid with Center alignment keeps the image centered
                 when it's smaller than the viewport (zoomed out / small pic) -->
         <ScrollViewer x:Name="PreviewScroll"
                       Grid.Row="1"
-                      HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Hidden"
+                      VerticalScrollBarVisibility="Hidden"
                       Background="Transparent"
                       PointerWheelChanged="OnPreviewPointerWheelChanged">
           <Grid HorizontalAlignment="Center"
@@ -155,7 +159,10 @@
               <Image x:Name="PreviewImage"
                      Stretch="None"
                      Margin="20"
-                     PointerPressed="OnPreviewImagePointerPressed"/>
+                     Cursor="SizeAll"
+                     PointerPressed="OnPreviewImagePointerPressed"
+                     PointerMoved="OnPreviewImagePointerMoved"
+                     PointerReleased="OnPreviewImagePointerReleased"/>
             </LayoutTransformControl>
           </Grid>
         </ScrollViewer>

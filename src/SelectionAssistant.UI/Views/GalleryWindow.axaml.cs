@@ -84,6 +84,15 @@ public partial class GalleryWindow : Window
     /// </summary>
     private readonly ScaleTransform _previewScale = new(1.0, 1.0);
 
+    /// <summary>True while the user is left-button-dragging to pan the zoomed image.</summary>
+    private bool _isPanning;
+
+    /// <summary>Pointer position (in PreviewScroll coordinates) at pan start.</summary>
+    private Point _panStart;
+
+    /// <summary>ScrollViewer offset at pan start, so we can apply delta on move.</summary>
+    private Vector _panStartOffset;
+
     /// <summary>
     /// Raised with the absolute path of a PNG the user wants copied to the
     /// clipboard (double-click-then-button, context menu, preview button).
@@ -345,6 +354,7 @@ public partial class GalleryWindow : Window
         _previewBitmap?.Dispose();
         _previewBitmap = null;
         _userZoom = 1.0;
+        _isPanning = false;
     }
 
     /// <summary>
@@ -473,9 +483,51 @@ public partial class GalleryWindow : Window
 
     private void OnPreviewImagePointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // Swallow clicks on the image so the backdrop close handler above
-        // doesn't fire when the user is just clicking on the picture.
+        // Left button on the image starts a pan-drag (the standard "pro
+        // image viewer" gesture — wheel = zoom, drag = pan). We swallow the
+        // event so the backdrop close handler doesn't fire mid-drag.
         e.Handled = true;
+
+        var props = e.GetCurrentPoint(PreviewScroll).Properties;
+        if (!props.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _isPanning = true;
+        _panStart = e.GetPosition(PreviewScroll);
+        _panStartOffset = PreviewScroll.Offset;
+        e.Pointer.Capture(PreviewImage);
+    }
+
+    private void OnPreviewImagePointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_isPanning)
+        {
+            return;
+        }
+
+        Point current = e.GetPosition(PreviewScroll);
+        double dx = current.X - _panStart.X;
+        double dy = current.Y - _panStart.Y;
+
+        // Scroll offset moves opposite to pointer delta: dragging right
+        // should reveal content on the left, so we subtract dx/dy from
+        // the starting offset. ScrollViewer clamps to [0, Extent-Viewport]
+        // automatically — no manual bounds check needed.
+        PreviewScroll.Offset = new Vector(
+            _panStartOffset.X - dx,
+            _panStartOffset.Y - dy);
+    }
+
+    private void OnPreviewImagePointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_isPanning)
+        {
+            return;
+        }
+        _isPanning = false;
+        e.Pointer.Capture(null);
     }
 
     private void OnPreviewCopy_Click(object? sender, RoutedEventArgs e)
