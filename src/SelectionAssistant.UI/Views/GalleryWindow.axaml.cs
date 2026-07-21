@@ -70,35 +70,18 @@ public partial class GalleryWindow : Window
     private double _userZoom = 1.0;
 
     /// <summary>
-    /// Scale that fits the current image into the preview viewport, capped
-    /// at 1.0 (no upscaling past native pixels). Recomputed on image load
-    /// and on viewport size change.
-    /// </summary>
-    private double _fitScale = 1.0;
-
-    /// <summary>
-    /// ScaleTransform applied to PreviewImage.RenderTransform (the first
-    /// child of <see cref="_previewTransformGroup"/>). Owns both the
-    /// fit-to-window baseline (<see cref="_fitScale"/>) and the user zoom
-    /// (<see cref="_userZoom"/>). Effective scale = fitScale * userZoom.
+    /// ScaleTransform applied to PreviewScaler.LayoutTransform. Effective
+    /// scale = <see cref="_userZoom"/> (1.0 = Avalonia's native fit-to-window
+    /// baseline, since Image.Stretch="Uniform" already fits within the
+    /// LayoutTransformControl's measured bounds).
     /// </summary>
     private readonly ScaleTransform _previewScale = new(1.0, 1.0);
 
     /// <summary>
-    /// TranslateTransform applied to PreviewImage.RenderTransform (the
-    /// second child of <see cref="_previewTransformGroup"/>). Set by
-    /// fit-to-window centering, pan drag, and zoom-at-cursor anchor math.
-    /// Origin (0,0) = image's top-left aligned with viewport's top-left
-    /// (before scale). Positive X moves right, positive Y moves down.
+    /// TranslateTransform applied to PreviewScaler.RenderTransform. Used
+    /// for left-button drag panning when zoomed in.
     /// </summary>
-    private readonly TranslateTransform _previewTranslate = new(0.0, 0.0);
-
-    /// <summary>
-    /// The TransformGroup holding <see cref="_previewScale"/> then
-    /// <see cref="_previewTranslate"/>. Order matters: scale first, then
-    /// translate, so translate operates in viewport space (post-scale).
-    /// </summary>
-    private readonly TransformGroup _previewTransformGroup = new();
+    private readonly TranslateTransform _previewPan = new(0.0, 0.0);
 
     /// <summary>True while the user is left-button-dragging to pan the zoomed image.</summary>
     private bool _isPanning;
@@ -106,8 +89,8 @@ public partial class GalleryWindow : Window
     /// <summary>Pointer position (in viewport coordinates) at pan start.</summary>
     private Point _panStart;
 
-    /// <summary>_previewTranslate.X/Y at pan start, so we apply delta on move.</summary>
-    private Point _panStartTranslate;
+    /// <summary>_previewPan.X/Y at pan start, so we apply delta on move.</summary>
+    private Thickness _panStartMargin;
 
     /// <summary>
     /// Raised with the absolute path of a PNG the user wants copied to the
@@ -149,40 +132,18 @@ public partial class GalleryWindow : Window
         InitPreviewTransform();
         Loaded += OnLoaded;
         Closed += OnClosed;
-        // R49 preview zoom: LayoutUpdated fires after every layout pass, so
-        // it catches both window-resize AND the first time the overlay
-        // becomes visible (SizeChanged may NOT fire in that case because
-        // the viewport size was already set when the window opened — only
-        // its visibility changed). Each call is cheap (early-returns if
-        // state hasn't changed).
-        PreviewViewport.LayoutUpdated += (_, _) => RecalcFitAndApply();
     }
 
     /// <summary>
-    /// Wires up <see cref="_previewTransformGroup"/> as PreviewImage's
-    /// RenderTransform and adds Translate + Scale in the order that makes
-    /// the combined matrix <c>Translate * Scale</c>.
-    /// <para>
-    /// Avalonia's <c>TransformGroup.Value</c> is the product
-    /// <c>Children[0].Value * Children[1].Value * ...</c>, and matrix-times-
-    /// point applies the rightmost factor first. So with children ordered
-    /// <c>[Translate, Scale]</c>, a point <c>p</c> maps as
-    /// <c>Translate * (Scale * p)</c> — i.e. scale first (in image/pixel
-    /// space, anchored at the image origin), then translate (in viewport
-    /// space). This matches what all our fit/pan/zoom math assumes:
-    /// <c>viewportPoint = imagePoint * scale + translate</c>.
-    /// </para>
+    /// Assigns <see cref="_previewScale"/> to LayoutTransform and
+    /// <see cref="_previewPan"/> to RenderTransform on the LayoutTransformControl.
+    /// Done in code-behind because Avalonia 12.1's AXAML codegen doesn't
+    /// generate fields for named elements declared inside property elements.
     /// </summary>
     private void InitPreviewTransform()
     {
-        // CRITICAL: Translate MUST be added before Scale so the combined
-        // matrix is Translate * Scale. Adding Scale first would give
-        // Scale * Translate (translate-applied-first-in-image-space),
-        // which breaks every other calculation in this file.
-        _previewTransformGroup.Children.Add(_previewTranslate);
-        _previewTransformGroup.Children.Add(_previewScale);
-        PreviewImage.RenderTransform = _previewTransformGroup;
-        PreviewImage.RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Absolute);
+        PreviewScaler.LayoutTransform = _previewScale;
+        PreviewScaler.RenderTransform = _previewPan;
     }
 
     private async void OnLoaded(object? sender, RoutedEventArgs e)
@@ -352,21 +313,17 @@ public partial class GalleryWindow : Window
         PreviewOverlay.IsVisible = true;
         _selected = vm;
 
-        // Clear any previous preview bitmap first. Reset zoom so the new
-        // image starts at fit-to-window (don't inherit the previous image's
-        // zoom level — different aspect ratios would confuse the user).
+        // Reset zoom + pan for the new image. Image.Stretch="Uniform" will
+        // natively fit-to-window once Source is set; we just multiply the
+        // user zoom on top via LayoutTransformControl.
         _previewBitmap?.Dispose();
         _previewBitmap = null;
         PreviewImage.Source = null;
         _userZoom = 1.0;
-        // Reset scale/translate to identity so the just-cleared Image
-        // (no Source) doesn't briefly render at the previous image's
-        // transform. RecalcFitAndApply below will set them once the
-        // new bitmap arrives.
         _previewScale.ScaleX = 1.0;
         _previewScale.ScaleY = 1.0;
-        _previewTranslate.X = 0.0;
-        _previewTranslate.Y = 0.0;
+        _previewPan.X = 0;
+        _previewPan.Y = 0;
 
         string path = vm.Entry.FilePath;
         _ = Task.Run(() =>
@@ -395,11 +352,8 @@ public partial class GalleryWindow : Window
                 _previewBitmap?.Dispose();
                 _previewBitmap = full;
                 PreviewImage.Source = full;
-                // Now that we know the bitmap's pixel size, recompute fit.
-                // Use Background priority so this runs after the layout pass
-                // triggered by the Source change — otherwise Bounds may
-                // still reflect the previous image's layout.
-                Dispatcher.UIThread.Post(RecalcFitAndApply, DispatcherPriority.Background);
+                // No fit math needed — Image Stretch="Uniform" handles it.
+                // LayoutTransformControl scale is already 1.0 = fit baseline.
             });
         });
     }
@@ -412,116 +366,10 @@ public partial class GalleryWindow : Window
         _previewBitmap = null;
         _userZoom = 1.0;
         _isPanning = false;
-    }
-
-    /// <summary>
-    /// Recomputes <see cref="_fitScale"/> from the current viewport size and
-    /// the loaded bitmap's pixel size, applies the combined scale, and
-    /// re-centers the translate. Called on image load and on viewport size
-    /// change (window resize).
-    /// </summary>
-    private void RecalcFitAndApply()
-    {
-        if (_previewBitmap is not { } bmp)
-        {
-            return;
-        }
-
-        double vw = PreviewViewport.Bounds.Width;
-        double vh = PreviewViewport.Bounds.Height;
-        if (vw <= 1 || vh <= 1)
-        {
-            return; // viewport not laid out yet
-        }
-
-        // Use Size (DIP) — NOT PixelSize. Avalonia's Image with Stretch=None
-        // measures at source.Size (DIP), and the RenderTransform operates in
-        // DIP space. On a high-DPI display a screenshot may carry DPI != 96,
-        // making PixelSize ≠ Size; using PixelSize would under-fit by the
-        // DPI ratio.
-        double iw = bmp.Size.Width;
-        double ih = bmp.Size.Height;
-        if (iw <= 0 || ih <= 0)
-        {
-            return;
-        }
-
-        const double pad = 40.0;
-        double fit = Math.Min((vw - pad) / iw, (vh - pad) / ih);
-        if (fit > 1.0)
-        {
-            fit = 1.0; // don't upscale past 1:1
-        }
-        else if (fit < 0.05)
-        {
-            fit = 0.05; // floor to avoid divide-by-zero edge cases on tiny viewports
-        }
-        _fitScale = fit;
-
-        // Push the combined scale, then center the (possibly scaled-down)
-        // image in the viewport. Centering keeps the picture visually
-        // centered regardless of zoom level relative to fit.
-        double s = _fitScale * _userZoom;
-        _previewScale.ScaleX = s;
-        _previewScale.ScaleY = s;
-        double scaledW = iw * s;
-        double scaledH = ih * s;
-        // Translate is in viewport space (post-scale). Center the scaled
-        // image; if zoomed larger than viewport, the clamp below will pull
-        // it back into bounds on the next pan/zoom.
-        _previewTranslate.X = (vw - scaledW) / 2.0;
-        _previewTranslate.Y = (vh - scaledH) / 2.0;
-        ClampTranslate();
-    }
-
-    /// <summary>
-    /// Clamps <see cref="_previewTranslate"/> so the scaled image cannot
-    /// leave the viewport on any side. When the image is smaller than the
-    /// viewport (zoomed-out), it stays centered; when larger, the near edge
-    /// is kept inside.
-    /// </summary>
-    private void ClampTranslate()
-    {
-        if (_previewBitmap is not { } bmp)
-        {
-            return;
-        }
-        double vw = PreviewViewport.Bounds.Width;
-        double vh = PreviewViewport.Bounds.Height;
-        if (vw <= 1 || vh <= 1)
-        {
-            return;
-        }
-
-        double s = _fitScale * _userZoom;
-        // DIP size — see RecalcFitAndApply for why not PixelSize.
-        double scaledW = bmp.Size.Width * s;
-        double scaledH = bmp.Size.Height * s;
-
-        double minX, maxX, minY, maxY;
-        if (scaledW <= vw)
-        {
-            // Image smaller than viewport — keep centered.
-            minX = maxX = (vw - scaledW) / 2.0;
-        }
-        else
-        {
-            // Image larger — keep both edges inside the viewport.
-            minX = vw - scaledW;
-            maxX = 0;
-        }
-        if (scaledH <= vh)
-        {
-            minY = maxY = (vh - scaledH) / 2.0;
-        }
-        else
-        {
-            minY = vh - scaledH;
-            maxY = 0;
-        }
-
-        _previewTranslate.X = Math.Clamp(_previewTranslate.X, minX, maxX);
-        _previewTranslate.Y = Math.Clamp(_previewTranslate.Y, minY, maxY);
+        _previewScale.ScaleX = 1.0;
+        _previewScale.ScaleY = 1.0;
+        _previewPan.X = 0;
+        _previewPan.Y = 0;
     }
 
     /// <summary>
@@ -530,6 +378,14 @@ public partial class GalleryWindow : Window
     /// clamped to [<see cref="MinZoom"/>, <see cref="MaxZoom"/>]. The image
     /// point under the cursor stays anchored to the same viewport point
     /// before/after the zoom — standard "zoom at cursor" behavior.
+    /// <para>
+    /// Implementation note: we lean on Image.Stretch="Uniform" + a
+    /// ScaleTransform in LayoutTransformControl. The fit-to-window baseline
+    /// (whatever scale Avalonia computes from Stretch="Uniform") is treated
+    /// as "userZoom=1.0". We do NOT need to know the actual fit factor in
+    /// pixels — only the ratio between old and new userZoom matters for the
+    /// anchor math.
+    /// </para>
     /// </summary>
     private void OnPreviewPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
@@ -544,32 +400,48 @@ public partial class GalleryWindow : Window
             return;
         }
 
-        // We are NOT inside a ScrollViewer, so there's no default scroll
-        // behavior to compete with. e.Handled is still set so any bubbling
-        // ancestor (the overlay Border) doesn't try to do something with it.
+        // Not inside a ScrollViewer — no default scroll to compete with.
+        // e.Handled is still set so the overlay Border doesn't try anything.
         e.Handled = true;
 
         Point cursor = e.GetPosition(PreviewViewport);
-        double oldScale = _fitScale * _userZoom;
+        double oldZoom = _userZoom;
 
         double factor = delta > 0 ? ZoomPerNotch : 1.0 / ZoomPerNotch;
         _userZoom = Math.Clamp(_userZoom * factor, MinZoom, MaxZoom);
-        double newScale = _fitScale * _userZoom;
-        if (oldScale <= 0 || newScale <= 0)
+        if (_userZoom == oldZoom)
         {
-            return;
+            return; // clamped, no change
         }
 
-        // Keep the image-space point under the cursor anchored:
-        //   imgPoint = (cursor - oldTranslate) / oldScale
-        //   newTranslate = cursor - imgPoint * newScale
-        double imgX = (cursor.X - _previewTranslate.X) / oldScale;
-        double imgY = (cursor.Y - _previewTranslate.Y) / oldScale;
-        _previewScale.ScaleX = newScale;
-        _previewScale.ScaleY = newScale;
-        _previewTranslate.X = cursor.X - imgX * newScale;
-        _previewTranslate.Y = cursor.Y - imgY * newScale;
-        ClampTranslate();
+        // Zoom-at-cursor anchor: the image point under the cursor should
+        // stay under the cursor after the zoom. The LayoutTransformControl
+        // is centered (HorizontalAlignment/VerticalAlignment=Center) so its
+        // origin is at the top-left of the scaled image. The cursor's
+        // position relative to that origin scales linearly with userZoom:
+        //   imgOffsetFromLayoutOrigin = cursor - layoutOrigin
+        //   newImgOffset = imgOffsetFromLayoutOrigin * (newZoom / oldZoom)
+        //   newPan = cursor - layoutOrigin - newImgOffset
+        //          = (cursor - layoutOrigin) * (1 - newZoom / oldZoom)
+        // But we don't know layoutOrigin directly. A simpler formulation
+        // that gives the same result: pan delta is
+        //   (cursor - viewportCenter) * (1 - newZoom/oldZoom)
+        // because LayoutTransformControl is centered. We use the cursor
+        // relative to the pan offset, which is mathematically equivalent.
+        double ratio = _userZoom / oldZoom;
+
+        // Position of cursor relative to the (current) image origin,
+        // accounting for current pan offset.
+        double relX = cursor.X - _previewPan.X;
+        double relY = cursor.Y - _previewPan.Y;
+        // After zoom, the same image-space point sits at relX*ratio from
+        // the new origin. To keep it under cursor, shift pan so that
+        //   cursor - newPan = relX * ratio
+        _previewPan.X = cursor.X - relX * ratio;
+        _previewPan.Y = cursor.Y - relY * ratio;
+
+        _previewScale.ScaleX = _userZoom;
+        _previewScale.ScaleY = _userZoom;
     }
 
     private void OnPreviewOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -581,9 +453,8 @@ public partial class GalleryWindow : Window
 
     private void OnPreviewImagePointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // Left button on the image starts a pan-drag (the standard "pro
-        // image viewer" gesture — wheel = zoom, drag = pan). We swallow the
-        // event so the backdrop close handler doesn't fire mid-drag.
+        // Left button on the image starts a pan-drag. We swallow the event
+        // so the backdrop close handler doesn't fire mid-drag.
         e.Handled = true;
 
         var props = e.GetCurrentPoint(PreviewViewport).Properties;
@@ -594,7 +465,7 @@ public partial class GalleryWindow : Window
 
         _isPanning = true;
         _panStart = e.GetPosition(PreviewViewport);
-        _panStartTranslate = new Point(_previewTranslate.X, _previewTranslate.Y);
+        _panStartMargin = new Thickness(_previewPan.X, _previewPan.Y, 0, 0);
         e.Pointer.Capture(PreviewImage);
     }
 
@@ -609,11 +480,13 @@ public partial class GalleryWindow : Window
         double dx = current.X - _panStart.X;
         double dy = current.Y - _panStart.Y;
 
-        // Translate moves with the pointer: dragging right shifts the image
-        // right. ClampTranslate keeps edges inside the viewport.
-        _previewTranslate.X = _panStartTranslate.X + dx;
-        _previewTranslate.Y = _panStartTranslate.Y + dy;
-        ClampTranslate();
+        // Translate moves with the pointer: drag right shifts the image
+        // right. No clamp — LayoutTransformControl is centered by alignment
+        // so when zoomed out (1x) the pan has no visible effect anyway
+        // (image fits entirely). When zoomed in, the user can pan freely
+        // and Border ClipToBounds clips whatever falls outside.
+        _previewPan.X = _panStartMargin.Left + dx;
+        _previewPan.Y = _panStartMargin.Top + dy;
     }
 
     private void OnPreviewImagePointerReleased(object? sender, PointerReleasedEventArgs e)

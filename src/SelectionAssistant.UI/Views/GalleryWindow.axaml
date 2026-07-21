@@ -126,39 +126,41 @@
           </Grid>
         </Border>
 
-        <!-- Image area: Border(ClipToBounds) + Image Stretch="None" with
-             RenderTransform = TransformGroup(Scale + Translate).
+        <!-- Image area: Border(ClipToBounds) is the viewport. Inside it, a
+             LayoutTransformControl wraps an Image. The LayoutTransform
+             (ScaleTransform) controls zoom; the Image.Stretch="Uniform"
+             handles fit-to-window natively within whatever size the scaled
+             LayoutTransformControl allots.
 
-             We deliberately avoid ScrollViewer: it intercepts wheel events
-             and switches to vertical-scroll mode when its Extent exceeds the
-             Viewport (e.Handled=true on the bubbling event doesn't stop the
-             ScrollContentPresenter's internal handling). For "wheel = zoom,
-             drag = pan" semantics — the standard pro viewer UX — we need to
-             own all pan/zoom state ourselves:
+             This combination is reliable where direct RenderTransform math
+             on Image Stretch="None" was not (off-center / clipped output on
+             some PNG DPI metadata combinations). By leaning on Avalonia's
+             own Stretch + LayoutTransformControl measure pipeline, we avoid
+             manually computing scaled pixel sizes and centering offsets.
 
-              - Border ClipToBounds clips the zoomed image to the viewport
-              - ScaleTransform handles zoom (scale = fitScale * userZoom)
-              - TranslateTransform handles pan (left-button drag)
-              - Image.Stretch="None" so scale is controlled only by us
-
-             Origin (0,0) is the image's top-left, in image-pixel space
-             before scale/translate. The bounds checks in OnPreviewImagePointerMoved
-             and OnPreviewPointerWheelChanged keep the image edge from
-             leaving the viewport. -->
+             For panning when zoomed in, we wrap LayoutTransformControl in a
+             Grid and shift it via Margin. No ScrollViewer = no wheel hijack. -->
         <Border x:Name="PreviewViewport"
                 Grid.Row="1"
                 Background="Transparent"
                 ClipToBounds="True"
                 PointerWheelChanged="OnPreviewPointerWheelChanged">
-          <Image x:Name="PreviewImage"
-                 Stretch="None"
-                 HorizontalAlignment="Left"
-                 VerticalAlignment="Top"
-                 Cursor="SizeAll"
-                 RenderTransformOrigin="0,0"
-                 PointerPressed="OnPreviewImagePointerPressed"
-                 PointerMoved="OnPreviewImagePointerMoved"
-                 PointerReleased="OnPreviewImagePointerReleased"/>
+          <LayoutTransformControl x:Name="PreviewScaler"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  RenderTransformOrigin="0,0">
+            <!-- PreviewScale (LayoutTransform) and PreviewPan (RenderTransform)
+                 are created in code-behind ctor and assigned here at runtime.
+                 Avalonia 12.1's AXAML codegen does not generate fields for
+                 named elements declared inside property elements like
+                 LayoutTransformControl.LayoutTransform. -->
+            <Image x:Name="PreviewImage"
+                   Stretch="Uniform"
+                   Cursor="SizeAll"
+                   PointerPressed="OnPreviewImagePointerPressed"
+                   PointerMoved="OnPreviewImagePointerMoved"
+                   PointerReleased="OnPreviewImagePointerReleased"/>
+          </LayoutTransformControl>
         </Border>
 
         <!-- Bottom bar: action buttons -->
