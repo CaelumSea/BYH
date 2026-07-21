@@ -400,12 +400,49 @@ public partial class GalleryWindow : Window
                 _previewBitmap?.Dispose();
                 _previewBitmap = full;
                 PreviewImage.Source = full;
-                // Compute the initial fit-to-window matrix. Post at Loaded
-                // priority so the layout pass triggered by Source change has
-                // completed and PreviewViewport.Bounds is correct.
-                Dispatcher.UIThread.Post(FitToWindow, DispatcherPriority.Loaded);
+                // Fit as soon as the viewport's Bounds become valid. We try
+                // a few times via short DispatcherTimer retries because
+                // PreviewOverlay's IsVisible=true doesn't synchronously
+                // trigger layout — Bounds can still be 0 for a frame or two
+                // after Source is set. Once fit succeeds (or the user closes
+                // the preview), the timer stops itself.
+                TryFitWhenReady();
             });
         });
+    }
+
+    /// <summary>
+    /// Polls <see cref="FitToWindow"/> on a short timer until it succeeds
+    /// (i.e. PreviewViewport.Bounds is non-zero and bitmap is loaded).
+    /// Stops itself on success or after ~1s of retries (fails silently —
+    /// the worst case is the user sees a 1:1 image and can zoom out).
+    /// </summary>
+    private void TryFitWhenReady()
+    {
+        int attempts = 0;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        timer.Tick += (_, _) =>
+        {
+            attempts++;
+            if (!PreviewOverlay.IsVisible)
+            {
+                timer.Stop();
+                return;
+            }
+            double vw = PreviewViewport.Bounds.Width;
+            double vh = PreviewViewport.Bounds.Height;
+            if (vw > 1 && vh > 1)
+            {
+                FitToWindow();
+                timer.Stop();
+                return;
+            }
+            if (attempts > 60) // ~1s at 16ms ticks
+            {
+                timer.Stop();
+            }
+        };
+        timer.Start();
     }
 
     private void ClosePreview()
