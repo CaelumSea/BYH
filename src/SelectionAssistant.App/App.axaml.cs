@@ -1140,6 +1140,11 @@ public partial class App : Application
             }
         };
 
+        // R49: screenshot gallery entry. Works cold-start — does not need an
+        // Ocean Eyes session. ShowGallery reads SavePath from settings.
+        var openGallery = new NativeMenuItem("Open Screenshot Gallery");
+        openGallery.Click += (_, _) => _runtime?.ShowGallery();
+
         var restart = new NativeMenuItem("Restart BYH");
         restart.Click += (_, _) => RequestRestart();
 
@@ -1149,6 +1154,7 @@ public partial class App : Application
         var menu = new NativeMenu();
         menu.Items.Add(openSettings);
         menu.Items.Add(openConfig);
+        menu.Items.Add(openGallery);
         menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(restart);
         menu.Items.Add(exit);

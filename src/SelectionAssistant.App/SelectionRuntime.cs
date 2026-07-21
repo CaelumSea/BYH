@@ -1297,8 +1297,14 @@ internal sealed class SelectionRuntime : IDisposable
     /// and keep working in the active session. Singleton: a second G press
     /// while the gallery is already visible just activates the existing
     /// window.
+    /// <para>
+    /// Public so the tray-icon menu (App layer) can call it without an Ocean
+    /// Eyes session active — the user might want to browse history without
+    /// first pressing Ctrl+Alt+Q. SavePath is read from settings, not from
+    /// the active session, so this works cold-start too.
+    /// </para>
     /// </summary>
-    private void ShowGallery()
+    public void ShowGallery()
     {
         // Snapshot the save path on the hook thread so the UI lambda is
         // immune to settings changes racing in between.
