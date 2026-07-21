@@ -77,21 +77,37 @@ public partial class GalleryWindow : Window
     private double _fitScale = 1.0;
 
     /// <summary>
-    /// The ScaleTransform applied to <see cref="PreviewScaler"/>. Created in
-    /// the constructor and assigned to <c>PreviewScaler.LayoutTransform</c>
-    /// — declaring it inline in AXAML inside LayoutTransformControl's
-    /// LayoutTransform property doesn't expose it as a generated field.
+    /// ScaleTransform applied to PreviewImage.RenderTransform (the first
+    /// child of <see cref="_previewTransformGroup"/>). Owns both the
+    /// fit-to-window baseline (<see cref="_fitScale"/>) and the user zoom
+    /// (<see cref="_userZoom"/>). Effective scale = fitScale * userZoom.
     /// </summary>
     private readonly ScaleTransform _previewScale = new(1.0, 1.0);
+
+    /// <summary>
+    /// TranslateTransform applied to PreviewImage.RenderTransform (the
+    /// second child of <see cref="_previewTransformGroup"/>). Set by
+    /// fit-to-window centering, pan drag, and zoom-at-cursor anchor math.
+    /// Origin (0,0) = image's top-left aligned with viewport's top-left
+    /// (before scale). Positive X moves right, positive Y moves down.
+    /// </summary>
+    private readonly TranslateTransform _previewTranslate = new(0.0, 0.0);
+
+    /// <summary>
+    /// The TransformGroup holding <see cref="_previewScale"/> then
+    /// <see cref="_previewTranslate"/>. Order matters: scale first, then
+    /// translate, so translate operates in viewport space (post-scale).
+    /// </summary>
+    private readonly TransformGroup _previewTransformGroup = new();
 
     /// <summary>True while the user is left-button-dragging to pan the zoomed image.</summary>
     private bool _isPanning;
 
-    /// <summary>Pointer position (in PreviewScroll coordinates) at pan start.</summary>
+    /// <summary>Pointer position (in viewport coordinates) at pan start.</summary>
     private Point _panStart;
 
-    /// <summary>ScrollViewer offset at pan start, so we can apply delta on move.</summary>
-    private Vector _panStartOffset;
+    /// <summary>_previewTranslate.X/Y at pan start, so we apply delta on move.</summary>
+    private Point _panStartTranslate;
 
     /// <summary>
     /// Raised with the absolute path of a PNG the user wants copied to the
@@ -121,7 +137,7 @@ public partial class GalleryWindow : Window
         _savePath = string.Empty;
         _logger = new RedactedLogger();
         GalleryItems.ItemsSource = _items;
-        PreviewScaler.LayoutTransform = _previewScale;
+        InitPreviewTransform();
     }
 
     public GalleryWindow(string savePath, RedactedLogger logger)
@@ -130,12 +146,25 @@ public partial class GalleryWindow : Window
         _logger = logger ?? new RedactedLogger();
         InitializeComponent();
         GalleryItems.ItemsSource = _items;
-        PreviewScaler.LayoutTransform = _previewScale;
+        InitPreviewTransform();
         Loaded += OnLoaded;
         Closed += OnClosed;
-        // R49 preview zoom: viewport resize needs to re-fit. Fires when the
-        // user resizes the window or first opens it (Bounds settles).
-        PreviewScroll.SizeChanged += (_, _) => RecalcFitAndApply();
+        // R49 preview zoom: viewport resize needs to re-fit (so the picture
+        // stays centered/fit when the user resizes the window).
+        PreviewViewport.SizeChanged += (_, _) => RecalcFitAndApply();
+    }
+
+    /// <summary>
+    /// Wires up <see cref="_previewTransformGroup"/> as PreviewImage's
+    /// RenderTransform and adds Scale + Translate in the right order
+    /// (scale first, then translate, so translate operates post-scale).
+    /// </summary>
+    private void InitPreviewTransform()
+    {
+        _previewTransformGroup.Children.Add(_previewScale);
+        _previewTransformGroup.Children.Add(_previewTranslate);
+        PreviewImage.RenderTransform = _previewTransformGroup;
+        PreviewImage.RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Absolute);
     }
 
     private async void OnLoaded(object? sender, RoutedEventArgs e)
@@ -312,7 +341,14 @@ public partial class GalleryWindow : Window
         _previewBitmap = null;
         PreviewImage.Source = null;
         _userZoom = 1.0;
-        ApplyPreviewScale(resetOffset: true);
+        // Reset scale/translate to identity so the just-cleared Image
+        // (no Source) doesn't briefly render at the previous image's
+        // transform. RecalcFitAndApply below will set them once the
+        // new bitmap arrives.
+        _previewScale.ScaleX = 1.0;
+        _previewScale.ScaleY = 1.0;
+        _previewTranslate.X = 0.0;
+        _previewTranslate.Y = 0.0;
 
         string path = vm.Entry.FilePath;
         _ = Task.Run(() =>
@@ -359,9 +395,9 @@ public partial class GalleryWindow : Window
 
     /// <summary>
     /// Recomputes <see cref="_fitScale"/> from the current viewport size and
-    /// the loaded bitmap's pixel size, then applies the combined
-    /// (<c>_fitScale * _userZoom</c>) scale. Called on image load and on
-    /// viewport size change (window resize).
+    /// the loaded bitmap's pixel size, applies the combined scale, and
+    /// re-centers the translate. Called on image load and on viewport size
+    /// change (window resize).
     /// </summary>
     private void RecalcFitAndApply()
     {
@@ -370,8 +406,8 @@ public partial class GalleryWindow : Window
             return;
         }
 
-        double vw = PreviewScroll.Bounds.Width;
-        double vh = PreviewScroll.Bounds.Height;
+        double vw = PreviewViewport.Bounds.Width;
+        double vh = PreviewViewport.Bounds.Height;
         if (vw <= 1 || vh <= 1)
         {
             return; // viewport not laid out yet
@@ -384,8 +420,6 @@ public partial class GalleryWindow : Window
             return;
         }
 
-        // Subtract the Image's 20px margin from each side so the picture
-        // doesn't kiss the scrollbars/edges.
         const double pad = 40.0;
         double fit = Math.Min((vw - pad) / iw, (vh - pad) / ih);
         if (fit > 1.0)
@@ -397,30 +431,78 @@ public partial class GalleryWindow : Window
             fit = 0.05; // floor to avoid divide-by-zero edge cases on tiny viewports
         }
         _fitScale = fit;
-        ApplyPreviewScale(resetOffset: false);
-    }
 
-    /// <summary>
-    /// Pushes <c>_fitScale * _userZoom</c> into <see cref="PreviewScale"/>.
-    /// When <paramref name="resetOffset"/> is true (new image opened), also
-    /// snaps scroll to top-left so the user starts at the corner.
-    /// </summary>
-    private void ApplyPreviewScale(bool resetOffset)
-    {
+        // Push the combined scale, then center the (possibly scaled-down)
+        // image in the viewport. Centering keeps the picture visually
+        // centered regardless of zoom level relative to fit.
         double s = _fitScale * _userZoom;
         _previewScale.ScaleX = s;
         _previewScale.ScaleY = s;
-        if (resetOffset)
+        double scaledW = iw * s;
+        double scaledH = ih * s;
+        // Translate is in viewport space (post-scale). Center the scaled
+        // image; if zoomed larger than viewport, the clamp below will pull
+        // it back into bounds on the next pan/zoom.
+        _previewTranslate.X = (vw - scaledW) / 2.0;
+        _previewTranslate.Y = (vh - scaledH) / 2.0;
+        ClampTranslate();
+    }
+
+    /// <summary>
+    /// Clamps <see cref="_previewTranslate"/> so the scaled image cannot
+    /// leave the viewport on any side. When the image is smaller than the
+    /// viewport (zoomed-out), it stays centered; when larger, the near edge
+    /// is kept inside.
+    /// </summary>
+    private void ClampTranslate()
+    {
+        if (_previewBitmap is not { } bmp)
         {
-            PreviewScroll.Offset = new Vector(0, 0);
+            return;
         }
+        double vw = PreviewViewport.Bounds.Width;
+        double vh = PreviewViewport.Bounds.Height;
+        if (vw <= 1 || vh <= 1)
+        {
+            return;
+        }
+
+        double s = _fitScale * _userZoom;
+        double scaledW = bmp.PixelSize.Width * s;
+        double scaledH = bmp.PixelSize.Height * s;
+
+        double minX, maxX, minY, maxY;
+        if (scaledW <= vw)
+        {
+            // Image smaller than viewport — keep centered.
+            minX = maxX = (vw - scaledW) / 2.0;
+        }
+        else
+        {
+            // Image larger — keep both edges inside the viewport.
+            minX = vw - scaledW;
+            maxX = 0;
+        }
+        if (scaledH <= vh)
+        {
+            minY = maxY = (vh - scaledH) / 2.0;
+        }
+        else
+        {
+            minY = vh - scaledH;
+            maxY = 0;
+        }
+
+        _previewTranslate.X = Math.Clamp(_previewTranslate.X, minX, maxX);
+        _previewTranslate.Y = Math.Clamp(_previewTranslate.Y, minY, maxY);
     }
 
     /// <summary>
     /// Wheel-zoom on the preview. Up = zoom in, Down = zoom out. Multiplies
     /// <see cref="_userZoom"/> by <see cref="ZoomPerNotch"/> per notch,
-    /// clamped to [<see cref="MinZoom"/>, <see cref="MaxZoom"/>]. The scroll
-    /// anchor is preserved so the point under the cursor stays put.
+    /// clamped to [<see cref="MinZoom"/>, <see cref="MaxZoom"/>]. The image
+    /// point under the cursor stays anchored to the same viewport point
+    /// before/after the zoom — standard "zoom at cursor" behavior.
     /// </summary>
     private void OnPreviewPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
@@ -435,43 +517,32 @@ public partial class GalleryWindow : Window
             return;
         }
 
-        // Suppress the default scroll behavior — we're hijacking the wheel
-        // for zoom, not vertical pan.
+        // We are NOT inside a ScrollViewer, so there's no default scroll
+        // behavior to compete with. e.Handled is still set so any bubbling
+        // ancestor (the overlay Border) doesn't try to do something with it.
         e.Handled = true;
 
-        // Capture the cursor position (in viewport coordinates) and current
-        // scroll offset BEFORE applying the new scale, so we can compute the
-        // image-space point under the cursor and re-anchor it afterwards.
-        Point cursor = e.GetPosition(PreviewScroll);
-        Vector oldOffset = PreviewScroll.Offset;
+        Point cursor = e.GetPosition(PreviewViewport);
         double oldScale = _fitScale * _userZoom;
 
         double factor = delta > 0 ? ZoomPerNotch : 1.0 / ZoomPerNotch;
         _userZoom = Math.Clamp(_userZoom * factor, MinZoom, MaxZoom);
-        ApplyPreviewScale(resetOffset: false);
-
         double newScale = _fitScale * _userZoom;
         if (oldScale <= 0 || newScale <= 0)
         {
             return;
         }
 
-        // Image-space point under the cursor before the zoom.
-        double imgX = (oldOffset.X + cursor.X) / oldScale;
-        double imgY = (oldOffset.Y + cursor.Y) / oldScale;
-
-        // Post the offset update so it runs AFTER LayoutTransformControl has
-        // committed its new Extent to the ScrollViewer (otherwise Offset
-        // would be clamped against the old extent). Background runs after
-        // layout but before input — Avalonia has no Layout priority value.
-        Dispatcher.UIThread.Post(() =>
-        {
-            double newX = imgX * newScale - cursor.X;
-            double newY = imgY * newScale - cursor.Y;
-            PreviewScroll.Offset = new Vector(
-                Math.Max(0, newX),
-                Math.Max(0, newY));
-        }, DispatcherPriority.Background);
+        // Keep the image-space point under the cursor anchored:
+        //   imgPoint = (cursor - oldTranslate) / oldScale
+        //   newTranslate = cursor - imgPoint * newScale
+        double imgX = (cursor.X - _previewTranslate.X) / oldScale;
+        double imgY = (cursor.Y - _previewTranslate.Y) / oldScale;
+        _previewScale.ScaleX = newScale;
+        _previewScale.ScaleY = newScale;
+        _previewTranslate.X = cursor.X - imgX * newScale;
+        _previewTranslate.Y = cursor.Y - imgY * newScale;
+        ClampTranslate();
     }
 
     private void OnPreviewOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -488,15 +559,15 @@ public partial class GalleryWindow : Window
         // event so the backdrop close handler doesn't fire mid-drag.
         e.Handled = true;
 
-        var props = e.GetCurrentPoint(PreviewScroll).Properties;
+        var props = e.GetCurrentPoint(PreviewViewport).Properties;
         if (!props.IsLeftButtonPressed)
         {
             return;
         }
 
         _isPanning = true;
-        _panStart = e.GetPosition(PreviewScroll);
-        _panStartOffset = PreviewScroll.Offset;
+        _panStart = e.GetPosition(PreviewViewport);
+        _panStartTranslate = new Point(_previewTranslate.X, _previewTranslate.Y);
         e.Pointer.Capture(PreviewImage);
     }
 
@@ -507,17 +578,15 @@ public partial class GalleryWindow : Window
             return;
         }
 
-        Point current = e.GetPosition(PreviewScroll);
+        Point current = e.GetPosition(PreviewViewport);
         double dx = current.X - _panStart.X;
         double dy = current.Y - _panStart.Y;
 
-        // Scroll offset moves opposite to pointer delta: dragging right
-        // should reveal content on the left, so we subtract dx/dy from
-        // the starting offset. ScrollViewer clamps to [0, Extent-Viewport]
-        // automatically — no manual bounds check needed.
-        PreviewScroll.Offset = new Vector(
-            _panStartOffset.X - dx,
-            _panStartOffset.Y - dy);
+        // Translate moves with the pointer: dragging right shifts the image
+        // right. ClampTranslate keeps edges inside the viewport.
+        _previewTranslate.X = _panStartTranslate.X + dx;
+        _previewTranslate.Y = _panStartTranslate.Y + dy;
+        ClampTranslate();
     }
 
     private void OnPreviewImagePointerReleased(object? sender, PointerReleasedEventArgs e)

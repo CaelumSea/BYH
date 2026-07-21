@@ -126,46 +126,40 @@
           </Grid>
         </Border>
 
-        <!-- Image area: ScrollViewer + LayoutTransformControl + Image
-             Stretch="None". This is the only combination that gives both
-             fit-to-window at zoom=1x AND pannable extent when zoomed in:
+        <!-- Image area: Border(ClipToBounds) + Image Stretch="None" with
+             RenderTransform = TransformGroup(Scale + Translate).
 
-              - Stretch="None" makes Image report its raw pixel size
-                (Stretch="Uniform" inside ScrollViewer breaks because the
-                ScrollViewer offers infinite available space)
-              - LayoutTransformControl.LayoutTransform = ScaleTransform
-                changes the Image's *layout* size, so ScrollViewer sees the
-                correct Extent and supports panning
-              - ScrollBars are Hidden (not Disabled — Disabled would clip
-                the extent; Hidden keeps layout but hides the chrome)
-              - Wheel is hijacked for zoom; panning is left-button drag
-                (handled in OnPreviewImagePointerPressed/Moved/Released).
-                This is the standard "pro image viewer" UX (PS / FastStone /
-                IrfanView): wheel = zoom, drag = pan.
-              - Inner Grid with Center alignment keeps the image centered
-                when it's smaller than the viewport (zoomed out / small pic) -->
-        <ScrollViewer x:Name="PreviewScroll"
-                      Grid.Row="1"
-                      HorizontalScrollBarVisibility="Hidden"
-                      VerticalScrollBarVisibility="Hidden"
-                      Background="Transparent"
-                      PointerWheelChanged="OnPreviewPointerWheelChanged">
-          <Grid HorizontalAlignment="Center"
-                VerticalAlignment="Center">
-            <LayoutTransformControl x:Name="PreviewScaler">
-              <!-- ScaleTransform is assigned in code-behind (ctor) so we have
-                   a stable field reference; declaring it inline here would
-                   make PreviewScale unavailable to the generated partial. -->
-              <Image x:Name="PreviewImage"
-                     Stretch="None"
-                     Margin="20"
-                     Cursor="SizeAll"
-                     PointerPressed="OnPreviewImagePointerPressed"
-                     PointerMoved="OnPreviewImagePointerMoved"
-                     PointerReleased="OnPreviewImagePointerReleased"/>
-            </LayoutTransformControl>
-          </Grid>
-        </ScrollViewer>
+             We deliberately avoid ScrollViewer: it intercepts wheel events
+             and switches to vertical-scroll mode when its Extent exceeds the
+             Viewport (e.Handled=true on the bubbling event doesn't stop the
+             ScrollContentPresenter's internal handling). For "wheel = zoom,
+             drag = pan" semantics — the standard pro viewer UX — we need to
+             own all pan/zoom state ourselves:
+
+              - Border ClipToBounds clips the zoomed image to the viewport
+              - ScaleTransform handles zoom (scale = fitScale * userZoom)
+              - TranslateTransform handles pan (left-button drag)
+              - Image.Stretch="None" so scale is controlled only by us
+
+             Origin (0,0) is the image's top-left, in image-pixel space
+             before scale/translate. The bounds checks in OnPreviewImagePointerMoved
+             and OnPreviewPointerWheelChanged keep the image edge from
+             leaving the viewport. -->
+        <Border x:Name="PreviewViewport"
+                Grid.Row="1"
+                Background="Transparent"
+                ClipToBounds="True"
+                PointerWheelChanged="OnPreviewPointerWheelChanged">
+          <Image x:Name="PreviewImage"
+                 Stretch="None"
+                 HorizontalAlignment="Left"
+                 VerticalAlignment="Top"
+                 Cursor="SizeAll"
+                 RenderTransformOrigin="0,0"
+                 PointerPressed="OnPreviewImagePointerPressed"
+                 PointerMoved="OnPreviewImagePointerMoved"
+                 PointerReleased="OnPreviewImagePointerReleased"/>
+        </Border>
 
         <!-- Bottom bar: action buttons -->
         <Border Grid.Row="2" Padding="20,10" Background="#33000000">
