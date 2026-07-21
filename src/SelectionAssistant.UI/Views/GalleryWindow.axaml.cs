@@ -63,28 +63,23 @@ public partial class GalleryWindow : Window
     private Bitmap? _previewBitmap;
 
     /// <summary>
-    /// User zoom factor on top of the fit-to-window baseline. 1.0 = exactly
-    /// fit. Wheel changes this by <see cref="ZoomPerNotch"/> or its
-    /// reciprocal, clamped to [<see cref="MinZoom"/>, <see cref="MaxZoom"/>].
+    /// The full content-to-viewport transform matrix. Combines fit-to-window
+    /// scaling + user zoom + pan offset. Stored as a single Matrix to avoid
+    /// TransformGroup children-order pitfalls. Updated by <see cref="ApplyMatrix"/>
+    /// and pushed to <c>PreviewImage.RenderTransform</c> as a new MatrixTransform
+    /// instance (MatrixTransform.Value is read-only in Avalonia 12).
+    /// <para>
+    /// Layout: viewportPoint = matrix.Transform(imagePoint). The matrix is
+    /// Scale(zoom) * Translate(pan) where zoom already includes the fit factor.
+    /// </para>
     /// </summary>
-    private double _userZoom = 1.0;
+    private Matrix _matrix = Matrix.Identity;
 
-    /// <summary>Pan offset in viewport space (DIP). Positive X moves right.</summary>
-    private double _panX;
-
-    /// <summary>Pan offset in viewport space (DIP). Positive Y moves down.</summary>
-    private double _panY;
-
-    /// <summary>
-    /// True while the user is left-button-dragging to pan the zoomed image.
-    /// </summary>
+    /// <summary>True while the user is left-button-dragging to pan the zoomed image.</summary>
     private bool _isPanning;
 
-    /// <summary>Pointer position (in viewport coordinates) at pan start.</summary>
-    private Point _panStart;
-
-    /// <summary>_panX / _panY snapshot at pan start, so we apply delta on move.</summary>
-    private Point _panStartOffset;
+    /// <summary>Pointer position (in viewport coordinates) from the previous Moved event.</summary>
+    private Point _panPrevious;
 
     /// <summary>
     /// Raised with the absolute path of a PNG the user wants copied to the
@@ -126,32 +121,82 @@ public partial class GalleryWindow : Window
         InitPreviewTransform();
         Loaded += OnLoaded;
         Closed += OnClosed;
+        // Re-fit when the viewport size changes (window resize). Only
+        // meaningful while a preview is open.
+        PreviewViewport.SizeChanged += (_, _) =>
+        {
+            if (PreviewOverlay.IsVisible && _previewBitmap is not null)
+            {
+                FitToWindow();
+            }
+        };
     }
 
     /// <summary>
-    /// Attaches a fresh identity MatrixTransform to PreviewImage.RenderTransform.
-    /// (We don't keep a long-lived field because MatrixTransform.Value is
-    /// read-only — each update allocates a new MatrixTransform instance.)
+    /// Computes the initial fit-to-window matrix and applies it. Mirrors
+    /// PanAndZoom's <c>CalculateMatrix</c> with <c>StretchMode.Uniform</c>:
+    /// scale = min(vw/iw, vh/ih), centered on the viewport.
     /// </summary>
     private void InitPreviewTransform()
     {
-        ApplyPreviewTransform();
+        // RenderTransformOrigin is set in AXAML to (0,0). The matrix itself
+        // will encode all the scaling and translation.
+        PreviewImage.RenderTransform = new MatrixTransform(Matrix.Identity);
     }
 
     /// <summary>
-    /// Recomputes the matrix from the current <see cref="_userZoom"/> and
-    /// (<see cref="_panX"/>, <see cref="_panY"/>) and assigns it to
-    /// PreviewImage.RenderTransform. The matrix is Scale(zoom) * Translate(pan)
-    /// so a point p maps as: p' = (p.X * zoom + panX, p.Y * zoom + panY).
-    /// Both factors operate in viewport space (DIP), no LayoutTransform
-    /// nesting to confuse the math.
+    /// Pushes <see cref="_matrix"/> to <c>PreviewImage.RenderTransform</c>.
+    /// MatrixTransform.Value is read-only in Avalonia 12, so we allocate a
+    /// new MatrixTransform each time (cheap — RenderTransform is a
+    /// StyledProperty, and updates are infrequent: only on wheel/drag events).
     /// </summary>
-    private void ApplyPreviewTransform()
+    private void ApplyMatrix()
     {
-        PreviewImage.RenderTransform = new MatrixTransform(new Matrix(
-            _userZoom, 0,
-            0, _userZoom,
-            _panX, _panY));
+        PreviewImage.RenderTransform = new MatrixTransform(_matrix);
+    }
+
+    /// <summary>
+    /// Computes the fit-to-window matrix for the current bitmap and viewport,
+    /// centered (image middle maps to viewport middle). Called on image load
+    /// and on viewport resize.
+    /// </summary>
+    private void FitToWindow()
+    {
+        if (_previewBitmap is not { } bmp)
+        {
+            return;
+        }
+        double vw = PreviewViewport.Bounds.Width;
+        double vh = PreviewViewport.Bounds.Height;
+        if (vw <= 1 || vh <= 1)
+        {
+            return;
+        }
+
+        // Use DIP Size (not PixelSize) — Image.Stretch=None measures at
+        // source.Size, and the matrix operates in DIP space.
+        double iw = bmp.Size.Width;
+        double ih = bmp.Size.Height;
+        if (iw <= 0 || ih <= 0)
+        {
+            return;
+        }
+
+        double zoom = Math.Min(vw / iw, vh / ih);
+        if (zoom > 1.0)
+        {
+            zoom = 1.0; // don't upscale past 1:1
+        }
+
+        // Centered: image center maps to viewport center.
+        // Pan offset = viewportCenter - imageCenter * zoom.
+        double cx = iw / 2.0;
+        double cy = ih / 2.0;
+        double panX = vw / 2.0 - cx * zoom;
+        double panY = vh / 2.0 - cy * zoom;
+
+        _matrix = new Matrix(zoom, 0, 0, zoom, panX, panY);
+        ApplyMatrix();
     }
 
     private async void OnLoaded(object? sender, RoutedEventArgs e)
@@ -321,16 +366,12 @@ public partial class GalleryWindow : Window
         PreviewOverlay.IsVisible = true;
         _selected = vm;
 
-        // Reset zoom + pan for the new image. Image.Stretch="Uniform" will
-        // natively fit-to-window once Source is set; we just multiply the
-        // user zoom on top via LayoutTransformControl.
+        // Reset state for the new image.
         _previewBitmap?.Dispose();
         _previewBitmap = null;
         PreviewImage.Source = null;
-        _userZoom = 1.0;
-        _panX = 0;
-        _panY = 0;
-        ApplyPreviewTransform();
+        _matrix = Matrix.Identity;
+        ApplyMatrix();
 
         string path = vm.Entry.FilePath;
         _ = Task.Run(() =>
@@ -359,8 +400,10 @@ public partial class GalleryWindow : Window
                 _previewBitmap?.Dispose();
                 _previewBitmap = full;
                 PreviewImage.Source = full;
-                // No fit math needed — Image Stretch="Uniform" handles it.
-                // LayoutTransformControl scale is already 1.0 = fit baseline.
+                // Compute the initial fit-to-window matrix. Post at Loaded
+                // priority so the layout pass triggered by Source change has
+                // completed and PreviewViewport.Bounds is correct.
+                Dispatcher.UIThread.Post(FitToWindow, DispatcherPriority.Loaded);
             });
         });
     }
@@ -371,27 +414,27 @@ public partial class GalleryWindow : Window
         PreviewImage.Source = null;
         _previewBitmap?.Dispose();
         _previewBitmap = null;
-        _userZoom = 1.0;
-        _panX = 0;
-        _panY = 0;
+        _matrix = Matrix.Identity;
         _isPanning = false;
-        ApplyPreviewTransform();
+        ApplyMatrix();
     }
 
     /// <summary>
-    /// Wheel-zoom at cursor. Standard PanAndZoom formula:
+    /// Wheel-zoom at cursor. Mirrors PanAndZoom's <c>ZoomTo(ratio, x, y)</c>:
     /// <code>
-    ///   delta = wheel up ? ZoomPerNotch : 1/ZoomPerNotch
-    ///   newZoom = clamp(oldZoom * delta, MinZoom, MaxZoom)
-    ///   actualDelta = newZoom / oldZoom
-    ///   newPan = (cursor + oldPan) * actualDelta - cursor
+    ///   cursor_in_image = e.GetPosition(PreviewImage)
+    ///   ratio = wheel up ? ZoomPerNotch : 1/ZoomPerNotch (clamped so
+    ///           resulting zoom stays in [fit * MinUserZoom, fit * MaxUserZoom])
+    ///   _matrix = ScaleAt(ratio, ratio, cursor.X, cursor.Y) * _matrix
     /// </code>
-    /// Derivation: the image-space point under the cursor stays put.
-    /// Image-space coord of cursor = (cursor - oldPan) / oldZoom.
-    /// After zoom, viewport coord of that same point =
-    ///   imagePoint * newZoom + newPan.
-    /// Setting that equal to cursor and solving for newPan gives the
-    /// formula above.
+    /// ScaleAt(ratio, x, y) = | ratio 0 x*(1-ratio) |
+    ///                        | 0 ratio y*(1-ratio) |
+    /// which keeps the image point (x, y) fixed under the cursor.
+    /// <para>
+    /// CRITICAL: cursor must be in IMAGE coordinates (PreviewImage), not
+    /// viewport (PreviewViewport). The matrix transforms image→viewport, so
+    /// the anchor point must be in the pre-transform space.
+    /// </para>
     /// </summary>
     private void OnPreviewPointerWheelChanged(object? sender, PointerWheelEventArgs e)
     {
@@ -408,20 +451,33 @@ public partial class GalleryWindow : Window
 
         e.Handled = true;
 
-        Point cursor = e.GetPosition(PreviewViewport);
-        double oldZoom = _userZoom;
+        // Position in image (pre-transform) space — the matrix's input space.
+        Point cursor = e.GetPosition(PreviewImage);
 
+        double oldZoom = _matrix.M11;
         double factor = delta > 0 ? ZoomPerNotch : 1.0 / ZoomPerNotch;
-        _userZoom = Math.Clamp(_userZoom * factor, MinZoom, MaxZoom);
-        if (_userZoom == oldZoom)
+        double newZoom = oldZoom * factor;
+
+        // Clamp zoom to [fit/4, fit*8]. The fit factor is recomputed each
+        // time so clamps stay correct as the user resizes the window.
+        double fitZoom = ComputeFitZoom();
+        if (fitZoom > 0)
         {
-            return; // clamped, no change
+            newZoom = Math.Clamp(newZoom, fitZoom / 4.0, fitZoom * 8.0);
+        }
+        if (Math.Abs(newZoom - oldZoom) < 1e-9)
+        {
+            return;
         }
 
-        double actualDelta = _userZoom / oldZoom;
-        _panX = (cursor.X + _panX) * actualDelta - cursor.X;
-        _panY = (cursor.Y + _panY) * actualDelta - cursor.Y;
-        ApplyPreviewTransform();
+        double ratio = newZoom / oldZoom;
+        // ScaleAt(ratio, cx, cy) = scale by ratio anchored at (cx, cy).
+        // Prepend to _matrix so the new scale applies in image space.
+        Matrix scaleAt = new(ratio, 0, 0, ratio,
+            cursor.X * (1.0 - ratio),
+            cursor.Y * (1.0 - ratio));
+        _matrix = scaleAt * _matrix;
+        ApplyMatrix();
     }
 
     private void OnPreviewOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
@@ -444,8 +500,9 @@ public partial class GalleryWindow : Window
         }
 
         _isPanning = true;
-        _panStart = e.GetPosition(PreviewViewport);
-        _panStartOffset = new Point(_panX, _panY);
+        // Use viewport coords for pan delta (drag distance is in viewport
+        // space regardless of zoom level).
+        _panPrevious = e.GetPosition(PreviewViewport);
         e.Pointer.Capture(PreviewImage);
     }
 
@@ -457,9 +514,18 @@ public partial class GalleryWindow : Window
         }
 
         Point current = e.GetPosition(PreviewViewport);
-        _panX = _panStartOffset.X + (current.X - _panStart.X);
-        _panY = _panStartOffset.Y + (current.Y - _panStart.Y);
-        ApplyPreviewTransform();
+        double dx = current.X - _panPrevious.X;
+        double dy = current.Y - _panPrevious.Y;
+        _panPrevious = current;
+
+        // Translate in viewport space — drag distance maps 1:1 to pan offset
+        // regardless of zoom. Prepend Translate(dx, dy) so the translation
+        // applies AFTER scaling (i.e. in viewport space).
+        // Translate * _matrix means: first apply _matrix (scale+pan), then
+        // translate by (dx, dy) — which is exactly what we want.
+        Matrix translate = new(1, 0, 0, 1, dx, dy);
+        _matrix = translate * _matrix;
+        ApplyMatrix();
     }
 
     private void OnPreviewImagePointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -470,6 +536,25 @@ public partial class GalleryWindow : Window
         }
         _isPanning = false;
         e.Pointer.Capture(null);
+    }
+
+    /// <summary>
+    /// Returns the fit-to-window zoom factor for the current bitmap and
+    /// viewport, or 0 if it can't be computed yet (no bitmap or viewport
+    /// not laid out). Used by <see cref="OnPreviewPointerWheelChanged"/>
+    /// for clamping.
+    /// </summary>
+    private double ComputeFitZoom()
+    {
+        if (_previewBitmap is not { } bmp) return 0;
+        double vw = PreviewViewport.Bounds.Width;
+        double vh = PreviewViewport.Bounds.Height;
+        if (vw <= 1 || vh <= 1) return 0;
+        double iw = bmp.Size.Width;
+        double ih = bmp.Size.Height;
+        if (iw <= 0 || ih <= 0) return 0;
+        double fit = Math.Min(vw / iw, vh / ih);
+        return fit > 1.0 ? 1.0 : fit;
     }
 
     private void OnPreviewCopy_Click(object? sender, RoutedEventArgs e)

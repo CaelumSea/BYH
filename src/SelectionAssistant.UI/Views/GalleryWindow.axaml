@@ -141,26 +141,27 @@
              For panning when zoomed in, we wrap LayoutTransformControl in a
              Grid and shift it via Margin. No ScrollViewer = no wheel hijack. -->
         <!-- Image area: Border ClipToBounds is the viewport. Image Stretch=
-             Uniform natively fit-to-windows. Zoom and pan are applied to the
-             Image via a single MatrixTransform (set in code-behind) — using
-             RenderTransform (not LayoutTransformControl) so the Image's
-             layout box stays constant and the centered-alignment origin
-             doesn't drift with zoom (which was causing 'zoom-at-cursor
-             drifts diagonally' on the LayoutTransformControl version).
+             None renders at its native DIP size. We compute the entire
+             transform matrix ourselves (mirroring the PanAndZoom ZoomBorder
+             pattern): fit-to-window on image load, ScaleAtPrepend on wheel
+             zoom (cursor-anchored), TranslatePrepend on drag pan. The matrix
+             is applied to Image.RenderTransform via MatrixTransform.
 
-             The Matrix = Scale(userZoom) * Translate(pan) — scale first,
-             then translate, both in viewport space. We compute and assign
-             the matrix in one shot, avoiding TransformGroup children-order
-             pitfalls. -->
+             Why not Image Stretch="Uniform": that creates a *second* scaling
+             on top of our matrix (Avalonia fits the bitmap to the Image's
+             layout box, then our RenderTransform scales that result), which
+             breaks the zoom-at-cursor math. By using Stretch="None" and
+             computing fit ourselves, we have one and only one transformation
+             in the pipeline. -->
         <Border x:Name="PreviewViewport"
                 Grid.Row="1"
                 Background="Transparent"
                 ClipToBounds="True"
                 PointerWheelChanged="OnPreviewPointerWheelChanged">
           <Image x:Name="PreviewImage"
-                 Stretch="Uniform"
-                 HorizontalAlignment="Center"
-                 VerticalAlignment="Center"
+                 Stretch="None"
+                 HorizontalAlignment="Left"
+                 VerticalAlignment="Top"
                  RenderTransformOrigin="0,0"
                  Cursor="SizeAll"
                  PointerPressed="OnPreviewImagePointerPressed"
