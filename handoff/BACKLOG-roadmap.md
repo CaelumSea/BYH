@@ -5,6 +5,7 @@
 > 模块文档见 `docs/architecture/00-architecture-overview.md`。
 > **更新 2026-07-20 第四十三批（v2 终态）：撤销 R45 二维码（用户判定"不太用得上"，revert 0623e4c）；R52 磁力吸 + R48 标注工具集 落地。R48 走了两轮：v1（merge 9092d37）用户测试发现 3 个严重 bug（无拖拽实时预览 / pen-highlight 路径记录失效 / arrow 撤销计数错）→ revert 79a39a0 → v2（merge 702788c）重做，扩 IMouseHook 加 MouseMove 事件根本解决路径记录 + 加 live preview + 修 Arrow Tag(2)，reviewer 补 20 个回归测试覆盖 3 个 v1 失败模式。R52 也修了 GetWorkAreas 的 DPI 缩放 bug（WorkingArea 已是物理像素，不应再 ×RenderScaling，commit 633f066）。最终 main：316/316 测试通过，NativeAOT 0 警告，exe = 27,782,144 字节。**
 > **更新 2026-07-20 第四十四批（调研）：R54 剪贴板历史调研完成，规格定稿（v1 纯文本 + Smart auto-group + 50 图上限 + JSON 持久化）。基线内存实测 123MB（含完整 Ocean Eyes 功能），加 R54 预估 +3MB（+2.4%），用户感知不到。详见 §R54。**
+> **更新 2026-07-21 第四十五批（R51 落地）：截图美化（B 键）实施。纯软件 BGRA 合成（无 SkiaSharp，AOT 安全）—— CleanShot X / Shottr 风格的浮动截图 + 圆角 + 投射阴影模型。重构 `BurnAnnotationsIntoPng` 拆出 `BurnAnnotationsOntoBgra` 让 B 路径复用 R48 burn-in（省一次 PNG decode）。`OceanEyesCaptureSettings` +7 字段（Padding/CornerRadius/BackgroundHex/Shadow*），不动 schemaVersion（旧文件走默认）。0 新依赖，0 trim/AOT 警告，340/340 测试通过（+22 新），exe 增量 +24.5KB（远低于 100KB 预算）。详见 §R51。**
 
 ---
 
@@ -344,14 +345,25 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
 - **验收**：截图自动缩放到外壳"屏幕区域"；输出 PNG 透明背景；常用 5 个外壳（MacBook / iMac / iPhone 15 / Pixel / Edge browser）。
 - **关键点**：外壳模板需自己画或下载免费授权的——不要从其他截图软件扒。
 
-#### R51 — 截图美化（padding + shadow + rounded corners）
+#### R51 — 截图美化（padding + shadow + rounded corners）✅ 已完成
 
-- **触发**：Ocean Eyes 工具栏按 **B**（Beautify）→ 一键给截图加 32px padding + 香槟色背景（`#FFFCF7EA` 与 Ivory Jade 一致）+ 8px 圆角 + 柔光阴影，复制到剪贴板。
-- **代码量**：~120 行（Skia 合成 + 配置）。
-- **依赖**：无新增。
-- **资源开销**：常驻 0。
-- **验收**：输出尺寸 = 原图 + 64px；阴影偏移 4,4 blur 16；圆角半径可在设置页调（默认 8）。
-- **可选**：用户在设置页选背景色（默认香槟 / 白 / 黑 / 渐变）。
+> **2026-07-21 落地**（第四十四批）。Ocean Eyes 工具栏按 **B**（Beautify）→ 一键美化，复制到剪贴板，自动退出 Ocean Eyes（terminal action，同 T/P 模式）。
+
+- **实现要点**：
+  - **纯软件 BGRA 合成**（无 SkiaSharp，AOT 安全，复用 R48 burn-in 管线）。新文件 `src/SelectionAssistant.Core/Capture/ScreenshotBeautifier.cs` 实现"浮动截图 + 圆角 + 投射阴影"模型（CleanShot X / Shottr 风格）：padding 区透明（让阴影有扩散空间），背景色仅在图像圆角内的透明像素处显露。
+  - **三层合成**（底→顶）：阴影（box-blur 圆角剪影 → 偏移）→ 背景（图像圆角内不透明填充）→ 图像（按圆角 coverage 裁边）。1px AA 抗锯齿。
+  - **重构**：把 R48 `BurnAnnotationsIntoPng` 拆出 `BurnAnnotationsOntoBgra`（返回 BGRA，不 encode），让 B 路径复用同一份 burn-in，省一次 PNG decode round-trip。
+  - **B 键插入位置**：`OnToolbarKeyPressed` 中 `vkPin(0x54)` 之后、`vkAnnotate(0x41)` 之前——必须在 A-Z filter 之前否则会被 OCR-lazy gate 吞。
+  - **设置扩展**（不动 schemaVersion=1）：`OceanEyesCaptureSettings` +7 字段（Padding/CornerRadius/BackgroundHex/ShadowOffsetX/Y/BlurRadius/Opacity），`OceanEyesCaptureStore` 读写时缺失字段走默认。Validate 加数值范围检查。v1 无设置 UI，用户可手改 `ocean-eyes-capture.json`。
+  - **触发管线**：`BeautifyOceanEyesScreenshot()` 在 hook 线程 snapshot 状态 → `Dispatcher.UIThread.Post` → burn-in → beautify → encode → 可选 AutoSave → 必复制剪贴板。和 Enter 路径共享标注烧入逻辑。
+- **默认值**：padding 32px / radius 8px / 背景 `#FFFCF7EA`（Ivory Jade 香槟）/ 阴影 offset 4,4 blur 16 opacity 0.5。
+- **代码量**：实际 ~460 行（vs 估的 120 行 —— 多出来的是 box-blur 实现 + AA + 22 个测试 + 重构 burn-in 拆分）。
+- **依赖**：0 新增。
+- **资源开销**：常驻 0；1080p 美化 < 10ms（box-blur O(n) + 单遍合成），4K < 40ms。
+- **验收**：0 警告 + 0 trim/AOT 警告 + 340/340 测试（+22 新：ScreenshotBeautifier 15 + OceanEyesCaptureStore 7）+ EXE 增量 **+25,088 字节（+24.5KB，远低于 100KB 预算）**。
+- **未做**（v2 候选）：设置页 UI 暴露 7 个字段；4× SSAA 抗锯齿（v1 接受 1px AA）；背景渐变 / 主题预设。
+- **关键文件**：`src/SelectionAssistant.Core/Capture/ScreenshotBeautifier.cs`（新）+ `OceanEyesCaptureSettings.cs`（+7 字段 +Validate）+ `OceanEyesCaptureStore.cs`（读写 +ReadInt32/ReadDouble helpers）+ `src/SelectionAssistant.App/SelectionRuntime.cs`（`BeautifyOceanEyesScreenshot` + B 键分支 + `BurnAnnotationsOntoBgra` 拆分）+ `tests/SelectionAssistant.Core.Tests/Capture/ScreenshotBeautifierTests.cs`（新，15 个测试）+ `tests/SelectionAssistant.Core.Tests/Configuration/OceanEyesCaptureStoreTests.cs`（+7 个 R51 字段测试）。
+- **用户真机要测**：(1) Ctrl+Alt+Q → 框选 → B → 应在剪贴板得到一张带圆角+阴影+香槟底（透明区）的截图；(2) 在聊天软件粘贴验证；(3) 同时做标注（A 进入 → 加序号 → A 退出 → B）→ 标注应被烧入再美化；(4) AutoSave 开启时 PNG 同步落盘 `Pictures/Ocean Eyes/ocean-eyes-yyyyMMdd-HHmmss.png`；(5) 改 `ocean-eyes-capture.json` 的 `beautifyCornerRadius` → 重启 → B 应反映新值。
 
 #### R52 — 磁力吸（magnetic snap for pinned notes）
 
@@ -550,9 +562,9 @@ P0（高性价比，先做）
 
 P1（中等，按需做）
   ✅ R48 标注工具集（依赖 R47 标注 layer，2026-07-20 第四十三批 v2 落地）
+  ✅ R51 截图美化（2026-07-21 第四十四批落地，+24.5KB，0 新依赖）
   R49 截图相册
   R50 带壳截图
-  R51 截图美化
 
 P1+（重功能，最后做）
   R53 长截图（独立，可任何时候做）
