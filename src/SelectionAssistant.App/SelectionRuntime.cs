@@ -1331,6 +1331,7 @@ internal sealed class SelectionRuntime : IDisposable
                 window.RequestCopy += path => CopyGalleryEntryToClipboard(path);
                 window.RequestDelete += path =>
                     _logger.Info("OceanEyes", $"Gallery: user deleted {path}");
+                window.RequestReveal += path => RevealGalleryEntryInExplorer(path);
                 window.Closed += (_, _) =>
                 {
                     if (ReferenceEquals(_galleryWindow, window))
@@ -1373,6 +1374,41 @@ internal sealed class SelectionRuntime : IDisposable
             catch (Exception exception)
             {
                 _logger.Error("OceanEyes", "Gallery copy failed.", exception);
+            }
+        });
+    }
+
+    /// <summary>
+    /// R49: gallery "reveal in explorer" handler. Spawns
+    /// <c>explorer.exe /select,"&lt;path&gt;"</c> which opens the containing
+    /// folder with the file pre-selected — matches what every Windows app
+    /// does for "show in folder". Fire-and-forget on a background thread:
+    /// Process.Start itself is fast but we don't want to block the UI thread
+    /// on shell launch in case Explorer is slow to hand off.
+    /// </summary>
+    private void RevealGalleryEntryInExplorer(string filePath)
+    {
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                if (!File.Exists(filePath))
+                {
+                    _logger.Info("OceanEyes", $"Gallery reveal: file vanished: {filePath}");
+                    return;
+                }
+                var startInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = "/select,\"" + filePath + "\"",
+                    UseShellExecute = true,
+                };
+                System.Diagnostics.Process.Start(startInfo);
+                _logger.Info("OceanEyes", $"Gallery: revealed {filePath} in Explorer.");
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("OceanEyes", "Gallery reveal failed.", exception);
             }
         });
     }

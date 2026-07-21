@@ -18,11 +18,16 @@ namespace SelectionAssistant.UI.Views;
 
 /// <summary>
 /// R49: screenshot gallery window. Scans the Ocean Eyes save folder and
-/// shows a thumbnail grid, newest-first. Double-click requests a clipboard
-/// copy via <see cref="RequestCopy"/>; Delete requests file removal via
-/// <see cref="RequestDelete"/>; Esc closes. Both callbacks go back to the
-/// runtime (App layer) because the Win32 clipboard and file-delete log
-/// integration live there — the UI layer stays free of Platform.Windows.
+/// shows a thumbnail grid, newest-first. Double-click opens a full-size
+/// preview overlay (lightbox); right-click opens a context menu with
+/// copy / preview / delete / reveal-in-explorer. Delete key removes the
+/// selected thumbnail's underlying file; Esc closes (the preview if open,
+/// otherwise the window).
+/// <para>
+/// Clipboard and explorer calls are raised back to the runtime via events
+/// — the UI layer stays free of Platform.Windows. The runtime subscribes
+/// to <see cref="RequestCopy"/> and <see cref="RequestReveal"/>.
+/// </para>
 /// </summary>
 public partial class GalleryWindow : Window
 {
@@ -41,7 +46,15 @@ public partial class GalleryWindow : Window
     private readonly ObservableCollection<GalleryItemViewModel> _items = new();
 
     /// <summary>
-    /// Raised on double-click with the absolute path of the targeted PNG.
+    /// Full-size bitmap currently shown in the preview overlay, if any.
+    /// Tracked separately so it can be disposed on close to release native
+    /// image memory immediately (not waiting on GC).
+    /// </summary>
+    private Bitmap? _previewBitmap;
+
+    /// <summary>
+    /// Raised with the absolute path of a PNG the user wants copied to the
+    /// clipboard (double-click-then-button, context menu, preview button).
     /// The runtime owns the Win32 clipboard call.
     /// </summary>
     public event Action<string>? RequestCopy;
@@ -51,6 +64,13 @@ public partial class GalleryWindow : Window
     /// The window itself performs the File.Delete (UI owns the entries list).
     /// </summary>
     public event Action<string>? RequestDelete;
+
+    /// <summary>
+    /// Raised with the absolute path of a PNG whose containing folder the
+    /// user wants to see in Explorer (context menu / preview button). The
+    /// runtime owns the OS shell call.
+    /// </summary>
+    public event Action<string>? RequestReveal;
 
     public GalleryWindow()
     {
@@ -93,7 +113,7 @@ public partial class GalleryWindow : Window
             entries = new List<ScreenshotGalleryEntry>();
         }
 
-        UpdateCount(entries.Count, totalCount: entries.Count);
+        UpdateCount(entries.Count);
 
         if (entries.Count == 0)
         {
@@ -157,18 +177,30 @@ public partial class GalleryWindow : Window
         });
     }
 
+    // ── Thumbnail grid interactions ────────────────────────────────────
+
     private void OnItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is Control { DataContext: GalleryItemViewModel vm })
         {
             _selected = vm;
+            // Double-click = open preview (the conventional "open" gesture
+            // for image grids). Copy lives on the right-click menu and the
+            // preview's Copy button — don't surprise users by copying on
+            // what looks like an "open" double-click.
             if (e.ClickCount >= 2)
             {
-                RequestCopy?.Invoke(vm.Entry.FilePath);
-                UpdateCount(entriesCount: _items.Count, totalCount: _items.Count,
-                    suffix: " · 已复制");
+                OpenPreview(vm);
+                e.Handled = true;
             }
         }
+    }
+
+    private void OnItemPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        // Placeholder kept for future click-vs-drag distinction (e.g. marquee
+        // selection). Not used in v1 — single-click just updates _selected,
+        // which happens in PointerPressed above.
     }
 
     private void OnItemPointerEntered(object? sender, PointerEventArgs e)
@@ -181,38 +213,195 @@ public partial class GalleryWindow : Window
         }
     }
 
+    // ── Context menu ───────────────────────────────────────────────────
+
+    private void OnContextCopy_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: GalleryItemViewModel vm })
+        {
+            RequestCopy?.Invoke(vm.Entry.FilePath);
+            UpdateCount(_items.Count, suffix: " · 已复制");
+        }
+    }
+
+    private void OnContextPreview_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: GalleryItemViewModel vm })
+        {
+            OpenPreview(vm);
+        }
+    }
+
+    private void OnContextDelete_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: GalleryItemViewModel vm })
+        {
+            DeleteEntry(vm);
+        }
+    }
+
+    private void OnContextReveal_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { Tag: GalleryItemViewModel vm })
+        {
+            RequestReveal?.Invoke(vm.Entry.FilePath);
+        }
+    }
+
+    // ── Preview overlay (lightbox) ─────────────────────────────────────
+
+    private void OpenPreview(GalleryItemViewModel vm)
+    {
+        // Load the full-resolution PNG on a worker thread to avoid UI
+        // hitches on big 4K screenshots. The overlay shows immediately
+        // (with the title) so the user gets feedback; the image fills in.
+        PreviewTitle.Text = Path.GetFileName(vm.Entry.FilePath);
+        PreviewOverlay.IsVisible = true;
+        _selected = vm;
+
+        // Clear any previous preview bitmap first.
+        _previewBitmap?.Dispose();
+        _previewBitmap = null;
+        PreviewImage.Source = null;
+
+        string path = vm.Entry.FilePath;
+        _ = Task.Run(() =>
+        {
+            Bitmap? full = null;
+            try
+            {
+                using var stream = File.OpenRead(path);
+                full = new Bitmap(stream);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("OceanEyes", $"Gallery preview load failed: {path}", ex);
+            }
+            if (full is null) return;
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                // If the user closed the overlay or switched to a different
+                // entry before this finished, dispose the late bitmap.
+                if (!PreviewOverlay.IsVisible || PreviewTitle.Text != Path.GetFileName(path))
+                {
+                    full.Dispose();
+                    return;
+                }
+                _previewBitmap?.Dispose();
+                _previewBitmap = full;
+                PreviewImage.Source = full;
+            });
+        });
+    }
+
+    private void ClosePreview()
+    {
+        PreviewOverlay.IsVisible = false;
+        PreviewImage.Source = null;
+        _previewBitmap?.Dispose();
+        _previewBitmap = null;
+    }
+
+    private void OnPreviewOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // Click on the dark backdrop (not on the image) closes the preview.
+        ClosePreview();
+        e.Handled = true;
+    }
+
+    private void OnPreviewImagePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // Swallow clicks on the image so the backdrop close handler above
+        // doesn't fire when the user is just clicking on the picture.
+        e.Handled = true;
+    }
+
+    private void OnPreviewCopy_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected is { } vm)
+        {
+            RequestCopy?.Invoke(vm.Entry.FilePath);
+            UpdateCount(_items.Count, suffix: " · 已复制");
+        }
+    }
+
+    private void OnPreviewDelete_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected is { } vm)
+        {
+            ClosePreview();
+            DeleteEntry(vm);
+        }
+    }
+
+    private void OnPreviewReveal_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected is { } vm)
+        {
+            RequestReveal?.Invoke(vm.Entry.FilePath);
+        }
+    }
+
+    // ── Keyboard ───────────────────────────────────────────────────────
+
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        // Esc has two levels: close preview if open, else close the window.
         if (e.Key == Key.Escape)
         {
-            Close();
+            if (PreviewOverlay.IsVisible)
+            {
+                ClosePreview();
+            }
+            else
+            {
+                Close();
+            }
             e.Handled = true;
             return;
         }
 
         if (e.Key == Key.Delete && _selected is { } sel)
         {
-            try
-            {
-                RequestDelete?.Invoke(sel.Entry.FilePath);
-                File.Delete(sel.Entry.FilePath);
-                _items.Remove(sel);
-                _selected = null;
-                UpdateCount(entriesCount: _items.Count, totalCount: _items.Count);
-                if (_items.Count == 0)
-                {
-                    EmptyState.IsVisible = true;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Error("OceanEyes", $"Gallery delete failed: {sel.Entry.FilePath}", ex);
-            }
+            DeleteEntry(sel);
+            e.Handled = true;
+        }
+
+        if (e.Key == Key.Enter && _selected is { } selEnter)
+        {
+            // Enter opens the preview (matches double-click).
+            OpenPreview(selEnter);
             e.Handled = true;
         }
     }
 
-    private void UpdateCount(int entriesCount, int totalCount, string suffix = "")
+    // ── Helpers ────────────────────────────────────────────────────────
+
+    private void DeleteEntry(GalleryItemViewModel vm)
+    {
+        try
+        {
+            RequestDelete?.Invoke(vm.Entry.FilePath);
+            File.Delete(vm.Entry.FilePath);
+            _items.Remove(vm);
+            if (ReferenceEquals(_selected, vm))
+            {
+                _selected = null;
+            }
+            UpdateCount(_items.Count);
+            if (_items.Count == 0)
+            {
+                EmptyState.IsVisible = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("OceanEyes", $"Gallery delete failed: {vm.Entry.FilePath}", ex);
+        }
+    }
+
+    private void UpdateCount(int entriesCount, string suffix = "")
     {
         CountText.Text = entriesCount == 0
             ? $"0 张{suffix}"
@@ -229,6 +418,8 @@ public partial class GalleryWindow : Window
             vm.Thumbnail = null;
         }
         _items.Clear();
+        _previewBitmap?.Dispose();
+        _previewBitmap = null;
         _selected = null;
     }
 }
