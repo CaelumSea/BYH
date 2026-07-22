@@ -35,6 +35,8 @@ Ivory Jade 是 BYH 的首个正式主题：瓷器象牙白承担大面积背景�
 | accent-hover | `#6E3519` | `ByhAccentHoverBrush` |
 | accent-soft | `#E8D3B8` | `ByhAccentSoftBrush` |
 | decorative-gold | `#C2A36D` | `ByhGoldBrush` |
+| atmosphere-glow | 暖色径向光晕（中心 #F4E7C8 40% → 透明） | `ByhAtmosphereBrush` |
+| gem-glow | 翡翠色径向光晕（中心 #899845 37% → 透明） | `ByhGemGlowBrush` |
 | text-primary | `#3A2417` | `ByhTextPrimaryBrush` |
 | text-secondary | `#7D604A` | `ByhTextSecondaryBrush` |
 | text-placeholder | `#A58C78` | `ByhTextPlaceholderBrush` |
@@ -59,14 +61,14 @@ Ivory Jade 是 BYH 的首个正式主题：瓷器象牙白承担大面积背景�
 |---|---|
 | `Card` | 普通卡片：surface + subtle border + 12px 圆角 + 小阴影 |
 | `CardWarm` | 次级分组：surface-secondary，无阴影 |
-| `PearlCard` / `PearlInset` | 设置页高保真奶油材料：渐变、细金边、暖色阴影或内嵌分组 |
-| `MetallicFrame` | R54 设置页结构外框：1-DIP 金属渐变边（ByhMetallicEdgeBrush）+ 2-DIP 象牙光学间隙 + 1-DIP 浅金内曲线（3 DIP 处），同心圆角 24px，底部暖色柔影 |
+| `PearlCard` / `PearlInset` | 设置页高保真奶油材料：渐变、细金边、顶部强光高光边、暖色浮动阴影或内嵌分组 |
+| `MetallicFrame` | R54 设置页结构外框：1-DIP 高对比金属渐变边（ByhMetallicEdgeBrush：bronze→silver-champagne→gold→bronze）+ 2-DIP 象牙光学间隙 + 1-DIP 浅金内曲线（3 DIP 处）+ 顶部微光 + 深三层浮动阴影，同心圆角 24px |
 | `MetallicFrame.Compact` | MetallicFrame 紧凑变体：圆角降至 18px，用于侧栏等窄面板 |
-| `PorcelainCard` | 设置页轻量瓷器卡片；奶油渐变 + 细金边 + 内嵌双层高光，比 PearlCard 更克制 |
+| `PorcelainCard` | 设置页轻量瓷器卡片；奶油渐变 + 细金边 + 顶部高光边 + 内嵌双层高光 + 浮动阴影 |
 | `FlatRail` | 最左侧产品概念栏：无圆角、无外框阴影，仅由右侧古金竖线分隔 |
-| `GemPortrait` | 右上 APP icon 人物焦点的金边珠光圆形框 |
-| `StatusPill` | 顶部真实能力标签，不承载虚构统计 |
-| `SettingsNav` + `Active` | 侧栏导航；默认透明，活动态为垂直三段焦糖渐变（ByhGoldNavBrush：champagne→caramel→bronze）+ 14px 圆角，jade focus ring 保留键盘可达性 |
+| `GemPortrait` | 右上 APP icon 人物焦点的金边珠光圆形框 + 翡翠色外发光环（ByhGemGlowBrush） |
+| `StatusPill` | 顶部真实能力标签：象牙底 + 金边 + 顶部内高光 + 微阴影，不承载虚构统计 |
+| `SettingsNav` + `Active` | 侧栏导航；默认透明，活动态为垂直四段焦糖渐变（ByhGoldNavBrush：highlight→champagne→caramel→bronze）+ 凸面边框渐变（ByhGoldNavBorderBrush）+ 14px 圆角 + 更饱满的 padding，jade focus ring 保留键盘可达性 |
 | `CardTitle` | 卡片分区标题：与 DisplayTitle 同族衬线（Georgia），SemiBold，尺寸降到 15px，保证全页标题衬线统一 |
 | `MiniIcon` | 概览行 13px 线图标（Stroke 内联给定），配合 26px 圆形 soft-tint 徽章使用（Current setup / Runtime 行） |
 | `Badge` | 小面积暖色徽章：accent-soft + gold 细边 |

@@ -127,11 +127,12 @@
       <LinearGradientBrush x:Key="ByhMetallicEdgeBrush"
                            StartPoint="0%,0%"
                            EndPoint="100%,100%">
-        <GradientStop Color="#FFAD7734" Offset="0" />
-        <GradientStop Color="#FFF2DCAF" Offset="0.18" />
-        <GradientStop Color="#FFD2AD6B" Offset="0.48" />
-        <GradientStop Color="#FFB77E35" Offset="0.76" />
-        <GradientStop Color="#FFEBD5A5" Offset="1" />
+        <GradientStop Color="#FFC28A4A" Offset="0" />
+        <GradientStop Color="#FFF7E6C2" Offset="0.14" />
+        <GradientStop Color="#FFE4C88A" Offset="0.42" />
+        <GradientStop Color="#FFCDA45A" Offset="0.68" />
+        <GradientStop Color="#FFB07A2F" Offset="0.88" />
+        <GradientStop Color="#FFEAD5A5" Offset="1" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="ByhPearlInsetBrush"
                            StartPoint="0%,0%"
@@ -139,16 +140,45 @@
         <GradientStop Color="#F8FFFDFC" Offset="0" />
         <GradientStop Color="#F4F2EADF" Offset="1" />
       </LinearGradientBrush>
-      <!-- Reference-matched active navigation pill: a fuller vertical caramel
-           pour — bright champagne at the top, warm caramel body, deep bronze
-           base — so the pill reads plump rather than flat. -->
+      <!-- Reference-matched active navigation pill: four-stop caramel pour.
+           A bright champagne highlight at the top creates the convex "pill"
+           illusion, then warm caramel body, then bronze depth. -->
       <LinearGradientBrush x:Key="ByhGoldNavBrush"
                            StartPoint="0%,0%"
                            EndPoint="0%,100%">
-        <GradientStop Color="#FFF0D5A1" Offset="0" />
-        <GradientStop Color="#FFDCA85E" Offset="0.55" />
-        <GradientStop Color="#FFC08337" Offset="1" />
+        <GradientStop Color="#FFF8EAC8" Offset="0" />
+        <GradientStop Color="#FFEAC88A" Offset="0.28" />
+        <GradientStop Color="#FFD4A65C" Offset="0.62" />
+        <GradientStop Color="#FFB8803A" Offset="1" />
       </LinearGradientBrush>
+      <!-- Active pill border: bright top edge, warm sides, deep bottom to
+           sell the convex 3D form on a flat Avalonia Button. -->
+      <LinearGradientBrush x:Key="ByhGoldNavBorderBrush"
+                           StartPoint="0%,0%"
+                           EndPoint="0%,100%">
+        <GradientStop Color="#FFFFF6E6" Offset="0" />
+        <GradientStop Color="#FFE8C88E" Offset="0.25" />
+        <GradientStop Color="#FFD4A65C" Offset="0.72" />
+        <GradientStop Color="#FF9F6A2E" Offset="1" />
+      </LinearGradientBrush>
+      <!-- Warm radial atmosphere: the soft bokeh-like glow behind floating
+           panels in the reference. Low opacity, large radius. -->
+      <RadialGradientBrush x:Key="ByhAtmosphereBrush"
+                           RadiusX="0.7"
+                           RadiusY="0.7"
+                           Center="45%,35%"
+                           GradientOrigin="45%,35%">
+        <GradientStop Color="#40F4E7C8" Offset="0" />
+        <GradientStop Color="#18F2EADF" Offset="0.45" />
+        <GradientStop Color="#00F8F6F1" Offset="1" />
+      </RadialGradientBrush>
+      <RadialGradientBrush x:Key="ByhGemGlowBrush"
+                           RadiusX="0.55"
+                           RadiusY="0.55">
+        <GradientStop Color="#5E899845" Offset="0" />
+        <GradientStop Color="#28667731" Offset="0.55" />
+        <GradientStop Color="#00667731" Offset="1" />
+      </RadialGradientBrush>
       <LinearGradientBrush x:Key="ByhJadeSheenBrush"
                            StartPoint="0%,0%"
                            EndPoint="100%,100%">
@@ -174,6 +204,10 @@
       <BoxShadows x:Key="ByhShadowSmall">0 1 3 0 #0D4A2B19</BoxShadows>
       <BoxShadows x:Key="ByhShadowMedium">0 7 22 0 #104A2B19</BoxShadows>
       <BoxShadows x:Key="ByhShadowPearl">0 5 18 0 #149F5E30</BoxShadows>
+      <!-- R54 deep float: layered ambient + cast shadow so panels lift off
+           the cream background the way the reference cards do. -->
+      <BoxShadows x:Key="ByhShadowDeep">0 2 6 0 #0D4A2B19, 0 12 34 0 #144A2B19, 0 24 56 0 #0A4A2B19</BoxShadows>
+      <BoxShadows x:Key="ByhShadowLifted">0 4 12 0 #129F5E30, 0 16 40 0 #149F5E30</BoxShadows>
       <FontFamily x:Key="ByhDisplayFontFamily">Georgia</FontFamily>
     </ResourceDictionary>
   </Styles.Resources>
@@ -236,10 +270,12 @@
   </Style>
   <Style Selector="Border.PearlCard">
     <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
-    <Setter Property="BorderBrush" Value="#66D9C28A" />
+    <Setter Property="BorderBrush" Value="#7AD9C28A" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="14" />
-    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #B8FFFEFA, inset 0 0 0 2 #42F4E7C8, 0 5 15 0 #124A2B19" />
+    <!-- R54: stronger float + a bright top highlight edge so the card reads
+         as a convex ivory tile catching light from above. -->
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #D9FFFEFA, inset 0 0 0 1 #B8FFFEFA, inset 0 0 0 2 #4AF4E7C8, 0 4 12 0 #129F5E30, 0 16 40 0 #149F5E30" />
   </Style>
   <Style Selector="Border.PearlInset">
     <Setter Property="Background" Value="{DynamicResource ByhPearlInsetBrush}" />
@@ -251,43 +287,47 @@
        optical rings.  The first inset shadow repaints a two-DIP porcelain gap;
        the second remains visible as a one-DIP pale-gold inner curve at 3 DIP.
        Because both are rendered from the same rounded geometry, straight runs
-       and corners stay concentric without a wide nested-frame gutter. -->
+       and corners stay concentric without a wide nested-frame gutter.
+       R54 atmosphere: add a deep float shadow so the whole frame reads as a
+       raised tray resting on the cream surface. -->
   <Style Selector="Border.MetallicFrame">
     <Setter Property="Background" Value="#F9FFFDFC" />
     <Setter Property="BorderBrush" Value="{DynamicResource ByhMetallicEdgeBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="24" />
     <Setter Property="Padding" Value="4" />
-    <Setter Property="BoxShadow" Value="inset 0 0 0 2 #FFFFFCF7, inset 0 0 0 3 #B8D9B97D, 0 1 1 0 #7AFFF8E8, 0 5 15 0 #176E3519, 0 10 28 0 #0D4A2B19" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 2 #FFFFFCF7, inset 0 0 0 3 #B8D9B97D, inset 0 1 2 0 #A6FFFEFA, 0 2 6 0 #0D4A2B19, 0 12 34 0 #144A2B19, 0 24 56 0 #0A4A2B19" />
   </Style>
   <Style Selector="Border.MetallicFrame.Compact">
     <Setter Property="CornerRadius" Value="18" />
   </Style>
   <Style Selector="Border.PorcelainCard">
     <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
-    <Setter Property="BorderBrush" Value="#5CD9C28A" />
+    <Setter Property="BorderBrush" Value="#6ED9C28A" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="14" />
-    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #AFFFFEFA, inset 0 0 0 2 #30F4E7C8, 0 4 13 0 #104A2B19" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #CFFFFEFA, inset 0 0 0 1 #AFFFFEFA, inset 0 0 0 2 #38F4E7C8, 0 3 10 0 #109F5E30, 0 12 32 0 #129F5E30" />
   </Style>
   <Style Selector="Border.GemPortrait">
     <Setter Property="Background" Value="{DynamicResource ByhPearlGlowBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource ByhFloatingBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="72" />
-    <Setter Property="BoxShadow" Value="0 8 28 0 #189F5E30" />
+    <Setter Property="BoxShadow" Value="0 0 0 4 #1E899845, 0 0 28 0 #289F5E30, 0 8 28 0 #189F5E30" />
   </Style>
   <Style Selector="Border.StatusPill">
-    <Setter Property="Background" Value="#D9FFFDFC" />
+    <Setter Property="Background" Value="#E6FFFDFC" />
     <Setter Property="BorderBrush" Value="{DynamicResource ByhPorcelainBorderBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #CFFFFEFA, 0 1 3 0 #0D4A2B19" />
   </Style>
   <Style Selector="Border.Badge">
     <Setter Property="Background" Value="{DynamicResource ByhAccentSoftBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #CCFFFEFA, 0 2 6 0 #109F5E30" />
   </Style>
   <Style Selector="Border.FloatingSurface">
     <Setter Property="Background" Value="{DynamicResource ByhFloatingSurfaceBrush}" />
@@ -531,13 +571,14 @@
   <Style Selector="Button.SettingsNav:pressed">
     <Setter Property="Background" Value="{DynamicResource ByhSurfaceSelectedBrush}" />
   </Style>
-  <!-- Reference active pill: rounder (14) with the fuller vertical caramel
-       gradient doing the lifting (Button has no BoxShadow in Avalonia). -->
+  <!-- Reference active pill: rounder, plumper, with a bright top border
+       gradient that sells the convex "pill" form even without BoxShadow. -->
   <Style Selector="Button.SettingsNav.Active">
     <Setter Property="Background" Value="{DynamicResource ByhGoldNavBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldNavBorderBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
     <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="14,12" />
   </Style>
   <Style Selector="Button.SettingsNav:focus">
     <Setter Property="BorderBrush" Value="{DynamicResource ByhFocusBrush}" />

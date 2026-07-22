@@ -17,6 +17,12 @@
         RowSpacing="12"
         Margin="12">
 
+    <!-- R54 atmosphere: a large warm radial glow behind the floating panels,
+         echoing the soft bokeh light pools in the Foamie reference. -->
+    <Border Grid.Column="0" Grid.ColumnSpan="4" Grid.Row="0" Grid.RowSpan="2"
+            Background="{DynamicResource ByhAtmosphereBrush}"
+            IsHitTestVisible="False" />
+
     <!-- The ornament sits behind navigation content while MetallicFrame keeps
          the reference's close, concentric champagne-gold double curve. -->
     <Border Grid.Column="1"
@@ -26,24 +32,30 @@
       <Grid>
         <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
                Stretch="UniformToFill"
-               Opacity="0.18"
+               Opacity="0.30"
                IsHitTestVisible="False" />
         <Grid Margin="10,10,10,8" RowDefinitions="Auto,*,Auto">
         <StackPanel Grid.Row="0" Spacing="5" Margin="4,0,4,12">
-          <Border Width="56"
-                  Height="56"
+          <Border Width="58"
+                  Height="58"
                   HorizontalAlignment="Center"
-                  Background="{DynamicResource ByhSurfaceBrush}"
-                  BorderBrush="{DynamicResource ByhHairlineBrush}"
-                  BorderThickness="1"
-                  CornerRadius="28"
-                  ClipToBounds="True">
-            <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
-                   Width="76"
-                   Height="76"
-                   Stretch="UniformToFill"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center" />
+                  Background="{DynamicResource ByhGemGlowBrush}"
+                  CornerRadius="29"
+                  Padding="3">
+            <Border Width="52"
+                    Height="52"
+                    Background="{DynamicResource ByhSurfaceBrush}"
+                    BorderBrush="{DynamicResource ByhHairlineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="26"
+                    ClipToBounds="True">
+              <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
+                     Width="72"
+                     Height="72"
+                     Stretch="UniformToFill"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center" />
+            </Border>
           </Border>
           <TextBlock Text="BYH"
                      Classes="DisplayTitle"
@@ -121,21 +133,27 @@
         <!-- Reference nav card carries a gem ornament at both ends; this is
              the smaller foot gem mirroring the emblem above the brand. -->
         <Border Grid.Row="2"
-                Width="26"
-                Height="26"
-                CornerRadius="13"
-                Background="{DynamicResource ByhSurfaceBrush}"
-                BorderBrush="{DynamicResource ByhHairlineBrush}"
-                BorderThickness="1"
-                ClipToBounds="True"
+                Width="28"
+                Height="28"
+                CornerRadius="14"
+                Background="{DynamicResource ByhGemGlowBrush}"
+                Padding="2"
                 HorizontalAlignment="Center"
                 Margin="0,6,0,0">
-          <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
-                 Width="34"
-                 Height="34"
-                 Stretch="UniformToFill"
-                 HorizontalAlignment="Center"
-                 VerticalAlignment="Center" />
+          <Border Width="24"
+                  Height="24"
+                  CornerRadius="12"
+                  Background="{DynamicResource ByhSurfaceBrush}"
+                  BorderBrush="{DynamicResource ByhHairlineBrush}"
+                  BorderThickness="1"
+                  ClipToBounds="True">
+            <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
+                   Width="32"
+                   Height="32"
+                   Stretch="UniformToFill"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center" />
+          </Border>
         </Border>
 
           </Grid>
@@ -152,24 +170,24 @@
       <Image Grid.RowSpan="2"
              Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
              Stretch="UniformToFill"
-             Opacity="0.055"
+             Opacity="0.10"
              IsHitTestVisible="False" />
       <Border Grid.Row="0"
               Background="{DynamicResource ByhCreamSheenBrush}"
               BorderBrush="{DynamicResource ByhHairlineBrush}"
               BorderThickness="0,0,0,1"
-              Padding="26,17,24,15">
-        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="20" RowSpacing="12">
-          <StackPanel Spacing="3">
+              Padding="26,20,24,16">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="20" RowSpacing="14">
+          <StackPanel Spacing="4">
             <TextBlock Text="WELCOME BACK" Classes="Kicker" />
             <StackPanel Orientation="Horizontal" Spacing="9">
               <TextBlock x:Name="PageTitleText"
                          Text="General"
                          Classes="DisplayTitle"
-                         FontSize="24" />
+                         FontSize="26" />
               <TextBlock Text="✦"
                          Foreground="{DynamicResource ByhGoldBrush}"
-                         FontSize="16"
+                         FontSize="18"
                          VerticalAlignment="Center" />
             </StackPanel>
             <TextBlock x:Name="PageSubtitleText"
@@ -180,15 +198,17 @@
           <Border Grid.Column="1"
                   Classes="Badge"
                   VerticalAlignment="Center"
-                  Padding="7,4">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <Border Width="24" Height="24" CornerRadius="12" ClipToBounds="True">
-                <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
-                       Width="32"
-                       Height="32"
-                       Stretch="UniformToFill"
-                       HorizontalAlignment="Center"
-                       VerticalAlignment="Center" />
+                  Padding="8,5">
+            <StackPanel Orientation="Horizontal" Spacing="7">
+              <Border Width="26" Height="26" CornerRadius="13" Background="{DynamicResource ByhGemGlowBrush}" Padding="2">
+                <Border Width="22" Height="22" CornerRadius="11" ClipToBounds="True">
+                  <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
+                         Width="30"
+                         Height="30"
+                         Stretch="UniformToFill"
+                         HorizontalAlignment="Center"
+                         VerticalAlignment="Center" />
+                </Border>
               </Border>
               <TextBlock Text="IVORY JADE"
                          Classes="Accent"
@@ -864,7 +884,7 @@
         <Image Grid.RowSpan="4"
                Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
                Stretch="UniformToFill"
-               Opacity="0.13"
+               Opacity="0.22"
                IsHitTestVisible="False" />
         <Border BorderBrush="{DynamicResource ByhHairlineBrush}"
                 BorderThickness="0,0,0,1"
@@ -897,16 +917,20 @@
                   ColumnSpacing="10" RowSpacing="8">
               <Border Grid.Row="0" Width="20" Height="20" CornerRadius="6"
                       Background="{DynamicResource ByhSurfaceBrush}"
-                      BorderBrush="{DynamicResource ByhBorderBrush}" BorderThickness="1" />
+                      BorderBrush="{DynamicResource ByhBorderBrush}" BorderThickness="1"
+                      BoxShadow="0 1 3 0 #0D4A2B19" />
               <TextBlock Grid.Row="0" Grid.Column="1" Text="Porcelain ivory" FontSize="10" VerticalAlignment="Center" />
               <Border Grid.Row="1" Width="20" Height="20" CornerRadius="6"
-                      Background="{DynamicResource ByhPrimaryBrush}" />
+                      Background="{DynamicResource ByhPrimaryBrush}"
+                      BoxShadow="0 1 3 0 #0D4A2B19" />
               <TextBlock Grid.Row="1" Grid.Column="1" Text="Action jade" FontSize="10" VerticalAlignment="Center" />
               <Border Grid.Row="2" Width="20" Height="20" CornerRadius="6"
-                      Background="{DynamicResource ByhGoldBrush}" />
+                      Background="{DynamicResource ByhGoldBrush}"
+                      BoxShadow="0 1 3 0 #0D4A2B19" />
               <TextBlock Grid.Row="2" Grid.Column="1" Text="Antique gold" FontSize="10" VerticalAlignment="Center" />
               <Border Grid.Row="3" Width="20" Height="20" CornerRadius="6"
-                      Background="{DynamicResource ByhAccentBrush}" />
+                      Background="{DynamicResource ByhAccentBrush}"
+                      BoxShadow="0 1 3 0 #0D4A2B19" />
               <TextBlock Grid.Row="3" Grid.Column="1" Text="Caramel detail" FontSize="10" VerticalAlignment="Center" />
             </Grid>
           </StackPanel>
@@ -931,15 +955,20 @@
         </StackPanel>
 
         <StackPanel Grid.Row="3" Margin="20,10,20,20" Spacing="8">
-          <Border Width="54" Height="54" CornerRadius="27"
-                  BorderBrush="{DynamicResource ByhHairlineBrush}" BorderThickness="1"
-                  ClipToBounds="True" HorizontalAlignment="Center">
-            <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
-                   Width="72"
-                   Height="72"
-                   Stretch="UniformToFill"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center" />
+          <Border Width="58" Height="58" CornerRadius="29"
+                  Background="{DynamicResource ByhGemGlowBrush}"
+                  Padding="3" HorizontalAlignment="Center">
+            <Border Width="52" Height="52" CornerRadius="26"
+                    Background="{DynamicResource ByhSurfaceBrush}"
+                    BorderBrush="{DynamicResource ByhHairlineBrush}" BorderThickness="1"
+                    ClipToBounds="True">
+              <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
+                     Width="70"
+                     Height="70"
+                     Stretch="UniformToFill"
+                     HorizontalAlignment="Center"
+                     VerticalAlignment="Center" />
+            </Border>
           </Border>
           <TextBlock Text="BY YOUR HAND"
                      Classes="Accent"
@@ -961,7 +990,7 @@
         <Image Grid.RowSpan="3"
                Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
                Stretch="UniformToFill"
-               Opacity="0.15"
+               Opacity="0.28"
                IsHitTestVisible="False" />
 
         <Border ClipToBounds="True">
@@ -972,9 +1001,7 @@
                     HorizontalAlignment="Right"
                     VerticalAlignment="Top"
                     Margin="0,-26,-24,0"
-                    Background="#59F2EADF"
-                    BorderBrush="{DynamicResource ByhHairlineBrush}"
-                    BorderThickness="1" />
+                    Background="{DynamicResource ByhGemGlowBrush}" />
             <StackPanel Margin="20,27,116,16" Spacing="4">
               <TextBlock Text="GOOD MORNING" Classes="Kicker" />
               <TextBlock Text="BYH"
@@ -1016,11 +1043,14 @@
                 <!-- Reference Today's Summary rows: soft circular icon badge
                      left of each label/value pair. -->
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                  <Border Width="26"
-                          Height="26"
-                          CornerRadius="13"
+                  <Border Width="28"
+                          Height="28"
+                          CornerRadius="14"
                           VerticalAlignment="Center"
-                          Background="{DynamicResource ByhAccentSoftBrush}">
+                          Background="{DynamicResource ByhAccentSoftBrush}"
+                          BorderBrush="#40D9C28A"
+                          BorderThickness="1"
+                          BoxShadow="0 2 6 0 #109F5E30">
                     <Path Classes="MiniIcon"
                           Stroke="{DynamicResource ByhAccentHoverBrush}"
                           Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M3,12 L21,12 M12,3 C15,7 15,17 12,21 C9,17 9,7 12,3" />
@@ -1036,11 +1066,14 @@
                 </Grid>
                 <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                  <Border Width="26"
-                          Height="26"
-                          CornerRadius="13"
+                  <Border Width="28"
+                          Height="28"
+                          CornerRadius="14"
                           VerticalAlignment="Center"
-                          Background="{DynamicResource ByhWarningSoftBrush}">
+                          Background="{DynamicResource ByhWarningSoftBrush}"
+                          BorderBrush="#40D9C28A"
+                          BorderThickness="1"
+                          BoxShadow="0 2 6 0 #109F5E30">
                     <Path Classes="MiniIcon"
                           Stroke="{DynamicResource ByhWarningBrush}"
                           Data="M3,7 L21,7 L21,17 L3,17 Z M7,10.5 L9,10.5 M11,10.5 L13,10.5 M15,10.5 L17,10.5 M7,14 L17,14" />
@@ -1056,11 +1089,14 @@
                 </Grid>
                 <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                  <Border Width="26"
-                          Height="26"
-                          CornerRadius="13"
+                  <Border Width="28"
+                          Height="28"
+                          CornerRadius="14"
                           VerticalAlignment="Center"
-                          Background="{DynamicResource ByhSuccessSoftBrush}">
+                          Background="{DynamicResource ByhSuccessSoftBrush}"
+                          BorderBrush="#40D9C28A"
+                          BorderThickness="1"
+                          BoxShadow="0 2 6 0 #109F5E30">
                     <Path Classes="MiniIcon"
                           Stroke="{DynamicResource ByhPrimaryBrush}"
                           Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
@@ -1125,10 +1161,13 @@
             <StackPanel Grid.Column="0" Spacing="9" Margin="2,0,14,0">
               <TextBlock Text="Runtime" FontFamily="Georgia" FontSize="13" />
               <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                <Border Width="26" Height="26" CornerRadius="13"
+                <Border Width="28" Height="28" CornerRadius="14"
                         Background="{DynamicResource ByhSuccessSoftBrush}"
+                        BorderBrush="#40D9C28A"
+                        BorderThickness="1"
+                        BoxShadow="0 2 6 0 #109F5E30"
                         VerticalAlignment="Center">
-                  <Border Width="9" Height="9" CornerRadius="5"
+                  <Border Width="10" Height="10" CornerRadius="5"
                           Background="{DynamicResource ByhSuccessBrush}"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center" />
@@ -1151,13 +1190,17 @@
                 <Border Width="16" Height="16" CornerRadius="5"
                         Background="{DynamicResource ByhSurfaceBrush}"
                         BorderBrush="{DynamicResource ByhBorderBrush}"
-                        BorderThickness="1" />
+                        BorderThickness="1"
+                        BoxShadow="0 1 3 0 #0D4A2B19" />
                 <Border Width="16" Height="16" CornerRadius="5"
-                        Background="{DynamicResource ByhPrimaryBrush}" />
+                        Background="{DynamicResource ByhPrimaryBrush}"
+                        BoxShadow="0 1 3 0 #0D4A2B19" />
                 <Border Width="16" Height="16" CornerRadius="5"
-                        Background="{DynamicResource ByhGoldBrush}" />
+                        Background="{DynamicResource ByhGoldBrush}"
+                        BoxShadow="0 1 3 0 #0D4A2B19" />
                 <Border Width="16" Height="16" CornerRadius="5"
-                        Background="{DynamicResource ByhAccentBrush}" />
+                        Background="{DynamicResource ByhAccentBrush}"
+                        BoxShadow="0 1 3 0 #0D4A2B19" />
               </StackPanel>
             </StackPanel>
 
