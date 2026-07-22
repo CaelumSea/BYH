@@ -81,3 +81,26 @@ dotnet build SelectionAssistant.slnx -c Release --nologo
 dotnet test SelectionAssistant.slnx -c Release --no-build --no-restore --nologo
 dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Release -r win-x64 --nologo -o artifacts/publish/win-x64-nativeuia
 ```
+
+## 第四十六批增量（v15 头部卡片）
+
+用户要求把设置页顶部 `WELCOME BACK / General / Hotkeys... / 状态 pills / IVORY JADE` 区域也做成圆角框加阴影，并与下方的 Ocean Eyes Trigger 卡片贴在一起。
+
+### 改动
+
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 将顶部标题区原来的平底边框改为 `Classes="LiftedPanel"`，获得 20px 大圆角 + 多层弥散阴影 + 顶部高光边。
+  - 把 ScrollViewer 顶部内边距从 24 降到 14，让头部卡片与第一个 `LiftedPanel`（Ocean Eyes Trigger）视觉上紧密相连。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- Build：0 警告 0 错误。
+- 测试：334/334 通过。
+- NativeAOT publish：0 警告。
+- 截图：`artifacts/qa/ivory-jade-settings-v15-header-card-*-nativeaot.png`（默认 + 最小窗口）。
+- 用户日常 BYH 实例已恢复（PID 60348）。
+
+### 当前状态
+
+v15 改动已提交，工作树干净，等用户验收截图。
