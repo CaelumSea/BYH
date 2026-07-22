@@ -173,9 +173,7 @@
              Opacity="0.10"
              IsHitTestVisible="False" />
       <Border Grid.Row="0"
-              Background="{DynamicResource ByhCreamSheenBrush}"
-              BorderBrush="{DynamicResource ByhHairlineBrush}"
-              BorderThickness="0,0,0,1"
+              Classes="LiftedPanel"
               Padding="26,20,24,16">
         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="20" RowSpacing="14">
           <StackPanel Spacing="4">
@@ -238,7 +236,7 @@
 
       <ScrollViewer x:Name="SettingsContentScroll"
                     Grid.Row="1"
-                    Padding="28,24,28,28"
+                    Padding="28,14,28,28"
                     HorizontalScrollBarVisibility="Disabled">
         <Grid>
 
