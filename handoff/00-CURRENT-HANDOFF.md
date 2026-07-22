@@ -2711,6 +2711,48 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 
 ---
 
+## 3s. 本会话（第五十三批增量）进行中：统一五个 tab 为 SurfacePanel 连续布局
+
+> 更新时间：2026-07-22 第五十三批增量（未提交，待接续）
+
+### 已完成
+
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 将 `ProviderSection`、`FunctionsSection`、`VisionSection`、`LauncherSection` 内部原来独立的 `LiftedPanel` 卡片统一移除，改为与 `GeneralSection` 一致的 **单张 `SurfacePanel` 大底 + 功能区分隔线 + `InnerCard` 输入区** 结构。
+  - 命名引用迁移：`EditFormBorder`、`PromptTemplatesCard` 分别移到对应内部 StackPanel，避免编译失败。
+- `artifacts/qa/capture-all-tabs.py`
+  - 新增自动化脚本：启动 QA BYH，依次点击左侧导航按钮，截取 General / Provider / Actions / Vision / Launcher 五个 tab 的默认尺寸图，用于验证风格统一。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- 多 tab 截图已生成：
+  - `artifacts/qa/v25-unified-tabs-{general,provider,actions,vision,launcher}-default-nativeaot.png`
+  - `artifacts/qa/ivory-jade-settings-v25-unified-tabs-general-{default,minimum}-nativeaot.png`
+
+### 阻塞问题（下一位 Agent 优先处理）
+
+1. **Launcher tab 内容缺失**：切换到 Launcher 后，只显示顶部标题 `WELCOME BACK / Launcher / Apps and web shortcuts.`，下方的 Launcher 列表和 `Spotlight Hotkey` 区块完全空白。
+   - XML 结构已用 Python xml.etree 校验合法；`LauncherSection` 包含 title StackPanel、divider、Spotlight StackPanel 三个子元素。
+   - 代码中 `_launcherRows` / `RefreshLauncherRows` 存在，ItemsSource 在初始化时设置。
+   - 为复现问题，临时将默认启动 tab 改为 Launcher；**现已改回 `ShowSettingsPage(SettingsPage.General)`**。
+   - 需要排查：XAML 嵌套/命名引用是否导致 ItemsControl 未渲染、`LauncherList` 数据是否为空、`IsVisible` 切换时的布局问题，或 `Spotlight*` 控件命名/绑定异常。
+
+2. **未提交改动**：v25 的 `SettingsWindow.axaml`、`SettingsWindow.axaml.cs`、`BYH.exe`、全部 QA 截图、`capture-all-tabs.py` 均未 commit。修复 Launcher 后应统一提交。
+
+### 下一位 Agent 建议执行顺序
+
+1. 先 `git status` 确认未提交改动；阅读 `output/SESSION-STATUS-2026-07-22.md` 的 "第五十三批增量" 小节。
+2. 在 `src/SelectionAssistant.UI/Views/SettingsWindow.axaml` 中重点检查 `LauncherSection` 的 XAML 嵌套与数据绑定；可临时把默认 tab 改回 Launcher 方便本地调试（记得改回）。
+3. 修复 Launcher 内容空白后，重新 `build / test / publish`，并运行 `capture-all-tabs.py` 验证五个 tab 风格一致。
+4. 提交 v25：`git add src/.../SettingsWindow.axaml src/.../SettingsWindow.axaml.cs artifacts/publish/.../BYH.exe artifacts/qa/... capture-all-tabs.py`，`git commit -m "feat(REQ-012): unify all settings tabs to SurfacePanel continuous layout"`。
+5. 更新本 handoff 与 `output/SESSION-STATUS-2026-07-22.md`，标记第五十三批增量完成。
+6. 恢复用户日常 BYH 实例：`C:\Users\DeRant Vilmon Ram\gh-kb\selection-assistant\artifacts\publish\win-x64-nativeuia\BYH.exe`。
+
+---
+
 ## 9. 下一位 Agent 的明确执行顺序
 
 ### 当前状态：R24-R34 全部完成（R23 + R31 + R32 + R34 待真机行为验证）

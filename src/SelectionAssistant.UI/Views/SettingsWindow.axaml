@@ -450,9 +450,8 @@
         </StackPanel>
 
         <!-- Translation providers -->
-        <StackPanel x:Name="ProviderSection" IsVisible="False" Spacing="16">
-          <Border x:Name="EditFormBorder" Classes="LiftedPanel" Padding="18">
-            <StackPanel Spacing="16">
+        <StackPanel x:Name="ProviderSection" IsVisible="False" Spacing="0">
+          <StackPanel x:Name="EditFormBorder" Spacing="16" Margin="24,18,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <StackPanel Spacing="4">
                   <TextBlock Text="Provider Profiles"
@@ -470,51 +469,57 @@
                            Classes="Secondary"
                            FontSize="10"
                            FontWeight="SemiBold" />
-                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                  <ComboBox x:Name="ProviderComboBox"
-                            HorizontalAlignment="Stretch"
-                            SelectionChanged="OnProviderSelectionChanged">
-                    <ComboBox.ItemTemplate>
-                      <DataTemplate x:DataType="views:ProviderOption">
-                        <TextBlock Text="{Binding DisplayLabel}" />
-                      </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                  </ComboBox>
-                  <TextBlock x:Name="EditingProviderNameHint"
-                             Grid.Column="1"
-                             Classes="Muted"
-                             FontSize="10"
-                             VerticalAlignment="Center" />
-                </Grid>
+                <Border Classes="InnerCard" Padding="12">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                    <ComboBox x:Name="ProviderComboBox"
+                              HorizontalAlignment="Stretch"
+                              SelectionChanged="OnProviderSelectionChanged">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="views:ProviderOption">
+                          <TextBlock Text="{Binding DisplayLabel}" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock x:Name="EditingProviderNameHint"
+                               Grid.Column="1"
+                               Classes="Muted"
+                               FontSize="10"
+                               VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
               </StackPanel>
 
-              <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="12">
-                <StackPanel Grid.Row="0" Grid.Column="0" Spacing="6">
-                  <TextBlock Text="Name" Classes="Muted" FontSize="10" />
-                  <TextBox x:Name="NameInput" />
-                </StackPanel>
-                <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6">
-                  <TextBlock Text="Model" Classes="Muted" FontSize="10" />
-                  <TextBox x:Name="ModelInput" />
-                </StackPanel>
-                <StackPanel Grid.Row="1" Grid.Column="0" Spacing="6">
-                  <TextBlock Text="Base URL" Classes="Muted" FontSize="10" />
-                  <TextBox x:Name="BaseUrlInput" />
-                </StackPanel>
-                <StackPanel Grid.Row="1" Grid.Column="1" Spacing="6">
-                  <TextBlock Text="Chat Path" Classes="Muted" FontSize="10" />
-                  <TextBox x:Name="ChatPathInput" PlaceholderText="chat/completions" />
-                </StackPanel>
-              </Grid>
+              <Border Classes="InnerCard" Padding="14">
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="12">
+                  <StackPanel Grid.Row="0" Grid.Column="0" Spacing="6">
+                    <TextBlock Text="Name" Classes="Muted" FontSize="10" />
+                    <TextBox x:Name="NameInput" />
+                  </StackPanel>
+                  <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6">
+                    <TextBlock Text="Model" Classes="Muted" FontSize="10" />
+                    <TextBox x:Name="ModelInput" />
+                  </StackPanel>
+                  <StackPanel Grid.Row="1" Grid.Column="0" Spacing="6">
+                    <TextBlock Text="Base URL" Classes="Muted" FontSize="10" />
+                    <TextBox x:Name="BaseUrlInput" />
+                  </StackPanel>
+                  <StackPanel Grid.Row="1" Grid.Column="1" Spacing="6">
+                    <TextBlock Text="Chat Path" Classes="Muted" FontSize="10" />
+                    <TextBox x:Name="ChatPathInput" PlaceholderText="chat/completions" />
+                  </StackPanel>
+                </Grid>
+              </Border>
 
               <StackPanel Spacing="6">
                 <TextBlock Text="System Prompt (blank uses the built-in translation prompt)"
                            Classes="Muted"
                            FontSize="10" />
-                <TextBox x:Name="SystemPromptInput"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         Height="78" />
+                <Border Classes="InnerCard" Padding="12">
+                  <TextBox x:Name="SystemPromptInput"
+                           AcceptsReturn="True"
+                           TextWrapping="Wrap"
+                           Height="78" />
+                </Border>
               </StackPanel>
 
               <Border Classes="InnerCard" Padding="14">
@@ -542,10 +547,12 @@
               <Grid ColumnDefinitions="150,*" ColumnSpacing="16">
                 <StackPanel Spacing="6">
                   <TextBlock Text="Timeout (seconds)" Classes="Muted" FontSize="10" />
-                  <NumericUpDown x:Name="TimeoutInput"
-                                 Minimum="10"
-                                 Maximum="300"
-                                 Value="60" />
+                  <Border Classes="InnerCard" Padding="6,4">
+                    <NumericUpDown x:Name="TimeoutInput"
+                                   Minimum="10"
+                                   Maximum="300"
+                                   Value="60" />
+                  </Border>
                 </StackPanel>
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal"
@@ -563,13 +570,11 @@
               </Grid>
 
             </StackPanel>
-          </Border>
-        </StackPanel>
+          </StackPanel>
 
         <!-- Prompt functions -->
-        <StackPanel x:Name="FunctionsSection" IsVisible="False" Spacing="16">
-          <Border x:Name="PromptTemplatesCard" Classes="LiftedPanel" Padding="18">
-            <StackPanel Spacing="14">
+        <StackPanel x:Name="FunctionsSection" IsVisible="False" Spacing="0">
+          <StackPanel x:Name="PromptTemplatesCard" Spacing="16" Margin="24,18,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Actions &amp; Prompts"
@@ -583,9 +588,7 @@
                         Click="OnAddFunctionClick" />
               </Grid>
 
-              <Border BorderBrush="{DynamicResource ByhBorderSubtleBrush}"
-                      BorderThickness="0,1,0,0"
-                      Padding="0,10,0,0">
+              <Border Classes="InnerCard" Padding="12">
                 <ItemsControl x:Name="FunctionsList">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="views:PromptFunctionRow">
@@ -617,12 +620,11 @@
                 </ItemsControl>
               </Border>
             </StackPanel>
-          </Border>
-        </StackPanel>
+          </StackPanel>
 
         <!-- Vision OCR -->
-        <StackPanel x:Name="VisionSection" IsVisible="False" Spacing="16">
-          <Border Classes="LiftedPanel" Padding="18">
+        <StackPanel x:Name="VisionSection" IsVisible="False" Spacing="0">
+          <StackPanel Spacing="16" Margin="24,18,24,0">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
               <StackPanel Spacing="4">
                 <TextBlock Text="Vision Recognition"
@@ -637,11 +639,11 @@
                             IsChecked="True"
                             VerticalAlignment="Center" />
             </Grid>
-          </Border>
 
-          <Border Classes="LiftedPanel" Padding="18">
-            <StackPanel Spacing="18">
-              <StackPanel Spacing="14">
+            <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
+
+            <StackPanel Spacing="14">
+              <StackPanel Spacing="6">
                 <TextBlock Text="OCR Model"
                            Classes="CardTitle"
                            FontSize="13"
@@ -649,29 +651,35 @@
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
                   <StackPanel Grid.Column="0" Spacing="6">
                     <TextBlock Text="Provider" Classes="Muted" FontSize="10" />
-                    <ComboBox x:Name="VisionProviderComboBox"
-                              HorizontalAlignment="Stretch">
-                      <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="views:ProviderOption">
-                          <TextBlock Text="{Binding DisplayLabel}" />
-                        </DataTemplate>
-                      </ComboBox.ItemTemplate>
-                    </ComboBox>
+                    <Border Classes="InnerCard" Padding="6,4">
+                      <ComboBox x:Name="VisionProviderComboBox"
+                                HorizontalAlignment="Stretch">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="views:ProviderOption">
+                            <TextBlock Text="{Binding DisplayLabel}" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </Border>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <TextBlock Text="Model" Classes="Muted" FontSize="10" />
-                    <ComboBox x:Name="VisionModelComboBox"
-                              HorizontalAlignment="Stretch"
-                              IsEditable="True" />
+                    <Border Classes="InnerCard" Padding="6,4">
+                      <ComboBox x:Name="VisionModelComboBox"
+                                HorizontalAlignment="Stretch"
+                                IsEditable="True" />
+                    </Border>
                   </StackPanel>
                 </Grid>
                 <StackPanel Spacing="6">
                   <TextBlock Text="Prompt" Classes="Muted" FontSize="10" />
-                  <TextBox x:Name="VisionPromptInput"
-                           AcceptsReturn="True"
-                           TextWrapping="Wrap"
-                           Height="68"
-                           PlaceholderText="Free OCR. (DeepSeek-OCR default)" />
+                  <Border Classes="InnerCard" Padding="12">
+                    <TextBox x:Name="VisionPromptInput"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             Height="68"
+                             PlaceholderText="Free OCR. (DeepSeek-OCR default)" />
+                  </Border>
                 </StackPanel>
               </StackPanel>
 
@@ -720,19 +728,18 @@
                 </Border>
               </StackPanel>
             </StackPanel>
-          </Border>
 
-          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
             <Button Content="Save Vision Settings"
                     Classes="Primary"
                     Click="OnSaveVisionClick" />
           </StackPanel>
         </StackPanel>
+        </StackPanel>
 
         <!-- Launcher -->
-        <StackPanel x:Name="LauncherSection" IsVisible="False" Spacing="16">
-          <Border Classes="LiftedPanel" Padding="18">
-            <StackPanel Spacing="14">
+        <StackPanel x:Name="LauncherSection" IsVisible="False" Spacing="0">
+          <StackPanel Spacing="16" Margin="24,18,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Launcher"
@@ -746,9 +753,7 @@
                         Click="OnAddLauncherClick" />
               </Grid>
 
-              <Border BorderBrush="{DynamicResource ByhBorderSubtleBrush}"
-                      BorderThickness="0,1,0,0"
-                      Padding="0,10,0,0">
+              <Border Classes="InnerCard" Padding="12">
                 <ItemsControl x:Name="LauncherList">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="views:LauncherEntryRow">
@@ -798,10 +803,10 @@
                 </ItemsControl>
               </Border>
             </StackPanel>
-          </Border>
 
-          <!-- R32 Spotlight launcher-search shortcut card -->
-          <Border Classes="LiftedPanel" Padding="18">
+            <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
+
+            <!-- R32 Spotlight launcher-search shortcut card -->
             <StackPanel Spacing="14">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
@@ -845,8 +850,7 @@
                 </StackPanel>
               </Grid>
             </StackPanel>
-          </Border>
-        </StackPanel>
+          </StackPanel>
         </Grid>
       </ScrollViewer>
 

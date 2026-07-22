@@ -241,6 +241,37 @@ v16 改动已提交，工作树干净，等用户验收截图。
 - 截图：`artifacts/qa/ivory-jade-settings-v24-fainter-borders-*-nativeaot.png`（默认 + 最小窗口）。
 - 用户日常 BYH 实例已恢复（PID 38480）。
 
+## 第五十三批增量（v25 统一五个 tab 为 SurfacePanel 连续布局）—— 进行中 / 未提交
+
+用户反馈：5 个设置 tab 差异大、不协调，要求继续参考参考图。
+
+### 已做改动（尚未 commit）
+
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 把 `ProviderSection`、`FunctionsSection`、`VisionSection`、`LauncherSection` 内部原来独立的 `LiftedPanel` 卡片全部移除，改为和 `GeneralSection` 一致的 **单张 `SurfacePanel` 大底 + 功能区分隔线 + `InnerCard` 输入区** 结构。
+  - 保留的命名引用：`EditFormBorder` 移到 Provider 内部 StackPanel，`PromptTemplatesCard` 移到 Functions 内部 StackPanel。
+- `artifacts/qa/capture-all-tabs.py`
+  - 新增脚本：启动 QA BYH，自动点击左侧导航按钮，依次截取 General / Provider / Actions / Vision / Launcher 五个 tab 的默认尺寸图，用于验证风格统一。
+
+### 验证
+
+- Build：`0 警告 0 错误`。
+- 测试：`334/334` 通过。
+- NativeAOT publish：`0 警告`。
+- 多 tab 截图已生成：
+  - `artifacts/qa/v25-unified-tabs-{general,provider,actions,vision,launcher}-default-nativeaot.png`
+  - `artifacts/qa/ivory-jade-settings-v25-unified-tabs-general-{default,minimum}-nativeaot.png`
+
+### 当前未解决的阻塞问题
+
+1. **Launcher tab 内容缺失（已修复）**：切换到 Launcher 后，只显示顶部标题 `WELCOME BACK / Launcher / Apps and web shortcuts.`，下方的 Launcher 列表和 `Spotlight Hotkey` 区块完全空白。
+   - **根因**：用 `xml.etree.ElementTree` 解析 `SettingsWindow.axaml` 并打父链，发现 `LauncherSection` 被嵌套进了 `VisionSection`（父链 `.../Grid/StackPanel[VisionSection]/StackPanel[LauncherSection]`）。v25 编辑时 `VisionSection` 的收尾 `</StackPanel>` 被误放到了 `LauncherSection` **之后**，导致 Launcher 成了 Vision 的子元素。切到 Launcher 时 `LauncherSection.IsVisible=True` 但父 `VisionSection.IsVisible=False` → 整个 Launcher 主体被折叠 → 空白。XML 标签仍平衡（"合法"），所以编译器/Avalonia 都不报错，肉眼极易漏。
+   - **修复**：把 `VisionSection` 的收尾 `</StackPanel>` 从 Launcher 块末尾移到 Launcher 注释之前，使 `LauncherSection` 与 `VisionSection` 平级（同为 ScrollViewer 内 `<Grid>` 的直接子元素）；并删除调试用的 `Spotlight StackPanel` 半透明红底 `Background="#20FF0000"`。修复后父链确认 `LauncherSection` 已是独立 sibling，与 General/Provider/Functions/Vision 并列。
+   - 待 publish + 真机截图最后确认渲染（见下）。
+
+2. **工作树未提交（待提交）**：v25 的 `SettingsWindow.axaml` / `SettingsWindow.axaml.cs` / `BYH.exe` / 截图 / `capture-all-tabs.py` 已就绪，Launcher 修复后一并 commit（含新 BYH.exe）。
+
 ### 当前状态
 
-v24 改动已提交，工作树干净，等用户验收截图。
+v25 结构统一已完成，Launcher 空白的根因已定位并修复（XAML 嵌套错误）。正在 NativeAOT publish，随后杀用户日常 BYH 实例 → 跑 `capture-all-tabs.py` 验证 Launcher 渲染 → 重建用户实例 → 提交 → 交付下一位 Agent。
+
