@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-22T16:11:48'
-secretary_focus: REQ-016
+updated: '2026-07-22T16:49:22'
+secretary_focus: REQ-017
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -60,9 +60,13 @@ requirements:
   title: 设置页宏观边框结构修正 v1
   status: done
   progress: 1/1
+- id: REQ-017
+  title: 设置页阴影层次与左栏柔化 v2
+  status: done
+  progress: 1/1
 phase: executing
 next_step: execute
 plan_confirmed_via: quick-user
-plan_confirmed_at: '2026-07-22T15:49:09'
+plan_confirmed_at: '2026-07-22T16:30:50'
 mode: quick
-plan_confirmed_evidence: 用户：好的,开始你的第一版优化吧
+plan_confirmed_evidence: 用户：这个的阴影效果就挺好的，其他边框也可以参考；左边栏横纵线粗细不一样，柔和一点，左边也优化增加立体感。

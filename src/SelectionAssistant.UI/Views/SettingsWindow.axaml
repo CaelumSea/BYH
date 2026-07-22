@@ -860,23 +860,19 @@
       </Border>
     </Border>
 
-    <!-- TASK-011: Left concept rail — flat full-height column, no rounded
-         outer frame. A slightly thicker antique-gold right rule separates
-         it from the rest of the layout. Internal section dividers preserved. -->
+    <!-- Left concept rail stays square as requested. Its outer rule and both
+         section dividers deliberately share one brush and one-DIP weight. -->
     <Border Grid.Column="0"
             Grid.RowSpan="2"
             Classes="FlatRail"
-            BorderBrush="{DynamicResource ByhGoldBrush}"
-            BorderThickness="0,0,1.5,0"
-            CornerRadius="0"
-            ClipToBounds="True">
+            CornerRadius="0">
       <Grid RowDefinitions="1*,1*,1*,Auto">
         <Image Grid.RowSpan="4"
                Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
                Stretch="UniformToFill"
                Opacity="0.22"
                IsHitTestVisible="False" />
-        <Border BorderBrush="{DynamicResource ByhHairlineBrush}"
+        <Border BorderBrush="{DynamicResource ByhRailRuleBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="20">
           <StackPanel Spacing="8" VerticalAlignment="Center">
@@ -896,7 +892,7 @@
         </Border>
 
         <Border Grid.Row="1"
-                BorderBrush="{DynamicResource ByhHairlineBrush}"
+                BorderBrush="{DynamicResource ByhRailRuleBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="20,18">
           <StackPanel Spacing="12" VerticalAlignment="Center">

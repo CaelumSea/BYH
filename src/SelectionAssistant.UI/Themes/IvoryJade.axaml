@@ -102,6 +102,9 @@
       <SolidColorBrush x:Key="ByhFloatingBorderBrush" Color="#52C2A36D" />
       <SolidColorBrush x:Key="ByhPorcelainBorderBrush" Color="#4DE1C4A3" />
       <SolidColorBrush x:Key="ByhHairlineBrush" Color="#38C2A36D" />
+      <!-- Dedicated rail rule: one identical low-contrast warm line is used
+           for both the vertical edge and horizontal section dividers. -->
+      <SolidColorBrush x:Key="ByhRailRuleBrush" Color="#2EC2A36D" />
       <SolidColorBrush x:Key="ByhPearlGlowBrush" Color="#73FFFDFC" />
       <SolidColorBrush x:Key="ByhOverlayDimBrush" Color="#B3000000" />
       <SolidColorBrush x:Key="ByhOverlayPanelBrush" Color="#F23A2417" />
@@ -326,7 +329,10 @@
     <Setter Property="Background" Value="#FFFFFCF7" />
     <Setter Property="BorderBrush" Value="{DynamicResource ByhMacroEdgeBrush}" />
     <Setter Property="Padding" Value="3" />
-    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #FFFFFEFA, inset 0 0 0 2 #66E8D7B7, 0 2 6 0 #0A4A2B19, 0 12 30 0 #104A2B19" />
+    <!-- Match the successful InnerCard material at macro scale: a bright
+         top inset, a short contact shadow and a broad, faint ambient falloff.
+         Depth comes from light, not from a darker outline. -->
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, inset 0 0 0 1 #FFFFFEFA, inset 0 0 0 2 #5CE8D7B7, 0 3 10 0 #104A2B19, 0 14 34 0 #124A2B19, 0 24 54 0 #084A2B19" />
   </Style>
   <Style Selector="Border.PorcelainCard">
     <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
@@ -430,11 +436,14 @@
        R43: Active state hardened — SurfaceSelected fill + Primary border + a
        left accent bar (inset BoxShadow) so the selected row reads at a glance
        even when the panel is small and the list is dense. -->
-  <!-- TASK-011: FlatRail — used on the left concept/color/workflow column.
-       No rounded outer frame; background only. The gold vertical rule is
-       applied inline in the view. -->
+  <!-- Flat concept rail remains square, but now shares the same gentle
+       porcelain lift as the rounded panels. Its structural rule stays a
+       single hairline so it never competes with the navigation tower. -->
   <Style Selector="Border.FlatRail">
     <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhRailRuleBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="BoxShadow" Value="inset -1 0 0 0 #24FFFDF8, inset 0 1 0 0 #A8FFFEFA, 3 2 10 0 #0C4A2B19, 10 8 30 0 #084A2B19" />
   </Style>
 
   <Style Selector="Border.SpotlightRow">

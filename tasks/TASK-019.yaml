@@ -1,0 +1,32 @@
+id: TASK-019
+requirement: REQ-017
+title: 统一立体阴影并优化左侧栏线条
+status: done
+created: '2026-07-22T16:30:50'
+updated: '2026-07-22T16:49:22'
+satisfies:
+- AC-1
+- AC-2
+- AC-3
+- AC-4
+description: 以用户标注的 Hotkey 卡片阴影为立体感基准，调整宏观面板的接触阴影、扩散阴影和内高光；统一左侧栏横纵分隔线，并增强导航塔及左概念栏的轻量浮起层次。不改变功能内容。
+handoff: 'v2 阴影层次与左栏柔化完成。MetallicFrame.Thin 采用与 InnerCard 同源的顶部内高光、近距离接触阴影和大范围低透明扩散阴影；FlatRail
+  保持直角，但增加轻量浮起阴影。最左栏纵线与两条横向分隔线统一使用 ByhRailRuleBrush 和 1 DIP。视觉证据位于 artifacts/qa/req-017-v2-shadow/。后续调整时不要重新提高左栏纵线不透明度或单独加粗。
+
+  [自检修复] [consistency] 统一左栏横纵分隔线为同一 1 DIP 低对比发丝线；以 Hotkey 卡片为基准补齐宏观面板接触阴影、扩散阴影与顶部内高光；默认、最小窗口和五页截图均复核无裁切或断边'
+execution_log:
+- step: 1
+  action: 对照用户标注的 Hotkey 卡片和左栏局部图，确认纵线为不透明古金 1.5 DIP、横线为低透明 1 DIP
+  artifact: requirements/REQ-017.md
+- step: 2
+  action: 新增 ByhRailRuleBrush，并让左栏外缘与内部横线统一使用相同的一 DIP 发丝线
+  artifact: src/SelectionAssistant.UI/Themes/IvoryJade.axaml
+- step: 3
+  action: 以 InnerCard 为基准重设 MetallicFrame.Thin 的内高光、接触阴影与扩散阴影，并为 FlatRail 增加克制的直角浮起层次
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+- step: 4
+  action: 使用 xiaomi-mimo/mimo-v2.5-pro 执行 Release build、全部测试与 NativeAOT publish
+  result: 0 warnings, 0 errors, 334 passed, BYH.exe 27,972,608 bytes
+- step: 5
+  action: 截取五个 tab 默认窗口与 General 最小窗口，逐图对比边线均匀性、阴影层次和裁切情况
+  artifact: artifacts/qa/req-017-v2-shadow/
