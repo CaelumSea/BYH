@@ -29,7 +29,7 @@
             Grid.Row="0"
             Classes="MetallicFrame Compact Thin">
       <Border Classes="MacroClip Compact"
-              Background="{DynamicResource ByhCreamSheenBrush}">
+              Background="{DynamicResource ByhPanelIvoryBrush}">
         <Grid>
         <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
                Stretch="UniformToFill"
@@ -969,10 +969,10 @@
          is the actual BYH app icon supplied by the user, not decorative mock data. -->
     <Border Grid.Column="3"
             Grid.Row="0"
-            Classes="MetallicFrame Thin"
-            Background="{DynamicResource ByhCreamSheenBrush}">
-      <Border Classes="MacroClip"
-              Background="{DynamicResource ByhCreamSheenBrush}">
+            Classes="MetallicFrame Thin PhoneFrame"
+            Background="{DynamicResource ByhPanelIvoryBrush}">
+      <Border Classes="MacroClip PhoneClip"
+              Background="{DynamicResource ByhPanelIvoryBrush}">
         <Grid RowDefinitions="178,*,Auto">
         <Image Grid.RowSpan="3"
                Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
@@ -1104,11 +1104,33 @@
           </StackPanel>
         </ScrollViewer>
 
-        <Border Grid.Row="2" Margin="14,8,14,14" Classes="Badge" Padding="10,7">
-          <TextBlock Text="LOCAL FIRST · PRIVACY READY"
-                     Classes="Accent"
-                     FontSize="8"
-                     HorizontalAlignment="Center" />
+        <!-- Phone-style bottom dock mirrors the reference handset without
+             inventing new settings behavior. It is a compact status/navigation
+             language for the existing summary card. -->
+        <Border Grid.Row="2" Margin="12,6,12,12" Classes="PhoneDock">
+          <Grid ColumnDefinitions="*,*,*,*,*" Height="38">
+            <Border Grid.Column="0" Classes="PhoneDockItem Active">
+              <Path Classes="PhoneDockIcon"
+                    Data="M3,10 L12,3 L21,10 M5,9 L5,20 L19,20 L19,9 M9,20 L9,14 L15,14 L15,20" />
+            </Border>
+            <Border Grid.Column="1" Classes="PhoneDockItem">
+              <Path Classes="PhoneDockIcon"
+                    Data="M12,3 L19,8 L16,18 L8,18 L5,8 Z M5,8 L19,8 M8,18 L12,8 L16,18" />
+            </Border>
+            <Border Grid.Column="2" Classes="PhoneDockItem Center">
+              <Path Classes="PhoneDockIcon"
+                    Stroke="{DynamicResource ByhPrimaryBrush}"
+                    Data="M12,21 C12,14 7,12 4,7 C10,7 12,10 12,14 M12,21 C12,13 17,10 20,5 C14,5 12,9 12,14" />
+            </Border>
+            <Border Grid.Column="3" Classes="PhoneDockItem">
+              <Path Classes="PhoneDockIcon"
+                    Data="M3,6 L21,6 L21,18 L3,18 Z M3,7 L12,14 L21,7" />
+            </Border>
+            <Border Grid.Column="4" Classes="PhoneDockItem">
+              <Path Classes="PhoneDockIcon"
+                    Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M12,2 L13,5 M12,19 L12,22 M2,12 L5,12 M19,12 L22,12 M5,5 L7,7 M17,17 L19,19 M19,5 L17,7 M7,17 L5,19" />
+            </Border>
+          </Grid>
         </Border>
         </Grid>
       </Border>
@@ -1119,7 +1141,7 @@
             Grid.ColumnSpan="2"
             Grid.Row="1"
             Classes="MetallicFrame Thin"
-            Background="{DynamicResource ByhCreamSheenBrush}">
+            Background="{DynamicResource ByhPanelIvoryBrush}">
       <Border Classes="MacroClip">
       <!-- R30 follow-up: the reference composition treats the lower area as one coherent
            pane: a quiet title band above grouped content.  Keep the three real
@@ -1225,9 +1247,9 @@
     <Border Grid.Column="3"
             Grid.Row="1"
             Classes="MetallicFrame Thin"
-            Background="{DynamicResource ByhCreamSheenBrush}">
+            Background="{DynamicResource ByhPanelIvoryBrush}">
       <Border Classes="MacroClip"
-              Background="{DynamicResource ByhCreamSheenBrush}"
+              Background="{DynamicResource ByhPanelIvoryBrush}"
               Padding="16">
         <Grid RowDefinitions="Auto,*,Auto">
         <StackPanel Spacing="3">

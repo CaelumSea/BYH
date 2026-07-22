@@ -1,0 +1,42 @@
+id: REQ-018
+title: 设置页报纸栏与主题面板 v3
+status: done
+lite: true
+score_kind: aesthetic
+created: '2026-07-22T17:04:01'
+updated: '2026-07-22T17:13:12'
+aligned_via: quick-user
+aligned_at: '2026-07-22T17:04:01'
+aesthetic_template: ''
+acceptance_criteria:
+- id: AC-1
+  text: 左侧报纸栏分隔线适度增强但横纵保持同色同粗，并通过右侧柔影形成纸张层次
+  satisfied_by:
+  - TASK-020
+- id: AC-2
+  text: 左栏之外五个宏观面板统一增大圆角，双层轮廓保持同心且阴影不裁切
+  satisfied_by:
+  - TASK-020
+- id: AC-3
+  text: 五个面板内部使用 Ivory Jade 暖象牙主题填色，不再呈现纯白底
+  satisfied_by:
+  - TASK-020
+- id: AC-4
+  text: 最右上概览面板形成独立手机界面语言，具有更大机身圆角和参考图式底部导航坞
+  satisfied_by:
+  - TASK-020
+- id: AC-5
+  text: Release 构建、334 项测试、NativeAOT 发布及默认与最小窗口截图验证通过
+  satisfied_by:
+  - TASK-020
+tasks:
+- id: TASK-020
+  title: 强化左栏报纸层次并升级五面板与手机卡
+  status: done
+aesthetic_score:
+  scored_at: ''
+  scored_by: ''
+  dimensions: {}
+  total: null
+aesthetic_notes: []
+aligned_evidence: 用户：左边栏分隔线更加清晰一点，左侧添加阴影，排版类似报纸风；右侧五个面板 R 角更大，内部填色符合主题色而不是纯白；最右上面板类手机界面风格。

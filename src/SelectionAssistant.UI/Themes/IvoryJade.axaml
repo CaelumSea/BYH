@@ -104,7 +104,7 @@
       <SolidColorBrush x:Key="ByhHairlineBrush" Color="#38C2A36D" />
       <!-- Dedicated rail rule: one identical low-contrast warm line is used
            for both the vertical edge and horizontal section dividers. -->
-      <SolidColorBrush x:Key="ByhRailRuleBrush" Color="#2EC2A36D" />
+      <SolidColorBrush x:Key="ByhRailRuleBrush" Color="#4AC2A36D" />
       <SolidColorBrush x:Key="ByhPearlGlowBrush" Color="#73FFFDFC" />
       <SolidColorBrush x:Key="ByhOverlayDimBrush" Color="#B3000000" />
       <SolidColorBrush x:Key="ByhOverlayPanelBrush" Color="#F23A2417" />
@@ -121,6 +121,16 @@
         <GradientStop Color="#FFFFFEFA" Offset="0" />
         <GradientStop Color="#FFFFF9EF" Offset="0.48" />
         <GradientStop Color="#FFF7EBDD" Offset="1" />
+      </LinearGradientBrush>
+      <!-- Macro surfaces are deliberately warmer than white. The subtle
+           ivory-to-cream drift separates the five panels from the canvas
+           while leaving their content cards one brightness step above. -->
+      <LinearGradientBrush x:Key="ByhPanelIvoryBrush"
+                           StartPoint="0%,0%"
+                           EndPoint="100%,100%">
+        <GradientStop Color="#FFFFFCF6" Offset="0" />
+        <GradientStop Color="#FFF9F2E7" Offset="0.52" />
+        <GradientStop Color="#FFF3E7D7" Offset="1" />
       </LinearGradientBrush>
       <!-- R54 reference-matched structural edge.  The changing luminance is
            intentionally confined to the one-DIP outer stroke: bronze at the
@@ -314,12 +324,12 @@
     <Setter Property="Background" Value="#F9FFFDFC" />
     <Setter Property="BorderBrush" Value="{DynamicResource ByhMetallicEdgeBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="24" />
+    <Setter Property="CornerRadius" Value="28" />
     <Setter Property="Padding" Value="4" />
     <Setter Property="BoxShadow" Value="inset 0 0 0 2 #FFFFFCF7, inset 0 0 0 3 #B8D9B97D, inset 0 1 2 0 #A6FFFEFA, 0 2 6 0 #0D4A2B19, 0 12 34 0 #144A2B19, 0 24 56 0 #0A4A2B19" />
   </Style>
   <Style Selector="Border.MetallicFrame.Compact">
-    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="CornerRadius" Value="24" />
   </Style>
   <!-- Reference macro frame. One element owns the metallic contour and cast
        shadow; a separate MacroClip child owns rounded content clipping. This
@@ -333,6 +343,13 @@
          top inset, a short contact shadow and a broad, faint ambient falloff.
          Depth comes from light, not from a darker outline. -->
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, inset 0 0 0 1 #FFFFFEFA, inset 0 0 0 2 #5CE8D7B7, 0 3 10 0 #104A2B19, 0 14 34 0 #124A2B19, 0 24 54 0 #084A2B19" />
+  </Style>
+  <!-- The right summary reads as a small handset rather than another desktop
+       card: deeper body radius, a closer double rim and slightly longer lift. -->
+  <Style Selector="Border.MetallicFrame.PhoneFrame">
+    <Setter Property="CornerRadius" Value="38" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F2FFFEFA, inset 0 0 0 1 #FFFFFCF7, inset 0 0 0 3 #78D9B97D, 0 4 12 0 #124A2B19, 0 18 42 0 #144A2B19, 0 30 64 0 #0A4A2B19" />
   </Style>
   <Style Selector="Border.PorcelainCard">
     <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
@@ -367,13 +384,53 @@
   <!-- Rounded content clip for every macro panel. It deliberately has no
        border or shadow: those belong exclusively to MetallicFrame.Thin. -->
   <Style Selector="Border.MacroClip">
-    <Setter Property="Background" Value="#FFFDFBF8" />
+    <Setter Property="Background" Value="{DynamicResource ByhPanelIvoryBrush}" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="CornerRadius" Value="24" />
     <Setter Property="ClipToBounds" Value="True" />
   </Style>
   <Style Selector="Border.MacroClip.Compact">
-    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="CornerRadius" Value="20" />
+  </Style>
+  <Style Selector="Border.MacroClip.PhoneClip">
+    <Setter Property="CornerRadius" Value="33" />
+  </Style>
+  <Style Selector="Border.PhoneDock">
+    <Setter Property="Background" Value="#D9FFF8EC" />
+    <Setter Property="BorderBrush" Value="#72C2A36D" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="Padding" Value="4" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, 0 3 10 0 #104A2B19" />
+  </Style>
+  <Style Selector="Border.PhoneDockItem">
+    <Setter Property="Width" Value="30" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="CornerRadius" Value="15" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.PhoneDockItem.Active">
+    <Setter Property="Background" Value="{DynamicResource ByhAccentSoftBrush}" />
+  </Style>
+  <Style Selector="Border.PhoneDockItem.Center">
+    <Setter Property="Width" Value="38" />
+    <Setter Property="Height" Value="38" />
+    <Setter Property="CornerRadius" Value="19" />
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, 0 3 10 0 #149F5E30" />
+  </Style>
+  <Style Selector="Path.PhoneDockIcon">
+    <Setter Property="Width" Value="14" />
+    <Setter Property="Height" Value="14" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="Fill" Value="Transparent" />
+    <Setter Property="Stroke" Value="{DynamicResource ByhAccentHoverBrush}" />
+    <Setter Property="StrokeThickness" Value="1.45" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <!-- R55 elegant hero card for the settings page header. Much lighter than
        LiftedPanel: a whisper-thin warm border, very soft diffuse shadow, and
@@ -443,7 +500,7 @@
     <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource ByhRailRuleBrush}" />
     <Setter Property="BorderThickness" Value="0,0,1,0" />
-    <Setter Property="BoxShadow" Value="inset -1 0 0 0 #24FFFDF8, inset 0 1 0 0 #A8FFFEFA, 3 2 10 0 #0C4A2B19, 10 8 30 0 #084A2B19" />
+    <Setter Property="BoxShadow" Value="inset -1 0 0 0 #38FFFDF8, inset 0 1 0 0 #B8FFFEFA, 4 2 12 0 #104A2B19, 12 10 34 0 #0C4A2B19" />
   </Style>
 
   <Style Selector="Border.SpotlightRow">
