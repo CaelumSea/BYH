@@ -860,38 +860,43 @@
       </Border>
     </Border>
 
-    <!-- Left concept rail stays square as requested. Its outer rule and both
-         section dividers deliberately share one brush and one-DIP weight. -->
+    <!-- Reference-style theme specimen: four calm editorial sections on one
+         continuous square sheet. The rail remains decorative and read-only. -->
     <Border Grid.Column="0"
             Grid.RowSpan="2"
             Classes="FlatRail"
             CornerRadius="0">
-      <Grid RowDefinitions="Auto,Auto,*,Auto">
+      <Grid RowDefinitions="1.1*,1.65*,0.85*,0.8*">
         <Image Grid.RowSpan="4"
                Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
                Stretch="UniformToFill"
-               Opacity="0.22"
+               Opacity="0.18"
                IsHitTestVisible="False" />
         <Border BorderBrush="{DynamicResource ByhRailRuleBrush}"
                 BorderThickness="0,0,0,1"
-                Padding="20,18,16,16">
-          <StackPanel Spacing="7">
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Text="BYH EDITORIAL" Classes="MagazineKicker" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Text="01" Classes="MagazineFolio" />
-            </Grid>
-            <Border Classes="MagazineRule" />
-            <TextBlock Text="INSTANT,&#10;WITHIN REACH."
-                       Classes="MagazineHeadline" />
-            <TextBlock Text="A field guide to quiet tools, selected text and everyday actions."
+                Padding="22,18,18,15">
+          <StackPanel Spacing="9" VerticalAlignment="Center">
+            <TextBlock Text="THEME CONCEPT" Classes="RailSectionTitle" />
+            <TextBlock Text="Soft · Elegant · Natural · Quiet"
                        Classes="Secondary"
-                       FontSize="9"
-                       LineHeight="14"
-                       TextWrapping="Wrap" />
-            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7" Margin="0,3,0,0">
-              <TextBlock Text="VOL. 01" Classes="MagazineKicker" LetterSpacing="0.7" />
-              <Border Grid.Column="1" Height="1" Background="{DynamicResource ByhHairlineBrush}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="2" Text="IVORY JADE" Classes="Muted" FontSize="7" VerticalAlignment="Center" />
+                       FontSize="8.5" />
+            <Grid ColumnDefinitions="*,46" ColumnSpacing="7">
+              <TextBlock Text="A warm, creamy palette inspired by ivory, jade and polished gold. Soft structure keeps everyday tools calm and within reach."
+                         Classes="RailBody"
+                         TextWrapping="Wrap" />
+              <Border Grid.Column="1"
+                      Width="42" Height="42" CornerRadius="21"
+                      Background="{DynamicResource ByhGemGlowBrush}"
+                      Padding="2"
+                      VerticalAlignment="Bottom">
+                <Border CornerRadius="19" ClipToBounds="True"
+                        Background="{DynamicResource ByhSurfaceBrush}"
+                        BorderBrush="{DynamicResource ByhHairlineBrush}"
+                        BorderThickness="1">
+                  <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
+                         Width="54" Height="54" Stretch="UniformToFill" />
+                </Border>
+              </Border>
             </Grid>
           </StackPanel>
         </Border>
@@ -899,107 +904,101 @@
         <Border Grid.Row="1"
                 BorderBrush="{DynamicResource ByhRailRuleBrush}"
                 BorderThickness="0,0,0,1"
-                Padding="20,15,16,15">
-          <StackPanel Spacing="8">
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Text="COLOR INDEX" FontFamily="Georgia" FontSize="13" />
-              <TextBlock Grid.Column="1" Text="04 HUES" Classes="MagazineKicker" LetterSpacing="0.6" VerticalAlignment="Center" />
-            </Grid>
-            <TextBlock Text="A quiet, noble palette."
-                       Classes="Muted"
-                       FontSize="8" />
-            <Grid ColumnDefinitions="18,*,Auto" RowDefinitions="Auto,Auto,Auto,Auto"
-                  ColumnSpacing="7" RowSpacing="7">
-              <Border Grid.Row="0" Width="15" Height="15" CornerRadius="4"
-                      Background="{DynamicResource ByhSurfaceBrush}"
-                      BorderBrush="{DynamicResource ByhBorderBrush}" BorderThickness="1"
-                      BoxShadow="0 1 3 0 #0D4A2B19" />
-              <TextBlock Grid.Row="0" Grid.Column="1" Text="Porcelain" FontSize="9" VerticalAlignment="Center" />
-              <TextBlock Grid.Row="0" Grid.Column="2" Text="#FFF7EE" Classes="Muted" FontSize="7" VerticalAlignment="Center" />
-              <Border Grid.Row="1" Width="15" Height="15" CornerRadius="4"
-                      Background="{DynamicResource ByhJadeAccentBrush}"
-                      BoxShadow="0 1 3 0 #0D4A2B19" />
-              <TextBlock Grid.Row="1" Grid.Column="1" Text="Action jade" FontSize="9" VerticalAlignment="Center" />
-              <TextBlock Grid.Row="1" Grid.Column="2" Text="#8FAE5A" Classes="Muted" FontSize="7" VerticalAlignment="Center" />
-              <Border Grid.Row="2" Width="15" Height="15" CornerRadius="4"
-                      Background="{DynamicResource ByhGoldBrush}"
-                      BoxShadow="0 1 3 0 #0D4A2B19" />
-              <TextBlock Grid.Row="2" Grid.Column="1" Text="Antique gold" FontSize="9" VerticalAlignment="Center" />
-              <TextBlock Grid.Row="2" Grid.Column="2" Text="#D5A86A" Classes="Muted" FontSize="7" VerticalAlignment="Center" />
-              <Border Grid.Row="3" Width="15" Height="15" CornerRadius="4"
-                      Background="{DynamicResource ByhAccentBrush}"
-                      BoxShadow="0 1 3 0 #0D4A2B19" />
-              <TextBlock Grid.Row="3" Grid.Column="1" Text="Deep brown" FontSize="9" VerticalAlignment="Center" />
-              <TextBlock Grid.Row="3" Grid.Column="2" Text="#6B4B2A" Classes="Muted" FontSize="7" VerticalAlignment="Center" />
+                Padding="22,16,18,14">
+          <StackPanel Spacing="10" VerticalAlignment="Center">
+            <TextBlock Text="COLOR PALETTE" Classes="RailSectionTitle" />
+            <Grid ColumnDefinitions="48,*"
+                  RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+                  ColumnSpacing="9" RowSpacing="5">
+              <Border Grid.Row="0" Width="40" Height="18" CornerRadius="6"
+                      Background="#E8C89A" BorderBrush="#80D5A86A" BorderThickness="1" />
+              <StackPanel Grid.Row="0" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                <TextBlock Text="Primary" FontSize="8.5" FontWeight="SemiBold" />
+                <TextBlock Text="#E8C89A" Classes="Muted" FontSize="7" />
+              </StackPanel>
+              <Border Grid.Row="1" Width="40" Height="18" CornerRadius="6"
+                      Background="#D5A86A" BorderBrush="#70B77934" BorderThickness="1" />
+              <StackPanel Grid.Row="1" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                <TextBlock Text="Secondary" FontSize="8.5" FontWeight="SemiBold" />
+                <TextBlock Text="#D5A86A" Classes="Muted" FontSize="7" />
+              </StackPanel>
+              <Border Grid.Row="2" Width="40" Height="18" CornerRadius="6"
+                      Background="#8FAE5A" BorderBrush="#70667731" BorderThickness="1" />
+              <StackPanel Grid.Row="2" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                <TextBlock Text="Accent" FontSize="8.5" FontWeight="SemiBold" />
+                <TextBlock Text="#8FAE5A" Classes="Muted" FontSize="7" />
+              </StackPanel>
+              <Border Grid.Row="3" Width="40" Height="18" CornerRadius="6"
+                      Background="#6B4B2A" BorderBrush="#70513822" BorderThickness="1" />
+              <StackPanel Grid.Row="3" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                <TextBlock Text="Deep Brown" FontSize="8.5" FontWeight="SemiBold" />
+                <TextBlock Text="#6B4B2A" Classes="Muted" FontSize="7" />
+              </StackPanel>
+              <Border Grid.Row="4" Width="40" Height="18" CornerRadius="6"
+                      Background="#FFF7EE" BorderBrush="#90E8C89A" BorderThickness="1" />
+              <StackPanel Grid.Row="4" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                <TextBlock Text="Cream" FontSize="8.5" FontWeight="SemiBold" />
+                <TextBlock Text="#FFF7EE" Classes="Muted" FontSize="7" />
+              </StackPanel>
+              <Border Grid.Row="5" Width="40" Height="18" CornerRadius="6"
+                      Background="#F6F1E6" BorderBrush="#90EAD8B8" BorderThickness="1" />
+              <StackPanel Grid.Row="5" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                <TextBlock Text="Ivory" FontSize="8.5" FontWeight="SemiBold" />
+                <TextBlock Text="#F6F1E6" Classes="Muted" FontSize="7" />
+              </StackPanel>
+              <Border Grid.Row="6" Width="40" Height="18" CornerRadius="6"
+                      Background="#EAD8B8" BorderBrush="#90D5A86A" BorderThickness="1" />
+              <StackPanel Grid.Row="6" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                <TextBlock Text="Border" FontSize="8.5" FontWeight="SemiBold" />
+                <TextBlock Text="#EAD8B8" Classes="Muted" FontSize="7" />
+              </StackPanel>
             </Grid>
           </StackPanel>
         </Border>
 
-        <Border Grid.Row="2" Padding="20,15,16,12">
-          <StackPanel Spacing="9">
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Text="FIELD NOTES" FontFamily="Georgia" FontSize="13" />
-              <TextBlock Grid.Column="1" Text="03 STEPS" Classes="MagazineKicker" LetterSpacing="0.6" VerticalAlignment="Center" />
-            </Grid>
-            <Grid ColumnDefinitions="31,*" ColumnSpacing="7">
-              <TextBlock Text="01" Classes="MagazineStep" />
-              <StackPanel Grid.Column="1" Spacing="1">
-                <TextBlock Text="SELECT" FontSize="9" FontWeight="SemiBold" />
-                <TextBlock Text="Mark the text in view." Classes="Muted" FontSize="8" />
+        <Border Grid.Row="2"
+                BorderBrush="{DynamicResource ByhRailRuleBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="22,14,18,12">
+          <StackPanel Spacing="8" VerticalAlignment="Center">
+            <TextBlock Text="TYPOGRAPHY" Classes="RailSectionTitle" />
+            <Grid ColumnDefinitions="42,*" ColumnSpacing="8">
+              <TextBlock Text="Aa" FontFamily="Georgia" FontSize="24" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                <TextBlock Text="Heading Font" FontSize="8.5" FontWeight="SemiBold" />
+                <TextBlock Text="Georgia" Classes="Muted" FontSize="7" />
               </StackPanel>
             </Grid>
-            <Grid ColumnDefinitions="31,*" ColumnSpacing="7">
-              <TextBlock Text="02" Classes="MagazineStep" />
-              <StackPanel Grid.Column="1" Spacing="1">
-                <TextBlock Text="OPEN" FontSize="9" FontWeight="SemiBold" />
-                <TextBlock Text="Call Ocean Eyes." Classes="Muted" FontSize="8" />
+            <Grid ColumnDefinitions="42,*" ColumnSpacing="8">
+              <TextBlock Text="Aa" FontFamily="Segoe UI" FontSize="21" FontWeight="Light" VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                <TextBlock Text="Body Font" FontSize="8.5" FontWeight="SemiBold" />
+                <TextBlock Text="Segoe UI" Classes="Muted" FontSize="7" />
               </StackPanel>
             </Grid>
-            <Grid ColumnDefinitions="31,*" ColumnSpacing="7">
-              <TextBlock Text="03" Classes="MagazineStep" />
-              <StackPanel Grid.Column="1" Spacing="1">
-                <TextBlock Text="ACT" FontSize="9" FontWeight="SemiBold" />
-                <TextBlock Text="Translate, explain or save." Classes="Muted" FontSize="8" />
-              </StackPanel>
-            </Grid>
-            <Border Classes="MagazineQuote" Margin="0,3,0,0">
-              <StackPanel Spacing="2">
-                <TextBlock Text="“Select. See. Act.”"
-                           FontFamily="Georgia"
-                           FontStyle="Italic"
-                           FontSize="10" />
-                <TextBlock Text="LOCAL FIRST · PRIVATE BY DESIGN"
-                           Classes="MagazineKicker"
-                           FontSize="6"
-                           LetterSpacing="0.4" />
-              </StackPanel>
-            </Border>
           </StackPanel>
         </Border>
 
-        <StackPanel Grid.Row="3" Margin="20,7,20,16" Spacing="5">
-          <Border Width="48" Height="48" CornerRadius="24"
-                  Background="{DynamicResource ByhGemGlowBrush}"
-                  Padding="3" HorizontalAlignment="Center">
-            <Border Width="42" Height="42" CornerRadius="21"
-                    Background="{DynamicResource ByhSurfaceBrush}"
-                    BorderBrush="{DynamicResource ByhHairlineBrush}" BorderThickness="1"
-                    ClipToBounds="True">
-              <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
-                     Width="58"
-                     Height="58"
-                     Stretch="UniformToFill"
-                     HorizontalAlignment="Center"
-                     VerticalAlignment="Center" />
-            </Border>
-          </Border>
-          <TextBlock Text="BYH · EDITION ONE"
-                     Classes="Accent"
-                     FontSize="7"
-                     FontWeight="SemiBold"
-                     LetterSpacing="0.7"
-                     HorizontalAlignment="Center" />
-        </StackPanel>
+        <Border Grid.Row="3" Padding="22,14,18,14">
+          <StackPanel Spacing="11" VerticalAlignment="Center">
+            <TextBlock Text="ICON STYLE" Classes="RailSectionTitle" />
+            <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="8">
+              <Path Grid.Column="0" Classes="RailSampleIcon"
+                    Data="M3,10 L12,3 L21,10 M5,9 L5,20 L19,20 L19,9 M9,20 L9,14 L15,14 L15,20" />
+              <Path Grid.Column="1" Classes="RailSampleIcon"
+                    Data="M12,3 L19,8 L16,18 L8,18 L5,8 Z M5,8 L19,8 M8,18 L12,8 L16,18" />
+              <Path Grid.Column="2" Classes="RailSampleIcon"
+                    Data="M12,21 C12,14 7,12 4,7 C10,7 12,10 12,14 M12,21 C12,13 17,10 20,5 C14,5 12,9 12,14" />
+              <Path Grid.Column="3" Classes="RailSampleIcon"
+                    Data="M3,6 L21,6 L21,18 L3,18 Z M3,7 L12,14 L21,7" />
+              <Path Grid.Column="4" Classes="RailSampleIcon"
+                    Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M12,2 L13,5 M12,19 L12,22 M2,12 L5,12 M19,12 L22,12 M5,5 L7,7 M17,17 L19,19 M19,5 L17,7 M7,17 L5,19" />
+            </Grid>
+            <TextBlock Text="Soft line icons with rounded corners and warm tones."
+                       Classes="RailBody"
+                       TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
       </Grid>
     </Border>
 
@@ -1009,7 +1008,7 @@
             Grid.Row="0"
             Classes="MetallicFrame Thin PhoneFrame"
             MaxHeight="390"
-            VerticalAlignment="Top"
+            VerticalAlignment="Center"
             Background="{DynamicResource ByhPanelIvoryBrush}">
       <Border Classes="MacroClip PhoneClip"
               Background="{DynamicResource ByhPanelIvoryBrush}">

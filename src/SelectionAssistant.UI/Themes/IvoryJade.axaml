@@ -500,40 +500,27 @@
     <Setter Property="BoxShadow" Value="inset -1 0 0 0 #38FFFDF8, inset 0 1 0 0 #B8FFFEFA, 4 2 12 0 #104A2B19, 12 10 34 0 #0C4A2B19" />
   </Style>
 
-  <!-- Magazine rail typography. Depth still belongs to the sheet shadow;
-       editorial character comes from scale contrast, folio metadata and
-       disciplined rules rather than additional nested cards. -->
-  <Style Selector="TextBlock.MagazineKicker">
-    <Setter Property="FontSize" Value="8" />
-    <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="{DynamicResource ByhAccentBrush}" />
-    <Setter Property="LetterSpacing" Value="1.5" />
-  </Style>
-  <Style Selector="TextBlock.MagazineHeadline">
+  <!-- Reference specimen typography: each section relies on restrained type
+       hierarchy and a shared rule rather than nested cards. -->
+  <Style Selector="TextBlock.RailSectionTitle">
     <Setter Property="FontFamily" Value="Georgia" />
-    <Setter Property="FontSize" Value="17" />
-    <Setter Property="LineHeight" Value="20" />
+    <Setter Property="FontSize" Value="13" />
     <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
   </Style>
-  <Style Selector="TextBlock.MagazineFolio">
-    <Setter Property="FontFamily" Value="Georgia" />
-    <Setter Property="FontSize" Value="20" />
-    <Setter Property="Foreground" Value="{DynamicResource ByhGoldBrush}" />
+  <Style Selector="TextBlock.RailBody">
+    <Setter Property="FontSize" Value="8.5" />
+    <Setter Property="LineHeight" Value="13" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
   </Style>
-  <Style Selector="TextBlock.MagazineStep">
-    <Setter Property="FontFamily" Value="Georgia" />
-    <Setter Property="FontSize" Value="16" />
-    <Setter Property="Foreground" Value="{DynamicResource ByhGoldBrush}" />
-  </Style>
-  <Style Selector="Border.MagazineRule">
-    <Setter Property="Height" Value="1" />
-    <Setter Property="Background" Value="{DynamicResource ByhGoldBrush}" />
-    <Setter Property="Opacity" Value="0.72" />
-  </Style>
-  <Style Selector="Border.MagazineQuote">
-    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
-    <Setter Property="BorderThickness" Value="2,0,0,0" />
-    <Setter Property="Padding" Value="9,3,0,3" />
+  <Style Selector="Path.RailSampleIcon">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="Stroke" Value="{DynamicResource ByhAccentBrush}" />
+    <Setter Property="StrokeThickness" Value="1.35" />
+    <Setter Property="Fill" Value="Transparent" />
   </Style>
 
   <Style Selector="Border.SpotlightRow">

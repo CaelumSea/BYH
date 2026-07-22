@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-22T19:06:45'
-secretary_focus: REQ-020
+updated: '2026-07-22T19:40:32'
+secretary_focus: REQ-021
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -76,9 +76,13 @@ requirements:
   title: 设置页小手机比例与杂志式概念栏 v5
   status: done
   progress: 1/1
+- id: REQ-021
+  title: 设置页对称小手机与参考式左栏 v6
+  status: done
+  progress: 1/1
 phase: executing
 next_step: execute
 plan_confirmed_via: quick-user
-plan_confirmed_at: '2026-07-22T18:43:36'
+plan_confirmed_at: '2026-07-22T19:25:46'
 mode: quick
-plan_confirmed_evidence: 用户要求参考图缩小右上手机面板高度，并让最左栏更有杂志风
+plan_confirmed_evidence: 用户明确指出手机应与旁边窗口对称而非顶对齐，并要求左栏直接学习参考图四段结构、扩充 Color Index。
