@@ -1,6 +1,6 @@
 # BYH 当前交接快照
 
-> 更新时间：2026-07-22 第四十八批增量
+> 更新时间：2026-07-22 第四十九批增量
 > 本文件是下一位 Agent 的首要入口，优先级高于目录内的历史快照。
 > 项目根：`C:\dvr\gh-kb\selection-assistant`
 > **模块文档**：`docs/architecture/00-architecture-overview.md`（改任何模块先看这个）
@@ -2622,6 +2622,30 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 - `dotnet publish -c Release -r win-x64`：0 警告。
 - QA 截图：`artifacts/qa/ivory-jade-settings-v18-fill-window-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
 - 用户日常 BYH 实例已恢复（PID 44964）。
+
+---
+
+## 3o. 本会话（第四十九批增量）完成的工作：REQ-012 General 页单张大底
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - 新增 `SurfacePanel`：用于填满 `MetallicFrame` 内部的连续大卡片，背景 `#FFFCFAF7`、1px 极淡暖边、22px 圆角、顶部微高光 + 极轻外影，复现参考图里外层大框的干净表面。
+  - `InnerCard` 调得更淡：背景 `#FAFFFDFC`、边框 `#38D9C28A`、圆角 12px、阴影收小到 `0 1 3`，避免在单底上反复“浮起”。
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 中央主区内部包上一层 `SurfacePanel`，填满细边框。
+  - 顶部 `WELCOME BACK / General / 状态 pills / IVORY JADE` 直接印在 `SurfacePanel` 表面上，不再单独做 `HeroCard`。
+  - 移除主内容区 ornament 云纹纹理，保持表面干净。
+  - `GeneralSection` 内部从多个 `LiftedPanel` 改为三个连续的 section：`Ocean Eyes Trigger` → divider → `Toolbar Shortcuts` → divider → `Ocean Eyes Capture`，所有功能块直接坐在同一张大底上，只有输入区才用轻量 `InnerCard`。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v19-single-surface-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 31196）。
 
 ---
 

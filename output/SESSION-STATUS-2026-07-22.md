@@ -155,6 +155,30 @@ v16 改动已提交，工作树干净，等用户验收截图。
 - 截图：`artifacts/qa/ivory-jade-settings-v18-fill-window-*-nativeaot.png`（默认 + 最小窗口）。
 - 用户日常 BYH 实例已恢复（PID 44964）。
 
+## 第四十九批增量（v19 单张大底）
+
+用户反馈：参考图是外层一个大框，内部上下两个框和外圈完美贴合，中间没有空隙；我们之前把每个 section 都做成独立带阴影的大卡片，中间留了太多缝，显得碎。
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - 新增 `SurfacePanel`：用于填满 `MetallicFrame` 内部的连续大卡片，背景 `#FFFCFAF7`、1px 极淡暖边、22px 圆角、顶部微高光 + 极轻外影。
+  - `InnerCard` 调得更淡：背景 `#FAFFFDFC`、边框 `#38D9C28A`、圆角 12px、阴影收小到 `0 1 3`。
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 中央主区内部包上一层 `SurfacePanel`，填满细边框。
+  - 顶部 `WELCOME BACK / General / 状态 pills / IVORY JADE` 直接印在 `SurfacePanel` 表面上，不再单独做 `HeroCard`。
+  - 移除主内容区 ornament 云纹纹理，保持表面干净。
+  - `GeneralSection` 内部从多个 `LiftedPanel` 改为三个连续的 section：`Ocean Eyes Trigger` → divider → `Toolbar Shortcuts` → divider → `Ocean Eyes Capture`，所有功能块直接坐在同一张大底上，只有输入区才用轻量 `InnerCard`。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- Build：0 警告 0 错误。
+- 测试：334/334 通过。
+- NativeAOT publish：0 警告。
+- 截图：`artifacts/qa/ivory-jade-settings-v19-single-surface-*-nativeaot.png`（默认 + 最小窗口）。
+- 用户日常 BYH 实例已恢复（PID 31196）。
+
 ### 当前状态
 
-v18 改动已提交，工作树干净，等用户验收截图。
+v19 改动已提交，工作树干净，等用户验收截图。
