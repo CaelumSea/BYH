@@ -27,7 +27,7 @@
          the reference's close, concentric champagne-gold double curve. -->
     <Border Grid.Column="1"
             Grid.Row="0"
-            Classes="MetallicFrame Compact"
+            Classes="MetallicFrame Compact Thin"
             ClipToBounds="True">
       <Grid>
         <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
@@ -164,7 +164,7 @@
     <!-- Main work pane: the selected settings category remains independently scrollable. -->
     <Border Grid.Column="2"
             Grid.Row="0"
-            Classes="MetallicFrame"
+            Classes="MetallicFrame Thin"
             ClipToBounds="True">
     <Grid RowDefinitions="Auto,*">
       <Image Grid.RowSpan="2"
@@ -174,7 +174,7 @@
              IsHitTestVisible="False" />
       <Border Grid.Row="0"
               Classes="HeroCard"
-              Margin="12,12,12,0"
+              Margin="4,4,4,0"
               Padding="28,22,26,18">
         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="24" RowSpacing="18">
           <StackPanel Spacing="5">
@@ -237,12 +237,12 @@
 
       <ScrollViewer x:Name="SettingsContentScroll"
                     Grid.Row="1"
-                    Padding="28,14,28,28"
+                    Padding="14,10,14,14"
                     HorizontalScrollBarVisibility="Disabled">
         <Grid>
 
         <!-- General -->
-        <StackPanel x:Name="GeneralSection" Spacing="14">
+        <StackPanel x:Name="GeneralSection" Spacing="10">
           <!-- Upper lifted panel: the trigger card, kept compact so both
                stacked panels remain visible at the default window size. -->
           <Border Classes="LiftedPanel" Padding="16">
@@ -971,7 +971,7 @@
          is the actual BYH app icon supplied by the user, not decorative mock data. -->
     <Border Grid.Column="3"
             Grid.Row="0"
-            Classes="MetallicFrame"
+            Classes="MetallicFrame Thin"
             Background="{DynamicResource ByhCreamSheenBrush}"
             ClipToBounds="True">
       <Grid RowDefinitions="178,*,Auto">
@@ -1116,7 +1116,7 @@
     <Border Grid.Column="1"
             Grid.ColumnSpan="2"
             Grid.Row="1"
-            Classes="MetallicFrame"
+            Classes="MetallicFrame Thin"
             Background="{DynamicResource ByhCreamSheenBrush}"
             ClipToBounds="True">
       <!-- R30 follow-up: the reference composition treats the lower area as one coherent
@@ -1221,7 +1221,7 @@
 
     <Border Grid.Column="3"
             Grid.Row="1"
-            Classes="MetallicFrame"
+            Classes="MetallicFrame Thin"
             Background="{DynamicResource ByhCreamSheenBrush}"
             Padding="16">
       <Grid RowDefinitions="Auto,*,Auto">
