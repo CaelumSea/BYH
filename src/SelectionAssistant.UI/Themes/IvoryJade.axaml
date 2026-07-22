@@ -305,12 +305,15 @@
   <Style Selector="Border.MetallicFrame.Compact">
     <Setter Property="CornerRadius" Value="18" />
   </Style>
-  <!-- Thin metallic frame: a single 1px gradient edge plus one ivory gap.
-       The deep stacked shadows are replaced by a soft diffuse cast so the
-       frame recedes and the inner SurfacePanel becomes the visual focus. -->
+  <!-- Thin metallic frame: a single 1px whisper-thin warm edge plus one
+       ivory gap. The border itself is almost invisible — the frame's volume
+       comes solely from the soft diffuse shadow and the inset highlight,
+       matching the reference's barely-there outer rim. -->
   <Style Selector="Border.MetallicFrame.Thin">
+    <Setter Property="Background" Value="{DynamicResource ByhBackgroundBrush}" />
+    <Setter Property="BorderBrush" Value="#90E1C4A3" />
     <Setter Property="Padding" Value="2" />
-    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #FFFFFCF7, inset 0 0 0 2 #80D9B97D, 0 2 8 0 #0C4A2B19, 0 8 24 0 #0E4A2B19" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #FFFFFCF7, inset 0 0 0 2 #70D9B97D, 0 2 8 0 #0C4A2B19, 0 8 24 0 #0E4A2B19" />
   </Style>
   <Style Selector="Border.PorcelainCard">
     <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
@@ -346,8 +349,8 @@
        R56: deeper diffuse shadow + brighter top highlight so the panel
        floats off the page the way the reference cards do. -->
   <Style Selector="Border.SurfacePanel">
-    <Setter Property="Background" Value="#FFFCFAF7" />
-    <Setter Property="BorderBrush" Value="#C8E1C4A3" />
+    <Setter Property="Background" Value="#FFFDFBF8" />
+    <Setter Property="BorderBrush" Value="#A8E1C4A3" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="22" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #FFFFFEFA, inset 0 0 0 1 #E6FFFFFA, 0 3 10 0 #0C4A2B19, 0 12 32 0 #104A2B19" />
