@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-22T17:13:12'
-secretary_focus: REQ-018
+updated: '2026-07-22T17:43:30'
+secretary_focus: REQ-019
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -68,9 +68,13 @@ requirements:
   title: 设置页报纸栏与主题面板 v3
   status: done
   progress: 1/1
+- id: REQ-019
+  title: 参考色板亮化与导航均衡
+  status: done
+  progress: 1/1
 phase: executing
 next_step: execute
 plan_confirmed_via: quick-user
-plan_confirmed_at: '2026-07-22T17:04:01'
+plan_confirmed_at: '2026-07-22T17:27:16'
 mode: quick
-plan_confirmed_evidence: 用户：左边栏分隔线更加清晰一点，左侧添加阴影，排版类似报纸风；右侧五个面板 R 角更大，内部填色符合主题色而不是纯白；最右上面板类手机界面风格。
+plan_confirmed_evidence: 用户要求按参考图给定色板优化，并加宽居中选中标识
