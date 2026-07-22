@@ -131,3 +131,30 @@ v15 改动已提交，工作树干净，等用户验收截图。
 ### 当前状态
 
 v16 改动已提交，工作树干净，等用户验收截图。
+
+## 第四十八批增量（v17–v18 细框 + 撑满窗口）
+
+用户反馈：大边框太粗；主设置窗口的卡片要改成撑满窗口的卡片布局，类似参考图。
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - 新增 `MetallicFrame.Thin`：padding 降到 2px，去掉多层深阴影，只保留一条极淡的象牙缝 + 柔和 1px 外影，让所有大边框变细。
+  - `HeroCard` 阴影进一步收小，避免在小边距下被裁切。
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 所有 `MetallicFrame`（导航、中央主区、右侧欢迎卡、底部 System Overview、右下角窗口控制）全部加上 `Thin`。
+  - 中央主区 `HeroCard` 头部边距从 12 → 4，让它几乎贴到细边框。
+  - `ScrollViewer` 内边距从 28,24,28,28 → 14,10,14,14，`GeneralSection` 卡片间距从 14 → 10，让内容卡片更撑满主窗口。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- Build：0 警告 0 错误。
+- 测试：334/334 通过。
+- NativeAOT publish：0 警告。
+- 截图：`artifacts/qa/ivory-jade-settings-v18-fill-window-*-nativeaot.png`（默认 + 最小窗口）。
+- 用户日常 BYH 实例已恢复（PID 44964）。
+
+### 当前状态
+
+v18 改动已提交，工作树干净，等用户验收截图。

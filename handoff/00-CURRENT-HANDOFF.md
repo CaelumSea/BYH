@@ -1,6 +1,6 @@
 # BYH 当前交接快照
 
-> 更新时间：2026-07-22 第四十七批增量
+> 更新时间：2026-07-22 第四十八批增量
 > 本文件是下一位 Agent 的首要入口，优先级高于目录内的历史快照。
 > 项目根：`C:\dvr\gh-kb\selection-assistant`
 > **模块文档**：`docs/architecture/00-architecture-overview.md`（改任何模块先看这个）
@@ -2599,6 +2599,29 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 - `dotnet publish -c Release -r win-x64`：0 警告。
 - QA 截图：`artifacts/qa/ivory-jade-settings-v16-hero-card-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
 - 用户日常 BYH 实例已恢复（PID 22828）。
+
+---
+
+## 3n. 本会话（第四十八批增量）完成的工作：REQ-012 细框 + 主区卡片撑满窗口
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - 新增 `MetallicFrame.Thin`：padding 降到 2px，去掉多层深阴影，只保留一条极淡的象牙缝 + 柔和 1px 外影，让所有大边框变细。
+  - `HeroCard` 阴影进一步收小，避免在小边距下被裁切。
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 所有 `MetallicFrame`（导航、中央主区、右侧欢迎卡、底部 System Overview、右下角窗口控制）全部加上 `Thin`。
+  - 中央主区 `HeroCard` 头部边距从 12 → 4，让它几乎贴到细边框。
+  - `ScrollViewer` 内边距从 28,24,28,28 → 14,10,14,14，`GeneralSection` 卡片间距从 14 → 10，让内容卡片更撑满主窗口。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v18-fill-window-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 44964）。
 
 ---
 
