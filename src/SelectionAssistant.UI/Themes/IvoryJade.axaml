@@ -139,12 +139,15 @@
         <GradientStop Color="#F8FFFDFC" Offset="0" />
         <GradientStop Color="#F4F2EADF" Offset="1" />
       </LinearGradientBrush>
+      <!-- Reference-matched active navigation pill: a fuller vertical caramel
+           pour — bright champagne at the top, warm caramel body, deep bronze
+           base — so the pill reads plump rather than flat. -->
       <LinearGradientBrush x:Key="ByhGoldNavBrush"
                            StartPoint="0%,0%"
-                           EndPoint="100%,100%">
-        <GradientStop Color="#FFEBCB91" Offset="0" />
-        <GradientStop Color="#FFD5A35C" Offset="0.55" />
-        <GradientStop Color="#FFB8752D" Offset="1" />
+                           EndPoint="0%,100%">
+        <GradientStop Color="#FFF0D5A1" Offset="0" />
+        <GradientStop Color="#FFDCA85E" Offset="0.55" />
+        <GradientStop Color="#FFC08337" Offset="1" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="ByhJadeSheenBrush"
                            StartPoint="0%,0%"
@@ -190,6 +193,13 @@
     <Setter Property="Foreground" Value="{DynamicResource ByhAccentHoverBrush}" />
   </Style>
   <Style Selector="TextBlock.DisplayTitle">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource ByhDisplayFontFamily}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <!-- Reference heading rhythm: every card section title uses the display
+       serif, same as the page title — only size/weight scale down. -->
+  <Style Selector="TextBlock.CardTitle">
     <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
     <Setter Property="FontFamily" Value="{DynamicResource ByhDisplayFontFamily}" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -521,10 +531,13 @@
   <Style Selector="Button.SettingsNav:pressed">
     <Setter Property="Background" Value="{DynamicResource ByhSurfaceSelectedBrush}" />
   </Style>
+  <!-- Reference active pill: rounder (14) with the fuller vertical caramel
+       gradient doing the lifting (Button has no BoxShadow in Avalonia). -->
   <Style Selector="Button.SettingsNav.Active">
     <Setter Property="Background" Value="{DynamicResource ByhGoldNavBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+    <Setter Property="CornerRadius" Value="14" />
   </Style>
   <Style Selector="Button.SettingsNav:focus">
     <Setter Property="BorderBrush" Value="{DynamicResource ByhFocusBrush}" />
@@ -541,6 +554,17 @@
   </Style>
   <Style Selector="Button.SettingsNav.Active Path.NavIcon">
     <Setter Property="Stroke" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+  </Style>
+  <!-- Reference summary rows: small line icon centered inside a soft-tinted
+       circular badge. Stroke color is set inline per badge tint. -->
+  <Style Selector="Path.MiniIcon">
+    <Setter Property="Width" Value="13" />
+    <Setter Property="Height" Value="13" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="Fill" Value="Transparent" />
+    <Setter Property="StrokeThickness" Value="1.5" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <!-- Class + focus selectors outrank normal class styles, preserving a
        visible keyboard-focus indicator on every semantic button variant. -->

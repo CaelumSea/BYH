@@ -66,7 +66,9 @@ Ivory Jade 是 BYH 的首个正式主题：瓷器象牙白承担大面积背景�
 | `FlatRail` | 最左侧产品概念栏：无圆角、无外框阴影，仅由右侧古金竖线分隔 |
 | `GemPortrait` | 右上 APP icon 人物焦点的金边珠光圆形框 |
 | `StatusPill` | 顶部真实能力标签，不承载虚构统计 |
-| `SettingsNav` + `Active` | 侧栏导航；默认透明，活动态为暖金渐变，jade focus ring 保留键盘可达性 |
+| `SettingsNav` + `Active` | 侧栏导航；默认透明，活动态为垂直三段焦糖渐变（ByhGoldNavBrush：champagne→caramel→bronze）+ 14px 圆角，jade focus ring 保留键盘可达性 |
+| `CardTitle` | 卡片分区标题：与 DisplayTitle 同族衬线（Georgia），SemiBold，尺寸降到 15px，保证全页标题衬线统一 |
+| `MiniIcon` | 概览行 13px 线图标（Stroke 内联给定），配合 26px 圆形 soft-tint 徽章使用（Current setup / Runtime 行） |
 | `Badge` | 小面积暖色徽章：accent-soft + gold 细边 |
 | `FloatingSurface` | Toolbar / QuickTools 的带透明度象牙材料 |
 | `Primary` | 保存、运行、OCR 等当前区域主要动作 |

@@ -28,7 +28,7 @@
                Stretch="UniformToFill"
                Opacity="0.18"
                IsHitTestVisible="False" />
-        <Grid Margin="10,10,10,8" RowDefinitions="Auto,*">
+        <Grid Margin="10,10,10,8" RowDefinitions="Auto,*,Auto">
         <StackPanel Grid.Row="0" Spacing="5" Margin="4,0,4,12">
           <Border Width="56"
                   Height="56"
@@ -117,6 +117,26 @@
             </Grid>
           </Button>
         </StackPanel>
+
+        <!-- Reference nav card carries a gem ornament at both ends; this is
+             the smaller foot gem mirroring the emblem above the brand. -->
+        <Border Grid.Row="2"
+                Width="26"
+                Height="26"
+                CornerRadius="13"
+                Background="{DynamicResource ByhSurfaceBrush}"
+                BorderBrush="{DynamicResource ByhHairlineBrush}"
+                BorderThickness="1"
+                ClipToBounds="True"
+                HorizontalAlignment="Center"
+                Margin="0,6,0,0">
+          <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
+                 Width="34"
+                 Height="34"
+                 Stretch="UniformToFill"
+                 HorizontalAlignment="Center"
+                 VerticalAlignment="Center" />
+        </Border>
 
           </Grid>
       </Grid>
@@ -209,6 +229,7 @@
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Ocean Eyes Trigger"
+                             Classes="CardTitle"
                              FontSize="15"
                              FontWeight="SemiBold" />
                   <TextBlock Text="F Translate · J Explain · Z Summarize · R Prompt · C Copy · Enter Save · Esc Close"
@@ -283,6 +304,7 @@
             <StackPanel Spacing="14">
               <StackPanel Spacing="3">
                 <TextBlock Text="Toolbar Shortcuts"
+                           Classes="CardTitle"
                            FontSize="15"
                            FontWeight="SemiBold" />
               </StackPanel>
@@ -347,6 +369,7 @@
             <StackPanel Spacing="14">
               <StackPanel Spacing="3">
                 <TextBlock Text="Ocean Eyes Capture"
+                           Classes="CardTitle"
                            FontSize="15"
                            FontWeight="SemiBold" />
               </StackPanel>
@@ -434,6 +457,7 @@
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <StackPanel Spacing="4">
                   <TextBlock Text="Provider Profiles"
+                             Classes="CardTitle"
                              FontSize="15"
                              FontWeight="SemiBold" />
                 </StackPanel>
@@ -550,6 +574,7 @@
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Actions &amp; Prompts"
+                             Classes="CardTitle"
                              FontSize="15"
                              FontWeight="SemiBold" />
                 </StackPanel>
@@ -602,6 +627,7 @@
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
               <StackPanel Spacing="4">
                 <TextBlock Text="Vision Recognition"
+                           Classes="CardTitle"
                            FontSize="15"
                            FontWeight="SemiBold" />
               </StackPanel>
@@ -707,6 +733,7 @@
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Launcher"
+                             Classes="CardTitle"
                              FontSize="15"
                              FontWeight="SemiBold" />
                 </StackPanel>
@@ -776,6 +803,7 @@
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Spotlight Hotkey"
+                             Classes="CardTitle"
                              FontSize="15"
                              FontWeight="SemiBold" />
                 </StackPanel>
@@ -865,19 +893,19 @@
             <TextBlock Text="COLOR LANGUAGE"
                        FontFamily="Georgia"
                        FontSize="13" />
-            <Grid ColumnDefinitions="34,*" RowDefinitions="Auto,Auto,Auto,Auto"
+            <Grid ColumnDefinitions="30,*" RowDefinitions="Auto,Auto,Auto,Auto"
                   ColumnSpacing="10" RowSpacing="8">
-              <Border Grid.Row="0" Width="32" Height="18" CornerRadius="6"
+              <Border Grid.Row="0" Width="20" Height="20" CornerRadius="6"
                       Background="{DynamicResource ByhSurfaceBrush}"
                       BorderBrush="{DynamicResource ByhBorderBrush}" BorderThickness="1" />
               <TextBlock Grid.Row="0" Grid.Column="1" Text="Porcelain ivory" FontSize="10" VerticalAlignment="Center" />
-              <Border Grid.Row="1" Width="32" Height="18" CornerRadius="6"
+              <Border Grid.Row="1" Width="20" Height="20" CornerRadius="6"
                       Background="{DynamicResource ByhPrimaryBrush}" />
               <TextBlock Grid.Row="1" Grid.Column="1" Text="Action jade" FontSize="10" VerticalAlignment="Center" />
-              <Border Grid.Row="2" Width="32" Height="18" CornerRadius="6"
+              <Border Grid.Row="2" Width="20" Height="20" CornerRadius="6"
                       Background="{DynamicResource ByhGoldBrush}" />
               <TextBlock Grid.Row="2" Grid.Column="1" Text="Antique gold" FontSize="10" VerticalAlignment="Center" />
-              <Border Grid.Row="3" Width="32" Height="18" CornerRadius="6"
+              <Border Grid.Row="3" Width="20" Height="20" CornerRadius="6"
                       Background="{DynamicResource ByhAccentBrush}" />
               <TextBlock Grid.Row="3" Grid.Column="1" Text="Caramel detail" FontSize="10" VerticalAlignment="Center" />
             </Grid>
@@ -985,32 +1013,67 @@
             </StackPanel>
             <Border Classes="PorcelainCard" Padding="12,10">
               <StackPanel Spacing="9">
-                <StackPanel Spacing="3">
-                  <TextBlock Text="TRANSLATION PROVIDER" Classes="Muted" FontSize="8" FontWeight="SemiBold" />
-                  <TextBlock x:Name="SummaryProviderText"
-                             Text="Loading…"
-                             FontSize="10"
-                             FontWeight="SemiBold"
-                             TextWrapping="Wrap" />
-                </StackPanel>
+                <!-- Reference Today's Summary rows: soft circular icon badge
+                     left of each label/value pair. -->
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <Border Width="26"
+                          Height="26"
+                          CornerRadius="13"
+                          VerticalAlignment="Center"
+                          Background="{DynamicResource ByhAccentSoftBrush}">
+                    <Path Classes="MiniIcon"
+                          Stroke="{DynamicResource ByhAccentHoverBrush}"
+                          Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M3,12 L21,12 M12,3 C15,7 15,17 12,21 C9,17 9,7 12,3" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                    <TextBlock Text="TRANSLATION PROVIDER" Classes="Muted" FontSize="8" FontWeight="SemiBold" />
+                    <TextBlock x:Name="SummaryProviderText"
+                               Text="Loading…"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </Grid>
                 <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
-                <StackPanel Spacing="3">
-                  <TextBlock Text="OCEAN EYES HOTKEY" Classes="Muted" FontSize="8" FontWeight="SemiBold" />
-                  <TextBlock x:Name="SummaryShortcutText"
-                             Text="Loading…"
-                             FontSize="10"
-                             FontWeight="SemiBold"
-                             TextWrapping="Wrap" />
-                </StackPanel>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <Border Width="26"
+                          Height="26"
+                          CornerRadius="13"
+                          VerticalAlignment="Center"
+                          Background="{DynamicResource ByhWarningSoftBrush}">
+                    <Path Classes="MiniIcon"
+                          Stroke="{DynamicResource ByhWarningBrush}"
+                          Data="M3,7 L21,7 L21,17 L3,17 Z M7,10.5 L9,10.5 M11,10.5 L13,10.5 M15,10.5 L17,10.5 M7,14 L17,14" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                    <TextBlock Text="OCEAN EYES HOTKEY" Classes="Muted" FontSize="8" FontWeight="SemiBold" />
+                    <TextBlock x:Name="SummaryShortcutText"
+                               Text="Loading…"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </Grid>
                 <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
-                <StackPanel Spacing="3">
-                  <TextBlock Text="VISION OCR" Classes="Muted" FontSize="8" FontWeight="SemiBold" />
-                  <TextBlock x:Name="SummaryVisionText"
-                             Text="Loading…"
-                             FontSize="10"
-                             FontWeight="SemiBold"
-                             TextWrapping="Wrap" />
-                </StackPanel>
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <Border Width="26"
+                          Height="26"
+                          CornerRadius="13"
+                          VerticalAlignment="Center"
+                          Background="{DynamicResource ByhSuccessSoftBrush}">
+                    <Path Classes="MiniIcon"
+                          Stroke="{DynamicResource ByhPrimaryBrush}"
+                          Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                    <TextBlock Text="VISION OCR" Classes="Muted" FontSize="8" FontWeight="SemiBold" />
+                    <TextBlock x:Name="SummaryVisionText"
+                               Text="Loading…"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </Grid>
               </StackPanel>
             </Border>
           </StackPanel>
@@ -1062,11 +1125,16 @@
             <StackPanel Grid.Column="0" Spacing="9" Margin="2,0,14,0">
               <TextBlock Text="Runtime" FontFamily="Georgia" FontSize="13" />
               <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                <Border Width="9" Height="9" CornerRadius="5"
-                        Background="{DynamicResource ByhSuccessBrush}"
-                        VerticalAlignment="Center" />
-                <StackPanel Grid.Column="1" Spacing="2">
-                  <TextBlock Text="Background capture active" FontSize="11" FontWeight="SemiBold" />
+                <Border Width="26" Height="26" CornerRadius="13"
+                        Background="{DynamicResource ByhSuccessSoftBrush}"
+                        VerticalAlignment="Center">
+                  <Border Width="9" Height="9" CornerRadius="5"
+                          Background="{DynamicResource ByhSuccessBrush}"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Text="Background capture active" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" />
                 </StackPanel>
               </Grid>
             </StackPanel>
@@ -1080,15 +1148,15 @@
               <TextBlock Text="Theme" FontFamily="Georgia" FontSize="13" />
               <TextBlock Text="Ivory Jade" FontSize="11" FontWeight="SemiBold" />
               <StackPanel Orientation="Horizontal" Spacing="5">
-                <Border Width="22" Height="13" CornerRadius="5"
+                <Border Width="16" Height="16" CornerRadius="5"
                         Background="{DynamicResource ByhSurfaceBrush}"
                         BorderBrush="{DynamicResource ByhBorderBrush}"
                         BorderThickness="1" />
-                <Border Width="22" Height="13" CornerRadius="5"
+                <Border Width="16" Height="16" CornerRadius="5"
                         Background="{DynamicResource ByhPrimaryBrush}" />
-                <Border Width="22" Height="13" CornerRadius="5"
+                <Border Width="16" Height="16" CornerRadius="5"
                         Background="{DynamicResource ByhGoldBrush}" />
-                <Border Width="22" Height="13" CornerRadius="5"
+                <Border Width="16" Height="16" CornerRadius="5"
                         Background="{DynamicResource ByhAccentBrush}" />
               </StackPanel>
             </StackPanel>
