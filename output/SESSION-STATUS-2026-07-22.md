@@ -24,14 +24,20 @@
 - 按 Foamie 参考图精修设置页（详见下方差距分析），然后 build → test → publish → 重抓默认/最小截图 → 提交（含新 BYH.exe）→ 交用户验收。
 - 收尾时同步 `handoff/00-CURRENT-HANDOFF.md`、REQ/Task 文档与 `docs/architecture/08-theme-system.md`（如改主题）。
 
-## 主任务进度（09:55 更新）
+## 主任务进度（11:15 更新）
 
-截图管线已修复并验证：capture-settings.py 现在给 SetWindowPos/SetForegroundWindow 声明 argtypes（64 位下裸 -1 被截断成 0xFFFFFFFF 导致 topmost 静默失败），抓图前 HWND_TOPMOST、抓后还原。**已取得可信基线 `artifacts/qa/before-default.png` / `before-minimum.png`**（旧 v11 两张实为浏览器/Obsidian 画面，作废）。
+截图管线已修复并验证：capture-settings.py 现在给 SetWindowPos/SetForegroundWindow 声明 argtypes，抓图前 HWND_TOPMOST、抓后还原。**已取得可信基线 `artifacts/qa/before-default.png` / `before-minimum.png`**。
 
-已完成的精修（对照参考图 + 基线截图）：
-1. 主题 `IvoryJade.axaml`：ByhGoldNavBrush 改垂直三段焦糖渐变（#F0D5A1→#DCA85E→#C08337，更饱满）；SettingsNav.Active 圆角 12→14（**Button 无 BoxShadow 属性，AVLN2000，已放弃投影**）；新增 `TextBlock.CardTitle`（衬线 SemiBold）与 `Path.MiniIcon`（13px 线图标，Stroke 内联）。
-2. 视图 `SettingsWindow.axaml`：8 个卡片标题（Ocean Eyes Trigger / Toolbar Shortcuts / Ocean Eyes Capture / Provider Profiles / Actions & Prompts / Vision Recognition / Launcher / Spotlight Hotkey）加 `Classes="CardTitle"` 统一衬线；导航卡 Grid 改 `Auto,*,Auto` 并加底部小宝石（26px 圆形徽标，最小高度下余量仅 ~37px 故从 30 缩到 26）；Current setup 三行加圆形图标徽章（provider=地球/AccentSoft、hotkey=键盘/WarningSoft、OCR=眼睛/SuccessSoft）；底部 Runtime 绿点外套 26px SuccessSoft 圆徽章；左栏色块 32x18→20x20、底部主题色块 22x13→16x16（参考图方形色片）。
-3. 当前状态：**主任务已完成**。build 0 警告 / 测试 334/334 / publish 0 警告（exe 27,959,808 B）。v12 验收截图已抓（默认 + 最小，可信管线）。提交：`e728f1f`（UI 精修 + QA + exe）+ `027f452`（handoff 批次 43）。**等用户验收 v12 截图。**
+### 第一轮精修（v12，commit `e728f1f`）
+主题 `IvoryJade.axaml`：ByhGoldNavBrush 三段焦糖渐变；SettingsNav.Active 圆角 12→14；新增 `TextBlock.CardTitle` / `Path.MiniIcon`。视图：8 个卡片标题衬线统一；导航卡底部小宝石；Current setup 三行圆形图标徽章；Runtime 圆徽章；方形色板。
+
+### 第二轮深化（v13，commit `aaeb31a`，用户「几乎没改」反馈后）
+用户要求强化立体感、精致感、氛围感。本批从主题资源层下重手：
+1. **氛围感**：新增 `ByhAtmosphereBrush` 暖色径向光晕铺满设置页底层；四个面板的 ornament 云纹透明度大幅提升（nav 0.30 / main 0.10 / rail 0.22 / right 0.28），云纹明显显影。
+2. **立体感**：`MetallicFrame` 阴影加深为三层环境+投影并加顶部微光；`PearlCard`/`PorcelainCard` 加顶部强光高光边和更明显的 lift 阴影；`StatusPill`/`Badge` 加内高光和微阴影；调色板小方块加 lift 阴影。
+3. **精致感**：`ByhMetallicEdgeBrush` 加亮香槟高光；active 导航药丸升级四段渐变 + 新增凸面边框渐变 `ByhGoldNavBorderBrush`，读出饱满 3D 体积；`GemPortrait` 增加翡翠色外发光环；导航卡/右卡/左栏的玉石 emblem 全部套 `ByhGemGlowBrush`；Current setup / Runtime 图标徽章放大到 28px 并加金边软影。
+
+当前状态：**主任务已完成**。build 0 警告 / 测试 334/334 / publish 0 警告（exe 27,959,296 B）。v13 验收截图已抓（默认 + 最小，可信管线）。提交：`aaeb31a`（UI 深化 + QA + exe）+ `b3dda14`（handoff 批次 44）。**等用户验收 v13 截图。**
 
 ## 参考图（Foamie）要点 vs 当前实现
 
