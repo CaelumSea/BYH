@@ -243,9 +243,11 @@
         <Grid>
 
         <!-- General -->
-        <StackPanel x:Name="GeneralSection" Spacing="16">
-          <Border Classes="PearlCard" Padding="18">
-            <StackPanel Spacing="16">
+        <StackPanel x:Name="GeneralSection" Spacing="14">
+          <!-- Upper lifted panel: the trigger card, kept compact so both
+               stacked panels remain visible at the default window size. -->
+          <Border Classes="LiftedPanel" Padding="16">
+            <StackPanel Spacing="14">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Ocean Eyes Trigger"
@@ -265,8 +267,8 @@
                               VerticalAlignment="Center" />
               </Grid>
 
-              <Border Classes="PearlInset" Padding="14">
-                <StackPanel Spacing="10">
+              <Border Classes="InnerCard" Padding="12">
+                <StackPanel Spacing="8">
                   <TextBlock Text="Hotkey"
                              Classes="Secondary"
                              FontSize="11"
@@ -294,7 +296,7 @@
 
               <Border BorderBrush="{DynamicResource ByhBorderSubtleBrush}"
                       BorderThickness="0,1,0,0"
-                      Padding="0,14,0,0">
+                      Padding="0,12,0,0">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                   <StackPanel Spacing="3">
                     <TextBlock Text="Legacy Mouse Chord"
@@ -316,155 +318,138 @@
             </StackPanel>
           </Border>
 
-          <!-- R37: toolbar built-in shortcut keys (Prompt/Copy/Paste).
-               Defaults R/C/V; each can be cleared to disable that shortcut.
-               These run as fallback when no user PromptTemplate is bound to
-               the same key (PromptTemplate shortcuts always win). -->
-          <Border Classes="PearlCard" Padding="18">
-            <StackPanel Spacing="14">
-              <StackPanel Spacing="3">
+          <!-- Lower lifted panel: shortcuts + capture stacked together, mirroring
+               the reference's second large card. -->
+          <Border Classes="LiftedPanel" Padding="16">
+            <StackPanel Spacing="16">
+              <StackPanel Spacing="12">
                 <TextBlock Text="Toolbar Shortcuts"
                            Classes="CardTitle"
                            FontSize="15"
                            FontWeight="SemiBold" />
+                <Border Classes="InnerCard" Padding="12">
+                  <Grid ColumnDefinitions="Auto,60,*" RowDefinitions="Auto,Auto"
+                        RowSpacing="8" ColumnSpacing="12">
+                    <TextBlock Grid.Row="0" Grid.Column="0"
+                               Text="Prompt"
+                               Classes="Secondary"
+                               FontSize="11"
+                               VerticalAlignment="Center" />
+                    <TextBox  Grid.Row="0" Grid.Column="1"
+                              x:Name="PromptShortcutInput"
+                              MaxLength="1"
+                              FontSize="13"
+                              HorizontalAlignment="Stretch"
+                              PlaceholderText="None" />
+                    <TextBlock Grid.Row="0" Grid.Column="2"
+                               Text="Open prompt window"
+                               Classes="Muted"
+                               FontSize="10"
+                               VerticalAlignment="Center" />
+
+                    <TextBlock Grid.Row="1" Grid.Column="0"
+                               Text="Copy"
+                               Classes="Secondary"
+                               FontSize="11"
+                               VerticalAlignment="Center" />
+                    <TextBox  Grid.Row="1" Grid.Column="1"
+                              x:Name="CopyShortcutInput"
+                              MaxLength="1"
+                              FontSize="13"
+                              HorizontalAlignment="Stretch"
+                              PlaceholderText="None" />
+                    <TextBlock Grid.Row="1" Grid.Column="2"
+                               Text="Copy selected text"
+                               Classes="Muted"
+                               FontSize="10"
+                               VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                  <Button Content="Save Shortcuts"
+                          Classes="Primary"
+                          Click="OnSaveToolbarShortcutsClick" />
+                  <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock x:Name="ToolbarShortcutsStatusText"
+                               Text="Current: Prompt R · Copy C"
+                               FontSize="11" />
+                  </StackPanel>
+                </Grid>
               </StackPanel>
 
-              <Border Classes="PearlInset" Padding="14">
-                <Grid ColumnDefinitions="Auto,60,*" RowDefinitions="Auto,Auto"
-                      RowSpacing="10" ColumnSpacing="12">
-                  <TextBlock Grid.Row="0" Grid.Column="0"
-                             Text="Prompt"
-                             Classes="Secondary"
-                             FontSize="11"
-                             VerticalAlignment="Center" />
-                  <TextBox  Grid.Row="0" Grid.Column="1"
-                            x:Name="PromptShortcutInput"
-                            MaxLength="1"
-                            FontSize="13"
-                            HorizontalAlignment="Stretch"
-                            PlaceholderText="None" />
-                  <TextBlock Grid.Row="0" Grid.Column="2"
-                             Text="Open prompt window"
-                             Classes="Muted"
-                             FontSize="10"
-                             VerticalAlignment="Center" />
+              <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
 
-                  <TextBlock Grid.Row="1" Grid.Column="0"
-                             Text="Copy"
-                             Classes="Secondary"
-                             FontSize="11"
-                             VerticalAlignment="Center" />
-                  <TextBox  Grid.Row="1" Grid.Column="1"
-                            x:Name="CopyShortcutInput"
-                            MaxLength="1"
-                            FontSize="13"
-                            HorizontalAlignment="Stretch"
-                            PlaceholderText="None" />
-                  <TextBlock Grid.Row="1" Grid.Column="2"
-                             Text="Copy selected text"
-                             Classes="Muted"
-                             FontSize="10"
-                             VerticalAlignment="Center" />
-                </Grid>
-              </Border>
-
-              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                <Button Content="Save Shortcuts"
-                        Classes="Primary"
-                        Click="OnSaveToolbarShortcutsClick" />
-                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                  <TextBlock x:Name="ToolbarShortcutsStatusText"
-                             Text="Current: Prompt R · Copy C"
-                             FontSize="11" />
-                </StackPanel>
-              </Grid>
-            </StackPanel>
-          </Border>
-
-          <!-- R40 Ocean Eyes: screenshot save settings. Path is configurable;
-               AutoSave writes a PNG to disk on Enter; CopyToClipboard also
-               pushes the PNG to the clipboard; UiaAssist snaps the preselection
-               box to the element under the cursor while drawing. -->
-          <Border Classes="PearlCard" Padding="18">
-            <StackPanel Spacing="14">
-              <StackPanel Spacing="3">
+              <StackPanel Spacing="12">
                 <TextBlock Text="Ocean Eyes Capture"
                            Classes="CardTitle"
                            FontSize="15"
                            FontWeight="SemiBold" />
+                <Border Classes="InnerCard" Padding="12">
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="Save Location"
+                               Classes="Secondary"
+                               FontSize="11"
+                               FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                      <TextBox x:Name="OceanEyesSavePathTextBox"
+                               Grid.Column="0"
+                               PlaceholderText="%USERPROFILE%\Pictures\Ocean Eyes"
+                               FontSize="11" />
+                      <Button Grid.Column="1"
+                              Content="Browse…"
+                              Classes="Ghost"
+                              Click="OnBrowseOceanEyesSavePathClick" />
+                    </Grid>
+                  </StackPanel>
+                </Border>
+
+                <!-- Phone-reference summary row: three compact toggle cards in
+                     one row, like the "Projects / Tasks / Completed" blocks. -->
+                <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
+                  <Border Classes="InnerCard" Padding="10">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="Auto-save" Classes="Muted" FontSize="9" FontWeight="SemiBold" />
+                      <ToggleSwitch x:Name="OceanEyesAutoSaveToggle"
+                                    OnContent="On"
+                                    OffContent="Off"
+                                    IsChecked="True"
+                                    FontSize="10" />
+                    </StackPanel>
+                  </Border>
+                  <Border Classes="InnerCard" Padding="10">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="Clipboard" Classes="Muted" FontSize="9" FontWeight="SemiBold" />
+                      <ToggleSwitch x:Name="OceanEyesClipboardToggle"
+                                    OnContent="On"
+                                    OffContent="Off"
+                                    IsChecked="True"
+                                    FontSize="10" />
+                    </StackPanel>
+                  </Border>
+                  <Border Classes="InnerCard" Padding="10">
+                    <StackPanel Spacing="2">
+                      <TextBlock Text="UIA Snap" Classes="Muted" FontSize="9" FontWeight="SemiBold" />
+                      <ToggleSwitch x:Name="OceanEyesUiaAssistToggle"
+                                    OnContent="On"
+                                    OffContent="Off"
+                                    IsChecked="True"
+                                    FontSize="10" />
+                    </StackPanel>
+                  </Border>
+                </Grid>
+
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                  <Button Content="Save Capture Settings"
+                          Classes="Primary"
+                          Click="OnSaveOceanEyesCaptureClick" />
+                  <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock x:Name="OceanEyesCaptureStatusText"
+                               Text="Current: Default location"
+                               FontSize="11" />
+                  </StackPanel>
+                </Grid>
               </StackPanel>
-
-              <Border Classes="PearlInset" Padding="14">
-                <StackPanel Spacing="10">
-                  <TextBlock Text="Save Location"
-                             Classes="Secondary"
-                             FontSize="11"
-                             FontWeight="SemiBold" />
-                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
-                    <TextBox x:Name="OceanEyesSavePathTextBox"
-                             Grid.Column="0"
-                             PlaceholderText="%USERPROFILE%\Pictures\Ocean Eyes"
-                             FontSize="11" />
-                    <Button Grid.Column="1"
-                            Content="Browse…"
-                            Classes="Ghost"
-                            Click="OnBrowseOceanEyesSavePathClick" />
-                  </Grid>
-                </StackPanel>
-              </Border>
-
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                <StackPanel Spacing="3">
-                  <TextBlock Text="Auto-save File"
-                             FontSize="11"
-                             FontWeight="SemiBold" />
-                </StackPanel>
-                <ToggleSwitch x:Name="OceanEyesAutoSaveToggle"
-                              Grid.Column="1"
-                              OnContent="On"
-                              OffContent="Off"
-                              IsChecked="True"
-                              VerticalAlignment="Center" />
-              </Grid>
-
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                <StackPanel Spacing="3">
-                  <TextBlock Text="Copy to Clipboard"
-                             FontSize="11"
-                             FontWeight="SemiBold" />
-                </StackPanel>
-                <ToggleSwitch x:Name="OceanEyesClipboardToggle"
-                              Grid.Column="1"
-                              OnContent="On"
-                              OffContent="Off"
-                              IsChecked="True"
-                              VerticalAlignment="Center" />
-              </Grid>
-
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                <StackPanel Spacing="3">
-                  <TextBlock Text="Snap to Controls (UIA)"
-                             FontSize="11"
-                             FontWeight="SemiBold" />
-                </StackPanel>
-                <ToggleSwitch x:Name="OceanEyesUiaAssistToggle"
-                              Grid.Column="1"
-                              OnContent="On"
-                              OffContent="Off"
-                              IsChecked="True"
-                              VerticalAlignment="Center" />
-              </Grid>
-
-              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                <Button Content="Save Capture Settings"
-                        Classes="Primary"
-                        Click="OnSaveOceanEyesCaptureClick" />
-                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                  <TextBlock x:Name="OceanEyesCaptureStatusText"
-                             Text="Current: Default location"
-                             FontSize="11" />
-                </StackPanel>
-              </Grid>
             </StackPanel>
           </Border>
 
@@ -472,7 +457,7 @@
 
         <!-- Translation providers -->
         <StackPanel x:Name="ProviderSection" IsVisible="False" Spacing="16">
-          <Border x:Name="EditFormBorder" Classes="PearlCard" Padding="18">
+          <Border x:Name="EditFormBorder" Classes="LiftedPanel" Padding="18">
             <StackPanel Spacing="16">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <StackPanel Spacing="4">
@@ -538,7 +523,7 @@
                          Height="78" />
               </StackPanel>
 
-              <Border Classes="PearlInset" Padding="14">
+              <Border Classes="InnerCard" Padding="14">
                 <StackPanel Spacing="7">
                   <TextBlock Text="API Key"
                              FontSize="11"
@@ -589,7 +574,7 @@
 
         <!-- Prompt functions -->
         <StackPanel x:Name="FunctionsSection" IsVisible="False" Spacing="16">
-          <Border x:Name="PromptTemplatesCard" Classes="PearlCard" Padding="18">
+          <Border x:Name="PromptTemplatesCard" Classes="LiftedPanel" Padding="18">
             <StackPanel Spacing="14">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
@@ -643,7 +628,7 @@
 
         <!-- Vision OCR -->
         <StackPanel x:Name="VisionSection" IsVisible="False" Spacing="16">
-          <Border Classes="PearlCard" Padding="18">
+          <Border Classes="LiftedPanel" Padding="18">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
               <StackPanel Spacing="4">
                 <TextBlock Text="Vision Recognition"
@@ -660,82 +645,86 @@
             </Grid>
           </Border>
 
-          <Border Classes="PearlCard" Padding="18">
-            <StackPanel Spacing="14">
-              <TextBlock Text="OCR Model"
-                         FontSize="13"
-                         FontWeight="SemiBold" />
-              <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
-                <StackPanel Grid.Column="0" Spacing="6">
-                  <TextBlock Text="Provider" Classes="Muted" FontSize="10" />
-                  <ComboBox x:Name="VisionProviderComboBox"
-                            HorizontalAlignment="Stretch">
-                    <ComboBox.ItemTemplate>
-                      <DataTemplate x:DataType="views:ProviderOption">
-                        <TextBlock Text="{Binding DisplayLabel}" />
-                      </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                  </ComboBox>
+          <Border Classes="LiftedPanel" Padding="18">
+            <StackPanel Spacing="18">
+              <StackPanel Spacing="14">
+                <TextBlock Text="OCR Model"
+                           Classes="CardTitle"
+                           FontSize="13"
+                           FontWeight="SemiBold" />
+                <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                  <StackPanel Grid.Column="0" Spacing="6">
+                    <TextBlock Text="Provider" Classes="Muted" FontSize="10" />
+                    <ComboBox x:Name="VisionProviderComboBox"
+                              HorizontalAlignment="Stretch">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="views:ProviderOption">
+                          <TextBlock Text="{Binding DisplayLabel}" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Spacing="6">
+                    <TextBlock Text="Model" Classes="Muted" FontSize="10" />
+                    <ComboBox x:Name="VisionModelComboBox"
+                              HorizontalAlignment="Stretch"
+                              IsEditable="True" />
+                  </StackPanel>
+                </Grid>
+                <StackPanel Spacing="6">
+                  <TextBlock Text="Prompt" Classes="Muted" FontSize="10" />
+                  <TextBox x:Name="VisionPromptInput"
+                           AcceptsReturn="True"
+                           TextWrapping="Wrap"
+                           Height="68"
+                           PlaceholderText="Free OCR. (DeepSeek-OCR default)" />
                 </StackPanel>
-                <StackPanel Grid.Column="1" Spacing="6">
-                  <TextBlock Text="Model" Classes="Muted" FontSize="10" />
-                  <ComboBox x:Name="VisionModelComboBox"
-                            HorizontalAlignment="Stretch"
-                            IsEditable="True" />
-                </StackPanel>
-              </Grid>
-              <StackPanel Spacing="6">
-                <TextBlock Text="Prompt" Classes="Muted" FontSize="10" />
-                <TextBox x:Name="VisionPromptInput"
-                         AcceptsReturn="True"
-                         TextWrapping="Wrap"
-                         Height="68"
-                         PlaceholderText="Free OCR. (DeepSeek-OCR default)" />
               </StackPanel>
-            </StackPanel>
-          </Border>
 
-          <Border Classes="PearlCard" Padding="18">
-            <StackPanel Spacing="16">
-              <TextBlock Text="Recognition Strategy"
-                         FontSize="13"
-                         FontWeight="SemiBold" />
+              <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
 
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
-                <StackPanel Spacing="3">
-                  <TextBlock Text="UI Automation Prefill (Experimental)"
-                             FontSize="11"
-                             FontWeight="SemiBold" />
-                </StackPanel>
-                <ToggleSwitch x:Name="VisionUiaPrefillToggle"
-                              Grid.Column="1"
-                              OnContent="On"
-                              OffContent="Off"
-                              IsChecked="False"
-                              VerticalAlignment="Center" />
-              </Grid>
+              <StackPanel Spacing="16">
+                <TextBlock Text="Recognition Strategy"
+                           Classes="CardTitle"
+                           FontSize="13"
+                           FontWeight="SemiBold" />
 
-              <Border BorderBrush="{DynamicResource ByhBorderSubtleBrush}"
-                      BorderThickness="0,1,0,0"
-                      Padding="0,14,0,0">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
                   <StackPanel Spacing="3">
-                    <TextBlock Text="Disable Model Thinking"
+                    <TextBlock Text="UI Automation Prefill (Experimental)"
                                FontSize="11"
                                FontWeight="SemiBold" />
-                    <TextBlock Text="Recommended for Qwen 3.x."
-                               Classes="Muted"
-                               FontSize="9"
-                               TextWrapping="Wrap" />
                   </StackPanel>
-                  <ToggleSwitch x:Name="VisionDisableThinkingToggle"
+                  <ToggleSwitch x:Name="VisionUiaPrefillToggle"
                                 Grid.Column="1"
-                                OnContent="Disabled"
-                                OffContent="Allowed"
+                                OnContent="On"
+                                OffContent="Off"
                                 IsChecked="False"
                                 VerticalAlignment="Center" />
                 </Grid>
-              </Border>
+
+                <Border BorderBrush="{DynamicResource ByhBorderSubtleBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="0,14,0,0">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="Disable Model Thinking"
+                                 FontSize="11"
+                                 FontWeight="SemiBold" />
+                      <TextBlock Text="Recommended for Qwen 3.x."
+                                 Classes="Muted"
+                                 FontSize="9"
+                                 TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="VisionDisableThinkingToggle"
+                                  Grid.Column="1"
+                                  OnContent="Disabled"
+                                  OffContent="Allowed"
+                                  IsChecked="False"
+                                  VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+              </StackPanel>
             </StackPanel>
           </Border>
 
@@ -748,7 +737,7 @@
 
         <!-- Launcher -->
         <StackPanel x:Name="LauncherSection" IsVisible="False" Spacing="16">
-          <Border Classes="PearlCard" Padding="18">
+          <Border Classes="LiftedPanel" Padding="18">
             <StackPanel Spacing="14">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
@@ -818,7 +807,7 @@
           </Border>
 
           <!-- R32 Spotlight launcher-search shortcut card -->
-          <Border Classes="PearlCard" Padding="18">
+          <Border Classes="LiftedPanel" Padding="18">
             <StackPanel Spacing="14">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
@@ -835,7 +824,7 @@
                               VerticalAlignment="Center" />
               </Grid>
 
-              <Border Classes="PearlInset" Padding="14">
+              <Border Classes="InnerCard" Padding="14">
                 <StackPanel Spacing="10">
                   <TextBlock Text="Hotkey"
                              Classes="Secondary"

@@ -39,6 +39,24 @@
 
 当前状态：**主任务已完成**。build 0 警告 / 测试 334/334 / publish 0 警告（exe 27,959,296 B）。v13 验收截图已抓（默认 + 最小，可信管线）。提交：`aaeb31a`（UI 深化 + QA + exe）+ `b3dda14`（handoff 批次 44）。**等用户验收 v13 截图。**
 
+### 第三轮重构（v14 LiftedPanel，用户「上下两层圆角框 + 外围阴影 + 立体感」反馈后）
+用户发新参考图 `@image#1:Clipboard_Screenshot.png`，要求主内容区改为上下两层大圆角框搭在一起，每个大边框加外围阴影增加纵深感。本批重构：
+1. **主题 `IvoryJade.axaml`**：新增 `LiftedPanel`（大圆角 18、多层弥散阴影 `ByhShadowLifted` / `ByhShadowDeep`、顶部强光高光边、内嵌 1px 象牙隙）与 `InnerCard`（轻量内嵌卡片，只保留顶部微光+1px 隙，避免三层嵌套厚重）。`PearlCard` / `PorcelainCard` 适度保留，用于右栏/底部等不适合大 lifting 的区域。
+2. **视图 `SettingsWindow.axaml`**：
+   - `GeneralSection` 改为上下两个 `LiftedPanel`：上层把 Ocean Eyes Trigger + Toolbar Shortcuts 叠进同一张大卡片（参考图「Today's Summary」式堆叠），下层为 Ocean Eyes Capture。
+   - `ProviderSection` 单张 `LiftedPanel`（Provider Profiles）。
+   - `FunctionsSection` 单张 `LiftedPanel`（Actions & Prompts + Prompt Templates）。
+   - `VisionSection` 改为上下两个 `LiftedPanel`：上层 Vision Recognition，下层 OCR Model + Recognition Strategy。
+   - `LauncherSection` 改为上下两个 `LiftedPanel`：上层 Launcher list，下层 Spotlight Hotkey。
+   - 内部输入区统一用 `InnerCard` 包裹，形成「大卡片 → 小卡片 → 内容」的参考图层级。
+3. **当前状态**：v14 源码修改 + NativeAOT publish 已完成，截图 `artifacts/qa/ivory-jade-settings-v14-lifted-*.png` 已生成，**但尚未 commit**（git status 显示 M + ??）。用户要求先整理再压缩，因此本次会话停在「v14 等验收」状态。
+
+## 压缩后接续建议
+
+1. 先读 `artifacts/qa/ivory-jade-settings-v14-lifted-default-nativeaot.png` / `minimum-nativeaot.png` 验收。
+2. 若通过，直接 `git add` + `git commit` v14 改动，再更新 `handoff/00-CURRENT-HANDOFF.md` 批次到 45。
+3. 若继续调，基于当前未提交的 v14 修改继续迭代；注意保留 `LiftedPanel`/`InnerCard` 结构，避免回退到扁平 PearlCard。
+
 ## 参考图（Foamie）要点 vs 当前实现
 
 参考图结构 = 平直左栏(THEME CONCEPT/COLOR PALETTE/TYPOGRAPHY/ICON STYLE) + 圆角导航卡(品牌+图标导航+焦糖色 active 药丸+宝石缀饰) + 主区(搜索药丸/欢迎卡衬线大标题/4 张统计卡圆形图标+大数字+增幅/面积图/任务列表) + 右栏(问候卡+动漫人物/Today's Summary/底部图标栏) + 底部组件区。色板：Primary #E9C89A、Secondary #D5A86A、Accent #BFAE5A、Deep Brown #6B4B2A、Cream #FFF7EE、Ivory #F6F1E6、Border #EAD8BB；标题衬线(Noto Serif/Playfair)、正文无衬线。

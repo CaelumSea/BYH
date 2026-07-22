@@ -208,6 +208,10 @@
            the cream background the way the reference cards do. -->
       <BoxShadows x:Key="ByhShadowDeep">0 2 6 0 #0D4A2B19, 0 12 34 0 #144A2B19, 0 24 56 0 #0A4A2B19</BoxShadows>
       <BoxShadows x:Key="ByhShadowLifted">0 4 12 0 #129F5E30, 0 16 40 0 #149F5E30</BoxShadows>
+      <!-- Phone-reference soft diffusion: a warm, very diffuse cast shadow
+           that makes a large rounded panel feel like it is hovering a few
+           millimetres above the surface. -->
+      <BoxShadows x:Key="ByhShadowDiffused">0 6 18 0 #144A2B19, 0 20 50 0 #184A2B19</BoxShadows>
       <FontFamily x:Key="ByhDisplayFontFamily">Georgia</FontFamily>
     </ResourceDictionary>
   </Styles.Resources>
@@ -307,6 +311,27 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="14" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #CFFFFEFA, inset 0 0 0 1 #AFFFFEFA, inset 0 0 0 2 #38F4E7C8, 0 3 10 0 #109F5E30, 0 12 32 0 #129F5E30" />
+  </Style>
+  <!-- R54 phone-reference large lifted panel: the "two rounded boxes
+       stacked" look. Bigger radius, very soft diffuse shadow, bright top
+       highlight, and a warm 1px rim so it reads as a thick ivory tile
+       catching overhead light. -->
+  <Style Selector="Border.LiftedPanel">
+    <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
+    <Setter Property="BorderBrush" Value="#8CD9C28A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, inset 0 0 0 1 #B8FFFEFA, inset 0 0 0 2 #4AF4E7C8, 0 6 18 0 #144A2B19, 0 20 50 0 #184A2B19" />
+  </Style>
+  <!-- Inner card used inside a LiftedPanel: smaller, flatter, but still
+       rounded and softly bounded so nested groups keep their own space
+       without fighting the outer container. -->
+  <Style Selector="Border.InnerCard">
+    <Setter Property="Background" Value="#F7FFFDFC" />
+    <Setter Property="BorderBrush" Value="#4DD9C28A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #D9FFFEFA, 0 2 6 0 #0D4A2B19" />
   </Style>
   <Style Selector="Border.GemPortrait">
     <Setter Property="Background" Value="{DynamicResource ByhPearlGlowBrush}" />
