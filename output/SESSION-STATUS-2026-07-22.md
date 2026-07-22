@@ -104,3 +104,30 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 ### 当前状态
 
 v15 改动已提交，工作树干净，等用户验收截图。
+
+## 第四十七批增量（v16 HeroCard 精修）
+
+用户反馈 v15 头部卡片「好丑」、不够优雅。本次把头部卡片从厚重的 `LiftedPanel` 换成更轻量的 `HeroCard`。
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - 新增 `HeroCard`：极淡背景 `#FDFBF8`、暖色细边 `#D0E1C4A3`、24px 大圆角、柔和漫射阴影（无 inset 高光边）。
+  - 新增 `HeroPill`：扁平小药丸，用于状态标签。
+  - 新增 `ThemePill`：扁平圆角徽章，用于 `IVORY JADE` 主题标识。
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 顶部标题区改用 `HeroCard`，并在 `MetallicFrame` 内留出 12px 边距，让卡片真正“浮”起来而不是贴满内框。
+  - 状态 pills 和主题 badge 改用新的扁平样式，去掉厚重阴影和 accent 填充。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- Build：0 警告 0 错误。
+- 测试：334/334 通过。
+- NativeAOT publish：0 警告。
+- 截图：`artifacts/qa/ivory-jade-settings-v16-hero-card-*-nativeaot.png`（默认 + 最小窗口）。
+- 用户日常 BYH 实例已恢复（PID 22828）。
+
+### 当前状态
+
+v16 改动已提交，工作树干净，等用户验收截图。

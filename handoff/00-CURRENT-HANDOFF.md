@@ -1,6 +1,6 @@
 # BYH 当前交接快照
 
-> 更新时间：2026-07-22 第四十六批增量
+> 更新时间：2026-07-22 第四十七批增量
 > 本文件是下一位 Agent 的首要入口，优先级高于目录内的历史快照。
 > 项目根：`C:\dvr\gh-kb\selection-assistant`
 > **模块文档**：`docs/architecture/00-architecture-overview.md`（改任何模块先看这个）
@@ -2576,6 +2576,29 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 - `dotnet publish -c Release -r win-x64`：0 警告。
 - QA 截图：`artifacts/qa/ivory-jade-settings-v15-header-card-*-nativeaot.png`（默认 1320×800 + 最小 1240×680，175% DPI）。
 - 用户日常 BYH 实例已恢复（PID 60348）。
+
+---
+
+## 3m. 本会话（第四十七批增量）完成的工作：REQ-012 头部卡片精修为 HeroCard
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - 新增 `HeroCard`：极淡背景 `#FDFBF8`、暖色细边 `#D0E1C4A3`、24px 大圆角、柔和漫射阴影（去掉 inset 高光边），避免 `LiftedPanel` 在头部造成的厚重感。
+  - 新增 `HeroPill`：扁平小药丸，用于 `LOCAL FIRST / INSTANT CAPTURE / WINDOWS NATIVEAOT` 状态标签。
+  - 新增 `ThemePill`：扁平圆角徽章，用于右上角 `IVORY JADE` 主题标识。
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 顶部标题区从 `LiftedPanel` 改为 `HeroCard`，并在 `MetallicFrame` 内留出 12px 边距，让头部卡片像参考图一样轻盈地浮在中央面板里。
+  - 状态 pills 和主题 badge 改用新的扁平样式，去掉厚重阴影与 accent 填充。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v16-hero-card-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 22828）。
 
 ---
 
