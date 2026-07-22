@@ -31,7 +31,7 @@
 已完成的精修（对照参考图 + 基线截图）：
 1. 主题 `IvoryJade.axaml`：ByhGoldNavBrush 改垂直三段焦糖渐变（#F0D5A1→#DCA85E→#C08337，更饱满）；SettingsNav.Active 圆角 12→14（**Button 无 BoxShadow 属性，AVLN2000，已放弃投影**）；新增 `TextBlock.CardTitle`（衬线 SemiBold）与 `Path.MiniIcon`（13px 线图标，Stroke 内联）。
 2. 视图 `SettingsWindow.axaml`：8 个卡片标题（Ocean Eyes Trigger / Toolbar Shortcuts / Ocean Eyes Capture / Provider Profiles / Actions & Prompts / Vision Recognition / Launcher / Spotlight Hotkey）加 `Classes="CardTitle"` 统一衬线；导航卡 Grid 改 `Auto,*,Auto` 并加底部小宝石（26px 圆形徽标，最小高度下余量仅 ~37px 故从 30 缩到 26）；Current setup 三行加圆形图标徽章（provider=地球/AccentSoft、hotkey=键盘/WarningSoft、OCR=眼睛/SuccessSoft）；底部 Runtime 绿点外套 26px SuccessSoft 圆徽章；左栏色块 32x18→20x20、底部主题色块 22x13→16x16（参考图方形色片）。
-3. 当前状态：build 重跑中（BoxShadow 修复后）。
+3. 当前状态：**主任务已完成**。build 0 警告 / 测试 334/334 / publish 0 警告（exe 27,959,808 B）。v12 验收截图已抓（默认 + 最小，可信管线）。提交：`e728f1f`（UI 精修 + QA + exe）+ `027f452`（handoff 批次 43）。**等用户验收 v12 截图。**
 
 ## 参考图（Foamie）要点 vs 当前实现
 
