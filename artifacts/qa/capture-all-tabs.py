@@ -99,6 +99,11 @@ def capture(hwnd, path):
     rect = wintypes.RECT()
     user32.GetWindowRect(hwnd, ctypes.byref(rect))
     box = (rect.left, rect.top, rect.right, rect.bottom)
+    # Keep the pointer off the navigation rail before the grab. Otherwise the
+    # freshly clicked active tab is captured in its transient hover state,
+    # which makes resting-state comparisons between tabs misleading.
+    user32.SetCursorPos(rect.left + 260, rect.top + 24)
+    time.sleep(0.2)
     img = ImageGrab.grab(bbox=box, all_screens=True)
     user32.SetWindowPos(hwnd, wintypes.HWND(HWND_NOTOPMOST), 0, 0, 0, 0,
                         SWP_NOMOVE | SWP_NOSIZE)

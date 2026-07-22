@@ -1,0 +1,38 @@
+id: REQ-016
+title: 设置页宏观边框结构修正 v1
+status: done
+lite: true
+score_kind: aesthetic
+created: '2026-07-22T15:49:09'
+updated: '2026-07-22T16:11:48'
+aligned_via: quick-user
+aligned_at: '2026-07-22T15:49:09'
+aesthetic_template: ''
+acceptance_criteria:
+- id: AC-1
+  text: 主工作区、右侧概览、系统概览与窗口控制使用一致的同心宏观框结构，不再叠加独立大框
+  satisfied_by:
+  - TASK-018
+- id: AC-2
+  text: 消除默认灰色滚动条造成的断边观感，并修复 System Overview 圆角缺口
+  satisfied_by:
+  - TASK-018
+- id: AC-3
+  text: 默认与最小窗口下圆角连续、阴影不被裁切，五个设置页无内容回归
+  satisfied_by:
+  - TASK-018
+- id: AC-4
+  text: Release 构建、测试与 NativeAOT 发布通过，并产出默认窗口五页截图
+  satisfied_by:
+  - TASK-018
+tasks:
+- id: TASK-018
+  title: 统一大面板边框并修复断边与滚动条
+  status: done
+aesthetic_score:
+  scored_at: ''
+  scored_by: ''
+  dimensions: {}
+  total: null
+aesthetic_notes: []
+aligned_evidence: 用户：好的,开始你的第一版优化吧

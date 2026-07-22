@@ -10,7 +10,7 @@
   <Styles.Resources>
     <ResourceDictionary>
       <!-- Foundations -->
-      <Color x:Key="ByhColorBackground">#FFF0E9DE</Color>
+      <Color x:Key="ByhColorBackground">#FFF8F6F1</Color>
       <Color x:Key="ByhColorSurface">#FFFFFDFC</Color>
       <Color x:Key="ByhColorSurfaceSecondary">#FFF2EADF</Color>
       <Color x:Key="ByhColorSurfaceSelected">#FFE7EDCF</Color>
@@ -133,6 +133,19 @@
         <GradientStop Color="#FFCDA45A" Offset="0.68" />
         <GradientStop Color="#FFB07A2F" Offset="0.88" />
         <GradientStop Color="#FFEAD5A5" Offset="1" />
+      </LinearGradientBrush>
+      <!-- Macro panels use the same directional metal response at a much
+           lower contrast. The translucent stops blend into the ivory canvas,
+           retaining a champagne glint without outlining every pane in orange. -->
+      <LinearGradientBrush x:Key="ByhMacroEdgeBrush"
+                           StartPoint="0%,0%"
+                           EndPoint="100%,100%">
+        <GradientStop Color="#A8C28A4A" Offset="0" />
+        <GradientStop Color="#CCF7E6C2" Offset="0.14" />
+        <GradientStop Color="#B8E4C88A" Offset="0.42" />
+        <GradientStop Color="#A8CDA45A" Offset="0.68" />
+        <GradientStop Color="#98B07A2F" Offset="0.88" />
+        <GradientStop Color="#C4EAD5A5" Offset="1" />
       </LinearGradientBrush>
       <LinearGradientBrush x:Key="ByhPearlInsetBrush"
                            StartPoint="0%,0%"
@@ -305,15 +318,15 @@
   <Style Selector="Border.MetallicFrame.Compact">
     <Setter Property="CornerRadius" Value="18" />
   </Style>
-  <!-- Thin metallic frame: a single 1px whisper-thin warm edge plus one
-       ivory gap. The border itself is almost invisible — the frame's volume
-       comes solely from the soft diffuse shadow and the inset highlight,
-       matching the reference's barely-there outer rim. -->
+  <!-- Reference macro frame. One element owns the metallic contour and cast
+       shadow; a separate MacroClip child owns rounded content clipping. This
+       prevents nested full-size borders and clipped shadows from creating the
+       thick or broken rim seen in the previous version. -->
   <Style Selector="Border.MetallicFrame.Thin">
-    <Setter Property="Background" Value="{DynamicResource ByhBackgroundBrush}" />
-    <Setter Property="BorderBrush" Value="#28E1C4A3" />
-    <Setter Property="Padding" Value="2" />
-    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #FFFFFCF7, inset 0 0 0 2 #40D9B97D, 0 3 10 0 #104A2B19, 0 10 28 0 #144A2B19" />
+    <Setter Property="Background" Value="#FFFFFCF7" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhMacroEdgeBrush}" />
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #FFFFFEFA, inset 0 0 0 2 #66E8D7B7, 0 2 6 0 #0A4A2B19, 0 12 30 0 #104A2B19" />
   </Style>
   <Style Selector="Border.PorcelainCard">
     <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
@@ -345,17 +358,16 @@
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, 0 3 10 0 #104A2B19, 0 10 26 0 #144A2B19" />
   </Style>
-  <!-- Surface panel: the single large card that fills a MetallicFrame.
-       It provides the continuous, reference-matched background so inner
-       sections can sit directly on it with only hairlines between them.
-       R57: reference-matched edge — the border is almost invisible; depth
-       comes from a strong top highlight and a wide, soft bottom shadow. -->
-  <Style Selector="Border.SurfacePanel">
+  <!-- Rounded content clip for every macro panel. It deliberately has no
+       border or shadow: those belong exclusively to MetallicFrame.Thin. -->
+  <Style Selector="Border.MacroClip">
     <Setter Property="Background" Value="#FFFDFBF8" />
-    <Setter Property="BorderBrush" Value="#20E1C4A3" />
-    <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="22" />
-    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #FFFFFEFA, inset 0 0 0 1 #E6FFFFFA, 0 4 14 0 #164A2B19, 0 16 44 0 #1A4A2B19, 0 32 72 0 #124A2B19" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="Border.MacroClip.Compact">
+    <Setter Property="CornerRadius" Value="14" />
   </Style>
   <!-- R55 elegant hero card for the settings page header. Much lighter than
        LiftedPanel: a whisper-thin warm border, very soft diffuse shadow, and
@@ -656,6 +668,16 @@
     <Setter Property="Foreground" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
     <Setter Property="CornerRadius" Value="14" />
     <Setter Property="Padding" Value="14,12" />
+  </Style>
+  <Style Selector="Button.SettingsNav.Active:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhGoldNavBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldNavBorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.SettingsNav.Active:pressed">
+    <Setter Property="Background" Value="{DynamicResource ByhGoldNavBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldNavBorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
   </Style>
   <Style Selector="Button.SettingsNav:focus">
     <Setter Property="BorderBrush" Value="{DynamicResource ByhFocusBrush}" />

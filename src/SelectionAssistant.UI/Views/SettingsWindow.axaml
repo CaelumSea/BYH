@@ -27,9 +27,10 @@
          the reference's close, concentric champagne-gold double curve. -->
     <Border Grid.Column="1"
             Grid.Row="0"
-            Classes="MetallicFrame Compact Thin"
-            ClipToBounds="True">
-      <Grid>
+            Classes="MetallicFrame Compact Thin">
+      <Border Classes="MacroClip Compact"
+              Background="{DynamicResource ByhCreamSheenBrush}">
+        <Grid>
         <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
                Stretch="UniformToFill"
                Opacity="0.30"
@@ -157,16 +158,16 @@
         </Border>
 
           </Grid>
-      </Grid>
+        </Grid>
+      </Border>
     </Border>
 
 
     <!-- Main work pane: the selected settings category remains independently scrollable. -->
     <Border Grid.Column="2"
             Grid.Row="0"
-            Classes="MetallicFrame Thin"
-            ClipToBounds="True">
-      <Border Classes="SurfacePanel">
+            Classes="MetallicFrame Thin">
+      <Border Classes="MacroClip">
         <Grid RowDefinitions="Auto,*">
       <!-- The single SurfacePanel background is intentionally plain so the
            reference's clean, continuous card surface is not broken by texture. -->
@@ -236,6 +237,7 @@
       <ScrollViewer x:Name="SettingsContentScroll"
                     Grid.Row="1"
                     Padding="0"
+                    VerticalScrollBarVisibility="Hidden"
                     HorizontalScrollBarVisibility="Disabled">
         <Grid>
 
@@ -972,9 +974,10 @@
     <Border Grid.Column="3"
             Grid.Row="0"
             Classes="MetallicFrame Thin"
-            Background="{DynamicResource ByhCreamSheenBrush}"
-            ClipToBounds="True">
-      <Grid RowDefinitions="178,*,Auto">
+            Background="{DynamicResource ByhCreamSheenBrush}">
+      <Border Classes="MacroClip"
+              Background="{DynamicResource ByhCreamSheenBrush}">
+        <Grid RowDefinitions="178,*,Auto">
         <Image Grid.RowSpan="3"
                Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
                Stretch="UniformToFill"
@@ -1021,7 +1024,9 @@
           </Grid>
         </Border>
 
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Hidden"
+                      HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="14,8,14,8" Spacing="8">
             <StackPanel Spacing="2" Margin="4,0,0,2">
               <TextBlock Text="Current setup" Classes="DisplayTitle" FontSize="15" />
@@ -1109,7 +1114,8 @@
                      FontSize="8"
                      HorizontalAlignment="Center" />
         </Border>
-      </Grid>
+        </Grid>
+      </Border>
     </Border>
 
     <!-- Reference bottom strip: useful, real controls instead of invented metrics. -->
@@ -1117,14 +1123,14 @@
             Grid.ColumnSpan="2"
             Grid.Row="1"
             Classes="MetallicFrame Thin"
-            Background="{DynamicResource ByhCreamSheenBrush}"
-            ClipToBounds="True">
+            Background="{DynamicResource ByhCreamSheenBrush}">
+      <Border Classes="MacroClip">
       <!-- R30 follow-up: the reference composition treats the lower area as one coherent
            pane: a quiet title band above grouped content.  Keep the three real
            modules, but remove the nested card-per-module rhythm. -->
       <Grid RowDefinitions="Auto,*">
         <Border Grid.Row="0"
-                Background="{DynamicResource ByhSurfaceBrush}"
+                Background="Transparent"
                 BorderThickness="0"
                 Padding="18,10,16,4">
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
@@ -1143,7 +1149,7 @@
 
 
         <Border Grid.Row="1"
-                Background="{DynamicResource ByhSurfaceBrush}"
+                Background="Transparent"
                 Padding="16,6,16,13">
           <Grid ColumnDefinitions="0.72*,1,0.8*,1,1.18*">
             <StackPanel Grid.Column="0" Spacing="9" Margin="2,0,14,0">
@@ -1217,14 +1223,17 @@
           </Grid>
         </Border>
       </Grid>
+      </Border>
     </Border>
 
     <Border Grid.Column="3"
             Grid.Row="1"
             Classes="MetallicFrame Thin"
-            Background="{DynamicResource ByhCreamSheenBrush}"
-            Padding="16">
-      <Grid RowDefinitions="Auto,*,Auto">
+            Background="{DynamicResource ByhCreamSheenBrush}">
+      <Border Classes="MacroClip"
+              Background="{DynamicResource ByhCreamSheenBrush}"
+              Padding="16">
+        <Grid RowDefinitions="Auto,*,Auto">
         <StackPanel Spacing="3">
           <TextBlock Text="Window controls" FontFamily="Georgia" FontSize="13" />
           <TextBlock Text="v0.1 · Windows NativeAOT" Classes="Muted" FontSize="9" />
@@ -1239,7 +1248,8 @@
           <Button Content="Hide" Classes="Ghost" Click="OnHideClick" />
           <Button Grid.Column="1" Content="Exit BYH" Classes="DangerQuiet" Click="OnExitClick" />
         </Grid>
-      </Grid>
+        </Grid>
+      </Border>
     </Border>
   </Grid>
 </Window>
