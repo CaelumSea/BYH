@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-22T17:43:30'
-secretary_focus: REQ-019
+updated: '2026-07-22T19:06:45'
+secretary_focus: REQ-020
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -72,9 +72,13 @@ requirements:
   title: 参考色板亮化与导航均衡
   status: done
   progress: 1/1
+- id: REQ-020
+  title: 设置页小手机比例与杂志式概念栏 v5
+  status: done
+  progress: 1/1
 phase: executing
 next_step: execute
 plan_confirmed_via: quick-user
-plan_confirmed_at: '2026-07-22T17:27:16'
+plan_confirmed_at: '2026-07-22T18:43:36'
 mode: quick
-plan_confirmed_evidence: 用户要求按参考图给定色板优化，并加宽居中选中标识
+plan_confirmed_evidence: 用户要求参考图缩小右上手机面板高度，并让最左栏更有杂志风

@@ -43,18 +43,29 @@ try:
 except Exception:
     user32.SetProcessDPIAware()
 
-# Navigation button centers relative to the window CLIENT area.
-# Estimated for the default layout at 175% DPI.
+# Navigation button centers relative to the complete window rectangle.
+# Measured from the default layout at 175% DPI, including the title bar.
 NAV_BUTTONS = [
-    ("general", 444, 300),
-    ("provider", 444, 370),
-    ("actions", 444, 440),
-    ("vision", 444, 510),
-    ("launcher", 444, 590),
+    ("general", 455, 348),
+    ("provider", 455, 423),
+    ("actions", 455, 499),
+    ("vision", 455, 573),
+    ("launcher", 455, 651),
 ]
 
-# Title bar height in physical pixels.
-TITLEBAR_H = 52
+# Keep every capture on the same monitor and at the same origin. BYH may be
+# nudged by desktop snap helpers while automated mouse clicks move between
+# tabs; re-anchoring makes the screenshots deterministic.
+CAPTURE_X = 100
+CAPTURE_Y = 0
+
+
+def anchor_window(hwnd):
+    user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+    user32.SetWindowPos(hwnd, wintypes.HWND(HWND_TOPMOST),
+                       CAPTURE_X, CAPTURE_Y, 0, 0, SWP_NOSIZE)
+    user32.SetForegroundWindow(hwnd)
+    time.sleep(0.2)
 
 
 def find_settings_window(pid, timeout=25.0):
@@ -90,6 +101,7 @@ def find_settings_window(pid, timeout=25.0):
 
 
 def capture(hwnd, path):
+    anchor_window(hwnd)
     user32.ShowWindow(hwnd, 9)  # SW_RESTORE
     fg = user32.SetForegroundWindow(hwnd)
     top = user32.SetWindowPos(hwnd, wintypes.HWND(HWND_TOPMOST), 0, 0, 0, 0,
@@ -112,16 +124,17 @@ def capture(hwnd, path):
 
 
 def click_client(hwnd, rel_x, rel_y):
+    anchor_window(hwnd)
     rect = wintypes.RECT()
     user32.GetWindowRect(hwnd, ctypes.byref(rect))
     x = rect.left + rel_x
-    y = rect.top + TITLEBAR_H + rel_y
+    y = rect.top + rel_y
     user32.SetCursorPos(x, y)
-    time.sleep(0.05)
+    time.sleep(0.08)
     user32.mouse_event(0x0002, 0, 0, 0, 0)
-    time.sleep(0.05)
+    time.sleep(0.08)
     user32.mouse_event(0x0004, 0, 0, 0, 0)
-    time.sleep(0.05)
+    time.sleep(0.18)
 
 
 def main():

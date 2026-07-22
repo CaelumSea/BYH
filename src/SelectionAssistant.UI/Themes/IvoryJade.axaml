@@ -344,7 +344,7 @@
   <!-- The right summary reads as a small handset rather than another desktop
        card: deeper body radius, a closer double rim and slightly longer lift. -->
   <Style Selector="Border.MetallicFrame.PhoneFrame">
-    <Setter Property="CornerRadius" Value="38" />
+    <Setter Property="CornerRadius" Value="34" />
     <Setter Property="Padding" Value="4" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F4FFFFFF, inset 0 0 0 1 #FFFFFDF8, inset 0 0 0 3 #70EAD8B8, 0 4 12 0 #104A2B19, 0 18 42 0 #124A2B19, 0 30 64 0 #084A2B19" />
   </Style>
@@ -390,20 +390,20 @@
     <Setter Property="CornerRadius" Value="20" />
   </Style>
   <Style Selector="Border.MacroClip.PhoneClip">
-    <Setter Property="CornerRadius" Value="33" />
+    <Setter Property="CornerRadius" Value="29" />
   </Style>
   <Style Selector="Border.PhoneDock">
     <Setter Property="Background" Value="#E6FFF7EE" />
     <Setter Property="BorderBrush" Value="#72D5A86A" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="18" />
-    <Setter Property="Padding" Value="4" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="Padding" Value="3" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, 0 3 10 0 #104A2B19" />
   </Style>
   <Style Selector="Border.PhoneDockItem">
-    <Setter Property="Width" Value="30" />
-    <Setter Property="Height" Value="30" />
-    <Setter Property="CornerRadius" Value="15" />
+    <Setter Property="Width" Value="26" />
+    <Setter Property="Height" Value="26" />
+    <Setter Property="CornerRadius" Value="13" />
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
@@ -411,17 +411,17 @@
     <Setter Property="Background" Value="{DynamicResource ByhAccentSoftBrush}" />
   </Style>
   <Style Selector="Border.PhoneDockItem.Center">
-    <Setter Property="Width" Value="38" />
-    <Setter Property="Height" Value="38" />
-    <Setter Property="CornerRadius" Value="19" />
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="CornerRadius" Value="17" />
     <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, 0 3 10 0 #149F5E30" />
   </Style>
   <Style Selector="Path.PhoneDockIcon">
-    <Setter Property="Width" Value="14" />
-    <Setter Property="Height" Value="14" />
+    <Setter Property="Width" Value="13" />
+    <Setter Property="Height" Value="13" />
     <Setter Property="Stretch" Value="Uniform" />
     <Setter Property="Fill" Value="Transparent" />
     <Setter Property="Stroke" Value="{DynamicResource ByhAccentHoverBrush}" />
@@ -498,6 +498,42 @@
     <Setter Property="BorderBrush" Value="{DynamicResource ByhRailRuleBrush}" />
     <Setter Property="BorderThickness" Value="0,0,1,0" />
     <Setter Property="BoxShadow" Value="inset -1 0 0 0 #38FFFDF8, inset 0 1 0 0 #B8FFFEFA, 4 2 12 0 #104A2B19, 12 10 34 0 #0C4A2B19" />
+  </Style>
+
+  <!-- Magazine rail typography. Depth still belongs to the sheet shadow;
+       editorial character comes from scale contrast, folio metadata and
+       disciplined rules rather than additional nested cards. -->
+  <Style Selector="TextBlock.MagazineKicker">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhAccentBrush}" />
+    <Setter Property="LetterSpacing" Value="1.5" />
+  </Style>
+  <Style Selector="TextBlock.MagazineHeadline">
+    <Setter Property="FontFamily" Value="Georgia" />
+    <Setter Property="FontSize" Value="17" />
+    <Setter Property="LineHeight" Value="20" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+  </Style>
+  <Style Selector="TextBlock.MagazineFolio">
+    <Setter Property="FontFamily" Value="Georgia" />
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhGoldBrush}" />
+  </Style>
+  <Style Selector="TextBlock.MagazineStep">
+    <Setter Property="FontFamily" Value="Georgia" />
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhGoldBrush}" />
+  </Style>
+  <Style Selector="Border.MagazineRule">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource ByhGoldBrush}" />
+    <Setter Property="Opacity" Value="0.72" />
+  </Style>
+  <Style Selector="Border.MagazineQuote">
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+    <Setter Property="BorderThickness" Value="2,0,0,0" />
+    <Setter Property="Padding" Value="9,3,0,3" />
   </Style>
 
   <Style Selector="Border.SpotlightRow">

@@ -1,0 +1,41 @@
+id: TASK-022
+requirement: REQ-020
+title: 缩短右上手机面板并重排左侧杂志栏
+status: done
+created: '2026-07-22T18:43:36'
+updated: '2026-07-22T19:06:44'
+satisfies:
+- AC-1
+- AC-2
+- AC-3
+- AC-4
+description: 依据用户最新参考图推进 v5：缩短右上手机卡并压缩内部节奏；将最左概念栏从说明书目录重排为杂志编辑页。
+handoff: 'v5 小手机比例与杂志概念栏已完成。右上概览改为顶对齐的紧凑 handset，最大高度 390 DIP，并同步缩短头图区、头像、状态卡和 dock；默认窗口完整显示三项状态，最小窗口无重叠。最左
+  FlatRail 保持直角结构与原背景图，但改为 BYH EDITORIAL / ISSUE 01 刊头、主题标题、带 Hex 的 COLOR INDEX、编号
+  FIELD NOTES 与编辑引语。视觉证据位于 artifacts/qa/req-020-v5-magazine-phone/。
+
+
+  [自检修复] [consistency] 手机面板已缩短并保持默认/最小尺寸无重叠；杂志栏的刊头、色彩索引、步骤编号与直角分栏一致；五页截图坐标漂移已修复'
+execution_log:
+- step: 1
+  action: 对比用户手机参考图和 v4 截图，确认需要缩短宏观高度并同步压缩内部组件，而不是直接裁切
+  artifact: requirements/REQ-020.md
+- step: 2
+  action: 将右上 PhoneFrame 顶对齐并限制最大高度 390 DIP，压缩头图、头像、状态行与 dock 尺寸
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+- step: 3
+  action: 新增 MagazineKicker、MagazineHeadline、MagazineFolio、MagazineStep、MagazineRule
+    与 MagazineQuote 编辑样式
+  artifact: src/SelectionAssistant.UI/Themes/IvoryJade.axaml
+- step: 4
+  action: 将左侧概念栏重排为刊头、主题标题、Color Index、Field Notes 与期刊页脚，同时保留直角分栏和背景图
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+- step: 5
+  action: 使用 xiaomi-mimo/mimo-v2.5-pro 完成 Release build、334 tests 与 NativeAOT publish
+  result: 0 warnings, 0 errors, 334 passed, NativeAOT publish succeeded
+- step: 6
+  action: 修复五页截图脚本的坐标与窗口锚定，生成默认、最小及五 tab 共七张有效截图
+  artifact: artifacts/qa/capture-all-tabs.py
+- step: 7
+  action: 逐图检查默认和最小窗口的手机信息完整性、杂志栏层级、留白及五 tab 一致性
+  artifact: artifacts/qa/req-020-v5-magazine-phone/
