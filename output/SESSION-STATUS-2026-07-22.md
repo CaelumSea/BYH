@@ -179,6 +179,28 @@ v16 改动已提交，工作树干净，等用户验收截图。
 - 截图：`artifacts/qa/ivory-jade-settings-v19-single-surface-*-nativeaot.png`（默认 + 最小窗口）。
 - 用户日常 BYH 实例已恢复（PID 31196）。
 
+## 第五十批增量（v20 弥散阴影 +  softer 边框 + 背景压暗）
+
+用户认可分析报告后要求开始优化。本批按报告前 4 条执行：
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - `InnerCard`：加顶部 inset 高光 `#E6FFFEFA`；底部阴影改为两层弥散影 `0 2 8` + `0 8 22`；边框透明度从 `#38D9C28A` 降到 `#28D9C28A`。
+  - `SurfacePanel`：加内侧 1px 象牙缝 `#E6FFFFFA`；底部阴影改为两层弥散影 `0 3 10` + `0 12 32`；边框从 `#E8E1C4A3` 降到 `#C8E1C4A3`。
+  - `MetallicFrame.Thin`：padding 保留 2px，阴影改为两层软影 `0 2 8` + `0 8 24`；内侧缝透明度降到 `#80D9B97D`。
+  - `HeroPill` / `ThemePill`：边框降到 `#B8E1C4A3` 并加顶部 inset 高光。
+  - `ByhColorBackground`：从 `#FFF8F6F1` 微压暗到 `#FFF5F0E8`，让卡片通过明度差自然浮出。
+- 踩坑：手误写入 9 位 HEX 颜色 `#EFFFFFEFA`，NativeAOT 运行时 `Color.Parse` 抛 `FormatException` 导致启动即崩溃（退出码 `0xC0000409`）。已修正为 8 位 `#E6FFFFFA`。
+
+### 验证
+
+- Build：0 警告 0 错误。
+- 测试：334/334 通过。
+- NativeAOT publish：0 警告。
+- 截图：`artifacts/qa/ivory-jade-settings-v20-diffuse-shadows-*-nativeaot.png`（默认 + 最小窗口）。
+- 用户日常 BYH 实例已恢复（PID 41136）。
+
 ### 当前状态
 
-v19 改动已提交，工作树干净，等用户验收截图。
+v20 改动已提交，工作树干净，等用户验收截图。

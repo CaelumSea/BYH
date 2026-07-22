@@ -1,6 +1,6 @@
 # BYH 当前交接快照
 
-> 更新时间：2026-07-22 第四十九批增量
+> 更新时间：2026-07-22 第五十批增量
 > 本文件是下一位 Agent 的首要入口，优先级高于目录内的历史快照。
 > 项目根：`C:\dvr\gh-kb\selection-assistant`
 > **模块文档**：`docs/architecture/00-architecture-overview.md`（改任何模块先看这个）
@@ -2646,6 +2646,28 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 - `dotnet publish -c Release -r win-x64`：0 警告。
 - QA 截图：`artifacts/qa/ivory-jade-settings-v19-single-surface-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
 - 用户日常 BYH 实例已恢复（PID 31196）。
+
+---
+
+## 3p. 本会话（第五十批增量）完成的工作：REQ-012 弥散阴影 + 更淡边框 + 背景压暗
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - `InnerCard`：加顶部 inset 高光；底部阴影改为两层弥散影；边框透明度降低。
+  - `SurfacePanel`：加内侧象牙缝；底部阴影改为两层弥散影；边框更淡。
+  - `MetallicFrame.Thin`：阴影改为两层软影；内侧缝更淡。
+  - `HeroPill` / `ThemePill`：边框更淡并加顶部 inset 高光。
+  - `ByhColorBackground` 微压暗，让卡片通过明度差自然浮出。
+- 修复：修正 9 位 HEX 颜色 `#EFFFFFEFA` → 8 位 `#E6FFFFFA`，避免 NativeAOT 运行时 `Color.Parse` 崩溃。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v20-diffuse-shadows-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 41136）。
 
 ---
 
