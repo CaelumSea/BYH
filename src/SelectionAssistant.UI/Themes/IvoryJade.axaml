@@ -10,7 +10,7 @@
   <Styles.Resources>
     <ResourceDictionary>
       <!-- Foundations -->
-      <Color x:Key="ByhColorBackground">#FFF5F0E8</Color>
+      <Color x:Key="ByhColorBackground">#FFF0E9DE</Color>
       <Color x:Key="ByhColorSurface">#FFFFFDFC</Color>
       <Color x:Key="ByhColorSurfaceSecondary">#FFF2EADF</Color>
       <Color x:Key="ByhColorSurfaceSelected">#FFE7EDCF</Color>
@@ -311,9 +311,9 @@
        matching the reference's barely-there outer rim. -->
   <Style Selector="Border.MetallicFrame.Thin">
     <Setter Property="Background" Value="{DynamicResource ByhBackgroundBrush}" />
-    <Setter Property="BorderBrush" Value="#90E1C4A3" />
+    <Setter Property="BorderBrush" Value="#28E1C4A3" />
     <Setter Property="Padding" Value="2" />
-    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #FFFFFCF7, inset 0 0 0 2 #70D9B97D, 0 2 8 0 #0C4A2B19, 0 8 24 0 #0E4A2B19" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 1 #FFFFFCF7, inset 0 0 0 2 #40D9B97D, 0 3 10 0 #104A2B19, 0 10 28 0 #144A2B19" />
   </Style>
   <Style Selector="Border.PorcelainCard">
     <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
@@ -335,25 +335,27 @@
   </Style>
       <!-- Inner card: a whisper-thin tile that sits on the SurfacePanel.
        Reference-matched: a bright top highlight + a soft, diffuse cast
-       shadow sells the convex form without a heavy border. -->
+       shadow sells the convex form without a heavy border.
+       R57: stronger, wider shadow so the input tiles actually read as
+       raised against the SurfacePanel. -->
   <Style Selector="Border.InnerCard">
     <Setter Property="Background" Value="#FCFFFDFB" />
-    <Setter Property="BorderBrush" Value="#28D9C28A" />
+    <Setter Property="BorderBrush" Value="#22D9C28A" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, 0 2 8 0 #0A4A2B19, 0 8 22 0 #0A4A2B19" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, 0 3 10 0 #104A2B19, 0 10 26 0 #144A2B19" />
   </Style>
   <!-- Surface panel: the single large card that fills a MetallicFrame.
        It provides the continuous, reference-matched background so inner
        sections can sit directly on it with only hairlines between them.
-       R56: deeper diffuse shadow + brighter top highlight so the panel
-       floats off the page the way the reference cards do. -->
+       R57: reference-matched edge — the border is almost invisible; depth
+       comes from a strong top highlight and a wide, soft bottom shadow. -->
   <Style Selector="Border.SurfacePanel">
     <Setter Property="Background" Value="#FFFDFBF8" />
-    <Setter Property="BorderBrush" Value="#A8E1C4A3" />
+    <Setter Property="BorderBrush" Value="#20E1C4A3" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="22" />
-    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #FFFFFEFA, inset 0 0 0 1 #E6FFFFFA, 0 3 10 0 #0C4A2B19, 0 12 32 0 #104A2B19" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #FFFFFEFA, inset 0 0 0 1 #E6FFFFFA, 0 4 14 0 #164A2B19, 0 16 44 0 #1A4A2B19, 0 32 72 0 #124A2B19" />
   </Style>
   <!-- R55 elegant hero card for the settings page header. Much lighter than
        LiftedPanel: a whisper-thin warm border, very soft diffuse shadow, and
@@ -369,7 +371,7 @@
        only a hairline border so it reads as typography with a hint of shape. -->
   <Style Selector="Border.HeroPill">
     <Setter Property="Background" Value="#F8F5EE" />
-    <Setter Property="BorderBrush" Value="#B8E1C4A3" />
+    <Setter Property="BorderBrush" Value="#70E1C4A3" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="14" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #FFFFFEFA" />
@@ -378,7 +380,7 @@
        almost token-like, with no heavy shadow or accent fill. -->
   <Style Selector="Border.ThemePill">
     <Setter Property="Background" Value="#F4EDE2" />
-    <Setter Property="BorderBrush" Value="#B8E1C4A3" />
+    <Setter Property="BorderBrush" Value="#78E1C4A3" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="18" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #FFFFFEFA" />
