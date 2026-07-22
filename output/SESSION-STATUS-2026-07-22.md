@@ -201,6 +201,24 @@ v16 改动已提交，工作树干净，等用户验收截图。
 - 截图：`artifacts/qa/ivory-jade-settings-v20-diffuse-shadows-*-nativeaot.png`（默认 + 最小窗口）。
 - 用户日常 BYH 实例已恢复（PID 41136）。
 
+## 第五十一批增量（v21 外圈大边框淡出）
+
+用户指出“外面的大边框”没改。截图显示中央主面板顶部仍有一圈较深的金棕色边框。
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - `MetallicFrame.Thin`：覆盖 `BorderBrush` 为 `#90E1C4A3`（极淡暖边），并改 `Background` 为背景色，让外圈 rim 几乎不可见；内侧缝透明度降到 `#70D9B97D`。
+  - `SurfacePanel`：背景提亮到 `#FFFDFBF8`，边框降到 `#A8E1C4A3`，避免和已淡化的外框争抢。
+
+### 验证
+
+- Build：0 警告 0 错误。
+- 测试：334/334 通过。
+- NativeAOT publish：0 警告。
+- 截图：`artifacts/qa/ivory-jade-settings-v21-thin-outer-rim-*-nativeaot.png`（默认 + 最小窗口）。
+- 用户日常 BYH 实例已恢复（PID 6808）。
+
 ### 当前状态
 
-v20 改动已提交，工作树干净，等用户验收截图。
+v21 改动已提交，工作树干净，等用户验收截图。

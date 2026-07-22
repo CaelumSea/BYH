@@ -1,6 +1,6 @@
 # BYH 当前交接快照
 
-> 更新时间：2026-07-22 第五十批增量
+> 更新时间：2026-07-22 第五十一批增量
 > 本文件是下一位 Agent 的首要入口，优先级高于目录内的历史快照。
 > 项目根：`C:\dvr\gh-kb\selection-assistant`
 > **模块文档**：`docs/architecture/00-architecture-overview.md`（改任何模块先看这个）
@@ -2668,6 +2668,24 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 - `dotnet publish -c Release -r win-x64`：0 警告。
 - QA 截图：`artifacts/qa/ivory-jade-settings-v20-diffuse-shadows-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
 - 用户日常 BYH 实例已恢复（PID 41136）。
+
+---
+
+## 3q. 本会话（第五十一批增量）完成的工作：REQ-012 外圈大边框淡出
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - `MetallicFrame.Thin`：覆盖 `BorderBrush` 为 `#90E1C4A3`（极淡暖边），背景改为 `ByhBackgroundBrush`，让外圈 rim 几乎不可见；内侧缝透明度降到 `#70D9B97D`。
+  - `SurfacePanel`：背景提亮到 `#FFFDFBF8`，边框降到 `#A8E1C4A3`。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v21-thin-outer-rim-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 6808）。
 
 ---
 
