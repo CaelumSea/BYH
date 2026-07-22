@@ -7,6 +7,7 @@
 > **更新 2026-07-20 第四十四批（调研）：R54 剪贴板历史调研完成，规格定稿（v1 纯文本 + Smart auto-group + 50 图上限 + JSON 持久化）。基线内存实测 123MB（含完整 Ocean Eyes 功能），加 R54 预估 +3MB（+2.4%），用户感知不到。详见 §R54。**
 > **更新 2026-07-20 第四十六批：R49 截图相册落地（含托盘入口 + 双击预览 + 右键菜单）。Ocean Eyes 工具栏按 G **或** 托盘右键 → "Open Screenshot Gallery" 弹出标准窗口，瀑布流浏览 `%USERPROFILE%\Pictures\Ocean Eyes\` 历史截图（newest-first）。**双击 = 大图预览**（半透明遮罩 lightbox，底部按钮：复制/删除/打开目录），**右键 = 上下文菜单**（复制/查看/删除/资源管理器中显示），Delete 键删除，Enter 键预览，Esc 两级关闭（先预览后窗口）。不退出 Ocean Eyes（同 P 模式）。代码 +660 行（含 9 个 loader 单测），326/326 测试通过，NativeAOT 0 警告，exe +134KB（超 100KB 预算 34KB，已记录例外——Avalonia ItemsControl/WrapPanel/DataTemplate/ContextMenu/Separator 的 AOT 元数据是固有成本）。详见 §R49。**
 > **更新 2026-07-21 第四十七批：R49 预览缩放/平移 8 轮调试终态。双击预览图支持：滚轮缩放（fit/4 ~ fit×8，光标锚定）+ 左键拖动 1:1 跟手平移 + Esc 关闭。最终架构：`Border ClipToBounds > Canvas > Image Stretch=None` + `Image.RenderTransform = TransformOperations.Builder.AppendMatrix(_matrix)` + 单一 `_matrix` 自管 scale+translate（PanAndZoom `ZoomBorder` 模式）。踩了 6 个 Avalonia 12.1 NativeAOT 独立坑（详见 §R49 教训）：ScrollViewer 接管滚轮 / TransformGroup children 顺序 / LayoutTransformControl 不支持 Translate / Image Stretch=None 仍被父约束 / MatrixTransform 在 AOT 静默失效 / `Matrix *` 运算符语义反转。最终 exe 27,925,504 字节（+139KB vs R48 基线）。诊断方法：临时 `_logger.Info` + 读 `%LOCALAPPDATA%\BYH\logs\BYH.log`，停止猜测让数据说话。**
+> **更新 2026-07-22 第四十八批：R53 长截图 v1 落地（手动滚动模式）。Ocean Eyes 框选后按 **L** → 弹出"BYH · 长截图"标准窗口。用户**自己滚**目标窗口，**Space** 截一帧 + 立即拼一帧（ShareX 风格逐行字节重叠匹配，后台 `Task.Run` 不卡 UI），实时预览随拼接增长（ScrollViewer 自动跟底），**Enter** 保存 `ocean-eyes-long-yyyyMMdd-HHmmss.png`，**Esc** 取消。不退出 Ocean Eyes（同 P/G）。**v1 范围**：仅手动滚动——0 新 P/Invoke，0 AOT 风险，core stitcher 完整单测。自动滚动（SendInput 鼠标滚轮 + 到底检测）+ `msvcrt.memcmp` 性能优化 + 底部页脚裁剪（BottomIgnoreRatio）留 v2。代码 +550 行（stitcher 130 + 窗口 axaml+cs 250 + runtime 接线 100 + 8 个单测 130），334/334 测试通过（Core 258 + Providers 35 + Win.Integration 41），NativeAOT 0 警告，exe +25KB（27,925,504 → 27,951,104，远低于 100KB 预算）。详见 §R53。**
 > **更新 2026-07-21 第四十五批（R51 落地 → 同日撤销）：R51 截图美化（B 键）实施完成（纯软件 BGRA 合成，CleanShot X 风格的浮动截图 + 圆角 + 投射阴影），+24.5KB / 0 新依赖 / 340 测试全过。用户真机测试后判定"美化了啥 / 不搞了"——根因是 CleanShot X 模型对深色内容截图美化效果不明显（背景色被不透明原图完全遮盖，阴影 RGB 与深色内容相近不可辨）。本批同日 revert（commit 跟进）。撤销的代码：ScreenshotBeautifier.cs / BeautifyOceanEyesScreenshot / B 键分支 / BurnAnnotationsOntoBgra 拆分 / OceanEyesCaptureSettings +7 字段 / OceanEyesCaptureStore 读写扩展 / 22 个测试。教训：美化模型要默认走 iShot 风格（padding 也是香槟底色 + 图像居中 + 卡片整体阴影），而非 CleanShot X 浮动模型（padding 透明）。如未来重做 R51，参考 iShot 模型，并默认半径/padding 更大（≥16px / ≥48px）让效果在任何内容上都明显。**
 
 ---
@@ -416,34 +417,51 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
 
 ### 🔥 P1+ 重功能（核心价值，复杂度可控）
 
-#### R53 — 长截图（scrolling screenshot with auto-stitch）
+#### R53 — 长截图（scrolling screenshot with stitch）✅ v1 完成（手动模式）
 
-- **触发**：Ocean Eyes overlay 框选后按 **L**（Long）→ 进入长截图模式：
-  - **自动滚动**：用户按 ↓/Space，Ocean Eyes 自动 `SendMouseWheel`，每滚一档截一张 + 立即 stitch，到滚动底部（`GetScrollInfo` 检测或截图未变化）自动停。
-  - **手动滚动**：用户自己滚，按 Space 截一张并 stitch；按 Enter 完成保存。
-  - 右侧实时预览已拼接 PNG（高度增长可视化）。
-  - 失败兜底：若某帧匹配失败，按 ShareX `bestMatch` 兜底，右下角显示 ⚠️ "部分拼接失败 N 帧"。
-- **算法**：移植 ShareX 的 `ScrollingCaptureManager.CombineImages`（130 行核心），即 `LockBits` + P/Invoke `msvcrt.memcmp` 逐行比字节找连续匹配段：
-  - 忽略左右 5%（避免侧栏漂移）；
-  - 忽略底部 10%（避免页脚固定条）；
-  - 失败时取历史 bestMatch 兜底（标 `PartiallySuccessful`）。
-- **代码量**：~600 行（capture loop 150 + stitch 150 + UI/预览 200 + 配置 100）。
-- **依赖**：**0 新增**（stitch 用 `memcmp` P/Invoke；截图用现有 BitBlt + Skia；滚动用 `SendInput`）。
-- **资源开销**：常驻 0；运行时 stitch 每帧 ~50-200ms（不阻塞 UI，`Task.Run` 异步）。
-- **验收**：
-  - 长网页（5000px+ 高）正确拼接无明显错位；
-  - 微信/QQ 聊天记录可拼；
-  - 失败帧有 UI 提示，不静默吞错；
-  - 保存 PNG 到 `Pictures/Ocean Eyes/ocean-eyes-long-yyyyMMdd-HHmmss.png`，可选导出 PDF（参考 Susskind2 用 `PdfSharp`，可选依赖）。
-- **风险**（ShareX 自己也提到，永久记录）：
-  - **懒加载页面**：滚太快没加载完，需可配 `ScrollDelay`（默认 300ms）。
-  - **浮层/动画/视频/广告位**：破坏像素匹配，可能产生 `PartiallySuccessful`（兜底已覆盖）。
+- **触发**：Ocean Eyes overlay 框选后按 **L**（Long）→ 弹出 `LongScreenshotWindow.axaml(.cs)` 标准窗口。用户**自己滚动**目标窗口，按 **Space** 截一帧 + 立即拼一帧（预览实时增长），**Enter** 保存 `ocean-eyes-long-yyyyMMdd-HHmmss.png` 到 `Pictures/Ocean Eyes/`，**Esc** 取消。**不退出 Ocean Eyes**（同 P/G 模式）。
+- **v1 范围（用户 2026-07-22 选定）**：
+  - ✅ **仅手动滚动**（Space 截帧）—— 用户自己滚目标，BYH 只负责截屏 + 拼接。0 新 P/Invoke，0 AOT 风险。
+  - ❌ **自动滚动**（SendInput 鼠标滚轮 + 到底检测）留 v2。
+  - ❌ **`msvcrt.memcmp` 性能优化**留 v2（v1 用 C# 逐字节循环，已够用）。
+  - ❌ **底部页脚裁剪**（BottomIgnoreRatio）留 v2（v1 只有 SideIgnoreRatio）。
+  - ❌ OCR / PDF 导出留 v2/v3。
+- **代码量**：~550 行（`LongScreenshotStitcher.cs` 130 + `LongScreenshotWindow.axaml(.cs)` 250 + `SelectionRuntime.cs` 编辑 100 + 8 个单元测试 130）。
+- **依赖**：无新增（stitch 纯 `Buffer.BlockCopy` + `for` 循环；截图复用 `ScreenRegionCapture.CaptureRawBgra`；PNG 编码复用手写 `PngEncoder`；预览用 `WriteableBitmap` + `Lock/Marshal.Copy`）。
+- **资源开销**：常驻 0；运行时 stitch 每帧 ~50-150ms（1080p，C# 逐字节，后台 `Task.Run` 不卡 UI）。v2 换 `memcmp` 后降到 ~10ms/帧。
+- **验收（v1 终态，2026-07-22）**：
+  - Debug build 0 警告 0 错误。
+  - **334/334 测试通过**（Core 258 + Providers 35 + Windows.Integration 41，含 R53 新 8 个 stitcher 测试）。
+  - NativeAOT Release publish **0 trim/AOT 警告**。
+  - exe 27,925,504 → **27,951,104 字节**（+25KB，远低于 100KB 预算）。
+  - 实测：Ocean Eyes 框选 → L → 窗口弹出 → 滚动目标 → Space 截帧（预览增长 + 帧数 +1）→ Enter 保存 → Esc 取消（Ocean Eyes 工具栏仍可用）。
+  - 兜底：帧间完全无重叠（如用户拖动了窗口位置）→ 整帧追加 + ⚠️ "N 帧拼接失败（已兜底追加）"提示。
+- **关键设计决策**：
+  - **L 不退出 Ocean Eyes**（与 P/G/A 一致），区别于 T 贴图/Enter 保存（terminal action）。理由：长截图是"扩展捕获"，用户关掉长截图窗口可能想继续标注/翻译/贴图当前刚截的那张。
+  - **核心算法在 Core 层纯函数**（`LongScreenshotStitcher.Append`）：无 I/O、无 P/Invoke、完全可单测。移植 ShareX `ScrollingCaptureManager.CombineImages` 思想——找 canvas 底部与 frame 顶部的最大连续匹配行段，追加非重叠尾部。
+  - **左右裁 5%**（`SideIgnoreRatio=0.05`）容忍侧栏漂移/滚动条宽度变化。**底部裁 10%**（`BottomIgnoreRatio`）原计划裁页脚固定条，但 trim-vs-append 语义微妙（裁掉的行必须从比较 AND 追加中都丢弃，否则页脚每帧重复出现），且手动模式下用户自己控制选区，页脚很少成为问题——故 v1 **移除**底部裁剪，留 v2 在 auto-scroll 场景再加。
+  - **匹配从最大 overlap 往下扫**（`for overlap = min(canvasH, frameH); overlap >= 1; overlap--`），第一个全匹配即为最长重叠。最长优先保证拼接连续性。
+  - **完全匹配失败 → 兜底整帧追加**（`OverlapRows=NoOverlap(-1)`, `Success=false`），用户看到 ⚠️ 提示而非静默丢帧。这是预期行为：用户拖动了窗口位置导致帧间错位，stitcher 无法匹配，但内容不应丢失。
+  - **截图由 runtime 注入**（`CaptureFrameDelegate`）——UI 层（`SelectionAssistant.UI`）不能引用 `Platform.Windows`，所以 `ShowLongScreenshotSession()` 传入一个 lambda `() => ScreenRegionCapture.CaptureRawBgra(rx, ry, rw, rh)`。窗口每次 Space 调用它，截图在 UI 线程同步执行（BitBlt ~1-3ms）。
+  - **预览用 `WriteableBitmap` + `Lock/Marshal.Copy`**（参考 `ColorPickerLoupe.axaml.cs`）。每帧拼接后高度变，重建 bitmap。BGRA→RGBA swizzle（loupe 约定，Avalonia 12.1 无 BGRA 写入路径）。
+  - **ScrollViewer 自动跟底**：拼接后 `Dispatcher.UIThread.Post(() => sv.Offset = new Avalonia.Vector(sv.Offset.X, sv.ScrollBarMaximum.Y))`。注意 `Avalonia.Vector` 必须全限定（`ImplicitUsings` 会引入 `System.Numerics.Vector` 干扰），且 `ScrollBarMaximum` 是 `Vector`（`.Y`）不是 `Size`（`.Height`）。
+  - **stitch 在后台 `Task.Run`**：UI 不卡。`_busy` 标志防 Space 连按导致 canvas 竞态。canvas 在 lambda 里 snapshot，拼接结果回 UI 线程前检查 `_canvasBgra is null`（用户可能在拼接期间关窗）。
+  - **保存镜像 `SaveOceanEyesScreenshot`** 但去掉标注 burn-in（长截图无标注）。文件名 `ocean-eyes-long-yyyyMMdd-HHmmss.png`（带 `-long` 区分普通截图）。
+- **算法复杂度**：O(overlap × width × height)。1080p 一屏 1080 行、宽 1920、每次重叠 ~900 行 → ~2 亿次字节比较，实测 ~50-150ms/帧。v2 换 `memcmp` 降一个数量级。
+- **未做（留 v2）**：
+  - **自动滚动**：SendInput 鼠标滚轮（`MOUSEEVENTF_WHEEL` + `WHEEL_DELTA`，`SendInputHelper` 已有 `MouseInput`/`NativeInput`/`InputUnion` 结构体，只缺常量和方法）+ 到底检测（连续两帧无重叠 = 到底，或 `GetScrollInfo`）。
+  - **`msvcrt.memcmp` P/Invoke**：~10× faster 的逐字节比较。Windows 内置 DLL，AOT 安全。项目 P/Invoke 约定全用 `[DllImport]`（无 `[LibraryImport]`），加一个 `[DllImport("msvcrt.dll")] static extern int memcmp(...)` 即可。
+  - **`BottomIgnoreRatio`**：底部页脚裁剪（trim-vs-append 语义需仔细设计）。
+  - **`ScrollDelay` 配置**：auto-scroll 模式下每滚一档等多久让懒加载页面渲染（默认 300ms）。
+  - **PDF 导出**：参考 Susskind2 用 `PdfSharp`（可选依赖）。
+- **风险（ShareX 自己也提到，永久记录，对 v2 auto-scroll 有效）**：
+  - **懒加载页面**：滚太快没加载完 → 需可配 `ScrollDelay`。
+  - **浮层/动画/视频/广告位**：破坏像素匹配 → 兜底已覆盖（v1 手动模式用户自己控速，风险更低）。
   - **DRM 内容**：黑屏（与所有截图工具一样，无解）。
-  - **NativeAOT + P/Invoke `msvcrt.memcmp`**：Windows 内置 DLL，AOT 安全；但要在 csproj 显式 `<DllImport>` 标注或用 `LibraryImport` source generator。
+  - **NativeAOT + P/Invoke `msvcrt.memcmp`**（v2）：Windows 内置 DLL，AOT 安全；`[DllImport]` 即可，无需 `[LibraryImport]` source generator。
 - **参考实现**：
-  - `ShareX/ShareX.ScreenCaptureLib/ScrollingCaptureManager.cs`（金标准，~25k stars，30+ 行核心 stitch 算法）。
-  - `Susskind2/ScrollCapture`（C#/WinForms，更简单；零拼接只导 PDF；代码 663 行，单 `PdfSharp` 依赖）。
-- **建议**：移植 ShareX 算法（更鲁棒），UI 参考 Susskind2 的浮动工具栏 + 实时计数。
+  - `ShareX/ShareX.ScreenCaptureLib/ScrollingCaptureManager.cs`（金标准，~25k stars，stitch 算法来源）。
+  - `Susskind2/ScrollCapture`（C#/WinForms，更简单；零拼接只导 PDF）。
 
 ---
 
@@ -605,7 +623,7 @@ P1（中等，按需做）
   R50 带壳截图
 
 P1+（重功能，最后做）
-  R53 长截图（独立，可任何时候做）
+  ✅ R53 长截图（2026-07-22 第四十八批 v1 落地，手动滚动模式；auto-scroll 留 v2）
 
 独立模块（不依赖 Ocean Eyes）
   R54 剪贴板历史（2026-07-20 调研完成，规格定稿，待开工；唯一常驻型功能）
