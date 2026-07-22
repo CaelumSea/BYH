@@ -1,6 +1,6 @@
 # BYH 当前交接快照
 
-> 更新时间：2026-07-22 第四十三批增量
+> 更新时间：2026-07-22 第四十六批增量
 > 本文件是下一位 Agent 的首要入口，优先级高于目录内的历史快照。
 > 项目根：`C:\dvr\gh-kb\selection-assistant`
 > **模块文档**：`docs/architecture/00-architecture-overview.md`（改任何模块先看这个）
@@ -2557,6 +2557,25 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 - **OCR 与翻译 Provider 解耦不变量**：OCR 走 `vision.json`（当前 SiliconFlow + Qwen3.5-4B），翻译走 `providers.json` 的 `defaultProviderId`（当前 DeepSeek + deepseek-v4-flash）。两者独立配置，禁止未来把它们合并成"单一 Provider"。
 - **R23 启动器模块化不变量**（第二十批教训）：完整架构详见 `docs/architecture/09-launcher.md`。核心约束：(1) 完全复用 R15 模式（不要重发明 CRUD/Store/Row）；(2) 图标提取 best-effort + 永不在 UI 线程跑；(3) 参数替换在 Launch 时做，保存原始模板；(4) LocalApp 用 `UseShellExecute=false` 支持工作目录，WebUrl 用 `UseShellExecute=true` 走默认浏览器；(5) **不要用 System.Drawing.Common**（NativeAOT TrimMode=full 会裁剪），HICON → PNG 必须手写 SHGetFileInfo + GetIconInfo + 两遍 GetDIBits + 复用 `PngEncoder`；(6) **GetObject 对 DIB 不可靠**（err=203），必须用两遍 GetDIBits；(7) SHGetFileInfo 必须 `SetLastError=true`；(8) ValueTuple 不可空，用 `(string, string)?` + `is { } pending` 模式匹配；(9) EntrySaved 签名必须带 name（编辑模式允许改名）。
 - **R23 mimo-agent 分工不变量**（第二十批再次验证）：mimo-agent 适合 1-N 个文件的机械实现/迁移/测试照搬（本次 5 UI 文件 + 32 测试全 0 错）；**不适合** Win32 互操作（HICON/P/Invoke 需要逐步诊断）+ 核心业务算法（ParameterReplace 两阶段）+ UI 控制流编排（事件订阅 + 异步图标加载）。主 Agent 做核心代码，mimo-agent 做执行和验证。
+
+---
+
+## 3l. 本会话（第四十六批增量）完成的工作：REQ-012 设置页头部卡片圆角阴影
+
+### 改动
+
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 顶部标题区（`WELCOME BACK / General / 状态 pills / IVORY JADE`）由平底边框改为 `Classes="LiftedPanel"`，获得 20px 大圆角、多层弥散阴影与顶部高光边，与参考图的欢迎卡片质感一致。
+  - `ScrollViewer` 顶部内边距由 24 降至 14，使头部卡片与下方第一个 `LiftedPanel`（Ocean Eyes Trigger）视觉紧密相连。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v15-header-card-*-nativeaot.png`（默认 1320×800 + 最小 1240×680，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 60348）。
 
 ---
 
