@@ -1,6 +1,6 @@
 # BYH 当前交接快照
 
-> 更新时间：2026-07-20 第四十二批增量
+> 更新时间：2026-07-22 第四十三批增量
 > 本文件是下一位 Agent 的首要入口，优先级高于目录内的历史快照。
 > 项目根：`C:\dvr\gh-kb\selection-assistant`
 > **模块文档**：`docs/architecture/00-architecture-overview.md`（改任何模块先看这个）
@@ -1905,6 +1905,29 @@ await Task.Delay(330);  // 300ms 滑出 + 余量
 
 - `xiaomi-mimo/mimo-v2.5-pro` 第一次只读盘点 frame class、应用位置和 Avalonia BoxShadow 风险；第二次只做架构文档与验证报告草稿。
 - 主 Agent 负责参考图光学拆解、主题实现、diff 审核、默认/最小尺寸视觉判断、测试、NativeAOT 发布与 Git 收口。
+
+---
+
+## 3ac. 本会话（第四十三批增量）完成的工作：REQ-012 设置页 Foamie 参考图精修 + main 合并
+
+本批按用户提供的 Foamie 设计系统参考图精修设置页 UI（不调用 huashu-design），并先把 main 合入 `task/REQ-012-metallic-frames`（merge commit `fddb9a6`：冲突仅 BYH.exe 二进制与 index.yaml，后者保留 main 全文 + 补 REQ-012 done 条目；main 带入 R49 预览缩放修复、R52 磁力吸附、R48 标注工具集、R53 长截图）。
+
+### 完成内容
+
+- **截图管线修复（关键坑）**：`artifacts/qa/capture-settings.py` 现在为 `SetWindowPos`/`SetForegroundWindow` 显式声明 `argtypes`——64 位下裸传 `-1` 会被 ctypes 截成 `0xFFFFFFFF`，`HWND_TOPMOST` 静默失效，导致抓到的全是前台浏览器/Obsidian 画面（此前 v11 两张截图即因此作废）。抓图前 topmost、抓后还原。
+- **主题 `IvoryJade.axaml`**：`ByhGoldNavBrush` 改垂直三段焦糖渐变（`#F0D5A1→#DCA85E→#C08337`，更饱满）；`SettingsNav.Active` 圆角 12→14（Avalonia 的 Button **没有 BoxShadow 属性**，AVLN2000，投影方案放弃）；新增 `TextBlock.CardTitle`（衬线 SemiBold，统一全页标题字族）与 `Path.MiniIcon`（13px 线图标，Stroke 内联给定）。
+- **视图 `SettingsWindow.axaml`**：8 个卡片分区标题全部加 `Classes="CardTitle"`（原无衬线混排）；导航卡 Grid 改 `Auto,*,Auto` 加底部小宝石徽标（26px 圆形，最小高度下余量仅 ~37px，故从 30 缩到 26，再大会挤掉 Launcher 按钮）；Current setup 三行加圆形 soft-tint 图标徽章（provider=地球/AccentSoft、hotkey=键盘/WarningSoft、OCR=眼睛/SuccessSoft，对齐参考图 Today's Summary）；底部 Runtime 绿点外套 26px SuccessSoft 圆徽章；左栏与底部色块改方形（20x20 / 16x16，参考图 COLOR PALETTE 样式）；Runtime 文本加 `TextWrapping="Wrap"` 修最小宽度裁切。
+- 未动：MetallicFrame 集中样式、五结构窗格、平直 FlatRail、Pearl/Porcelain 内卡克制度、jade Primary 按钮（参考图虽有焦糖主按钮，但 jade 主按钮是 R43 既定品牌决定）。
+
+### 验证证据
+
+- Release build：0 警告、0 错误；完整测试 **334/334**（main 合并后 232→334）。
+- win-x64 NativeAOT：0 警告、0 PDB；`BYH.exe` = **27,959,808 bytes**。
+- 175% DPI 默认尺寸：`artifacts/qa/ivory-jade-settings-v12-foamie-refined-default-nativeaot.png`。
+- 175% DPI、1240×680 logical 最小尺寸：`artifacts/qa/ivory-jade-settings-v12-foamie-refined-minimum-nativeaot.png`。
+- 可信基线对比：`artifacts/qa/before-default.png` / `before-minimum.png`。
+- `docs/architecture/08-theme-system.md` 组件语义类表已同步（SettingsNav.Active / CardTitle / MiniIcon）。
+- **待用户验收**：v12 两张截图已提交（commit `e728f1f`），等用户确认后 REQ-012 可视同收尾。
 
 ---
 
