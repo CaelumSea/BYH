@@ -166,17 +166,16 @@
             Grid.Row="0"
             Classes="MetallicFrame Thin"
             ClipToBounds="True">
-    <Grid RowDefinitions="Auto,*">
-      <Image Grid.RowSpan="2"
-             Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
-             Stretch="UniformToFill"
-             Opacity="0.10"
-             IsHitTestVisible="False" />
-      <Border Grid.Row="0"
-              Classes="HeroCard"
-              Margin="4,4,4,0"
-              Padding="28,22,26,18">
-        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="24" RowSpacing="18">
+      <Border Classes="SurfacePanel">
+        <Grid RowDefinitions="Auto,*">
+      <!-- The single SurfacePanel background is intentionally plain so the
+           reference's clean, continuous card surface is not broken by texture. -->
+      <Grid Grid.Row="0"
+            ColumnDefinitions="*,Auto"
+            RowDefinitions="Auto,Auto"
+            ColumnSpacing="24"
+            RowSpacing="18"
+            Margin="28,22,26,18">
           <StackPanel Spacing="5">
             <TextBlock Text="WELCOME BACK" Classes="Kicker" />
             <StackPanel Orientation="Horizontal" Spacing="9">
@@ -232,21 +231,18 @@
               <TextBlock Text="WINDOWS NATIVEAOT" Classes="Secondary" FontSize="8" FontWeight="SemiBold" />
             </Border>
           </StackPanel>
-        </Grid>
-      </Border>
+      </Grid>
 
       <ScrollViewer x:Name="SettingsContentScroll"
                     Grid.Row="1"
-                    Padding="14,10,14,14"
+                    Padding="0"
                     HorizontalScrollBarVisibility="Disabled">
         <Grid>
 
         <!-- General -->
-        <StackPanel x:Name="GeneralSection" Spacing="10">
-          <!-- Upper lifted panel: the trigger card, kept compact so both
-               stacked panels remain visible at the default window size. -->
-          <Border Classes="LiftedPanel" Padding="16">
-            <StackPanel Spacing="14">
+        <StackPanel x:Name="GeneralSection" Spacing="0">
+          <!-- Section: Ocean Eyes Trigger sits directly on the surface. -->
+          <StackPanel Spacing="12" Margin="24,18,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Ocean Eyes Trigger"
@@ -314,13 +310,12 @@
                                 VerticalAlignment="Center" />
                 </Grid>
               </Border>
-            </StackPanel>
-          </Border>
+          </StackPanel>
 
-          <!-- Lower lifted panel: shortcuts + capture stacked together, mirroring
-               the reference's second large card. -->
-          <Border Classes="LiftedPanel" Padding="16">
-            <StackPanel Spacing="16">
+          <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" Margin="24,16" />
+
+          <!-- Section: Toolbar Shortcuts sits directly on the surface. -->
+          <StackPanel Spacing="12" Margin="24,0,24,0">
               <StackPanel Spacing="12">
                 <TextBlock Text="Toolbar Shortcuts"
                            Classes="CardTitle"
@@ -376,10 +371,12 @@
                   </StackPanel>
                 </Grid>
               </StackPanel>
+          </StackPanel>
 
-              <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
+          <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" Margin="24,16" />
 
-              <StackPanel Spacing="12">
+          <!-- Section: Ocean Eyes Capture sits directly on the surface. -->
+          <StackPanel Spacing="12" Margin="24,0,24,18">
                 <TextBlock Text="Ocean Eyes Capture"
                            Classes="CardTitle"
                            FontSize="15"
@@ -449,8 +446,6 @@
                   </StackPanel>
                 </Grid>
               </StackPanel>
-            </StackPanel>
-          </Border>
 
         </StackPanel>
 
@@ -855,7 +850,8 @@
         </Grid>
       </ScrollViewer>
 
-    </Grid>
+        </Grid>
+      </Border>
     </Border>
 
     <!-- TASK-011: Left concept rail — flat full-height column, no rounded
