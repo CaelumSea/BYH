@@ -1,6 +1,6 @@
 # BYH 当前交接快照
 
-> 更新时间：2026-07-22 第五十一批增量
+> 更新时间：2026-07-22 第五十二批增量
 > 本文件是下一位 Agent 的首要入口，优先级高于目录内的历史快照。
 > 项目根：`C:\dvr\gh-kb\selection-assistant`
 > **模块文档**：`docs/architecture/00-architecture-overview.md`（改任何模块先看这个）
@@ -2686,6 +2686,28 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 - `dotnet publish -c Release -r win-x64`：0 警告。
 - QA 截图：`artifacts/qa/ivory-jade-settings-v21-thin-outer-rim-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
 - 用户日常 BYH 实例已恢复（PID 6808）。
+
+---
+
+## 3r. 本会话（第五十二批增量）完成的工作：REQ-012 阴影加重 + 边框再淡 + 背景压暗
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - `ByhColorBackground`：从 `#FFF5F0E8` 压暗到 `#FFF0E9DE`，让浅色卡片通过明度差自然浮出。
+  - `SurfacePanel`：边框从 `#A8E1C4A3` 大幅降到 `#20E1C4A3`；底部阴影改为三层弥散影 `0 4 14` / `0 16 44` / `0 32 72`，立体感明显增强。
+  - `InnerCard`：顶部加 inset 高光；底部阴影改为两层 `0 3 10` / `0 10 26`；边框降到 `#18D9C28A`。
+  - `MetallicFrame.Thin`：边框从 `#90E1C4A3` 降到 `#28E1C4A3`；阴影改为两层软影 `0 3 10` / `0 10 28`。
+  - `HeroPill` / `ThemePill`：边框分别降到 `#70E1C4A3` / `#78E1C4A3`。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v24-fainter-borders-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 38480）。
 
 ---
 

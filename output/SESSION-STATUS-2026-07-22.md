@@ -219,6 +219,28 @@ v16 改动已提交，工作树干净，等用户验收截图。
 - 截图：`artifacts/qa/ivory-jade-settings-v21-thin-outer-rim-*-nativeaot.png`（默认 + 最小窗口）。
 - 用户日常 BYH 实例已恢复（PID 6808）。
 
+## 第五十二批增量（v22–v24 重调阴影与边框）
+
+用户反馈：阴影效果看不出来；主设置页面边框格外粗一点。本批对照参考图的光影报告，重新校正：
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - `ByhColorBackground`：从 `#FFF5F0E8` 再压暗到 `#FFF0E9DE`，让卡片通过更明显的明度差浮出背景。
+  - `SurfacePanel`：边框从 `#A8E1C4A3` 大幅降到 `#20E1C4A3`；底部阴影改为三层弥散影 `0 4 14` + `0 16 44` + `0 32 72`，让主卡片真正“托”起来。
+  - `InnerCard`：顶部加 inset 高光，底部阴影改为 `0 3 10` + `0 10 26`，边框降到 `#18D9C28A`。
+  - `MetallicFrame.Thin`：边框从 `#90E1C4A3` 降到 `#28E1C4A3`；阴影改为两层软影 `0 3 10` + `0 10 28`。
+  - `HeroPill` / `ThemePill`：边框分别降到 `#70E1C4A3` / `#78E1C4A3`。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- Build：0 警告 0 错误。
+- 测试：334/334 通过。
+- NativeAOT publish：0 警告。
+- 截图：`artifacts/qa/ivory-jade-settings-v24-fainter-borders-*-nativeaot.png`（默认 + 最小窗口）。
+- 用户日常 BYH 实例已恢复（PID 38480）。
+
 ### 当前状态
 
-v21 改动已提交，工作树干净，等用户验收截图。
+v24 改动已提交，工作树干净，等用户验收截图。
