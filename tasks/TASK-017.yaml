@@ -1,0 +1,40 @@
+id: TASK-017
+title: 标注工具集（R48）
+status: dispatched
+requirement: REQ-015
+type: code
+estimate_lines: 700
+files:
+  create:
+  - src/SelectionAssistant.Core/Annotation/IAnnotationItem.cs
+  - src/SelectionAssistant.Core/Annotation/AnnotationShape.cs
+  - src/SelectionAssistant.Core/Annotation/AnnotationSession.cs
+  - src/SelectionAssistant.Core/Annotation/AnnotationShapeGeometry.cs
+  - src/SelectionAssistant.Core/Annotation/AnnotationTool.cs
+  - tests/SelectionAssistant.Core.Tests/Annotation/AnnotationShapeGeometryTests.cs
+  - tests/SelectionAssistant.Core.Tests/Annotation/AnnotationSessionTests.cs
+  modify:
+  - src/SelectionAssistant.App/SelectionRuntime.cs
+  - src/SelectionAssistant.UI/Views/RegionSelectOverlay.axaml
+  - src/SelectionAssistant.UI/Views/RegionSelectOverlay.axaml.cs
+acceptance_criteria:
+- AC-1 工具切换状态显示
+- AC-2 矩形 + Shift 约束
+- AC-3 椭圆 + Shift 约束
+- AC-4 箭头
+- AC-5 画笔
+- AC-6 高亮
+- AC-7 Ctrl+Z undo + A/Esc 退出
+- AC-8 PNG 烧入（手写 BGRA，无 SkiaSharp）
+- AC-9 ≥ 12 单元测试
+- AC-10 build/test/publish 0 警告，≤ +80KB
+dependencies:
+- R47 (NumberedAnnotationSession + AnnotationCanvas + BurnBadgesIntoPng) - 已完成
+notes: |
+  IAnnotationItem 接口：NumberedBadgeAnnotation / RectangleAnnotation / EllipseAnnotation / ArrowAnnotation / PenStrokeAnnotation / HighlightStrokeAnnotation 都实现。
+  AnnotationSession 是 R47 NumberedAnnotationSession 的扩展版（混合栈），Undo 弹栈即可。
+  BurnBadgesIntoPng 改名 BurnAnnotationsIntoPng，遍历 IAnnotationItem 分派到对应 draw 方法。
+  draw 走 Bresenham + alpha 混合，手写，无 SkiaSharp。
+  工具切换在 OnToolbarKeyPressed 中 1-5（vkCode 0x31-0x35）。
+  Shift 约束用 GetKeyState(VK_SHIFT) & 0x8000 检测。
+  R47 现有测试不能被破坏（11 + 16 = 27 个）。

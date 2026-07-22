@@ -32,6 +32,21 @@ public static class ScreenRegionCapture
     }
 
     /// <summary>
+    /// Captures the region and returns BOTH the PNG bytes and the raw BGRA
+    /// pixel buffer. R48 annotation burn-in uses the BGRA buffer directly,
+    /// avoiding Avalonia.Bitmap.CopyPixels which throws
+    /// ArgumentOutOfRangeException('stride') for some PNGs in Avalonia 12.
+    /// </summary>
+    public static (byte[] Png, byte[] Bgra, int Width, int Height)? CaptureAsPngAndBgra(
+        int x, int y, int width, int height)
+    {
+        byte[]? bgra = CaptureRawBgra(x, y, width, height);
+        if (bgra is null) return null;
+        byte[] png = PngEncoder.Encode(bgra, width, height);
+        return (png, bgra, width, height);
+    }
+
+    /// <summary>
     /// R44: captures the region via BitBlt and returns the raw 32-bit BGRA byte
     /// buffer (top-down, no PNG encoding). Used by the color picker loupe,
     /// which samples a small 15×15 region around the cursor at ~30 Hz — PNG
@@ -144,6 +159,17 @@ public static class ScreenRegionCapture
     {
         byte[]? png = CaptureAsPng(x, y, width, height);
         return png is null ? null : "data:image/png;base64," + Convert.ToBase64String(png);
+    }
+
+    /// <summary>
+    /// R47: re-encodes an existing BGRA pixel buffer to PNG bytes.
+    /// Used by the annotation badge burn-in path which modifies pixels
+    /// in-place then needs to re-encode. Exposes the internal
+    /// <see cref="PngEncoder"/> without making it public.
+    /// </summary>
+    public static byte[] EncodeBgraToPng(byte[] bgra, int width, int height)
+    {
+        return PngEncoder.Encode(bgra, width, height);
     }
 
     private const int BitmapInfoSize = 40;

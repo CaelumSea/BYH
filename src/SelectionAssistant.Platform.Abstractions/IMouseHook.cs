@@ -24,6 +24,7 @@ public sealed record MouseEventData(
 
 public enum MouseMessageType
 {
+    MouseMove = 0x0200,        // WM_MOUSEMOVE
     LeftButtonDown = 0x0201,   // WM_LBUTTONDOWN
     LeftButtonUp = 0x0202,     // WM_LBUTTONUP
     RightButtonDown = 0x0204,  // WM_RBUTTONDOWN

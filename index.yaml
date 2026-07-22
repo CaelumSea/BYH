@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-20T12:50:08'
-secretary_focus: REQ-012
+updated: '2026-07-20T18:00:00'
+secretary_focus: REQ-014
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -44,19 +44,20 @@ requirements:
   progress: 1/1
 - id: REQ-010
   title: 二维码识别（Ocean Eyes QR decode，R45）
-  status: dispatched
+  status: withdrawn
   progress: 0/1
+  note: '2026-07-20 用户决定撤销：ZXing.Net 在 NativeAOT 下占 +595KB exe 体积，功能"不太用得上"，性价比不足。revert commit 0623e4c。'
 - id: REQ-011
   title: 数字序号标注（Ocean Eyes numbered badges，R47）
-  status: dispatched
-  progress: 0/1
+  status: done
+  progress: 1/1
 - id: REQ-012
   title: 设置页金属质感双圆角框
   status: done
   progress: 1/1
-phase: executing
-next_step: execute
+phase: active
+next_step: plan
 plan_confirmed_via: quick-user
 plan_confirmed_at: '2026-07-20T13:00:00'
 mode: quick
-plan_confirmed_evidence: 用户明确要求研究并复现参考图的金属质感与双圆角框，并要求在独立 Git 任务分支完成。
+plan_confirmed_evidence: '第四十三批（2026-07-20）：撤销 R45（REQ-010 withdrawn，commit 0623e4c），保留 R47（REQ-011 done）。继续推进 R52 磁力吸 + R48 标注工具集。'

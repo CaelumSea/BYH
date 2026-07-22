@@ -1,9 +1,9 @@
 id: TASK-013
 requirement: REQ-011
 title: Ocean Eyes A 键 + 数字标注 Canvas + Skia 烧入
-status: dispatched
+status: done
 created: '2026-07-20T13:00:00'
-updated: '2026-07-20T13:00:00'
+updated: '2026-07-20T17:00:00'
 satisfies:
 - AC-1
 - AC-2
@@ -11,6 +11,15 @@ satisfies:
 - AC-4
 - AC-5
 - AC-6
-description: 在 SelectionRuntime.OnToolbarKeyPressed 的 vkCode 路由里、OCR-lazy gate 之前插入 A 键分支（进入/退出标注模式）+ Ctrl+Z 撤销分支；扩展 mouse hook SwallowCheck 在标注模式下吞左键；新增 NumberedAnnotationSession（badge 列表 + undo）+ NumberedBadgeRenderer（Skia 烧入纯函数）+ AnnotationCanvas 控件挂到 RegionSelectOverlay；Enter 保存时 Skia 把 badge 烧入 PNG；≥ 3 个纯函数单测；publish 验证 0 AOT 警告 + 常驻内存 0。
-handoff: ''
-execution_log: []
+description: 在 SelectionRuntime.OnToolbarKeyPressed 的 vkCode 路由里、OCR-lazy gate 之前插入 A 键分支（进入/退出标注模式）+ Ctrl+Z 撤销分支；扩展 mouse hook SwallowCheck 在标注模式下吞左键；新增 NumberedAnnotationSession（badge 列表 + undo）+ NumberedBadgeGeometry（纯函数）+ AnnotationCanvas 控件挂到 RegionSelectOverlay；Enter 保存时用 BGRA 像素操作把 badge 烧入 PNG（内置 5x7 位图字体，无 SkiaSharp 依赖）；27 个纯函数单测；publish 验证 AOT 0 警告 + exe 增量 18 KB。
+handoff: 'A 键分支插入 OnToolbarKeyPressed（vkAnnotate=0x41，位于 Q 键分支之后、A-Z filter 之前），Ctrl+Z 分支在 Esc 之后（GetKeyState VK_CONTROL 检测）。
+  鼠标左键在标注模式下被吞（OnMouseEvent 中 _oceanEyesAnnotating 守护），坐标物理px→overlay DIP 转换后 Push + AddBadge。
+  NumberedAnnotationSession（Push/Undo/Clear）+ NumberedBadgeGeometry（纯函数 DPI 缩放）+ AnnotationCanvas（Ellipse+TextBlock）就绪。
+  BurnBadgesIntoPng 用 Avalonia Bitmap 解码→BGRA 像素操作（圆形光栅化+alpha混合+5x7位图字体）→PngEncoder 重编码，无新依赖。
+  27 个新测试（11 session + 16 geometry）全部通过，总计 280/280。NativeAOT publish 0 警告 0 错误，exe 28,283,392 bytes（+18 KB vs R45）。'
+execution_log:
+- '2026-07-20: 创建 Core/Annotation/ 三个文件：NumberedBadge.cs（record）、NumberedAnnotationSession.cs（Push/Undo/Clear）、NumberedBadgeGeometry.cs（纯函数 DPI 缩放）。'
+- '2026-07-20: 在 RegionSelectOverlay.axaml 添加 AnnotationCanvas（IsHitTestVisible=False），代码后台添加 AddBadge/RemoveLastBadge/ClearBadges 方法。'
+- '2026-07-20: SelectionRuntime 集成：A 键分支（toggle _oceanEyesAnnotating）、Ctrl+Z 分支（GetKeyState VK_CONTROL + Undo）、鼠标左键守护（物理px→DIP 转换 + Push + AddBadge）、BurnBadgesIntoPng（BGRA 像素操作 + 5x7 位图字体）、DismissOceanEyes 清理、ResetForRedraw 清理。App.axaml.cs 设置 AnnotationOverlay 引用。'
+- '2026-07-20: ScreenRegionCapture 添加 EncodeBgraToPng 公共方法暴露内部 PngEncoder。'
+- '2026-07-20: 新增 27 个测试（NumberedAnnotationSessionTests 11 个 + NumberedBadgeGeometryTests 16 个），280/280 全部通过。NativeAOT publish 0 警告 0 错误，exe 28,283,392 bytes（+18 KB vs R45）。'

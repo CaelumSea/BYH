@@ -1,0 +1,200 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:SelectionAssistant.UI.Views"
+        x:Class="SelectionAssistant.UI.Views.GalleryWindow"
+        x:DataType="vm:GalleryWindow"
+        Title="BYH · 截图相册"
+        Width="900" Height="640"
+        MinWidth="600" MinHeight="400"
+        CanResize="True"
+        ShowActivated="True"
+        ShowInTaskbar="True"
+        WindowDecorations="Full"
+        Background="#FFFCF7EA"
+        KeyDown="OnKeyDown">
+  <!-- R49: standard application window (not frameless) showing the user's
+       Ocean Eyes screenshot history. Ivory Jade background (#FFFCF7EA) to
+       match the rest of the app. Esc closes; Delete removes the selected
+       thumbnail's underlying file; double-click opens a full-size preview
+       overlay (Esc/click-out closes); right-click opens a context menu
+       (copy to clipboard / delete / reveal in explorer). The runtime owns
+       the clipboard/explorer calls — the UI raises events back to it. -->
+  <Panel>
+    <Grid RowDefinitions="Auto,*">
+      <!-- Top bar: title + count + hint -->
+      <Border Grid.Row="0" Padding="16,12" Background="#22FFFFFF">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Text="📷 截图相册" FontWeight="SemiBold" FontSize="16"
+                     VerticalAlignment="Center"/>
+          <TextBlock x:Name="CountText" Classes="Secondary"
+                     FontSize="12" VerticalAlignment="Center"/>
+          <TextBlock Classes="Secondary"
+                     FontSize="12"
+                     Text="双击查看 · 右键更多操作 · Esc 关闭"
+                     VerticalAlignment="Center"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Thumbnail grid (wrap panel, fixed-width cells) -->
+      <ScrollViewer Grid.Row="1"
+                    HorizontalScrollBarVisibility="Disabled"
+                    VerticalScrollBarVisibility="Auto">
+        <ItemsControl x:Name="GalleryItems">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel ItemWidth="180" Orientation="Horizontal"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:GalleryItemViewModel">
+              <Border Width="172" Height="142" Margin="4"
+                      CornerRadius="6"
+                      Background="#FFFFFFFF"
+                      BoxShadow="0 2 4 0 #20000000"
+                      PointerPressed="OnItemPointerPressed"
+                      PointerReleased="OnItemPointerReleased"
+                      PointerEntered="OnItemPointerEntered">
+                <Border.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="复制到剪贴板"
+                              Click="OnContextCopy_Click"
+                              Tag="{Binding}"/>
+                    <MenuItem Header="查看大图"
+                              Click="OnContextPreview_Click"
+                              Tag="{Binding}"/>
+                    <Separator/>
+                    <MenuItem Header="删除文件"
+                              Click="OnContextDelete_Click"
+                              Tag="{Binding}"/>
+                    <MenuItem Header="在资源管理器中显示"
+                              Click="OnContextReveal_Click"
+                              Tag="{Binding}"/>
+                  </ContextMenu>
+                </Border.ContextMenu>
+                <StackPanel>
+                  <Image Source="{Binding Thumbnail}"
+                         Width="172" Height="108"
+                         Stretch="UniformToFill"/>
+                  <TextBlock Text="{Binding DisplayName}"
+                             Margin="8,4"
+                             FontSize="11"
+                             TextTrimming="CharacterEllipsis"/>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+
+      <!-- Empty state -->
+      <Border Grid.Row="1" x:Name="EmptyState" IsVisible="False"
+              HorizontalAlignment="Center" VerticalAlignment="Center"
+              Background="Transparent">
+        <StackPanel HorizontalAlignment="Center" Spacing="8">
+          <TextBlock Text="📭" FontSize="48" HorizontalAlignment="Center"/>
+          <TextBlock Text="还没有截图" FontSize="14" HorizontalAlignment="Center"
+                     Classes="Secondary"/>
+          <TextBlock x:Name="EmptyStatePath" FontSize="11"
+                     Classes="Secondary" HorizontalAlignment="Center"/>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- Full-size preview overlay (lightbox). Visible only while a preview
+         is open. PointerPressed on the background closes it; the inner Image
+         marks e.Handled so clicks on the image itself don't dismiss. -->
+    <Border x:Name="PreviewOverlay"
+            IsVisible="False"
+            Background="#E6000000"
+            ZIndex="100"
+            PointerPressed="OnPreviewOverlayPointerPressed">
+      <Grid RowDefinitions="Auto,*,Auto">
+        <!-- Top bar: filename + close hint -->
+        <Border Grid.Row="0" Padding="20,12" Background="#33000000">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock x:Name="PreviewTitle"
+                       Grid.Column="0"
+                       Foreground="White"
+                       FontSize="13"
+                       TextTrimming="CharacterEllipsis"
+                       VerticalAlignment="Center"/>
+            <TextBlock Grid.Column="1"
+                       Foreground="#CCFFFFFF"
+                       FontSize="12"
+                       Text="Esc / 点击空白处关闭"
+                       VerticalAlignment="Center"/>
+          </Grid>
+        </Border>
+
+        <!-- Image area: Border(ClipToBounds) is the viewport. Inside it, a
+             LayoutTransformControl wraps an Image. The LayoutTransform
+             (ScaleTransform) controls zoom; the Image.Stretch="Uniform"
+             handles fit-to-window natively within whatever size the scaled
+             LayoutTransformControl allots.
+
+             This combination is reliable where direct RenderTransform math
+             on Image Stretch="None" was not (off-center / clipped output on
+             some PNG DPI metadata combinations). By leaning on Avalonia's
+             own Stretch + LayoutTransformControl measure pipeline, we avoid
+             manually computing scaled pixel sizes and centering offsets.
+
+             For panning when zoomed in, we wrap LayoutTransformControl in a
+             Grid and shift it via Margin. No ScrollViewer = no wheel hijack. -->
+        <!-- Image area: Border ClipToBounds is the viewport. Image Stretch=
+             None renders at its native DIP size. We compute the entire
+             transform matrix ourselves (mirroring the PanAndZoom ZoomBorder
+             pattern): fit-to-window on image load, ScaleAtPrepend on wheel
+             zoom (cursor-anchored), TranslatePrepend on drag pan. The matrix
+             is applied to Image.RenderTransform via MatrixTransform.
+
+             Why not Image Stretch="Uniform": that creates a *second* scaling
+             on top of our matrix (Avalonia fits the bitmap to the Image's
+             layout box, then our RenderTransform scales that result), which
+             breaks the zoom-at-cursor math. By using Stretch="None" and
+             computing fit ourselves, we have one and only one transformation
+             in the pipeline. -->
+        <Border x:Name="PreviewViewport"
+                Grid.Row="1"
+                Background="Transparent"
+                ClipToBounds="True"
+                PointerWheelChanged="OnPreviewPointerWheelChanged">
+          <!-- Canvas gives its child infinite available size during measure,
+               so Image Stretch=None can finally report its true native DIP
+               size (bitmap.Size) as its Bounds — not constrained to the
+               Border's size. Without Canvas, Avalonia 12 forces Image's
+               Bounds to the parent's size even with Stretch=None, which
+               silently re-introduces the "double scaling" problem (bitmap
+               gets fit into the layout box, then our RenderTransform scales
+               that result again). Canvas breaks the constraint chain. -->
+          <Canvas x:Name="PreviewCanvas"
+                  Background="Transparent"
+                  ClipToBounds="False">
+            <Image x:Name="PreviewImage"
+                   Stretch="None"
+                   Cursor="SizeAll"
+                   PointerPressed="OnPreviewImagePointerPressed"
+                   PointerMoved="OnPreviewImagePointerMoved"
+                   PointerReleased="OnPreviewImagePointerReleased"/>
+          </Canvas>
+        </Border>
+
+        <!-- Bottom bar: action buttons -->
+        <Border Grid.Row="2" Padding="20,10" Background="#33000000">
+          <StackPanel Orientation="Horizontal"
+                      HorizontalAlignment="Center"
+                      Spacing="8">
+            <Button Content="📋 复制"
+                    Click="OnPreviewCopy_Click"
+                    Padding="16,6"/>
+            <Button Content="🗑 删除"
+                    Click="OnPreviewDelete_Click"
+                    Padding="16,6"/>
+            <Button Content="📁 打开目录"
+                    Click="OnPreviewReveal_Click"
+                    Padding="16,6"/>
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Border>
+  </Panel>
+</Window>

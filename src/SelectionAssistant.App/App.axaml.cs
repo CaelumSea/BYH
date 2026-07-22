@@ -219,6 +219,10 @@ public partial class App : Application
                     }
                 };
 
+                // R47: pass the overlay reference so the runtime can draw
+                // numbered badges on its AnnotationCanvas.
+                _runtime.AnnotationOverlay = _regionOverlay;
+
                 // Push the current custom functions into the toolbar's "more"
                 // row so user-added actions appear immediately.
                 var templates = _runtime.GetPromptTemplates().AsList();
@@ -928,13 +932,15 @@ public partial class App : Application
         _regionOverlay.Hide();
         await WaitForCompositorSettleAsync().ConfigureAwait(true);
 
-        byte[]? png = ScreenRegionCapture.CaptureAsPng(x, y, w, h);
-        if (png is null)
+        var captured = ScreenRegionCapture.CaptureAsPngAndBgra(x, y, w, h);
+        if (captured is null)
         {
             // Capture failed — clean up the overlay entirely.
             _regionOverlay.Cancel();
             return;
         }
+        byte[] png = captured.Value.Png;
+        byte[] bgra = captured.Value.Bgra;
 
         // R42: restore the overlay in its confirmed/locked state so the user
         // still sees the selected region while the toolbar appears.
@@ -947,7 +953,9 @@ public partial class App : Application
         // does NOT run here — it's deferred to the first F/J/Z/R/C press via
         // SelectionRuntime.EnsureOceanEyesOcrAsync. The rect is passed so the
         // runtime knows where to OCR when the user triggers it.
-        _runtime.ShowToolbarForOceanEyes(anchorX, anchorY, png, x, y, w, h);
+        // R48: also passes the raw BGRA buffer so annotation burn-in skips
+        // the lossy Avalonia.Bitmap decode (which throws on some PNGs in 12).
+        _runtime.ShowToolbarForOceanEyes(anchorX, anchorY, png, bgra, x, y, w, h);
     }
 
     /// <summary>
@@ -1132,6 +1140,11 @@ public partial class App : Application
             }
         };
 
+        // R49: screenshot gallery entry. Works cold-start — does not need an
+        // Ocean Eyes session. ShowGallery reads SavePath from settings.
+        var openGallery = new NativeMenuItem("Open Screenshot Gallery");
+        openGallery.Click += (_, _) => _runtime?.ShowGallery();
+
         var restart = new NativeMenuItem("Restart BYH");
         restart.Click += (_, _) => RequestRestart();
 
@@ -1141,6 +1154,7 @@ public partial class App : Application
         var menu = new NativeMenu();
         menu.Items.Add(openSettings);
         menu.Items.Add(openConfig);
+        menu.Items.Add(openGallery);
         menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(restart);
         menu.Items.Add(exit);

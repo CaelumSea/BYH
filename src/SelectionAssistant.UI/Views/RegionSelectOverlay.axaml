@@ -71,5 +71,11 @@
                    Text="单击=确认 UIA 框 · 拖动=自定义 · 右键=重画 · ESC=退出" />
       </StackPanel>
     </Border>
+
+    <!-- R47: Annotation canvas for numbered badges. Hit-test invisible so
+         pointer events pass through to the overlay's canvas handlers.
+         Badges are Ellipse + TextBlock pairs added programmatically. -->
+    <Canvas x:Name="AnnotationCanvas"
+            IsHitTestVisible="False" />
   </Canvas>
 </Window>

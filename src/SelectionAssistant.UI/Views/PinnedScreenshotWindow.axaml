@@ -23,16 +23,24 @@
   <Window.RenderTransform>
     <TranslateTransform X="400" Y="100" />
   </Window.RenderTransform>
-  <Border x:Name="Frame"
-          Background="Transparent"
-          BorderBrush="Transparent"
-          BorderThickness="0"
-          CornerRadius="8"
-          Padding="0"
-          ClipToBounds="True">
-    <LayoutTransformControl x:Name="Scaler">
-      <Image x:Name="ScreenshotImage"
-             Stretch="None" />
-    </LayoutTransformControl>
-  </Border>
+  <!-- R52: snap guide canvas overlay. Positioned inside the Border but
+       above the image. IsHitTestVisible=False so pointer events pass through
+       to the drag handlers. Lines drawn at runtime when a snap edge is hit. -->
+  <Panel>
+    <Border x:Name="Frame"
+            Background="Transparent"
+            BorderBrush="Transparent"
+            BorderThickness="0"
+            CornerRadius="8"
+            Padding="0"
+            ClipToBounds="True">
+      <LayoutTransformControl x:Name="Scaler">
+        <Image x:Name="ScreenshotImage"
+               Stretch="None" />
+      </LayoutTransformControl>
+    </Border>
+    <Canvas x:Name="SnapGuideCanvas"
+            IsHitTestVisible="False"
+            IsVisible="False" />
+  </Panel>
 </Window>

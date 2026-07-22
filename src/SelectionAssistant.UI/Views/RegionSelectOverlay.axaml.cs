@@ -5,6 +5,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using SelectionAssistant.Core.Annotation;
 
 namespace SelectionAssistant.UI.Views;
 
@@ -758,6 +759,427 @@ public partial class RegionSelectOverlay : Window
         // R42: Move removed — user redraws instead (single-click confirm or
         // drag from anywhere). Resize via handles remains.
         ResizeNW, ResizeN, ResizeNE, ResizeE, ResizeSE, ResizeS, ResizeSW, ResizeW,
+    }
+
+    // ── R47 Numbered badge annotation ──────────────────────────────────
+
+    private static readonly SolidColorBrush BadgeFillBrush = new(Color.Parse("#FFD9C28A"));
+    private static readonly SolidColorBrush BadgeStrokeBrush = new(Color.Parse("#FFB8956A"));
+    private static readonly SolidColorBrush BadgeTextBrush = new(Colors.White);
+
+    // R48: annotation shape brushes.
+    public static readonly SolidColorBrush AnnotationStrokeBrush = new(Color.Parse("#FFD9C28A"));
+    public static readonly SolidColorBrush HighlightFillBrush = new(Color.Parse("#80FFEB3B"));
+
+    /// <summary>
+    /// R48: tag attached to each annotation visual in AnnotationCanvas.Children.
+    /// ChildCount tells RemoveLastAnnotation how many children to remove for
+    /// this annotation item (badge=2, arrow=2, others=1).
+    /// </summary>
+    public sealed record AnnotationTag(int ChildCount);
+
+    /// <summary>
+    /// R47: adds a numbered badge (Ellipse + TextBlock) to the annotation canvas.
+    /// Coordinates are in overlay DIP (logical px), matching the badge's X/Y.
+    /// </summary>
+    public void AddBadge(NumberedBadge badge)
+    {
+        const double radius = NumberedBadgeGeometry.RadiusDip;
+
+        var ellipse = new Ellipse
+        {
+            Width = NumberedBadgeGeometry.DiameterDip,
+            Height = NumberedBadgeGeometry.DiameterDip,
+            Fill = BadgeFillBrush,
+            Stroke = BadgeStrokeBrush,
+            StrokeThickness = NumberedBadgeGeometry.StrokeThicknessDip,
+            IsHitTestVisible = false,
+        };
+
+        var text = new TextBlock
+        {
+            Text = badge.Number.ToString(),
+            Foreground = BadgeTextBrush,
+            FontWeight = FontWeight.Bold,
+            FontSize = NumberedBadgeGeometry.FontSizeDip,
+            IsHitTestVisible = false,
+            // Center the text inside the badge: the wrapping Border sizes to
+            // the badge diameter, so we need both alignments on the TextBlock
+            // to actually center the glyph (Border alone does not propagate
+            // centering to its Child — TextBlock would otherwise stick to the
+            // top-left corner, making digits look offset toward upper-left).
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            TextAlignment = TextAlignment.Center,
+        };
+
+        // Position the ellipse so its center is at (badge.X, badge.Y).
+        Canvas.SetLeft(ellipse, badge.X - radius);
+        Canvas.SetTop(ellipse, badge.Y - radius);
+
+        // Center the text inside the ellipse. TextBlock size is unknown until
+        // layout, so we use a trick: wrap in a container sized to the badge
+        // diameter with centered alignment.
+        var textContainer = new Border
+        {
+            Width = NumberedBadgeGeometry.DiameterDip,
+            Height = NumberedBadgeGeometry.DiameterDip,
+            IsHitTestVisible = false,
+        };
+        textContainer.Child = text;
+        Canvas.SetLeft(textContainer, badge.X - radius);
+        Canvas.SetTop(textContainer, badge.Y - radius);
+
+        // Tag both with the badge number for identification on removal.
+        ellipse.Tag = badge.Number;
+        textContainer.Tag = badge.Number;
+
+        AnnotationCanvas.Children.Add(ellipse);
+        AnnotationCanvas.Children.Add(textContainer);
+    }
+
+    /// <summary>
+    /// R47: removes the most recently added badge (Ellipse + TextBlock pair).
+    /// </summary>
+    public void RemoveLastBadge()
+    {
+        // Remove the last two children (text container + ellipse).
+        int count = AnnotationCanvas.Children.Count;
+        if (count >= 2)
+        {
+            AnnotationCanvas.Children.RemoveAt(count - 1);
+            AnnotationCanvas.Children.RemoveAt(count - 2);
+        }
+    }
+
+    /// <summary>
+    /// R47: clears all badges from the annotation canvas.
+    /// </summary>
+    public void ClearBadges()
+    {
+        AnnotationCanvas.Children.Clear();
+    }
+
+    // ── R48 annotation shapes ──────────────────────────────────────────
+
+    /// <summary>
+    /// R48: dispatches an IAnnotationItem to the correct AddXxxVisual method.
+    /// NumberedBadgeAnnotation is forwarded to AddBadge(NumberedBadge).
+    /// </summary>
+    public void AddShape(IAnnotationItem item)
+    {
+        switch (item)
+        {
+            case NumberedBadgeAnnotation badge:
+                AddBadge(new NumberedBadge(badge.Number, badge.X, badge.Y));
+                break;
+            case RectangleAnnotation rect:
+                AddRectangleVisual(rect);
+                break;
+            case EllipseAnnotation ellipse:
+                AddEllipseVisual(ellipse);
+                break;
+            case ArrowAnnotation arrow:
+                AddArrowVisual(arrow);
+                break;
+            case PenStrokeAnnotation pen:
+                AddPathVisual(pen.Points, AnnotationStrokeBrush, AnnotationShapeGeometry.StrokeThicknessDip);
+                break;
+            case HighlightStrokeAnnotation highlight:
+                AddPathVisual(highlight.Points, HighlightFillBrush, AnnotationShapeGeometry.HighlightThicknessDip);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// R48: adds a rectangle visual to the annotation canvas.
+    /// Tagged with AnnotationTag(1) for undo.
+    /// </summary>
+    private void AddRectangleVisual(RectangleAnnotation rect)
+    {
+        var shape = new Avalonia.Controls.Shapes.Rectangle
+        {
+            Width = rect.Width,
+            Height = rect.Height,
+            Stroke = AnnotationStrokeBrush,
+            StrokeThickness = AnnotationShapeGeometry.StrokeThicknessDip,
+            Fill = Brushes.Transparent,
+            IsHitTestVisible = false,
+        };
+        Canvas.SetLeft(shape, rect.Left);
+        Canvas.SetTop(shape, rect.Top);
+        shape.Tag = new AnnotationTag(1);
+        AnnotationCanvas.Children.Add(shape);
+    }
+
+    /// <summary>
+    /// R48: adds an ellipse visual to the annotation canvas.
+    /// Tagged with AnnotationTag(1) for undo.
+    /// </summary>
+    private void AddEllipseVisual(EllipseAnnotation ellipse)
+    {
+        var shape = new Ellipse
+        {
+            Width = ellipse.Width,
+            Height = ellipse.Height,
+            Stroke = AnnotationStrokeBrush,
+            StrokeThickness = AnnotationShapeGeometry.StrokeThicknessDip,
+            Fill = Brushes.Transparent,
+            IsHitTestVisible = false,
+        };
+        Canvas.SetLeft(shape, ellipse.Left);
+        Canvas.SetTop(shape, ellipse.Top);
+        shape.Tag = new AnnotationTag(1);
+        AnnotationCanvas.Children.Add(shape);
+    }
+
+    /// <summary>
+    /// R48: adds an arrow visual (shaft line + head polyline) to the annotation canvas.
+    /// Tagged with AnnotationTag(2) for undo (2 children).
+    /// </summary>
+    private void AddArrowVisual(ArrowAnnotation arrow)
+    {
+        // Shaft line.
+        var shaft = new Avalonia.Controls.Shapes.Line
+        {
+            StartPoint = new Point(arrow.StartX, arrow.StartY),
+            EndPoint = new Point(arrow.EndX, arrow.EndY),
+            Stroke = AnnotationStrokeBrush,
+            StrokeThickness = AnnotationShapeGeometry.StrokeThicknessDip,
+            IsHitTestVisible = false,
+        };
+        shaft.Tag = new AnnotationTag(2);
+        AnnotationCanvas.Children.Add(shaft);
+
+        // Arrow head polyline.
+        var (tipX, tipY, b1x, b1y, b2x, b2y) = AnnotationShapeGeometry.ComputeArrowHead(
+            arrow.StartX, arrow.StartY, arrow.EndX, arrow.EndY);
+        var head = new Avalonia.Controls.Shapes.Polyline
+        {
+            Points = new Points
+            {
+                new Point(b1x, b1y),
+                new Point(tipX, tipY),
+                new Point(b2x, b2y),
+            },
+            Stroke = AnnotationStrokeBrush,
+            StrokeThickness = AnnotationShapeGeometry.StrokeThicknessDip,
+            Fill = Brushes.Transparent,
+            IsHitTestVisible = false,
+        };
+        head.Tag = new AnnotationTag(2);
+        AnnotationCanvas.Children.Add(head);
+    }
+
+    /// <summary>
+    /// R48: adds a path visual (polyline) to the annotation canvas.
+    /// Tagged with AnnotationTag(1) for undo.
+    /// </summary>
+    private void AddPathVisual(IReadOnlyList<(double X, double Y)> points, IBrush stroke, double thickness)
+    {
+        if (points.Count < 2) return;
+
+        var polyline = new Avalonia.Controls.Shapes.Polyline
+        {
+            Stroke = stroke,
+            StrokeThickness = thickness,
+            // Fill MUST be null (not Transparent) — see CreateLivePreview.
+            Fill = null,
+            IsHitTestVisible = false,
+        };
+        foreach (var (x, y) in points)
+        {
+            polyline.Points.Add(new Point(x, y));
+        }
+        polyline.Tag = new AnnotationTag(1);
+        AnnotationCanvas.Children.Add(polyline);
+    }
+
+    /// <summary>
+    /// R48: removes the most recently added annotation (badge or shape).
+    /// Reads the AnnotationTag.ChildCount to know how many children to remove.
+    /// </summary>
+    public void RemoveLastAnnotation()
+    {
+        int count = AnnotationCanvas.Children.Count;
+        if (count == 0) return;
+
+        // The last child's Tag tells us how many children belong to this annotation.
+        if (AnnotationCanvas.Children[count - 1].Tag is AnnotationTag tag)
+        {
+            for (int i = 0; i < tag.ChildCount && AnnotationCanvas.Children.Count > 0; i++)
+            {
+                AnnotationCanvas.Children.RemoveAt(AnnotationCanvas.Children.Count - 1);
+            }
+        }
+        else
+        {
+            // Fallback: remove just one child (shouldn't happen in normal flow).
+            AnnotationCanvas.Children.RemoveAt(count - 1);
+        }
+    }
+
+    /// <summary>
+    /// R48: clears all annotations (badges + shapes) from the annotation canvas.
+    /// </summary>
+    public void ClearAnnotations()
+    {
+        AnnotationCanvas.Children.Clear();
+    }
+
+    // ── R48 live preview support ──────────────────────────────────────
+
+    private Control? _livePreviewShape;
+
+    /// <summary>
+    /// R48: creates a live preview shape for the given tool at the starting
+    /// DIP coordinates. The preview is NOT in the undo stack.
+    /// Must be called on the UI thread.
+    /// </summary>
+    public void CreateLivePreview(AnnotationTool tool, double dipX, double dipY)
+    {
+        RemoveLivePreview();
+
+        Control? shape = tool switch
+        {
+            AnnotationTool.Rectangle => new Avalonia.Controls.Shapes.Rectangle
+            {
+                Width = 0, Height = 0,
+                Stroke = AnnotationStrokeBrush,
+                StrokeThickness = AnnotationShapeGeometry.StrokeThicknessDip,
+                Fill = Brushes.Transparent,
+                IsHitTestVisible = false,
+            },
+            AnnotationTool.Ellipse => new Ellipse
+            {
+                Width = 0, Height = 0,
+                Stroke = AnnotationStrokeBrush,
+                StrokeThickness = AnnotationShapeGeometry.StrokeThicknessDip,
+                Fill = Brushes.Transparent,
+                IsHitTestVisible = false,
+            },
+            AnnotationTool.Arrow => new Avalonia.Controls.Shapes.Line
+            {
+                StartPoint = new Point(dipX, dipY),
+                EndPoint = new Point(dipX, dipY),
+                Stroke = AnnotationStrokeBrush,
+                StrokeThickness = AnnotationShapeGeometry.StrokeThicknessDip,
+                IsHitTestVisible = false,
+            },
+            AnnotationTool.Pen => new Avalonia.Controls.Shapes.Polyline
+            {
+                Points = new Points { new Point(dipX, dipY) },
+                Stroke = AnnotationStrokeBrush,
+                StrokeThickness = AnnotationShapeGeometry.StrokeThicknessDip,
+                // Fill MUST be null (not Transparent): Polyline with non-null
+                // Fill renders the closed polygon formed by the points list,
+                // which makes freehand strokes look like closed shapes. With
+                // null Fill, only the stroke segments between adjacent points
+                // are drawn — true freehand pen behavior.
+                Fill = null,
+                IsHitTestVisible = false,
+            },
+            AnnotationTool.Highlight => new Avalonia.Controls.Shapes.Polyline
+            {
+                Points = new Points { new Point(dipX, dipY) },
+                Stroke = HighlightFillBrush,
+                StrokeThickness = AnnotationShapeGeometry.HighlightThicknessDip,
+                Fill = null,
+                IsHitTestVisible = false,
+            },
+            _ => null,
+        };
+
+        if (shape is not null)
+        {
+            // Rectangle/Ellipse use Canvas.SetLeft/Top as their top-left corner
+            // (their Width/Height extends from there). Line/Polyline use their
+            // own Points/StartPoint/EndPoint as absolute canvas coordinates —
+            // setting Canvas.Left/Top to a non-zero value would DOUBLE-offset
+            // them (Points + Canvas offset), painting them off-screen.
+            // So for Line/Polyline we leave Canvas.Left/Top at (0,0) and let
+            // the Points carry the absolute position.
+            if (shape is Avalonia.Controls.Shapes.Line || shape is Avalonia.Controls.Shapes.Polyline)
+            {
+                Canvas.SetLeft(shape, 0);
+                Canvas.SetTop(shape, 0);
+            }
+            else
+            {
+                Canvas.SetLeft(shape, dipX);
+                Canvas.SetTop(shape, dipY);
+            }
+            AnnotationCanvas.Children.Add(shape);
+            _livePreviewShape = shape;
+        }
+    }
+
+    /// <summary>
+    /// R48: updates the live preview shape geometry as the mouse moves.
+    /// Must be called on the UI thread.
+    /// </summary>
+    public void UpdateLivePreview(double dipX, double dipY, double startX, double startY, bool shift)
+    {
+        if (_livePreviewShape is null) return;
+
+        switch (_livePreviewShape)
+        {
+            case Avalonia.Controls.Shapes.Rectangle rect:
+            {
+                var normalized = AnnotationShapeGeometry.NormalizeRect(startX, startY, dipX, dipY);
+                if (shift) normalized = AnnotationShapeGeometry.ApplyShiftConstraint(normalized, true);
+                rect.Width = normalized.Width;
+                rect.Height = normalized.Height;
+                Canvas.SetLeft(rect, normalized.Left);
+                Canvas.SetTop(rect, normalized.Top);
+                break;
+            }
+            case Ellipse ellipse:
+            {
+                var normalized = AnnotationShapeGeometry.NormalizeEllipse(startX, startY, dipX, dipY);
+                if (shift) normalized = AnnotationShapeGeometry.ApplyShiftConstraint(normalized, true);
+                ellipse.Width = normalized.Width;
+                ellipse.Height = normalized.Height;
+                Canvas.SetLeft(ellipse, normalized.Left);
+                Canvas.SetTop(ellipse, normalized.Top);
+                break;
+            }
+            case Avalonia.Controls.Shapes.Line line:
+            {
+                line.EndPoint = new Point(dipX, dipY);
+                break;
+            }
+            case Avalonia.Controls.Shapes.Polyline polyline:
+            {
+                // Avalonia's Polyline.Points is a StyledProperty<IList<Point>>;
+                // mutating the existing list in place does NOT reliably raise
+                // the property-changed notification that triggers a repaint.
+                // (Symptom: DIAG logs show MouseMove firing + UpdateLivePreview
+                // being called, but the polyline stays invisible during drag
+                // — only appears on LeftButtonUp when AddPathVisual builds a
+                // fresh Polyline.) Reassigning a new Points collection forces
+                // the property notification so the shape repaints each move.
+                var existing = polyline.Points;
+                var updated = new Avalonia.Collections.AvaloniaList<Point>(existing.Count + 1);
+                foreach (var p in existing) updated.Add(p);
+                updated.Add(new Point(dipX, dipY));
+                polyline.Points = updated;
+                break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// R48: removes the live preview shape from the annotation canvas.
+    /// Must be called on the UI thread.
+    /// </summary>
+    public void RemoveLivePreview()
+    {
+        if (_livePreviewShape is not null)
+        {
+            AnnotationCanvas.Children.Remove(_livePreviewShape);
+            _livePreviewShape = null;
+        }
     }
 }
 
