@@ -2711,15 +2711,16 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 
 ---
 
-## 3s. 本会话（第五十三批增量）进行中：统一五个 tab 为 SurfacePanel 连续布局
+## 3s. 本会话（第五十三批增量）完成：统一五个 tab 为 SurfacePanel 连续布局 + 修复 Launcher 空白
 
-> 更新时间：2026-07-22 第五十三批增量（未提交，待接续）
+> 更新时间：2026-07-22 第五十三批增量（已完成，commit `2e7892e`）
 
 ### 已完成
 
 - `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
   - 将 `ProviderSection`、`FunctionsSection`、`VisionSection`、`LauncherSection` 内部原来独立的 `LiftedPanel` 卡片统一移除，改为与 `GeneralSection` 一致的 **单张 `SurfacePanel` 大底 + 功能区分隔线 + `InnerCard` 输入区** 结构。
   - 命名引用迁移：`EditFormBorder`、`PromptTemplatesCard` 分别移到对应内部 StackPanel，避免编译失败。
+  - **修复 Launcher tab 空白 bug**（根因+修复见下）。
 - `artifacts/qa/capture-all-tabs.py`
   - 新增自动化脚本：启动 QA BYH，依次点击左侧导航按钮，截取 General / Provider / Actions / Vision / Launcher 五个 tab 的默认尺寸图，用于验证风格统一。
 
@@ -2730,26 +2731,20 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 - `dotnet publish -c Release -r win-x64`：0 警告。
 - 多 tab 截图已生成：
   - `artifacts/qa/v25-unified-tabs-{general,provider,actions,vision,launcher}-default-nativeaot.png`
+  - `artifacts/qa/v26-verify/v25-unified-tabs-{general,provider,actions,vision,launcher}-default-nativeaot.png`（修复后验证）
   - `artifacts/qa/ivory-jade-settings-v25-unified-tabs-general-{default,minimum}-nativeaot.png`
 
-### 阻塞问题（下一位 Agent 优先处理）
+### Launcher 空白 Bug 修复详情
 
-1. **Launcher tab 内容缺失**：切换到 Launcher 后，只显示顶部标题 `WELCOME BACK / Launcher / Apps and web shortcuts.`，下方的 Launcher 列表和 `Spotlight Hotkey` 区块完全空白。
-   - XML 结构已用 Python xml.etree 校验合法；`LauncherSection` 包含 title StackPanel、divider、Spotlight StackPanel 三个子元素。
-   - 代码中 `_launcherRows` / `RefreshLauncherRows` 存在，ItemsSource 在初始化时设置。
-   - 为复现问题，临时将默认启动 tab 改为 Launcher；**现已改回 `ShowSettingsPage(SettingsPage.General)`**。
-   - 需要排查：XAML 嵌套/命名引用是否导致 ItemsControl 未渲染、`LauncherList` 数据是否为空、`IsVisible` 切换时的布局问题，或 `Spotlight*` 控件命名/绑定异常。
+- **症状**：切换到 Launcher tab 后，仅页面头部标题 "Launcher" 显示，下方列表和 Spotlight Hotkey 区块完全空白。
+- **根因**：用 `xml.etree.ElementTree` 解析 axaml 并打印 parent-chain，发现 `LauncherSection` 被嵌套进 `VisionSection`（父链 `.../Grid/StackPanel[VisionSection]/StackPanel[LauncherSection]`）。v25 编辑时 `VisionSection` 的收尾 `</StackPanel>` 被误放到 `LauncherSection` 之后（原行 853），导致 Launcher 成了 Vision 的子元素。切到 Launcher 时 `LauncherSection.IsVisible=True` 但父 `VisionSection.IsVisible=False` → 整个主体被折叠。XML 标签仍平衡（"合法"），编译器/Avalonia 不报错，肉眼极易漏。
+- **修复**：将 `VisionSection` 收尾 `</StackPanel>` 从 Launcher 块末尾移至 Launcher 注释之前（新增一行），使 `LauncherSection` 与其他四个 section 平级（同为 ScrollViewer 内 `<Grid>` 直接子元素）；同时删除调试用半透明红底 `Background="#20FF0000"`。
+- **验证**：ElementTree 父链确认 LauncherSection 已为独立 sibling；真机截图确认 Launcher 列表（8 条目）和 Spotlight Hotkey 区块均正常渲染。
 
-2. **未提交改动**：v25 的 `SettingsWindow.axaml`、`SettingsWindow.axaml.cs`、`BYH.exe`、全部 QA 截图、`capture-all-tabs.py` 均未 commit。修复 Launcher 后应统一提交。
+### 提交
 
-### 下一位 Agent 建议执行顺序
-
-1. 先 `git status` 确认未提交改动；阅读 `output/SESSION-STATUS-2026-07-22.md` 的 "第五十三批增量" 小节。
-2. 在 `src/SelectionAssistant.UI/Views/SettingsWindow.axaml` 中重点检查 `LauncherSection` 的 XAML 嵌套与数据绑定；可临时把默认 tab 改回 Launcher 方便本地调试（记得改回）。
-3. 修复 Launcher 内容空白后，重新 `build / test / publish`，并运行 `capture-all-tabs.py` 验证五个 tab 风格一致。
-4. 提交 v25：`git add src/.../SettingsWindow.axaml src/.../SettingsWindow.axaml.cs artifacts/publish/.../BYH.exe artifacts/qa/... capture-all-tabs.py`，`git commit -m "feat(REQ-012): unify all settings tabs to SurfacePanel continuous layout"`。
-5. 更新本 handoff 与 `output/SESSION-STATUS-2026-07-22.md`，标记第五十三批增量完成。
-6. 恢复用户日常 BYH 实例：`C:\Users\DeRant Vilmon Ram\gh-kb\selection-assistant\artifacts\publish\win-x64-nativeuia\BYH.exe`。
+- Commit `2e7892e`：`feat(REQ-012): v25 unified tab layout + fix Launcher blank (VisionSection nesting)`
+- 工作树干净，用户日常 BYH 实例已恢复（PID 28652）。
 
 ---
 
