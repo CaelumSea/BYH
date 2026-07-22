@@ -1931,6 +1931,47 @@ await Task.Delay(330);  // 300ms 滑出 + 余量
 
 ---
 
+## 3ad. 本会话（第四十四批增量）完成的工作：REQ-012 设置页 Foamie 氛围/立体感/精致感深化
+
+用户反馈 v12「几乎没改」，本批在保留五窗格结构、FlatRail、MetallicFrame 集中样式、克制内卡的前提下，从主题资源层大幅强化立体感（浮影+受光面）、精致感（金属边+宝石光晕+徽章细边）和氛围感（暖光径向光晕+云纹显影）。
+
+### 完成内容
+
+- **主题 `IvoryJade.axaml`**：
+  * 新增 `ByhAtmosphereBrush`（暖色径向光晕）和 `ByhGemGlowBrush`（翡翠径向光晕）。
+  * `ByhMetallicEdgeBrush` 加亮香槟高光，金属边对比度更高。
+  * `ByhGoldNavBrush` 从三段升为四段，顶部增加香槟高光，并新增 `ByhGoldNavBorderBrush` 凸面边框渐变，让 active 药丸在 Avalonia Button（无 BoxShadow）上也能读出 3D 体积。
+  * `MetallicFrame` 阴影加深为三层环境光+投影，并加顶部微光。
+  * `PearlCard` / `PorcelainCard` 加顶部强光高光边和更明显的浮动阴影。
+  * `StatusPill` / `Badge` 加内高光和微阴影。
+  * `GemPortrait` 增加翡翠色外发光环。
+- **视图 `SettingsWindow.axaml`**：
+  * 全布局底层加 `ByhAtmosphereBrush` 暖光光晕。
+  * 各面板 ornament 云纹透明度大幅提升（nav 0.30 / main 0.10 / rail 0.22 / right 0.28）。
+  * 导航卡顶部 emblem 与底部 foot gem 套 `ByhGemGlowBrush`。
+  * 欢迎标题放大（24→26），右上角 IVORY JADE 徽章也套 gem glow。
+  * 右侧人物卡背景圆改 `ByhGemGlowBrush`。
+  * Current setup / Runtime 图标徽章放大到 28px、加 1px 金边和软阴影。
+  * 左栏底部 emblem 与色板小方块加 lift 阴影。
+- 未动：五结构窗格、FlatRail、内卡克制度、jade Primary 按钮、SelectionRuntime / LongScreenshot / 翻译 / OCR / 快捷键逻辑。
+
+### 验证证据
+
+- Release build：0 警告、0 错误；完整测试 **334/334**。
+- win-x64 NativeAOT：0 警告、0 PDB；`BYH.exe` = **27,959,296 bytes**。
+- 175% DPI 默认尺寸：`artifacts/qa/ivory-jade-settings-v13-atmosphere-default-nativeaot.png`。
+- 175% DPI、1240×680 logical 最小尺寸：`artifacts/qa/ivory-jade-settings-v13-atmosphere-minimum-nativeaot.png`。
+- 可信基线对比：`artifacts/qa/before-default.png` / `before-minimum.png`。
+- `docs/architecture/08-theme-system.md` 已同步新 token 与组件类描述。
+- **待用户验收**：v13 两张截图已提交（commit `aaeb31a`），等用户确认。
+
+### 踩坑
+
+1. Avalonia `RadialGradientBrush` 用 `RadiusX`/`RadiusY` 而非 `Radius`，`Center`/`GradientOrigin` 用百分比字符串；直接用 WPF 语法会 AVLN2000。
+2. Avalonia `BoxShadow` 颜色必须是 6 位或 8 位 HEX，写错成 9 位会在运行时 `Color.Parse` 抛 `FormatException`；主题 AXAML 编译不报错（颜色串在运行时才解析）。
+
+---
+
 ## 3c. 本会话（第十四批增量）完成的工作：R26 Ivory Jade 主题
 
 - 新增 `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`：完整语义色、反馈色、alpha 派生色、圆角、阴影与全局组件类。
