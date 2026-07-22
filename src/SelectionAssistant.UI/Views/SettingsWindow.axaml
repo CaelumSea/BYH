@@ -173,10 +173,11 @@
              Opacity="0.10"
              IsHitTestVisible="False" />
       <Border Grid.Row="0"
-              Classes="LiftedPanel"
-              Padding="26,20,24,16">
-        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="20" RowSpacing="14">
-          <StackPanel Spacing="4">
+              Classes="HeroCard"
+              Margin="12,12,12,0"
+              Padding="28,22,26,18">
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="24" RowSpacing="18">
+          <StackPanel Spacing="5">
             <TextBlock Text="WELCOME BACK" Classes="Kicker" />
             <StackPanel Orientation="Horizontal" Spacing="9">
               <TextBlock x:Name="PageTitleText"
@@ -194,15 +195,15 @@
                        FontSize="10" />
           </StackPanel>
           <Border Grid.Column="1"
-                  Classes="Badge"
+                  Classes="ThemePill"
                   VerticalAlignment="Center"
-                  Padding="8,5">
-            <StackPanel Orientation="Horizontal" Spacing="7">
-              <Border Width="26" Height="26" CornerRadius="13" Background="{DynamicResource ByhGemGlowBrush}" Padding="2">
-                <Border Width="22" Height="22" CornerRadius="11" ClipToBounds="True">
+                  Padding="6,5">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border Width="22" Height="22" CornerRadius="11" Background="{DynamicResource ByhGemGlowBrush}" Padding="2">
+                <Border Width="18" Height="18" CornerRadius="9" ClipToBounds="True">
                   <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
-                         Width="30"
-                         Height="30"
+                         Width="24"
+                         Height="24"
                          Stretch="UniformToFill"
                          HorizontalAlignment="Center"
                          VerticalAlignment="Center" />
@@ -216,18 +217,18 @@
             </StackPanel>
           </Border>
           <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
-            <Border Classes="StatusPill" Padding="10,5">
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <Border Width="6" Height="6" CornerRadius="3"
+            <Border Classes="HeroPill" Padding="8,4">
+              <StackPanel Orientation="Horizontal" Spacing="5">
+                <Border Width="5" Height="5" CornerRadius="2.5"
                         Background="{DynamicResource ByhSuccessBrush}"
                         VerticalAlignment="Center" />
                 <TextBlock Text="LOCAL FIRST" Classes="Accent" FontSize="8" FontWeight="SemiBold" />
               </StackPanel>
             </Border>
-            <Border Classes="StatusPill" Padding="10,5">
+            <Border Classes="HeroPill" Padding="8,4">
               <TextBlock Text="INSTANT CAPTURE" Classes="Secondary" FontSize="8" FontWeight="SemiBold" />
             </Border>
-            <Border Classes="StatusPill" Padding="10,5">
+            <Border Classes="HeroPill" Padding="8,4">
               <TextBlock Text="WINDOWS NATIVEAOT" Classes="Secondary" FontSize="8" FontWeight="SemiBold" />
             </Border>
           </StackPanel>
