@@ -5,10 +5,13 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using SelectionAssistant.Core.Capture;
+using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
 using SelectionAssistant.Infrastructure.Configuration;
+using SelectionAssistant.Infrastructure.Logging;
 using SelectionAssistant.Platform.Windows.Capture;
+using SelectionAssistant.Platform.Windows.Clipboard;
 using SelectionAssistant.Platform.Windows.Input;
 using SelectionAssistant.UI.Views;
 
@@ -40,6 +43,14 @@ public partial class App : Application
     private WindowsGlobalHotKey? _spotlightHotKey;
     private SpotlightTriggerSettings _spotlightTriggerSettings = SpotlightTriggerSettings.Default;
     private string? _spotlightLoadWarning;
+    // R54: clipboard history — independent module. Owns its own window, hotkey,
+    // feature settings, and a long-lived background listener (ClipboardHistoryService).
+    private ClipboardHistoryWindow? _clipboardHistoryWindow;
+    private WindowsGlobalHotKey? _clipboardHistoryHotKey;
+    private ClipboardHistoryTriggerSettings _clipboardHistoryTriggerSettings = ClipboardHistoryTriggerSettings.Default;
+    private ClipboardHistorySettings _clipboardHistorySettings = ClipboardHistorySettings.Default;
+    private string? _clipboardHistoryLoadWarning;
+    private ClipboardHistoryService? _clipboardHistoryService;
     // R37: toolbar built-in shortcut keys (Prompt/Copy/Paste, defaults R/C/V).
     private ToolbarShortcutSettings _toolbarShortcuts = ToolbarShortcutSettings.Default;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
@@ -102,6 +113,31 @@ public partial class App : Application
                 _spotlightLoadWarning = "Invalid Spotlight hotkey settings. Restored the safe Ctrl+Alt+Space default.";
             }
 
+            // R54: load the independent clipboard-history trigger (default Ctrl+Alt+V)
+            // and feature settings (enabled / auto-paste / exclude-apps / max entries).
+            try
+            {
+                _clipboardHistoryTriggerSettings = ClipboardHistoryTriggerStore
+                    .LoadIfExists(_paths.ClipboardHistoryTriggerFile)
+                    .Normalize();
+            }
+            catch (ProviderConfigurationException)
+            {
+                _clipboardHistoryTriggerSettings = ClipboardHistoryTriggerSettings.Default;
+                _clipboardHistoryLoadWarning = "Invalid clipboard history hotkey settings. Restored the safe Ctrl+Alt+V default.";
+            }
+            try
+            {
+                _clipboardHistorySettings = ClipboardHistorySettingsStore
+                    .LoadIfExists(_paths.ClipboardHistorySettingsFile)
+                    .Normalize();
+            }
+            catch (ProviderConfigurationException)
+            {
+                _clipboardHistorySettings = ClipboardHistorySettings.Default;
+                _clipboardHistoryLoadWarning ??= "Invalid clipboard history settings. Defaults restored.";
+            }
+
             // R37: load the toolbar built-in shortcut keys (Prompt/Copy/Paste,
             // defaults R/C/V). Missing file = built-in defaults (transparent
             // upgrade for existing users — no schema bump).
@@ -122,11 +158,13 @@ public partial class App : Application
             var settingsWindow = new SettingsWindow();
             var promptWindow = new PromptWindow();
             var spotlightWindow = new SpotlightWindow();
+            var clipboardHistoryWindow = new ClipboardHistoryWindow();
             _toolbarWindow = toolbarWindow;
             _resultWindow = resultWindow;
             _settingsWindow = settingsWindow;
             _promptWindow = promptWindow;
             _spotlightWindow = spotlightWindow;
+            _clipboardHistoryWindow = clipboardHistoryWindow;
             settingsWindow.Configure(_paths.CapturePolicyFile);
             settingsWindow.SetOceanEyesTriggerSettings(
                 _oceanEyesTrigger,
@@ -137,6 +175,11 @@ public partial class App : Application
                 _spotlightTriggerSettings,
                 _spotlightLoadWarning,
                 isError: _spotlightLoadWarning is not null);
+            settingsWindow.SetClipboardHistoryTriggerSettings(
+                _clipboardHistoryTriggerSettings,
+                _clipboardHistoryLoadWarning,
+                isError: _clipboardHistoryLoadWarning is not null);
+            settingsWindow.SetClipboardHistorySettings(_clipboardHistorySettings);
             desktop.MainWindow = toolbarWindow;
 
             settingsWindow.OpenConfigDirectoryRequested += () => OpenDirectory(_paths.BaseDirectory);
@@ -168,6 +211,15 @@ public partial class App : Application
             spotlightWindow.LauncherRunRequested += OnLauncherRunRequested;
             spotlightWindow.LauncherEditRequested += OnSpotlightLauncherEditRequested;
             spotlightWindow.SettingsRequested += OnSpotlightSettingsRequested;
+
+            // R54 Clipboard history: independent window + background listener.
+            settingsWindow.ClipboardHistoryTriggerSettingsSaved += OnClipboardHistoryTriggerSettingsSaved;
+            settingsWindow.ClipboardHistorySettingsSaved += OnClipboardHistorySettingsSaved;
+            settingsWindow.ClipboardHistoryClearRequested += OnClipboardHistoryClearRequested;
+            clipboardHistoryWindow.PasteRequested += OnClipboardHistoryPasteRequested;
+            clipboardHistoryWindow.PinToggled += OnClipboardHistoryPinToggled;
+            clipboardHistoryWindow.DeleteRequested += OnClipboardHistoryDeleteRequested;
+            clipboardHistoryWindow.SettingsRequested += OnClipboardHistorySettingsRequested;
 
             // R24/R40: region-select overlay. R40 entry point: Ctrl+Alt+Q goes
             // straight into the overlay (no panel). On confirm → capture PNG →
@@ -202,6 +254,28 @@ public partial class App : Application
                 _runtime.SetOceanEyesCaptureSettings(_oceanEyesCapture);
                 RegisterInitialOceanEyesHotKey();
                 RegisterInitialSpotlightHotKey();
+
+                // R54: start the clipboard-history background listener. The
+                // service owns a long-lived Win32Clipboard (separate message
+                // window) + the persisted JSON store. Created after the runtime
+                // is up so the existing keyboard-hook/clipboard-window startup
+                // ordering is undisturbed (see SelectionRuntime ctor comment).
+                var clipboardLogger = new RedactedLogger(_paths.LogFile);
+                try
+                {
+                    var clipboard = new Win32Clipboard();
+                    _clipboardHistoryService = new ClipboardHistoryService(
+                        clipboard,
+                        _paths.ClipboardHistoryFile,
+                        _clipboardHistorySettings,
+                        clipboardLogger);
+                }
+                catch (Exception exception)
+                {
+                    _clipboardHistoryService = null;
+                    clipboardLogger.Error("ClipboardHistory", "Failed to start service.", exception);
+                }
+                RegisterInitialClipboardHistoryHotKey();
                 // Chord (L+R buttons) → Ocean Eyes region-select overlay at
                 // cursor. The event fires on the mouse-hook thread; marshal to
                 // the UI thread.
@@ -621,6 +695,14 @@ public partial class App : Application
         MouseChordEnabled = false,
     };
 
+    private static OceanEyesTriggerSettings ToOceanEyesShape(ClipboardHistoryTriggerSettings s) => new()
+    {
+        KeyboardShortcutEnabled = s.KeyboardShortcutEnabled,
+        Modifiers = s.Modifiers,
+        Key = s.Key,
+        MouseChordEnabled = false,
+    };
+
     private void RegisterInitialSpotlightHotKey()
     {
         if (!_spotlightTriggerSettings.KeyboardShortcutEnabled)
@@ -746,6 +828,195 @@ public partial class App : Application
         _spotlightWindow?.Hide();
         RefreshAndShowSettings();
         _settingsWindow?.ShowAndScrollToLauncher();
+    }
+
+    // ── R54: Clipboard history trigger + service wiring ──
+
+    private void RegisterInitialClipboardHistoryHotKey()
+    {
+        if (!_clipboardHistoryTriggerSettings.KeyboardShortcutEnabled)
+        {
+            _settingsWindow?.SetClipboardHistoryTriggerSettings(
+                _clipboardHistoryTriggerSettings,
+                "Clipboard history hotkey disabled.",
+                isError: false);
+            return;
+        }
+
+        try
+        {
+            _clipboardHistoryHotKey = CreateStartedClipboardHistoryHotKey(_clipboardHistoryTriggerSettings);
+            _settingsWindow?.SetClipboardHistoryTriggerSettings(
+                _clipboardHistoryTriggerSettings,
+                $"Registered: {_clipboardHistoryTriggerSettings.ToDisplayText()}",
+                isError: false);
+        }
+        catch (Exception exception) when (exception is GlobalHotKeyRegistrationException or TimeoutException)
+        {
+            _settingsWindow?.SetClipboardHistoryTriggerSettings(
+                _clipboardHistoryTriggerSettings,
+                exception.Message,
+                isError: true);
+        }
+    }
+
+    private WindowsGlobalHotKey CreateStartedClipboardHistoryHotKey(ClipboardHistoryTriggerSettings settings)
+    {
+        var registration = new WindowsGlobalHotKey(ToOceanEyesShape(settings));
+        registration.Triggered += (x, y) =>
+            Dispatcher.UIThread.Post(() => OnClipboardHistoryTriggered());
+        try
+        {
+            registration.Start();
+            return registration;
+        }
+        catch
+        {
+            registration.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Clipboard-history hotkey fired. Toggle visibility — same semantics as
+    /// Spotlight: pressing again dismisses. Before showing, push a fresh
+    /// snapshot from the service into the window.
+    /// </summary>
+    private void OnClipboardHistoryTriggered()
+    {
+        if (_clipboardHistoryWindow?.IsVisible == true)
+        {
+            _clipboardHistoryWindow.Hide();
+            return;
+        }
+
+        RefreshClipboardHistoryWindow();
+        _clipboardHistoryWindow?.Show();
+    }
+
+    private void RefreshClipboardHistoryWindow()
+    {
+        if (_clipboardHistoryService is null || _clipboardHistoryWindow is null)
+        {
+            return;
+        }
+
+        bool maskSensitive = _clipboardHistorySettings.MaskSensitiveEnabled;
+        IReadOnlyList<ClipboardEntry> snapshot = _clipboardHistoryService.Snapshot;
+        _clipboardHistoryWindow.SetEntries(snapshot, maskSensitive);
+    }
+
+    /// <summary>
+    /// Applies clipboard-history trigger settings transactionally (same flow as
+    /// <see cref="OnSpotlightTriggerSettingsSaved"/>).
+    /// </summary>
+    private void OnClipboardHistoryTriggerSettingsSaved(ClipboardHistoryTriggerSettings requested)
+    {
+        if (_paths is null) return;
+        requested = requested.Normalize();
+
+        WindowsGlobalHotKey? candidate = null;
+        bool shortcutUnchanged =
+            requested.KeyboardShortcutEnabled &&
+            _clipboardHistoryHotKey is not null &&
+            requested.Modifiers == _clipboardHistoryHotKey.Settings.Modifiers &&
+            requested.Key.Equals(_clipboardHistoryHotKey.Settings.Key, StringComparison.Ordinal);
+
+        try
+        {
+            requested.Validate();
+            if (requested.KeyboardShortcutEnabled && !shortcutUnchanged)
+            {
+                candidate = CreateStartedClipboardHistoryHotKey(requested);
+            }
+
+            ClipboardHistoryTriggerStore.Save(requested, _paths.ClipboardHistoryTriggerFile);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or
+            GlobalHotKeyRegistrationException or
+            ProviderConfigurationException)
+        {
+            candidate?.Dispose();
+            _settingsWindow?.SetClipboardHistoryTriggerSettings(
+                _clipboardHistoryTriggerSettings,
+                exception.Message,
+                isError: true);
+            return;
+        }
+
+        WindowsGlobalHotKey? previous = _clipboardHistoryHotKey;
+        _clipboardHistoryHotKey = requested.KeyboardShortcutEnabled ? candidate : null;
+        previous?.Dispose();
+
+        _clipboardHistoryTriggerSettings = requested;
+        _settingsWindow?.SetClipboardHistoryTriggerSettings(
+            requested,
+            requested.KeyboardShortcutEnabled
+                ? $"Registered: {requested.ToDisplayText()}"
+                : "Clipboard history hotkey disabled.",
+            isError: false);
+    }
+
+    /// <summary>
+    /// Applies + persists the clipboard-history feature toggles and pushes them
+    /// into the live service (which re-applies eviction under the new cap).
+    /// </summary>
+    private void OnClipboardHistorySettingsSaved(ClipboardHistorySettings requested)
+    {
+        if (_paths is null) return;
+        requested = requested.Normalize();
+
+        try
+        {
+            requested.Validate();
+            ClipboardHistorySettingsStore.Save(requested, _paths.ClipboardHistorySettingsFile);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentOutOfRangeException or
+            ProviderConfigurationException)
+        {
+            _settingsWindow?.SetClipboardHistorySettings(_clipboardHistorySettings);
+            _settingsWindow?.SetClipboardHistorySettingsStatus(exception.Message, isError: true);
+            return;
+        }
+
+        _clipboardHistorySettings = requested;
+        _clipboardHistoryService?.UpdateSettings(requested);
+        _settingsWindow?.SetClipboardHistorySettings(requested);
+        _settingsWindow?.SetClipboardHistorySettingsStatus("已保存。", isError: false);
+    }
+
+    private void OnClipboardHistoryClearRequested()
+    {
+        _clipboardHistoryService?.ClearNonPinned();
+        RefreshClipboardHistoryWindow();
+    }
+
+    private void OnClipboardHistoryPasteRequested(Guid id)
+    {
+        if (_clipboardHistoryService is null) return;
+        ClipboardEntry? entry = _clipboardHistoryService.Snapshot.FirstOrDefault(e => e.Id == id);
+        if (entry is null) return;
+        _clipboardHistoryService.PasteAsync(entry);
+    }
+
+    private void OnClipboardHistoryPinToggled(Guid id)
+    {
+        _clipboardHistoryService?.TogglePin(id);
+        RefreshClipboardHistoryWindow();
+    }
+
+    private void OnClipboardHistoryDeleteRequested(Guid id)
+    {
+        _clipboardHistoryService?.Delete(id);
+        RefreshClipboardHistoryWindow();
+    }
+
+    private void OnClipboardHistorySettingsRequested()
+    {
+        _clipboardHistoryWindow?.Hide();
+        RefreshAndShowSettings();
     }
 
     /// <summary>
@@ -1241,11 +1512,16 @@ public partial class App : Application
         _settingsWindow?.PrepareForShutdown();
         _promptWindow?.PrepareForShutdown();
         _spotlightWindow?.PrepareForShutdown();
+        _clipboardHistoryWindow?.PrepareForShutdown();
         _regionOverlay?.PrepareForShutdown();
         _oceanEyesHotKey?.Dispose();
         _oceanEyesHotKey = null;
         _spotlightHotKey?.Dispose();
         _spotlightHotKey = null;
+        _clipboardHistoryHotKey?.Dispose();
+        _clipboardHistoryHotKey = null;
+        _clipboardHistoryService?.Dispose();
+        _clipboardHistoryService = null;
         _trayIcon?.Dispose();
         _trayIcon = null;
         _desktop?.TryShutdown();

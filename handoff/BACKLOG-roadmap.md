@@ -7,6 +7,7 @@
 > **更新 2026-07-20 第四十四批（调研）：R54 剪贴板历史调研完成，规格定稿（v1 纯文本 + Smart auto-group + 50 图上限 + JSON 持久化）。基线内存实测 123MB（含完整 Ocean Eyes 功能），加 R54 预估 +3MB（+2.4%），用户感知不到。详见 §R54。**
 > **更新 2026-07-20 第四十六批：R49 截图相册落地（含托盘入口 + 双击预览 + 右键菜单）。Ocean Eyes 工具栏按 G **或** 托盘右键 → "Open Screenshot Gallery" 弹出标准窗口，瀑布流浏览 `%USERPROFILE%\Pictures\Ocean Eyes\` 历史截图（newest-first）。**双击 = 大图预览**（半透明遮罩 lightbox，底部按钮：复制/删除/打开目录），**右键 = 上下文菜单**（复制/查看/删除/资源管理器中显示），Delete 键删除，Enter 键预览，Esc 两级关闭（先预览后窗口）。不退出 Ocean Eyes（同 P 模式）。代码 +660 行（含 9 个 loader 单测），326/326 测试通过，NativeAOT 0 警告，exe +134KB（超 100KB 预算 34KB，已记录例外——Avalonia ItemsControl/WrapPanel/DataTemplate/ContextMenu/Separator 的 AOT 元数据是固有成本）。详见 §R49。**
 > **更新 2026-07-21 第四十七批：R49 预览缩放/平移 8 轮调试终态。双击预览图支持：滚轮缩放（fit/4 ~ fit×8，光标锚定）+ 左键拖动 1:1 跟手平移 + Esc 关闭。最终架构：`Border ClipToBounds > Canvas > Image Stretch=None` + `Image.RenderTransform = TransformOperations.Builder.AppendMatrix(_matrix)` + 单一 `_matrix` 自管 scale+translate（PanAndZoom `ZoomBorder` 模式）。踩了 6 个 Avalonia 12.1 NativeAOT 独立坑（详见 §R49 教训）：ScrollViewer 接管滚轮 / TransformGroup children 顺序 / LayoutTransformControl 不支持 Translate / Image Stretch=None 仍被父约束 / MatrixTransform 在 AOT 静默失效 / `Matrix *` 运算符语义反转。最终 exe 27,925,504 字节（+139KB vs R48 基线）。诊断方法：临时 `_logger.Info` + 读 `%LOCALAPPDATA%\BYH\logs\BYH.log`，停止猜测让数据说话。**
+> **更新 2026-07-22 第五十一批：R54 剪贴板历史 v1 落地（文本 only + Smart auto-group + mask 敏感 + 粘贴可选）。**用户选"最小可用"档：Ctrl+Alt+V 弹出 Maccy 风格搜索窗（克隆 SpotlightWindow 的拼音三段搜索），后台监听 WM_CLIPBOARDUPDATE 自动归类（Ortu 风格规则引擎：链接/代码/JSON/命令/数字/联系人/敏感/文本），敏感条目 ●●●● 防肩窥（点击展开），Pinned 永不淘汰，排除 app 挡 1Password/KeePass。**调研最大发现**：`Win32Clipboard.cs`（815 行）早已有消息窗口 + SubscribeChanges + 序列号去重 + Backup/Restore + GetOwnerProcessId——spec 里"要写"的好几块其实早就有，**唯一要加的是 SetText（照 SetPng 抄）+ GetForegroundProcessName**。**用户拍板 4 档**：最小可用 v1（文本 only）/ 图片不做（留 v2）/ 敏感只 mask 不 DPAPI（留 v2）/ 粘贴都做（默认只写剪贴板，设置可开自动 Ctrl+V）。**架构**：4 阶段实施——① 底层纯函数（ClipboardEntry/ClipboardClassifier/ClipboardHistoryStore + 2 个 Store + ByhApplicationPaths path 属性）② ClipboardHistoryService（App 层，长存 Win32Clipboard + 序号去重 + 排除 app + LRU）③ UI（PinyinSearchHelper 提取共享 + ClipboardHistoryWindow 克隆 Spotlight + SettingsWindow 新 section）④ App.axaml.cs 接线（照 Spotlight 三件套对位加 hotkey+window+service+事件+dispose）。**踩坑**：① ClipboardHistorySettings 静态字段初始化顺序（DefaultExcludeProcessNames 必须在 Default 前，否则 null）；② EvictToMax 初版按列表位置淘汰是错的，改按 CapturedAt 时间戳淘汰最旧非 pinned；③ ClipboardHistoryService 不能放 Platform.Windows（不依赖 Infrastructure），改放 App 层（composition root，三项目都能见）。**安全性**：Win32Clipboard 唯一 window class name（pid+guid），长存实例与现有临时 using 块互不冲突；排除 app 是第一道防线（挡密码管理器），mask 是第二道（防肩窥），剪贴板内容不写日志。0 警告 0 错误，**390/390 测试通过**（+27 剪贴板单测：Classifier 8 组正反例 + Store LRU/Pin/dedup/round-trip + Settings + Trigger），NativeAOT 0 警告，exe **27,928,064 → 28,167,680（+234KB**，超 150KB 预算——R54 是独立模块不归 Ocean Eyes 管辖，且含完整新窗口+服务+设置页+拼音表共享，合理）。⚠️ **需真机验证**：复制各类文本→Ctrl+Alt+V→分组/mask/搜索/粘贴/Pin/删除/排除 app 全通。详见 §R54。**
 > **更新 2026-07-22 第五十批：R56 贴图浮窗缩放弹出/缩走动画落地（v4 终态，用户确认"好了"）。**用户要求把 T 贴图的动画从 R46 v13 侧面滑入改成"简单弹动效果"，选了"缩放弹出"，后又要求关闭也用同款。**开了 4 轮迭代**（v1 ScaleTransform+RenderTransformOrigin → v2 timer+矩阵但 Ease 当绝对值 → v2.1 Ease 插值 → v3 LayoutUpdated 启动 → v4 ApplyScale 瞬间到位），每轮都有用户真机反馈。**踩坑教训**：① RenderTransformOrigin 在 frameless `ExtendClientAreaToDecorationsHint` 窗口整体失效（§R46-22 v11 早证伪，我没读日志重蹈）；② 缓动 Ease 返回值是进度不是绝对值；③ **真根因**：`ApplyScale` 的 DPI 基准 ScaleTransform 挂着 R46 v7 的 120ms DoubleTransition，窗口打开时 DPI 校正慢慢缩，Bounds 实时变化（日志显示 822→470，比例=RenderScaling），pop 每帧拿错基准 = "侧面滑入"。**v4 解**：`ApplyScale(animate:false)` 打开时瞬间到位 + pop 从 LayoutUpdated 启动。诊断靠 §R47 "停止猜测读日志"——临时加 RedactedLogger 写 BYH.log，确认后已删。**架构**：单 DispatcherTimer（16ms Render 优先级）按 PopDirection 枚举驱动 In/Out，每帧烘中心缩放矩阵 `Matrix(scale,0,0,scale,(1-scale)·w/2,(1-scale)·h/2)` 用 TransformOperations 推（NativeAOT 可靠，不用 MatrixTransform）。In=BackEaseOut 350ms 过冲弹，Out=CubicEaseIn 200ms 缩走+淡出。**安全性**：RenderTransform 纯视觉，拖拽和 R52 磁吸（Position+ClientSize）不受影响；ApplyScale 默认仍 animate 平滑滚轮缩放。0 警告 0 错误，255/255 测试，NativeAOT 0 警告，exe +1.5KB（27,926,528→27,928,064）。详见 §R56。**
 > **更新 2026-07-22 第四十九批：R55 置顶截图四周立体阴影落地。Ocean Eyes 截图后按 **T** 贴图，浮动置顶窗口四周加大范围柔和投影（iShot/CleanShot X 风格的悬浮卡片感）。AXAML：把承载图片的 `Frame` Border 包进一个外层 Border，`BoxShadow="0 12 32 0 #66000000"`（offset y=12 / blur=32 / 黑 40%）+ `Margin="24"`（给透明 frameless 窗口留阴影渲染空间——Avalonia BoxShadow 只在元素边界内绘制且受 ClipToBounds 裁剪，窗口精确等于图片尺寸时阴影会被裁掉）。**吸附 gap 修正**（初版误判"吸附边界落在阴影边缘是预期行为"，用户实测发现图片离屏幕/彼此边缘永远隔 24px）：窗口变大后吸附改用 **IMAGE rect**（窗口 rect 四边内缩 24×DPI）运算，吸附后 image 左上角 `-margin` 转回 window 坐标；runtime `GetOtherPinnedBounds` 改报 peer image rect（新公开 `PinnedScreenshotWindow.ImagePhysicalRect`）；引导线画在 image 边缘。inset 纯函数 `MagneticSnapCalculator.InsetRect` 可单测。与 R51（已撤销）的区别：R51 的阴影"看不出"是因 CleanShot X 模型 padding 透明色被不透明原图遮盖；本次投影落在桌面背景上（图像四周全是桌面），一定可见。0 警告 0 错误（NU1900 漏洞库 EOF 是网络瞬时），255/255 测试通过（+5 个吸附 gap 回归），NativeAOT 0 警告，exe +1KB（27,925,504 → 27,926,528）。详见 §R55。**
 > **更新 2026-07-22 第四十八批（R53 落地 → 同日撤销）：R53 长截图（L 键）实施完成（ShareX 风格逐行字节重叠匹配 stitcher + 纯函数单测），经历了 4 轮 UX 模型迭代（标准窗口 → no-activate 浮动工具条 → 纯状态机自动截帧），踩了 3 个架构陷阱（① Ocean Eyes 全屏 RegionSelectOverlay 吞掉鼠标滚轮事件导致无法滚动 ② DismissOverlay→Cancel()→RegionCancelled→ResetForRedraw() 会清零 _oceanEyesActive + 禁用 hook 导致按键全失效 ③ WS_EX_NOACTIVATE 窗口无法接收键盘焦点）。用户最终判定"弹窗有啥用 / 不做了"。本批撤销。撤销的代码：LongScreenshotStitcher.cs / LongScreenshotWindow.axaml(.cs) / L 键分支 / mouse hook 的 WM_MOUSEWHEEL 捕获 / MouseMessageType.MouseWheel 枚举 / MouseEventData.WheelDelta 字段 / 8 个 stitcher 单测。**教训**：长截图这类"需要边操作目标边截屏"的功能，核心矛盾是 BYH 的全局 hook + 全屏 overlay 与"让用户自由操作目标窗口"根本冲突——overlay 不隐藏则吞事件，隐藏则走 Cancel 事件链杀掉 Ocean Eyes 会话。若未来重做，需先重构 overlay 使其支持"鼠标事件穿透"模式（Win32 WS_EX_TRANSPARENT 或 Avalonia IsHitTestVisible=False 的全屏透明层），而非 Hide/Show 切换。详见 §R53。**
@@ -526,7 +527,7 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
 
 ---
 
-### 📋 R54 — 剪贴板历史（clipboard history with smart auto-grouping）
+### ✅ R54 — 剪贴板历史（clipboard history with smart auto-grouping，v1 已落地 2026-07-22）
 
 > **独立于 Ocean Eyes 系列**：R44-R53 都是"Ocean Eyes 框选时触发的临时动作"，零常驻；R54 是**常驻型**功能（监听器 24/7 运行 + 历史缓存），是唯一会突破"常驻开销 ≈ 0"契约的 backlog 项。
 > 来源：用户 2026-07-20 提出"如果把剪贴板功能加进来，资源影响怎么样，剪贴板历史、分组等"——目前用 CopyQ（Qt C++，~80-100MB），希望 BYH 整合更轻量的替代。
@@ -665,6 +666,42 @@ BYH 在功能集远超 CopyQ 的情况下只多 23MB，加 R54 后**仍只比 Co
 4. **CopyQ 脚本依赖**：如果用户重度依赖 CopyQ 的 JS 脚本（如"复制后自动 POST 到某 API"），BYH 替代不了。99% 用户不用。
 5. **NativeAOT + `AddClipboardFormatListener`**：必须给隐藏的 message-only 窗口（或复用现有 tray window）注册监听，确保 WM_CLIPBOARDUPDATE 不被 Avalonia 主窗口吞掉。
 
+#### 实现（v1 落地，2026-07-22 第五十一批）
+
+> 用户拍板 4 档范围：**最小可用 v1（文本 only）+ 图片不做（留 v2）+ 敏感只 mask 不 DPAPI（留 v2）+ 粘贴都做（设置选）**。
+
+**调研最大发现（决定改动范围）**：`Win32Clipboard.cs`（815 行）**早已有**消息窗口 + `SubscribeChanges(Action)` + 序列号去重 + `Backup/Restore` + `GetOwnerProcessId`——spec 风险点 #5（"必须建 message-only window"）不存在，直接调 `SubscribeChanges`。**唯一要加的是 `SetText(string)`（照 `SetPng` 抄 GlobalAlloc/SetClipboardData）+ `GetForegroundProcessName()`（排除 app 读源进程名）**。多实例安全：每个 `Win32Clipboard` 唯一 window class name（`BYH.Clipboard.{pid}.{guid}`），长存监听实例与现有临时 `using` 块互不冲突。
+
+**新增文件（11 个）**：
+- `Core/Clipboard/ClipboardEntry.cs`（record：Id/Text/Source/CapturedAt/IsPinned/Group/IsSensitive）
+- `Core/Clipboard/ClipboardGroup.cs`（enum：Sensitive>Link>Json>Code>Shell>Contact>Number>Text 优先级）
+- `Core/Clipboard/ClipboardClassifier.cs`（**Smart auto-group 纯函数**，GeneratedRegex，Sensitive 最高优先级——密码不漏到别的组）
+- `Core/Clipboard/ClipboardHistorySettings.cs`（功能开关：Enabled/AutoPaste/MaxEntries/ExcludeProcessNames/MaskSensitive）
+- `Core/Input/ClipboardHistoryTriggerSettings.cs`（Ctrl+Alt+V 快捷键 record，照 SpotlightTriggerSettings 抄）
+- `Infrastructure/Configuration/ClipboardHistoryStore.cs`（JSON 持久化 + LRU 淘汰 + dedup + BuildPreview mask）
+- `Infrastructure/Configuration/ClipboardHistoryTriggerStore.cs`（快捷键 store，1:1 抄 SpotlightTriggerStore）
+- `Infrastructure/Configuration/ClipboardHistorySettingsStore.cs`（功能开关 store）
+- `App/ClipboardHistoryService.cs`（**核心控制器**：长存 Win32Clipboard + SubscribeChanges + 序号去重 + 排除 app 过滤 + Classifier 归类 + Store 持久化 + LRU；PasteAsync 写剪贴板/可选 Ctrl+V；放在 App 层因为跨 Platform.Windows+Infrastructure+Core 三项目）
+- `UI/Views/PinyinSearchHelper.cs`（**从 SpotlightWindow 提取共享**的拼音三段搜索：substring+initials+pinyin，SpotlightWindow 改成调 helper 零行为变化）
+- `UI/Views/ClipboardHistoryWindow.axaml(.cs)` + `ClipboardHistoryEntryRow.cs`（Maccy 风格弹窗，克隆 SpotlightWindow 结构，加 Pin/Delete/敏感 mask）
+
+**修改文件（4 个）**：
+- `Win32Clipboard.cs`：+`SetText`（照 SetPng）+`GetForegroundProcessName`（GetForegroundWindow+Process.GetProcessById）+`[DllImport] GetForegroundWindow`
+- `ByhApplicationPaths.cs`：+3 path 属性（trigger/settings/history 文件）
+- `App.axaml.cs`：照 Spotlight 三件套对位加 hotkey+window+service+事件+dispose（RegisterInitialClipboardHistoryHotKey/OnClipboardHistoryTriggered toggle/OnClipboardHistoryTriggerSettingsSaved 事务流/OnClipboardHistorySettingsSaved/OnClipboardHistoryClearRequested/Paste/Pin/Delete/Settings）
+- `SettingsWindow.axaml(.cs)`：+SettingsPage.ClipboardHistory 枚举+nav 按钮+section（快捷键卡+功能开关卡：启用/自动粘贴/mask/上限/排除 app/清空按钮）
+
+**Smart auto-group 规则（纯函数 ClipboardClassifier）**：Sensitive（api_key/secret/token/password/AKIA[16]/private_key/Bearer，**最高优先级**）> Link（http(s)/ftp/www）> Json（可 parse 的 {/[）> Code（function/class/import/namespace/def/public/private/return）> Shell（sudo/apt/git/chmod/cd/ls/mkdir/rm）> Contact（邮箱/11位手机）> Number（纯数字金额）> Text（兜底）。
+
+**安全性（三道防线）**：① 排除 app（GetForegroundProcessName 匹配 ExcludeProcessNames，默认 1password/keepass/authy/bitwarden/lastpass/enpass/dashlane，挡密码管理器）② 敏感组 mask（●●●● 点击展开，防肩窥）③ 剪贴板内容**不写日志**（RedactedLogger 只 redact 凭据 shape，不保护任意文本）。DPAPI 加密留 v2。
+
+**踩坑（实施中修复）**：
+1. **ClipboardHistorySettings 静态字段初始化顺序**：`DefaultExcludeProcessNames` 必须在 `Default` 之前声明，否则 `Default = new()` 时 `ExcludeProcessNames` 初始化器引用到 null（C# 静态字段按文本顺序初始化）。
+2. **EvictToMax 初版按列表位置淘汰是错的**：`AddAndEvict` 产出的列表是 `[newest, ...old_in_input_order]`，位置不保证时间序。改为按 `CapturedAt` 时间戳淘汰最旧的非 pinned（LINQ OrderBy + Take + HashSet drop）。
+3. **ClipboardHistoryService 不能放 Platform.Windows**：它依赖 Infrastructure（Store+RedactedLogger），而 Platform.Windows 不引用 Infrastructure。改放 **App 层**（composition root，三项目都能见），与 SelectionRuntime 同位置。
+
+**验收（v1）**：`dotnet build` **0 警告 0 错误**；`dotnet test` **390/390 通过**（+27 剪贴板单测：Classifier 8 组正反例 + Store LRU/Pin/dedup/round-trip/corrupt-file + Settings normalize/clamp/dedup + Trigger）；NativeAOT publish **0 trim/AOT 警告**；exe 27,928,064 → **28,167,680（+234KB**，超 150KB 预算——R54 是独立模块含完整新窗口+服务+设置页+拼音表共享，合理）。已部署。⚠️ **动画/分组/mask/搜索/粘贴/Pin/删除/排除 app 正确性需真机验证**。
+
 ---
 
 ### R44-R54 完成顺序建议
@@ -689,7 +726,7 @@ P1+（重功能，最后做）
   ❌ R53 长截图（2026-07-22 第四十八批落地 → 同日撤销，overlay 架构冲突；stitcher 算法可复用）
 
 独立模块（不依赖 Ocean Eyes）
-  R54 剪贴板历史（2026-07-20 调研完成，规格定稿，待开工；唯一常驻型功能）
+  ✅ R54 剪贴板历史（2026-07-22 第五十一批 v1 落地，文本 only + Smart auto-group + mask 敏感 + Ctrl+Alt+V 弹窗；图片/DPAPI/SQLite 留 v2）
 ```
 
 ### 每项落地的统一验收清单
@@ -706,7 +743,7 @@ P1+（重功能，最后做）
 
 ## 待办（非紧急，与 R44-R54 平行）
 
-- **R54 剪贴板历史**（2026-07-20 调研完成，规格定稿，待用户拍板开工）— 独立模块，详见上方 §R54。
+- **R54 剪贴板历史 v2**（v1 已于 2026-07-22 第五十一批落地，文本 only + Smart auto-group + mask 敏感 + Ctrl+Alt+V 弹窗）。v2 待办：图片条目（96×96 缩略图 + 原图存盘 + 50 张上限，复用 GalleryWindow 的 `Bitmap.DecodeToWidth`）/ 敏感组 DPAPI 加密（复用 `DpapiSecretStore`）/ SQLite + FTS5 全文搜索（+1.5MB 依赖）。详见 §R54。
 - **安装包 / 代码签名 / 开机启动**（v0.1 收尾）。
 - **P1.7 DPI/多显示器定位**（单屏 mouse+16px）。
 - **P1.8 应用语料库 95% 验收**。

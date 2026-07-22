@@ -49,6 +49,19 @@ public sealed record ByhApplicationPaths(string BaseDirectory)
     public string SpotlightTriggerFile =>
         Path.Combine(BaseDirectory, "spotlight-trigger.json");
 
+    /// <summary>R54 clipboard-history popup keyboard shortcut (default Ctrl+Alt+V).</summary>
+    public string ClipboardHistoryTriggerFile =>
+        Path.Combine(BaseDirectory, "clipboard-history-trigger.json");
+
+    /// <summary>R54 clipboard-history feature toggles (enabled / auto-paste /
+    /// max entries / exclude-app list / mask-sensitive).</summary>
+    public string ClipboardHistorySettingsFile =>
+        Path.Combine(BaseDirectory, "clipboard-history-settings.json");
+
+    /// <summary>R54 clipboard-history entries (text records, JSON).</summary>
+    public string ClipboardHistoryFile =>
+        Path.Combine(BaseDirectory, "clipboard-history.json");
+
     /// <summary>
     /// R37: user-configurable toolbar built-in shortcut keys for Prompt/Copy/
     /// Paste (defaults R/C/V). Missing file = built-in defaults.

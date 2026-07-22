@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using SelectionAssistant.Core.Capture;
+using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
 using SelectionAssistant.Core.Translation;
@@ -27,6 +28,7 @@ public partial class SettingsWindow : Window
         Functions,
         Vision,
         Launcher,
+        ClipboardHistory,
     }
 
     private bool _allowClose;
@@ -63,6 +65,9 @@ public partial class SettingsWindow : Window
         SpotlightShortcutKeyComboBox.ItemsSource = SpotlightTriggerSettings.SupportedKeys;
         // Default to "Space" for Spotlight (Ctrl+Alt+Space).
         SpotlightShortcutKeyComboBox.SelectedItem = SpotlightTriggerSettings.Default.Key;
+        ClipboardHistoryShortcutKeyComboBox.ItemsSource = ClipboardHistoryTriggerSettings.SupportedKeys;
+        // Default to "V" for clipboard history (Ctrl+Alt+V).
+        ClipboardHistoryShortcutKeyComboBox.SelectedItem = ClipboardHistoryTriggerSettings.Default.Key;
         FunctionsList.ItemsSource = _functionRows;
         LauncherList.ItemsSource = _launcherRows;
         Closing += (_, eventArgs) =>
@@ -88,12 +93,14 @@ public partial class SettingsWindow : Window
         FunctionsSection.IsVisible = page == SettingsPage.Functions;
         VisionSection.IsVisible = page == SettingsPage.Vision;
         LauncherSection.IsVisible = page == SettingsPage.Launcher;
+        ClipboardHistorySection.IsVisible = page == SettingsPage.ClipboardHistory;
 
         SetNavigationState(GeneralNavButton, page == SettingsPage.General);
         SetNavigationState(ProviderNavButton, page == SettingsPage.Provider);
         SetNavigationState(FunctionsNavButton, page == SettingsPage.Functions);
         SetNavigationState(VisionNavButton, page == SettingsPage.Vision);
         SetNavigationState(LauncherNavButton, page == SettingsPage.Launcher);
+        SetNavigationState(ClipboardHistoryNavButton, page == SettingsPage.ClipboardHistory);
 
         (PageTitleText.Text, PageSubtitleText.Text) = page switch
         {
@@ -107,6 +114,8 @@ public partial class SettingsWindow : Window
                 ("Vision", "OCR model, prompt, and UI Automation strategy."),
             SettingsPage.Launcher =>
                 ("Launcher", "Apps and web shortcuts."),
+            SettingsPage.ClipboardHistory =>
+                ("Clipboard", "Clipboard history hotkey, privacy, and retention."),
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
 
@@ -136,6 +145,9 @@ public partial class SettingsWindow : Window
 
     private void OnShowLauncherClick(object? sender, RoutedEventArgs e) =>
         ShowSettingsPage(SettingsPage.Launcher);
+
+    private void OnShowClipboardHistoryClick(object? sender, RoutedEventArgs e) =>
+        ShowSettingsPage(SettingsPage.ClipboardHistory);
 
     // ── Events wired to the runtime in App.axaml.cs ──
 
@@ -195,6 +207,15 @@ public partial class SettingsWindow : Window
 
     /// <summary>R32: request to apply and persist the Spotlight (launcher-search) hotkey.</summary>
     public event Action<SpotlightTriggerSettings>? SpotlightTriggerSettingsSaved;
+
+    /// <summary>R54: request to apply and persist the clipboard-history popup hotkey.</summary>
+    public event Action<ClipboardHistoryTriggerSettings>? ClipboardHistoryTriggerSettingsSaved;
+
+    /// <summary>R54: request to apply and persist the clipboard-history feature toggles.</summary>
+    public event Action<ClipboardHistorySettings>? ClipboardHistorySettingsSaved;
+
+    /// <summary>R54: request to clear all non-pinned clipboard history.</summary>
+    public event Action? ClipboardHistoryClearRequested;
 
     /// <summary>
     /// R37: request to apply and persist the toolbar built-in shortcut keys
@@ -295,6 +316,57 @@ public partial class SettingsWindow : Window
         }
         SpotlightShortcutStatusText.Text = statusMessage ?? $"Current: {settings.ToDisplayText()}";
         SetFeedbackTone(SpotlightShortcutStatusText, isError);
+    }
+
+    /// <summary>
+    /// R54: pushes the clipboard-history trigger settings into the shortcut card.
+    /// Mirror of <see cref="SetSpotlightTriggerSettings"/>.
+    /// </summary>
+    public void SetClipboardHistoryTriggerSettings(
+        ClipboardHistoryTriggerSettings settings,
+        string? statusMessage = null,
+        bool isError = false)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        settings = settings.Normalize();
+        if (ClipboardHistoryKeyboardShortcutToggle is null) return;
+
+        ClipboardHistoryKeyboardShortcutToggle.IsChecked = settings.KeyboardShortcutEnabled;
+        ClipboardHistoryCtrlModifierCheckBox.IsChecked = settings.Modifiers.HasFlag(GlobalHotKeyModifiers.Control);
+        ClipboardHistoryAltModifierCheckBox.IsChecked = settings.Modifiers.HasFlag(GlobalHotKeyModifiers.Alt);
+        ClipboardHistoryShiftModifierCheckBox.IsChecked = settings.Modifiers.HasFlag(GlobalHotKeyModifiers.Shift);
+        ClipboardHistoryWinModifierCheckBox.IsChecked = settings.Modifiers.HasFlag(GlobalHotKeyModifiers.Windows);
+        ClipboardHistoryShortcutKeyComboBox.SelectedItem = settings.Key;
+        if (ClipboardHistoryShortcutKeyComboBox.SelectedItem is null)
+        {
+            ClipboardHistoryShortcutKeyComboBox.SelectedItem = ClipboardHistoryTriggerSettings.Default.Key;
+        }
+        ClipboardHistoryShortcutStatusText.Text = statusMessage ?? $"Current: {settings.ToDisplayText()}";
+        SetFeedbackTone(ClipboardHistoryShortcutStatusText, isError);
+    }
+
+    /// <summary>
+    /// R54: pushes the clipboard-history feature toggles into the settings card.
+    /// </summary>
+    public void SetClipboardHistorySettings(ClipboardHistorySettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        settings = settings.Normalize();
+        if (ClipboardHistoryEnabledToggle is null) return;
+
+        ClipboardHistoryEnabledToggle.IsChecked = settings.Enabled;
+        ClipboardHistoryAutoPasteToggle.IsChecked = settings.AutoPasteEnabled;
+        ClipboardHistoryMaskSensitiveToggle.IsChecked = settings.MaskSensitiveEnabled;
+        ClipboardHistoryMaxEntriesInput.Text = settings.MaxEntries.ToString();
+        ClipboardHistoryExcludeAppsInput.Text = string.Join(", ", settings.ExcludeProcessNames);
+    }
+
+    /// <summary>R54: sets the feature-settings status line (save result).</summary>
+    public void SetClipboardHistorySettingsStatus(string message, bool isError)
+    {
+        if (ClipboardHistorySettingsStatusText is null) return;
+        ClipboardHistorySettingsStatusText.Text = message;
+        SetFeedbackTone(ClipboardHistorySettingsStatusText, isError);
     }
 
     private static void SetFeedbackTone(TextBlock target, bool isError)
@@ -728,6 +800,83 @@ public partial class SettingsWindow : Window
             SetFeedbackTone(SpotlightShortcutStatusText, isError: true);
         }
     }
+
+    // ── R54: Clipboard history trigger + feature settings ──
+
+    /// <summary>
+    /// Reads the clipboard-history shortcut card, validates, and raises
+    /// <see cref="ClipboardHistoryTriggerSettingsSaved"/>. Mirrors
+    /// <see cref="OnSaveSpotlightTriggerClick"/>.
+    /// </summary>
+    private void OnSaveClipboardHistoryTriggerClick(object? sender, RoutedEventArgs e)
+    {
+        GlobalHotKeyModifiers modifiers = GlobalHotKeyModifiers.None;
+        if (ClipboardHistoryCtrlModifierCheckBox.IsChecked == true) modifiers |= GlobalHotKeyModifiers.Control;
+        if (ClipboardHistoryAltModifierCheckBox.IsChecked == true) modifiers |= GlobalHotKeyModifiers.Alt;
+        if (ClipboardHistoryShiftModifierCheckBox.IsChecked == true) modifiers |= GlobalHotKeyModifiers.Shift;
+        if (ClipboardHistoryWinModifierCheckBox.IsChecked == true) modifiers |= GlobalHotKeyModifiers.Windows;
+
+        var settings = new ClipboardHistoryTriggerSettings
+        {
+            KeyboardShortcutEnabled = ClipboardHistoryKeyboardShortcutToggle.IsChecked == true,
+            Modifiers = modifiers,
+            Key = ClipboardHistoryShortcutKeyComboBox.SelectedItem as string
+                ?? ClipboardHistoryTriggerSettings.Default.Key,
+        }.Normalize();
+
+        try
+        {
+            settings.Validate();
+            ClipboardHistoryTriggerSettingsSaved?.Invoke(settings);
+        }
+        catch (ArgumentException exception)
+        {
+            ClipboardHistoryShortcutStatusText.Text = exception.Message;
+            SetFeedbackTone(ClipboardHistoryShortcutStatusText, isError: true);
+        }
+    }
+
+    /// <summary>
+    /// Reads the clipboard-history feature toggles, validates, and raises
+    /// <see cref="ClipboardHistorySettingsSaved"/>.
+    /// </summary>
+    private void OnSaveClipboardHistorySettingsClick(object? sender, RoutedEventArgs e)
+    {
+        int maxEntries = int.TryParse(ClipboardHistoryMaxEntriesInput.Text, out int parsed)
+            ? parsed
+            : ClipboardHistorySettings.Default.MaxEntries;
+
+        var exclude = (ClipboardHistoryExcludeAppsInput.Text ?? string.Empty)
+            .Split(',', '\n', ';')
+            .Select(s => s.Trim())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .ToList();
+
+        var settings = new ClipboardHistorySettings
+        {
+            Enabled = ClipboardHistoryEnabledToggle.IsChecked == true,
+            AutoPasteEnabled = ClipboardHistoryAutoPasteToggle.IsChecked == true,
+            MaskSensitiveEnabled = ClipboardHistoryMaskSensitiveToggle.IsChecked == true,
+            MaxEntries = maxEntries,
+            ExcludeProcessNames = exclude,
+        }.Normalize();
+
+        try
+        {
+            settings.Validate();
+            ClipboardHistorySettingsSaved?.Invoke(settings);
+            ClipboardHistorySettingsStatusText.Text = "已保存。";
+            SetFeedbackTone(ClipboardHistorySettingsStatusText, isError: false);
+        }
+        catch (ArgumentOutOfRangeException exception)
+        {
+            ClipboardHistorySettingsStatusText.Text = exception.Message;
+            SetFeedbackTone(ClipboardHistorySettingsStatusText, isError: true);
+        }
+    }
+
+    private void OnClearClipboardHistoryClick(object? sender, RoutedEventArgs e) =>
+        ClipboardHistoryClearRequested?.Invoke();
 
     // ── R37: Toolbar built-in shortcut keys (Prompt/Copy/Paste) ──
 

@@ -117,6 +117,17 @@
               <TextBlock Grid.Column="1" Text="Launcher" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
             </Grid>
           </Button>
+
+          <Button x:Name="ClipboardHistoryNavButton"
+                  Classes="SettingsNav"
+                  Padding="12,10"
+                  Click="OnShowClipboardHistoryClick">
+            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
+              <Path Classes="NavIcon"
+                    Data="M4,2 L20,2 A2,2 0 0 1 22,4 L22,16 A2,2 0 0 1 20,18 L8,18 L4,22 Z" />
+              <TextBlock Grid.Column="1" Text="Clipboard" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
         </StackPanel>
 
           </Grid>
@@ -811,6 +822,121 @@
                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
                   <TextBlock x:Name="SpotlightShortcutStatusText"
                              Text="Current: Ctrl+Alt+Space"
+                             FontSize="11" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- R54 Clipboard history section -->
+        <StackPanel x:Name="ClipboardHistorySection" IsVisible="False" Spacing="16">
+
+          <!-- Clipboard history hotkey card -->
+          <Border Classes="PearlCard" Padding="18">
+            <StackPanel Spacing="14">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="Clipboard History Hotkey"
+                             FontSize="15"
+                             FontWeight="SemiBold" />
+                </StackPanel>
+                <ToggleSwitch x:Name="ClipboardHistoryKeyboardShortcutToggle"
+                              Grid.Column="1"
+                              OnContent="On"
+                              OffContent="Off"
+                              IsChecked="True"
+                              VerticalAlignment="Center" />
+              </Grid>
+
+              <Border Classes="PearlInset" Padding="14">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="Hotkey"
+                             Classes="Secondary"
+                             FontSize="11"
+                             FontWeight="SemiBold" />
+                  <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,120" ColumnSpacing="10">
+                    <CheckBox Grid.Column="0" x:Name="ClipboardHistoryCtrlModifierCheckBox" Content="Ctrl" IsChecked="True" />
+                    <CheckBox Grid.Column="1" x:Name="ClipboardHistoryAltModifierCheckBox" Content="Alt" IsChecked="True" />
+                    <CheckBox Grid.Column="2" x:Name="ClipboardHistoryShiftModifierCheckBox" Content="Shift" />
+                    <CheckBox Grid.Column="3" x:Name="ClipboardHistoryWinModifierCheckBox" Content="Win" />
+                    <ComboBox Grid.Column="5" x:Name="ClipboardHistoryShortcutKeyComboBox" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <Button Content="Save Hotkey"
+                        Classes="Primary"
+                        Click="OnSaveClipboardHistoryTriggerClick" />
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock x:Name="ClipboardHistoryShortcutStatusText"
+                             Text="Current: Ctrl+Alt+V"
+                             FontSize="11" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <!-- Clipboard history feature toggles card -->
+          <Border Classes="PearlCard" Padding="18">
+            <StackPanel Spacing="14">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Behavior &amp; Privacy"
+                           FontSize="15"
+                           FontWeight="SemiBold" />
+              </StackPanel>
+
+              <Border Classes="PearlInset" Padding="14">
+                <StackPanel Spacing="12">
+                  <ToggleSwitch x:Name="ClipboardHistoryEnabledToggle"
+                                OnContent="Recording"
+                                OffContent="Paused"
+                                IsChecked="True" />
+                  <ToggleSwitch x:Name="ClipboardHistoryAutoPasteToggle"
+                                OnContent="Auto-paste"
+                                OffContent="Copy only"
+                                IsChecked="False" />
+                  <ToggleSwitch x:Name="ClipboardHistoryMaskSensitiveToggle"
+                                OnContent="Mask sensitive"
+                                OffContent="Show plain"
+                                IsChecked="True" />
+
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <TextBlock Text="Max entries"
+                               Classes="Secondary"
+                               FontSize="11"
+                               VerticalAlignment="Center" />
+                    <TextBox Grid.Column="1"
+                             x:Name="ClipboardHistoryMaxEntriesInput"
+                             Text="1000"
+                             FontSize="12" />
+                  </Grid>
+
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="Exclude apps (comma-separated process names)"
+                               Classes="Secondary"
+                               FontSize="11" />
+                    <TextBox x:Name="ClipboardHistoryExcludeAppsInput"
+                             Text="1password, keepass, authy, bitwarden"
+                             FontSize="12"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <Grid ColumnDefinitions="Auto,Auto,*" ColumnSpacing="12">
+                <Button Content="Save Settings"
+                        Classes="Primary"
+                        Click="OnSaveClipboardHistorySettingsClick" />
+                <Button Grid.Column="1"
+                        Content="Clear History"
+                        Classes="Ghost"
+                        Click="OnClearClipboardHistoryClick" />
+                <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock x:Name="ClipboardHistorySettingsStatusText"
+                             Text=""
                              FontSize="11" />
                 </StackPanel>
               </Grid>

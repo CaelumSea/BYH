@@ -263,6 +263,99 @@ public sealed unsafe class Win32Clipboard : IClipboardAccess, IDisposable
         }
     }
 
+    /// <summary>
+    /// Writes <paramref name="text"/> to the clipboard as CF_UNICODETEXT,
+    /// replacing the current contents. Mirrors <see cref="SetPng"/>: opens with
+    /// bounded retry, empties, allocates a movable HGLOBAL with a NUL-terminated
+    /// UTF-16 copy, and hands ownership to the system on success. Returns false
+    /// on empty input, size cap, or open/set failure. Used by R54 to paste a
+    /// history entry back onto the clipboard.
+    /// </summary>
+    public bool SetText(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+        if (text.Length == 0)
+        {
+            return false;
+        }
+
+        // Enforce the same byte budget as GetText (MaxTextBytes covers UTF-16).
+        int byteCount = checked((text.Length + 1) * 2);
+        if (byteCount > MaxTextBytes)
+        {
+            return false;
+        }
+
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+
+        byte[] bytes = Encoding.Unicode.GetBytes(text + '\0');
+        nint memory = AllocateGlobal(bytes);
+        try
+        {
+            return TryWithOpenClipboard(
+                () =>
+                {
+                    if (!EmptyClipboard())
+                    {
+                        return false;
+                    }
+                    return SetClipboardData(CfUnicodeText, memory) != 0;
+                },
+                out bool placed) && placed;
+        }
+        finally
+        {
+            if (memory != 0)
+            {
+                if (IsClipboardFormatAvailable(CfUnicodeText))
+                {
+                    // Ownership transferred — nothing to free.
+                }
+                else
+                {
+                    GlobalFree(memory);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns the process name (lowercased, no extension, e.g. <c>chrome</c>)
+    /// of the current foreground window, or null when it cannot be determined.
+    /// Used by R54 to implement the exclude-apps privacy filter — the foreground
+    /// window at clipboard-change time is the source of the copied content.
+    /// </summary>
+    public string? GetForegroundProcessName()
+    {
+        nint foreground = GetForegroundWindow();
+        if (foreground == 0)
+        {
+            return null;
+        }
+
+        GetWindowThreadProcessId(foreground, out uint processId);
+        if (processId == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            using var process = Process.GetProcessById((int)processId);
+            return process.ProcessName?.ToLowerInvariant();
+        }
+        catch (ArgumentException)
+        {
+            // Process already exited.
+            return null;
+        }
+        catch (Win32Exception)
+        {
+            // Access denied (e.g. elevated process).
+            return null;
+        }
+    }
+
     public void SubscribeChanges(Action onChanged)
     {
         ArgumentNullException.ThrowIfNull(onChanged);
@@ -708,6 +801,9 @@ public sealed unsafe class Win32Clipboard : IClipboardAccess, IDisposable
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(nint window, out uint processId);
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
