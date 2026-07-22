@@ -48,6 +48,21 @@ public static class MagneticSnapCalculator
     public const double SnapThreshold = 20.0;
 
     /// <summary>
+    /// R55: insets a physical-pixel rect on all four sides by <paramref name="margin"/>.
+    /// Used by the pinned-screenshot window to derive the IMAGE rect (what snap
+    /// geometry should run against) from the WINDOW rect — the window is larger
+    /// than the image by a transparent shadow margin on every side. Pure
+    /// function; the window layer calls this so the inset math is unit-testable.
+    /// <paramref name="margin"/> is truncated to int per edge.
+    /// </summary>
+    public static PhysicalRect InsetRect(PhysicalRect rect, double margin)
+    {
+        int m = (int)margin;
+        return new PhysicalRect(rect.Left + m, rect.Top + m,
+                                rect.Right - m, rect.Bottom - m);
+    }
+
+    /// <summary>
     /// Compute the snapped position for a moving window.
     /// </summary>
     /// <param name="moving">The moving window's current physical rect (target position before snap).</param>

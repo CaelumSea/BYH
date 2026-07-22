@@ -90,6 +90,14 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
     private const int VK_SHIFT = 0x10;
     private static readonly Color SnapGuideColor = Color.FromArgb(0x99, 0xD9, 0xC2, 0x8A); // #FFD9C28A @ alpha=0.6
 
+    // R55: transparent margin (DIP) around the image inside the window, left
+    // blank so the large drop shadow (BoxShadow on the outer Border in AXAML)
+    // has room to render. Snap/drag geometry must operate on the IMAGE rect,
+    // not the (now larger) window rect, otherwise the image sits this many
+    // physical pixels away from every screen/peer edge it snaps to. Keep this
+    // in sync with the Margin on the outer shadow Border in the .axaml.
+    private const double ShadowMarginDip = 24.0;
+
     [DllImport("user32.dll")]
     private static extern short GetKeyState(int nVirtKey);
 
@@ -359,11 +367,13 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
         }
 
         // R52: compute target position then apply magnetic snap.
+        // R55: snap the IMAGE rect (window rect inset by the shadow margin), not
+        // the window rect, so the image edges align to screen/peer edges.
         int targetX = _startWindowPos.X + dx;
         int targetY = _startWindowPos.Y + dy;
         int w = (int)(ClientSize.Width * RenderScaling);
         int h = (int)(ClientSize.Height * RenderScaling);
-        var targetRect = new PhysicalRect(targetX, targetY, targetX + w, targetY + h);
+        var targetRect = ImageRectForWindow(targetX, targetY, w, h);
 
         bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
         var (snapped, hints) = MagneticSnapCalculator.ComputeSnap(
@@ -372,7 +382,9 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
             GetOtherPinnedBounds?.Invoke() ?? Array.Empty<PhysicalRect>(),
             shift);
 
-        Position = new PixelPoint(snapped.X, snapped.Y);
+        // R55: snapped is the IMAGE top-left; convert back to window top-left.
+        int mx = (int)PhysicalShadowMargin;
+        Position = new PixelPoint(snapped.X - mx, snapped.Y - mx);
         UpdateSnapGuideCanvas(hints);
     }
 
@@ -393,19 +405,22 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
 
         // R52: apply final snap on release (in case the release position is
         // within threshold but the last OnPointerMoved didn't snap).
+        // R55: snap the IMAGE rect, then convert the snapped image top-left back
+        // to window top-left (see OnPointerMoved).
         if (_dragCommitted)
         {
             var pos = Position;
             int w = (int)(ClientSize.Width * RenderScaling);
             int h = (int)(ClientSize.Height * RenderScaling);
-            var rect = new PhysicalRect(pos.X, pos.Y, pos.X + w, pos.Y + h);
+            var rect = ImageRectForWindow(pos.X, pos.Y, w, h);
             bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
             var (snapped, _) = MagneticSnapCalculator.ComputeSnap(
                 rect,
                 GetWorkAreas(),
                 GetOtherPinnedBounds?.Invoke() ?? Array.Empty<PhysicalRect>(),
                 shift);
-            Position = new PixelPoint(snapped.X, snapped.Y);
+            int mx = (int)PhysicalShadowMargin;
+            Position = new PixelPoint(snapped.X - mx, snapped.Y - mx);
         }
 
         // R52: clear snap guide lines on release.
@@ -488,6 +503,48 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
     // ── R52: magnetic snap helpers ────────────────────────────────────────
 
     /// <summary>
+    /// R55: physical-pixel size of the transparent shadow margin on one side
+    /// (= <see cref="ShadowMarginDip"/> × RenderScaling). The shadow Border in
+    /// the .axaml adds this much blank space on all four sides of the image, so
+    /// the window is <c>image + 2×margin</c> in each dimension.
+    /// </summary>
+    private double PhysicalShadowMargin => ShadowMarginDip * RenderScaling;
+
+    /// <summary>
+    /// R55: returns the physical-pixel rect of the IMAGE (not the window) when
+    /// the window's top-left is at <paramref name="windowX"/>,<paramref name="windowY"/>.
+    /// Snap math must run against this rect so the image edges — not the blank
+    /// shadow margin — align to screen/peer edges. <paramref name="windowW"/>/
+    /// <paramref name="windowH"/> are the window's physical size.
+    /// </summary>
+    private PhysicalRect ImageRectForWindow(int windowX, int windowY, int windowW, int windowH)
+    {
+        // Delegate to the pure, unit-tested MagneticSnapCalculator.InsetRect so
+        // the inset math lives in one place. margin is the physical shadow margin.
+        var windowRect = new PhysicalRect(windowX, windowY, windowX + windowW, windowY + windowH);
+        return MagneticSnapCalculator.InsetRect(windowRect, PhysicalShadowMargin);
+    }
+
+    /// <summary>
+    /// R55: the current physical-pixel rect of the IMAGE (window rect inset by
+    /// the shadow margin on all four sides). Exposed publicly so the runtime's
+    /// <c>GetOtherPinnedBounds</c> callback can report peer image rects — peer
+    /// snapping must align image-to-image edges, not window-to-window, otherwise
+    /// two pinned windows sit a full shadow-margin apart with a visible gap.
+    /// </summary>
+    public PhysicalRect ImagePhysicalRect
+    {
+        get
+        {
+            var pos = Position;
+            double scaling = RenderScaling > 0 ? RenderScaling : 1.0;
+            int w = (int)(ClientSize.Width * scaling);
+            int h = (int)(ClientSize.Height * scaling);
+            return ImageRectForWindow(pos.X, pos.Y, w, h);
+        }
+    }
+
+    /// <summary>
     /// Returns the physical-pixel work areas for all screens.
     /// Uses Avalonia's <c>Screens.AllScreens</c> and scales
     /// <c>WorkingArea</c> by <c>RenderScaling</c> to get physical pixels.
@@ -517,7 +574,9 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
     /// <summary>
     /// Draws gold guide lines on <see cref="SnapGuideCanvas"/> for the given
     /// snap hints. Each hint produces a line at the snapped edge, extending
-    /// across the window. The canvas is made visible when there are lines.
+    /// along the IMAGE edge (not the outer shadow-margin edge), so the guide
+    /// visually marks where the image itself aligned. The canvas is made
+    /// visible when there are lines.
     /// </summary>
     private void UpdateSnapGuideCanvas(IReadOnlyList<SnapHint> hints)
     {
@@ -529,6 +588,9 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
             return;
         }
 
+        // R55: the image sits inside a ShadowMarginDip border on every side.
+        // Guide lines run along the image's own edges (m..w-m, m..h-m).
+        double m = ShadowMarginDip;
         double w = ClientSize.Width;
         double h = ClientSize.Height;
         var brush = new SolidColorBrush(SnapGuideColor);
@@ -537,34 +599,34 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
         {
             if (hint.Axis == SnapAxis.X)
             {
-                // Vertical guide line at the snapped edge.
+                // Vertical guide line at the snapped image edge.
                 double x = hint.Target switch
                 {
-                    SnapTarget.ScreenLeft or SnapTarget.WindowRight => 0,
-                    SnapTarget.ScreenRight or SnapTarget.WindowLeft => w,
-                    _ => 0,
+                    SnapTarget.ScreenLeft or SnapTarget.WindowRight => m,
+                    SnapTarget.ScreenRight or SnapTarget.WindowLeft => w - m,
+                    _ => m,
                 };
                 SnapGuideCanvas.Children.Add(new Line
                 {
-                    StartPoint = new Point(x, 0),
-                    EndPoint = new Point(x, h),
+                    StartPoint = new Point(x, m),
+                    EndPoint = new Point(x, h - m),
                     Stroke = brush,
                     StrokeThickness = 2,
                 });
             }
             else
             {
-                // Horizontal guide line at the snapped edge.
+                // Horizontal guide line at the snapped image edge.
                 double y = hint.Target switch
                 {
-                    SnapTarget.ScreenTop or SnapTarget.WindowBottom => 0,
-                    SnapTarget.ScreenBottom or SnapTarget.WindowTop => h,
-                    _ => 0,
+                    SnapTarget.ScreenTop or SnapTarget.WindowBottom => m,
+                    SnapTarget.ScreenBottom or SnapTarget.WindowTop => h - m,
+                    _ => m,
                 };
                 SnapGuideCanvas.Children.Add(new Line
                 {
-                    StartPoint = new Point(0, y),
-                    EndPoint = new Point(w, y),
+                    StartPoint = new Point(m, y),
+                    EndPoint = new Point(w - m, y),
                     Stroke = brush,
                     StrokeThickness = 2,
                 });

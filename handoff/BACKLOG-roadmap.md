@@ -7,6 +7,7 @@
 > **更新 2026-07-20 第四十四批（调研）：R54 剪贴板历史调研完成，规格定稿（v1 纯文本 + Smart auto-group + 50 图上限 + JSON 持久化）。基线内存实测 123MB（含完整 Ocean Eyes 功能），加 R54 预估 +3MB（+2.4%），用户感知不到。详见 §R54。**
 > **更新 2026-07-20 第四十六批：R49 截图相册落地（含托盘入口 + 双击预览 + 右键菜单）。Ocean Eyes 工具栏按 G **或** 托盘右键 → "Open Screenshot Gallery" 弹出标准窗口，瀑布流浏览 `%USERPROFILE%\Pictures\Ocean Eyes\` 历史截图（newest-first）。**双击 = 大图预览**（半透明遮罩 lightbox，底部按钮：复制/删除/打开目录），**右键 = 上下文菜单**（复制/查看/删除/资源管理器中显示），Delete 键删除，Enter 键预览，Esc 两级关闭（先预览后窗口）。不退出 Ocean Eyes（同 P 模式）。代码 +660 行（含 9 个 loader 单测），326/326 测试通过，NativeAOT 0 警告，exe +134KB（超 100KB 预算 34KB，已记录例外——Avalonia ItemsControl/WrapPanel/DataTemplate/ContextMenu/Separator 的 AOT 元数据是固有成本）。详见 §R49。**
 > **更新 2026-07-21 第四十七批：R49 预览缩放/平移 8 轮调试终态。双击预览图支持：滚轮缩放（fit/4 ~ fit×8，光标锚定）+ 左键拖动 1:1 跟手平移 + Esc 关闭。最终架构：`Border ClipToBounds > Canvas > Image Stretch=None` + `Image.RenderTransform = TransformOperations.Builder.AppendMatrix(_matrix)` + 单一 `_matrix` 自管 scale+translate（PanAndZoom `ZoomBorder` 模式）。踩了 6 个 Avalonia 12.1 NativeAOT 独立坑（详见 §R49 教训）：ScrollViewer 接管滚轮 / TransformGroup children 顺序 / LayoutTransformControl 不支持 Translate / Image Stretch=None 仍被父约束 / MatrixTransform 在 AOT 静默失效 / `Matrix *` 运算符语义反转。最终 exe 27,925,504 字节（+139KB vs R48 基线）。诊断方法：临时 `_logger.Info` + 读 `%LOCALAPPDATA%\BYH\logs\BYH.log`，停止猜测让数据说话。**
+> **更新 2026-07-22 第四十九批：R55 置顶截图四周立体阴影落地。Ocean Eyes 截图后按 **T** 贴图，浮动置顶窗口四周加大范围柔和投影（iShot/CleanShot X 风格的悬浮卡片感）。AXAML：把承载图片的 `Frame` Border 包进一个外层 Border，`BoxShadow="0 12 32 0 #66000000"`（offset y=12 / blur=32 / 黑 40%）+ `Margin="24"`（给透明 frameless 窗口留阴影渲染空间——Avalonia BoxShadow 只在元素边界内绘制且受 ClipToBounds 裁剪，窗口精确等于图片尺寸时阴影会被裁掉）。**吸附 gap 修正**（初版误判"吸附边界落在阴影边缘是预期行为"，用户实测发现图片离屏幕/彼此边缘永远隔 24px）：窗口变大后吸附改用 **IMAGE rect**（窗口 rect 四边内缩 24×DPI）运算，吸附后 image 左上角 `-margin` 转回 window 坐标；runtime `GetOtherPinnedBounds` 改报 peer image rect（新公开 `PinnedScreenshotWindow.ImagePhysicalRect`）；引导线画在 image 边缘。inset 纯函数 `MagneticSnapCalculator.InsetRect` 可单测。与 R51（已撤销）的区别：R51 的阴影"看不出"是因 CleanShot X 模型 padding 透明色被不透明原图遮盖；本次投影落在桌面背景上（图像四周全是桌面），一定可见。0 警告 0 错误（NU1900 漏洞库 EOF 是网络瞬时），255/255 测试通过（+5 个吸附 gap 回归），NativeAOT 0 警告，exe +1KB（27,925,504 → 27,926,528）。详见 §R55。**
 > **更新 2026-07-22 第四十八批（R53 落地 → 同日撤销）：R53 长截图（L 键）实施完成（ShareX 风格逐行字节重叠匹配 stitcher + 纯函数单测），经历了 4 轮 UX 模型迭代（标准窗口 → no-activate 浮动工具条 → 纯状态机自动截帧），踩了 3 个架构陷阱（① Ocean Eyes 全屏 RegionSelectOverlay 吞掉鼠标滚轮事件导致无法滚动 ② DismissOverlay→Cancel()→RegionCancelled→ResetForRedraw() 会清零 _oceanEyesActive + 禁用 hook 导致按键全失效 ③ WS_EX_NOACTIVATE 窗口无法接收键盘焦点）。用户最终判定"弹窗有啥用 / 不做了"。本批撤销。撤销的代码：LongScreenshotStitcher.cs / LongScreenshotWindow.axaml(.cs) / L 键分支 / mouse hook 的 WM_MOUSEWHEEL 捕获 / MouseMessageType.MouseWheel 枚举 / MouseEventData.WheelDelta 字段 / 8 个 stitcher 单测。**教训**：长截图这类"需要边操作目标边截屏"的功能，核心矛盾是 BYH 的全局 hook + 全屏 overlay 与"让用户自由操作目标窗口"根本冲突——overlay 不隐藏则吞事件，隐藏则走 Cancel 事件链杀掉 Ocean Eyes 会话。若未来重做，需先重构 overlay 使其支持"鼠标事件穿透"模式（Win32 WS_EX_TRANSPARENT 或 Avalonia IsHitTestVisible=False 的全屏透明层），而非 Hide/Show 切换。详见 §R53。**
 > **更新 2026-07-21 第四十五批（R51 落地 → 同日撤销）：R51 截图美化（B 键）实施完成（纯软件 BGRA 合成，CleanShot X 风格的浮动截图 + 圆角 + 投射阴影），+24.5KB / 0 新依赖 / 340 测试全过。用户真机测试后判定"美化了啥 / 不搞了"——根因是 CleanShot X 模型对深色内容截图美化效果不明显（背景色被不透明原图完全遮盖，阴影 RGB 与深色内容相近不可辨）。本批同日 revert（commit 跟进）。撤销的代码：ScreenshotBeautifier.cs / BeautifyOceanEyesScreenshot / B 键分支 / BurnAnnotationsOntoBgra 拆分 / OceanEyesCaptureSettings +7 字段 / OceanEyesCaptureStore 读写扩展 / 22 个测试。教训：美化模型要默认走 iShot 风格（padding 也是香槟底色 + 图像居中 + 卡片整体阴影），而非 CleanShot X 浮动模型（padding 透明）。如未来重做 R51，参考 iShot 模型，并默认半径/padding 更大（≥16px / ≥48px）让效果在任何内容上都明显。**
 
@@ -445,6 +446,36 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
 
 ---
 
+### ✅ R55 — 置顶截图四周立体阴影（large drop shadow on pinned window）
+
+- **触发**：Ocean Eyes 截图后按 **T** 贴图 → 浮动置顶窗口四周加大范围柔和投影，看起来像悬浮在桌面上方的卡片（iShot/CleanShot X 风格）。
+- **v1 范围（用户 2026-07-22 选定"大投影立体感"）**：
+  - ✅ **AXAML 样式变更**：把承载图片的 `Frame` Border 包进一个新的外层 Border，外层 `BoxShadow="0 12 32 0 #66000000"`（offset y=12、blur=32、spread=0、黑 alpha=40%）+ `Margin="24"`。原 `Frame`（CornerRadius=8, ClipToBounds=True）嵌入其内不变。
+  - ✅ **吸附计算修正**（初版误判"吸附边界落在阴影边缘是预期行为"，用户实测发现图片离屏幕/彼此边缘永远隔 24px gap）：拖拽/吸附改为对 **IMAGE rect**（窗口 rect 四边各内缩 `ShadowMarginDip×RenderScaling`）运算，再把吸附后的 image 左上角转回 window 左上角。runtime 的 `GetOtherPinnedBounds` 改报 peer 的 image rect（新公开属性 `PinnedScreenshotWindow.ImagePhysicalRect`）。
+- **核心技术约束（Avalonia 12.1）**：
+  - `BoxShadow` 只在元素边界**内**绘制，受 `ClipToBounds` 裁剪。frameless 透明窗口 `SizeToContent=WidthAndHeight` 时窗口精确等于图片尺寸，图片紧贴窗口边缘 → 阴影无渲染空间会被裁掉。
+  - **阴影渲染解法**：外层 Border 加 `Margin="24"` 让窗口在四周各扩大 24px（透明区），阴影画在这个透明区内。窗口因 `SizeToContent` 自动扩大到 `图片 + 48px`。外层 Border **不设 ClipToBounds**（默认 false），否则阴影被裁。
+  - **吸附 gap 解法**：窗口变大后吸附若仍用 `ClientSize`（= 窗口 = 图片+48px），图片永远离目标边缘 24px。改用 image rect 运算。inset 纯函数放 `MagneticSnapCalculator.InsetRect`（可单测），window 的 `ImageRectForWindow` 委托给它。
+  - 外层 `CornerRadius="10"` 略大于内层 `8`，让柔和阴影贴合圆角。
+- **连带影响（实际需要改的）**：
+  - `SizeToContent=WidthAndHeight` → 窗口自动 = 图片 + 48px（无需改）。
+  - 拖拽（`OnPointerMoved/Released`）→ **改**：算 image rect 喂 `ComputeSnap`，吸附结果 `-margin` 转回 window 坐标。
+  - 吸附（`GetOtherPinnedBounds`，runtime 回调）→ **改**：报 `w.ImagePhysicalRect`（peer image rect），两个贴图 image 边贴 image 边无 gap。
+  - 吸附引导线（`UpdateSnapGuideCanvas`）→ **改**：线画在 image 边缘（`ShadowMarginDip..w-m`），不画在阴影边缘。
+  - `ApplyScale`（DPI baseline `1/RenderScaling`）只缩放 Scaler 内部图片，窗口/阴影边框尺寸不变（无需改）。
+  - 初始位置（region 左上 +16）、滑入动画 `_slide=(400,100)→(0,0)`、双击检测（`DoubleClickPx=8`）、ContextMenu 全部不变（无需改）。
+- **`Frame` 在 code-behind 从未被引用**（只是 axaml 的 x:Name）→ 改其结构安全。
+- **与 R51（已撤销）的区别**：R51 截图美化的阴影"看不出"，根因是 CleanShot X 模型的 padding 透明色被不透明原图遮盖、阴影 RGB 与深色内容相近。本次针对**贴图浮窗**（已在桌面上的 PNG），投影落在**桌面背景**上（不透明图像四周全是桌面），一定可见，与 R51 那种 padding 填色被原图遮盖的情况本质不同。
+- **NativeAOT 安全**：`BoxShadow` 是 Avalonia 内置 styled property，项目已大量使用（IvoryJade.axaml 15+ 处、GalleryWindow.axaml），12.1 已验证可用。无新依赖、无 P/Invoke、无反射。**0 AOT 风险**。
+- **验收（2026-07-22 第四十九批，含吸附修正）**：
+  - `dotnet build` → **0 警告 0 错误**（NU1900 漏洞库拉取 EOF 是网络瞬时问题，`-p:NuGetAudit=false` 即 0 警告，非代码问题）。
+  - **255/255 测试通过**（Core 250 + 新增 5：3 个 `InsetRect` + 2 个吸附 gap 回归）。
+  - NativeAOT Release publish **0 trim/AOT 警告**。
+  - exe 27,925,504 → **27,926,528 字节（+1,024B = 1KB，远低于 5KB 预算）**。
+- **总改动**：AXAML +1 层 Border（~10 行）+ C# 适配层修正（`PinnedScreenshotWindow.axaml.cs` +`ImagePhysicalRect`/`ImageRectForWindow`/吸附坐标转换/引导线 inset，~40 行；`SelectionRuntime.cs` `GetOtherPinnedBounds` 改 4 行；`MagneticSnapCalculator.cs` +`InsetRect` 纯函数 10 行；测试 +5 个 ~70 行）。
+
+---
+
 ### 📋 R54 — 剪贴板历史（clipboard history with smart auto-grouping）
 
 > **独立于 Ocean Eyes 系列**：R44-R53 都是"Ocean Eyes 框选时触发的临时动作"，零常驻；R54 是**常驻型**功能（监听器 24/7 运行 + 历史缓存），是唯一会突破"常驻开销 ≈ 0"契约的 backlog 项。
@@ -600,6 +631,7 @@ P1（中等，按需做）
   ✅ R48 标注工具集（依赖 R47 标注 layer，2026-07-20 第四十三批 v2 落地）
   ❌ R51 截图美化（2026-07-21 第四十五批落地 → 同日撤销，CleanShot X 模型对深色内容看不出效果；未来重做改 iShot 模型）
   ✅ R49 截图相册（2026-07-20 第四十六批落地）
+  ✅ R55 置顶截图阴影（2026-07-22 第四十九批落地，纯 AXAML +0 行 C#，T 贴图浮窗四周大投影）
   R50 带壳截图
 
 P1+（重功能，最后做）

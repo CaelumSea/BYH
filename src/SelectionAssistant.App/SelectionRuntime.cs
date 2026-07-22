@@ -1255,12 +1255,11 @@ internal sealed class SelectionRuntime : IDisposable
                     foreach (var w in _pinnedWindows)
                     {
                         if (ReferenceEquals(w, window)) continue;
-                        double scaling = w.RenderScaling > 0 ? w.RenderScaling : 1.0;
-                        var pos = w.Position;
-                        var cs = w.ClientSize;
-                        int physW = (int)(cs.Width * scaling);
-                        int physH = (int)(cs.Height * scaling);
-                        result.Add(new PhysicalRect(pos.X, pos.Y, pos.X + physW, pos.Y + physH));
+                        // R55: report the peer's IMAGE rect (window rect inset by
+                        // the shadow margin), not its window rect, so two pinned
+                        // windows snap image-edge to image-edge instead of leaving
+                        // a full shadow-margin gap between them.
+                        result.Add(w.ImagePhysicalRect);
                     }
                     return result;
                 };

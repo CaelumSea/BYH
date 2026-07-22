@@ -150,4 +150,77 @@ public sealed class MagneticSnapCalculatorTests
         Assert.Equal(2, pos.Y);
         Assert.Empty(hints);
     }
+
+    // ── R55: shadow-margin inset (image rect vs window rect) ──────────────
+
+    [Fact]
+    public void InsetRect_ShrinksAllFourSidesByMargin()
+    {
+        // Window rect (0,0)-(200,100), margin 24 → image rect (24,24)-(176,76).
+        var window = new PhysicalRect(0, 0, 200, 100);
+        var image = MagneticSnapCalculator.InsetRect(window, 24.0);
+        Assert.Equal(24, image.Left);
+        Assert.Equal(24, image.Top);
+        Assert.Equal(176, image.Right);
+        Assert.Equal(76, image.Bottom);
+    }
+
+    [Fact]
+    public void InsetRect_RespectsNonZeroOrigin()
+    {
+        var window = new PhysicalRect(1000, 500, 1200, 600);
+        var image = MagneticSnapCalculator.InsetRect(window, 30.0);
+        Assert.Equal(1030, image.Left);
+        Assert.Equal(530, image.Top);
+        Assert.Equal(1170, image.Right);
+        Assert.Equal(570, image.Bottom);
+    }
+
+    [Fact]
+    public void InsetRect_TruncatesFractionalMargin()
+    {
+        // margin 24.9 truncates to 24 per edge.
+        var window = new PhysicalRect(0, 0, 100, 100);
+        var image = MagneticSnapCalculator.InsetRect(window, 24.9);
+        Assert.Equal(24, image.Left);
+        Assert.Equal(76, image.Right);
+    }
+
+    /// <summary>
+    /// R55 regression: the pinned window is larger than the image by a
+    /// transparent shadow margin on every side. Snap must run against the
+    /// INSET image rect so the image edge (not the blank window edge) aligns
+    /// to the screen edge. Before the fix, snapping the window rect left the
+    /// image a full margin away from the screen edge.
+    /// </summary>
+    [Fact]
+    public void Snap_OnInsetImageRect_AlignsImageEdgeToScreen()
+    {
+        // Screen at (0,0)-(1920,1080). Window 248×248 (image 200×200 + 24 margin
+        // each side). Drag window so its IMAGE left is ~3px from screen left:
+        // image left = window left + 24; want window left = -21 → image left = 3.
+        var window = new PhysicalRect(-21, 100, 227, 348);
+        var image = MagneticSnapCalculator.InsetRect(window, 24.0);
+        var (pos, hints) = MagneticSnapCalculator.ComputeSnap(image, SingleScreen, NoOthers);
+        // Snapped image left = 0 → window left = 0 - 24 = -24 (image flush to edge).
+        Assert.Equal(0, pos.X);
+        Assert.Contains(hints, h => h.Target == SnapTarget.ScreenLeft && h.Axis == SnapAxis.X);
+    }
+
+    /// <summary>
+    /// R55 regression: two pinned windows must snap image-edge to image-edge.
+    /// Peer reports its IMAGE rect; the moving window snaps its image edge to
+    /// the peer's image edge, leaving no shadow-margin gap between the images.
+    /// </summary>
+    [Fact]
+    public void Snap_PeerReportsImageRect_ImagesAlignNoGap()
+    {
+        // Peer window image rect right edge = 500. Moving window image rect left
+        // within threshold. Both are IMAGE rects (already inset by their owners).
+        var peerImage = new PhysicalRect(300, 100, 500, 300);
+        // Moving image left = 497, peer image right = 500 → delta 3 → snap to 500.
+        var movingImage = new PhysicalRect(497, 100, 697, 300);
+        var (pos, _) = MagneticSnapCalculator.ComputeSnap(movingImage, SingleScreen, [peerImage]);
+        Assert.Equal(500, pos.X);
+    }
 }
