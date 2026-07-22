@@ -1972,6 +1972,34 @@ await Task.Delay(330);  // 300ms 滑出 + 余量
 
 ---
 
+## 3ae. 本会话（第四十五批增量）完成的工作：REQ-012 设置页 LiftedPanel 双层大圆角重构
+
+用户再发参考图 `@image#1:Clipboard_Screenshot.png`，指出主内容区应改为上下两层大圆角框搭在一起，每个大边框添加外围阴影以增强纵深感。本批在保留五窗格结构、FlatRail、MetallicFrame 集中样式的前提下，把原来扁平并列的 `PearlCard` 重构成「大 LiftedPanel → 内部 InnerCard → 内容」的参考图层级。
+
+### 完成内容
+
+- **主题 `IvoryJade.axaml`**：
+  * 新增 `ByhShadowLifted`（两层柔和 lift 影）与 `ByhShadowDeep`（三层环境+投影，用于大面板）。
+  * 新增 `Border.LiftedPanel`：圆角 18px、1px 金褐边、顶部强光高光边、1px 内象牙隙、多层弥散阴影，让面板从背景真正浮起。
+  * 新增 `Border.InnerCard`：圆角 14px、奶油渐变、顶部微光 + 1px 隙，用于包裹大面板内的输入块，避免三层嵌套厚重。
+- **视图 `SettingsWindow.axaml`**：
+  * `GeneralSection` 改为上下两个 `LiftedPanel`：上层合并 Ocean Eyes Trigger + Toolbar Shortcuts（中间用 Hairline 分隔，类似参考图堆叠卡片）；下层是 Ocean Eyes Capture，并把 Auto-save / Copy to Clipboard 并排到同一行以节省纵向空间。
+  * `ProviderSection` 与 `FunctionsSection` 各用一个 `LiftedPanel` 包裹；内部 API Key 与 Prompt Templates 输入区改用 `InnerCard`。
+  * `VisionSection` 改为上下两个 `LiftedPanel`：上层 Vision Recognition，下层 OCR Model + Recognition Strategy。
+  * `LauncherSection` 改为上下两个 `LiftedPanel`：上层 Launcher list，下层 Spotlight Hotkey。
+- 未动：五结构窗格、FlatRail、jade Primary 按钮、SelectionRuntime / LongScreenshot / 翻译 / OCR / 快捷键逻辑。
+
+### 验证证据
+
+- Release build：0 警告、0 错误；完整测试 **334/334**。
+- win-x64 NativeAOT：0 警告、0 PDB；`BYH.exe` = **27,956,224 bytes**。
+- 175% DPI 默认尺寸：`artifacts/qa/ivory-jade-settings-v14-lifted-default-nativeaot.png`。
+- 175% DPI、1240×680 logical 最小尺寸：`artifacts/qa/ivory-jade-settings-v14-lifted-minimum-nativeaot.png`。
+- 可信基线对比：`artifacts/qa/before-default.png` / `before-minimum.png`。
+- **待用户验收**：v14 两张截图已提交（commit `0b8d6a4`），等用户确认。
+
+---
+
 ## 3c. 本会话（第十四批增量）完成的工作：R26 Ivory Jade 主题
 
 - 新增 `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`：完整语义色、反馈色、alpha 派生色、圆角、阴影与全局组件类。
