@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-22T20:04:44'
-secretary_focus: REQ-022
+updated: '2026-07-22T20:36:14'
+secretary_focus: REQ-023
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -84,9 +84,13 @@ requirements:
   title: 设置页左栏节奏与手机比例 v7
   status: done
   progress: 1/1
+- id: REQ-023
+  title: 设置页艺术字与宝石背景迁移 v8
+  status: done
+  progress: 1/1
 phase: executing
 next_step: execute
 plan_confirmed_via: quick-user
-plan_confirmed_at: '2026-07-22T19:52:04'
+plan_confirmed_at: '2026-07-22T20:26:04'
 mode: quick
-plan_confirmed_evidence: 用户指出左下角过紧、上方留白过多，且右上手机应只比相邻窗口稍矮。
+plan_confirmed_evidence: 用户要求将右上 BYH 改成艺术字，并把左下角宝石背景图移到左上角替代原宝石。

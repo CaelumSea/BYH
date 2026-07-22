@@ -867,11 +867,21 @@
             Classes="FlatRail"
             CornerRadius="0">
       <Grid RowDefinitions="0.95*,1.55*,0.9*,1.0*">
-        <Image Grid.RowSpan="4"
-               Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
-               Stretch="UniformToFill"
-               Opacity="0.18"
-               IsHitTestVisible="False" />
+        <Border Grid.Row="0"
+                ClipToBounds="True"
+                IsHitTestVisible="False">
+          <!-- Reuse the ornament's lower gemstone as the concept focal point.
+               The tall image is bottom-aligned inside this clipped first row,
+               so the former lower-rail gem moves here without a new asset. -->
+          <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
+                 Width="170"
+                 Height="340"
+                 Margin="0,0,-32,-8"
+                 HorizontalAlignment="Right"
+                 VerticalAlignment="Bottom"
+                 Stretch="Fill"
+                 Opacity="0.26" />
+        </Border>
         <Border BorderBrush="{DynamicResource ByhRailRuleBrush}"
                 BorderThickness="0,0,0,1"
                 Padding="22,14,18,12">
@@ -880,24 +890,11 @@
             <TextBlock Text="Soft · Elegant · Natural · Quiet"
                        Classes="Secondary"
                        FontSize="8.5" />
-            <Grid ColumnDefinitions="*,46" ColumnSpacing="7">
-              <TextBlock Text="A warm, creamy palette inspired by ivory, jade and polished gold. Soft structure keeps everyday tools calm and within reach."
-                         Classes="RailBody"
-                         TextWrapping="Wrap" />
-              <Border Grid.Column="1"
-                      Width="42" Height="42" CornerRadius="21"
-                      Background="{DynamicResource ByhGemGlowBrush}"
-                      Padding="2"
-                      VerticalAlignment="Bottom">
-                <Border CornerRadius="19" ClipToBounds="True"
-                        Background="{DynamicResource ByhSurfaceBrush}"
-                        BorderBrush="{DynamicResource ByhHairlineBrush}"
-                        BorderThickness="1">
-                  <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
-                         Width="54" Height="54" Stretch="UniformToFill" />
-                </Border>
-              </Border>
-            </Grid>
+            <TextBlock Text="A warm, creamy palette inspired by ivory, jade and polished gold. Soft structure keeps everyday tools calm and within reach."
+                       Classes="RailBody"
+                       MaxWidth="112"
+                       HorizontalAlignment="Left"
+                       TextWrapping="Wrap" />
           </StackPanel>
         </Border>
 
@@ -1031,10 +1028,12 @@
                     Background="{DynamicResource ByhGemGlowBrush}" />
             <StackPanel Margin="18,21,102,12" Spacing="3">
               <TextBlock Text="GOOD MORNING" Classes="Kicker" />
-              <TextBlock Text="BYH"
-                         Classes="DisplayTitle"
-                         FontSize="19"
-                         TextWrapping="Wrap" />
+              <Image Source="avares://SelectionAssistant.UI/Assets/Theme/byh-wordmark.png"
+                     Width="94"
+                     Height="30"
+                     Margin="-2,0,0,0"
+                     HorizontalAlignment="Left"
+                     Stretch="Uniform" />
               <TextBlock Text="Quiet, quick, within reach."
                          Classes="Secondary"
                          FontSize="8"
