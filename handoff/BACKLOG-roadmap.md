@@ -7,6 +7,7 @@
 > **更新 2026-07-20 第四十四批（调研）：R54 剪贴板历史调研完成，规格定稿（v1 纯文本 + Smart auto-group + 50 图上限 + JSON 持久化）。基线内存实测 123MB（含完整 Ocean Eyes 功能），加 R54 预估 +3MB（+2.4%），用户感知不到。详见 §R54。**
 > **更新 2026-07-20 第四十六批：R49 截图相册落地（含托盘入口 + 双击预览 + 右键菜单）。Ocean Eyes 工具栏按 G **或** 托盘右键 → "Open Screenshot Gallery" 弹出标准窗口，瀑布流浏览 `%USERPROFILE%\Pictures\Ocean Eyes\` 历史截图（newest-first）。**双击 = 大图预览**（半透明遮罩 lightbox，底部按钮：复制/删除/打开目录），**右键 = 上下文菜单**（复制/查看/删除/资源管理器中显示），Delete 键删除，Enter 键预览，Esc 两级关闭（先预览后窗口）。不退出 Ocean Eyes（同 P 模式）。代码 +660 行（含 9 个 loader 单测），326/326 测试通过，NativeAOT 0 警告，exe +134KB（超 100KB 预算 34KB，已记录例外——Avalonia ItemsControl/WrapPanel/DataTemplate/ContextMenu/Separator 的 AOT 元数据是固有成本）。详见 §R49。**
 > **更新 2026-07-21 第四十七批：R49 预览缩放/平移 8 轮调试终态。双击预览图支持：滚轮缩放（fit/4 ~ fit×8，光标锚定）+ 左键拖动 1:1 跟手平移 + Esc 关闭。最终架构：`Border ClipToBounds > Canvas > Image Stretch=None` + `Image.RenderTransform = TransformOperations.Builder.AppendMatrix(_matrix)` + 单一 `_matrix` 自管 scale+translate（PanAndZoom `ZoomBorder` 模式）。踩了 6 个 Avalonia 12.1 NativeAOT 独立坑（详见 §R49 教训）：ScrollViewer 接管滚轮 / TransformGroup children 顺序 / LayoutTransformControl 不支持 Translate / Image Stretch=None 仍被父约束 / MatrixTransform 在 AOT 静默失效 / `Matrix *` 运算符语义反转。最终 exe 27,925,504 字节（+139KB vs R48 基线）。诊断方法：临时 `_logger.Info` + 读 `%LOCALAPPDATA%\BYH\logs\BYH.log`，停止猜测让数据说话。**
+> **更新 2026-07-22 第五十批：R56 贴图浮窗缩放弹出/缩走动画落地（v4 终态，用户确认"好了"）。**用户要求把 T 贴图的动画从 R46 v13 侧面滑入改成"简单弹动效果"，选了"缩放弹出"，后又要求关闭也用同款。**开了 4 轮迭代**（v1 ScaleTransform+RenderTransformOrigin → v2 timer+矩阵但 Ease 当绝对值 → v2.1 Ease 插值 → v3 LayoutUpdated 启动 → v4 ApplyScale 瞬间到位），每轮都有用户真机反馈。**踩坑教训**：① RenderTransformOrigin 在 frameless `ExtendClientAreaToDecorationsHint` 窗口整体失效（§R46-22 v11 早证伪，我没读日志重蹈）；② 缓动 Ease 返回值是进度不是绝对值；③ **真根因**：`ApplyScale` 的 DPI 基准 ScaleTransform 挂着 R46 v7 的 120ms DoubleTransition，窗口打开时 DPI 校正慢慢缩，Bounds 实时变化（日志显示 822→470，比例=RenderScaling），pop 每帧拿错基准 = "侧面滑入"。**v4 解**：`ApplyScale(animate:false)` 打开时瞬间到位 + pop 从 LayoutUpdated 启动。诊断靠 §R47 "停止猜测读日志"——临时加 RedactedLogger 写 BYH.log，确认后已删。**架构**：单 DispatcherTimer（16ms Render 优先级）按 PopDirection 枚举驱动 In/Out，每帧烘中心缩放矩阵 `Matrix(scale,0,0,scale,(1-scale)·w/2,(1-scale)·h/2)` 用 TransformOperations 推（NativeAOT 可靠，不用 MatrixTransform）。In=BackEaseOut 350ms 过冲弹，Out=CubicEaseIn 200ms 缩走+淡出。**安全性**：RenderTransform 纯视觉，拖拽和 R52 磁吸（Position+ClientSize）不受影响；ApplyScale 默认仍 animate 平滑滚轮缩放。0 警告 0 错误，255/255 测试，NativeAOT 0 警告，exe +1.5KB（27,926,528→27,928,064）。详见 §R56。**
 > **更新 2026-07-22 第四十九批：R55 置顶截图四周立体阴影落地。Ocean Eyes 截图后按 **T** 贴图，浮动置顶窗口四周加大范围柔和投影（iShot/CleanShot X 风格的悬浮卡片感）。AXAML：把承载图片的 `Frame` Border 包进一个外层 Border，`BoxShadow="0 12 32 0 #66000000"`（offset y=12 / blur=32 / 黑 40%）+ `Margin="24"`（给透明 frameless 窗口留阴影渲染空间——Avalonia BoxShadow 只在元素边界内绘制且受 ClipToBounds 裁剪，窗口精确等于图片尺寸时阴影会被裁掉）。**吸附 gap 修正**（初版误判"吸附边界落在阴影边缘是预期行为"，用户实测发现图片离屏幕/彼此边缘永远隔 24px）：窗口变大后吸附改用 **IMAGE rect**（窗口 rect 四边内缩 24×DPI）运算，吸附后 image 左上角 `-margin` 转回 window 坐标；runtime `GetOtherPinnedBounds` 改报 peer image rect（新公开 `PinnedScreenshotWindow.ImagePhysicalRect`）；引导线画在 image 边缘。inset 纯函数 `MagneticSnapCalculator.InsetRect` 可单测。与 R51（已撤销）的区别：R51 的阴影"看不出"是因 CleanShot X 模型 padding 透明色被不透明原图遮盖；本次投影落在桌面背景上（图像四周全是桌面），一定可见。0 警告 0 错误（NU1900 漏洞库 EOF 是网络瞬时），255/255 测试通过（+5 个吸附 gap 回归），NativeAOT 0 警告，exe +1KB（27,925,504 → 27,926,528）。详见 §R55。**
 > **更新 2026-07-22 第四十八批（R53 落地 → 同日撤销）：R53 长截图（L 键）实施完成（ShareX 风格逐行字节重叠匹配 stitcher + 纯函数单测），经历了 4 轮 UX 模型迭代（标准窗口 → no-activate 浮动工具条 → 纯状态机自动截帧），踩了 3 个架构陷阱（① Ocean Eyes 全屏 RegionSelectOverlay 吞掉鼠标滚轮事件导致无法滚动 ② DismissOverlay→Cancel()→RegionCancelled→ResetForRedraw() 会清零 _oceanEyesActive + 禁用 hook 导致按键全失效 ③ WS_EX_NOACTIVATE 窗口无法接收键盘焦点）。用户最终判定"弹窗有啥用 / 不做了"。本批撤销。撤销的代码：LongScreenshotStitcher.cs / LongScreenshotWindow.axaml(.cs) / L 键分支 / mouse hook 的 WM_MOUSEWHEEL 捕获 / MouseMessageType.MouseWheel 枚举 / MouseEventData.WheelDelta 字段 / 8 个 stitcher 单测。**教训**：长截图这类"需要边操作目标边截屏"的功能，核心矛盾是 BYH 的全局 hook + 全屏 overlay 与"让用户自由操作目标窗口"根本冲突——overlay 不隐藏则吞事件，隐藏则走 Cancel 事件链杀掉 Ocean Eyes 会话。若未来重做，需先重构 overlay 使其支持"鼠标事件穿透"模式（Win32 WS_EX_TRANSPARENT 或 Avalonia IsHitTestVisible=False 的全屏透明层），而非 Hide/Show 切换。详见 §R53。**
 > **更新 2026-07-21 第四十五批（R51 落地 → 同日撤销）：R51 截图美化（B 键）实施完成（纯软件 BGRA 合成，CleanShot X 风格的浮动截图 + 圆角 + 投射阴影），+24.5KB / 0 新依赖 / 340 测试全过。用户真机测试后判定"美化了啥 / 不搞了"——根因是 CleanShot X 模型对深色内容截图美化效果不明显（背景色被不透明原图完全遮盖，阴影 RGB 与深色内容相近不可辨）。本批同日 revert（commit 跟进）。撤销的代码：ScreenshotBeautifier.cs / BeautifyOceanEyesScreenshot / B 键分支 / BurnAnnotationsOntoBgra 拆分 / OceanEyesCaptureSettings +7 字段 / OceanEyesCaptureStore 读写扩展 / 22 个测试。教训：美化模型要默认走 iShot 风格（padding 也是香槟底色 + 图像居中 + 卡片整体阴影），而非 CleanShot X 浮动模型（padding 透明）。如未来重做 R51，参考 iShot 模型，并默认半径/padding 更大（≥16px / ≥48px）让效果在任何内容上都明显。**
@@ -476,6 +477,55 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
 
 ---
 
+### ✅ R56 — 贴图浮窗缩放弹出动画（scale pop-in + pop-out，timer + TransformOperations）
+
+- **触发**：用户"改一下贴图的动画,改成简单弹动效果"。Ocean Eyes 截图后按 **T** 贴图，浮窗开启从 R46 v13 的**侧面滑入**改为**缩放弹出**（卡片从 0.85 弹到 1.0，轻微过冲后落定，BackEaseOut 350ms）；关闭也对称改成缩走（1.0→0.85 CubicEaseIn 200ms + 淡出）。用户从三选里选了"缩放弹出（推荐）"，确认后又要求关闭也用同款。
+- **终态架构（v4）**：
+  - **Pop-IN**：`0.85 → ~1.05 过冲 → 1.0`（BackEaseOut 350ms）。**Pop-OUT（关闭）**：`1.0 → 0.85`（CubicEaseIn 200ms）+ Opacity 淡出（Window.Transitions 250ms）。两者复用同一套机制：一个 `DispatcherTimer`（16ms，`DispatcherPriority.Render`），按 `PopDirection` 枚举（In/Out）选 duration + easing + scale 公式。
+  - **绕过 RenderTransformOrigin**：每帧把 eased scale 烘进**中心缩放矩阵** `Matrix(scale,0,0,scale,(1-scale)·w/2,(1-scale)·h/2)`（即 translate(-w/2,-h/2)×scale×translate(w/2,h/2)，中心偏移在矩阵里硬算）。
+  - **NativeAOT 安全的 transform API**：`TransformOperations.Builder(1).AppendMatrix(matrix).Build()` 推到 `OuterShadowBorder.RenderTransform`——**不用** plain `MatrixTransform`（§R47/R49 记录它在 NativeAOT 静默失效）。
+  - **从 LayoutUpdated 启动 pop-in**（不在 Opened 启动）。
+  - **打开时 DPI 基准瞬间到位**：`ApplyScale(animate:false)`。
+- **⚠️ 踩了 4 个坑才成（4 轮迭代，每轮都有用户真机反馈 + BYH.log 诊断）**——这段记录的教训比代码本身更值钱：
+
+  **v1（ScaleTransform + RenderTransformOrigin）—— 用户"闪烁的弹两下,和之前一样"。**
+  - 方案：外层 Border 加 `RenderTransformOrigin=0.5,0.5` + `<ScaleTransform 0.85>`，DoubleTransition + BackEaseOut。
+  - **错误判断**：以为 R55 新增的外层 Border 能让原点居中。**handoff §R46-22 的 v11 早已证伪**：把 ScaleTransform 从 Window 移到内部 Border，原点仍失效（scale 从左上角长）。我没读日志就重蹈覆辙。
+  - **教训**：改动画前**必读 §R46-22**——scale 类动画在 BYH 的 frameless `ExtendClientAreaToDecorationsHint` 窗口上不能用 RenderTransformOrigin（Window 或 Border 上都不行）。
+
+  **v2（timer + TransformOperations 中心矩阵，但 Ease 当绝对值）—— 用户"确实有回弹了,但总是从屏幕右下角滑出来,不是从中央弹"。**
+  - 方案对了一半（绕过 RenderTransformOrigin 用矩阵），但 `OnPopTick` 把 `BackEaseOut.Ease(progress)` 的返回值**直接当绝对 scale**。BackEaseOut 是**进度函数**（0→1，末段 overshoot ~1.1），不是目标值。第一个 tick `progress≈0.046→Ease≈0.21`，卡片瞬间从 0.85 **暴跌到 0.21**，中心矩阵偏移把小卡片往右下角推 = "从右下角滑出来"。
+  - **教训**：缓动函数的返回值是**进度**，要插值进 `[起值, 终值]` 区间，不能当绝对值。
+
+  **v2.1（Ease 插值进 [0.85,1.0]）—— 用户"更丝滑了,但还是侧面划入"。**
+  - 修了 v2 的数学（`scale = 0.85 + 0.15×Ease(progress)`），但**只是更顺了，根因没解**。这一版加了诊断日志（§R47 "停止猜测"原则），让用户复现后读 `BYH.log`。
+
+  **v3/v4（读日志定位真正根因）—— 日志揭示 Bounds 在动画全程从物理像素 822 缩到 DIP 470，比例 = RenderScaling=1.75，耗时 ~120ms。**
+  - **真正根因**：`ApplyScale`（设 DPI 基准 `_scaleTransform=1/RenderScaling`）的 ScaleTransform 上挂着 R46 v7 加的 **120ms DoubleTransition**。所以窗口打开时 DPI 校正在 120ms 里慢慢缩，`OuterShadowBorder.Bounds` 实时变化（822→470），我的 pop 动画每帧都拿**正在变的 Bounds** 算中心矩阵 → 中心基准漂移 = "侧面滑入"。
+  - **v3 修**：pop 从 `LayoutUpdated` 启动（不在 Opened；Opened 时 Bounds 还是物理像素 927×533@153,71，LayoutUpdated 后才是 DIP 530×305@24,24），timer 提到 `DispatcherPriority.Render`。**只解决了"首帧 Bounds 错"的表象，Bounds 仍在缩** → 用户"还是侧面"。
+  - **v4 修（真正的解）**：`ApplyScale(animate:false)`——打开时 DPI 基准**瞬间到位**（临时摘 transition 再设值），Bounds 立即稳定在真实 DIP 尺寸，pop 第一帧就在正确基准上跑。日志确认 v4 后 bounds 从 tick#1 到 tick#10 完全不变（497.1×127.4 稳定）。**用户："好了!"**
+  - **教训**：DPI 基准是**校正**不是用户可见缩放，不该动画；动画 transition 只该留给用户可见的滚轮缩放。诊断日志（§R47 "停止猜测"）是唯一可靠定位手段——4 轮里前 3 轮都在猜。
+
+- **关键技术约束（最终）**：
+  - `RenderTransform` 纯视觉，不改 layout/hit-test/Bounds → 拖拽（Position+ClientSize）和 R52 磁吸（ImagePhysicalRect）**完全不受影响**。
+  - `_popTimer` 的 RenderTransform（弹动）与 `_scaleTransform`（Scaler 的 LayoutTransform，DPI/wheel-zoom）是两套独立 transform；`ApplyScale(animate:false)` 只在打开时摘 transition，滚轮缩放仍 `ApplyScale()`（默认 animate:true）平滑。
+  - pop-in 从 `LayoutUpdated` 启动（`_popPending` flag + 一次性消费），不在 Opened。
+  - pop-out（关闭）`StopPopTimer` 不清 transform（避免缩走后闪一下全尺寸再消失），留给 Hide 直接收。
+  - R55 阴影随外层 Border 一起 scale（自然，阴影和卡片一起 pop）。
+- **连带影响（逐项确认，全部安全）**：拖拽不变 / R52 磁吸不变 / 初始位置（region 左上 +16）不变 / 双击检测（DoubleClickPx=8）不变 / ContextMenu 不变 / 滚轮缩放平滑不变（ApplyScale 默认 animate）。
+- **诊断代码**：开发期临时加了 `RedactedLogger _diag` + `_popTickCount` + START/tick#n 日志（写 BYH.log），**v4 确认后已全部删除**（连 using 一起）。
+- **`anim:` 命名空间**：仍被 `<Window.Transitions>` Opacity transition 使用，保留。
+- **NativeAOT 安全**：DispatcherTimer / TransformOperations / Matrix / BackEaseOut / CubicEaseIn 全是 Avalonia 12.1 内置（已验证 Avalonia.Base.xml 含全套 easing）。DispatcherTimer 项目大量用（ColorPickerLoupe/GalleryWindow/App/SelectionRuntime），TransformOperations GalleryWindow 在用。无新依赖、无 P/Invoke、无反射。**0 AOT 风险**。
+- **验收（2026-07-22 第五十批，v4 终态，已用户确认"好了"）**：
+  - `dotnet build` → **0 警告 0 错误**。
+  - **255/255 测试通过**（Core，回归无破坏）。
+  - NativeAOT Release publish **0 trim/AOT 警告**。
+  - exe 27,926,528 → **27,928,064 字节（+1,536B = 1.5KB，远低于 5KB 预算）**。
+  - ✅ **动画正确性已用户真机确认**（不再是"待验证"）：开启从中央弹 + 轻微过冲落定，关闭从中央缩走 + 淡出，PopIn/PopOut 日志均确认 bounds 稳定、scale 曲线正确。
+- **总改动**：AXAML ~15 行（含注释）+ CS ~110 行（含注释 + pop in/out helper + ApplyScale animate 参数）。0 新依赖、0 新测试、0 新 P/Invoke。诊断日志代码已删。
+
+---
+
 ### 📋 R54 — 剪贴板历史（clipboard history with smart auto-grouping）
 
 > **独立于 Ocean Eyes 系列**：R44-R53 都是"Ocean Eyes 框选时触发的临时动作"，零常驻；R54 是**常驻型**功能（监听器 24/7 运行 + 历史缓存），是唯一会突破"常驻开销 ≈ 0"契约的 backlog 项。
@@ -632,6 +682,7 @@ P1（中等，按需做）
   ❌ R51 截图美化（2026-07-21 第四十五批落地 → 同日撤销，CleanShot X 模型对深色内容看不出效果；未来重做改 iShot 模型）
   ✅ R49 截图相册（2026-07-20 第四十六批落地）
   ✅ R55 置顶截图阴影（2026-07-22 第四十九批落地，纯 AXAML +0 行 C#，T 贴图浮窗四周大投影）
+  ✅ R56 贴图缩放弹出/缩走动画（2026-07-22 第五十批 v4 终态，timer + TransformOperations 中心矩阵；开 4 轮迭代——v1 RenderTransformOrigin 失效、v2 Ease 当绝对值、v3 首帧 Bounds 错、v4 ApplyScale 瞬间到位解真根因；诊断日志确认后已删）
   R50 带壳截图
 
 P1+（重功能，最后做）

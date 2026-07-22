@@ -11,6 +11,8 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Media.Transformation;
+using Avalonia.Threading;
 using SelectionAssistant.Core.Annotation;
 
 namespace SelectionAssistant.UI.Views;
@@ -42,14 +44,21 @@ namespace SelectionAssistant.UI.Views;
 /// User zoom then multiplies on top of that 1.0 baseline.
 /// </para>
 /// <para>
-/// <b>v13 status:</b> animation = v9-style side slide-in (TranslateTransform
-/// from (400,100) → (0,0), CubicEaseOut 300ms). v8-v12 tried various scale
-/// pop-in animations (BackEaseOut / keyframe spring 0.5→1.15→1.0) but none
-/// matched the user's expectation of "Mac spring from center" — the
-/// RenderTransformOrigin refused to apply correctly on
-/// ExtendClientAreaToDecorationsHint windows (scale grew from top-left).
-/// User decided to defer the scale animation and ship the slide-in for now.
-/// See handoff §3x §22 for the full exploration log + future fix ideas.
+/// <b>v14 (R56) status:</b> animation = symmetric scale pop. Pop-IN: card grows
+/// 0.85 → ~1.05 overshoot → 1.0 (BackEaseOut 350ms). Pop-OUT (close): card
+/// shrinks 1.0 → 0.85 (CubicEaseIn 200ms) + Opacity fade. Both driven by a
+/// single <see cref="DispatcherTimer"/> (16ms, Render priority) that each tick
+/// bakes the eased scale into a center-scaled <see cref="Matrix"/> and pushes
+/// it as <see cref="TransformOperations"/> on the outer shadow Border. Three
+/// bugs were fixed to get here (see handoff §R56): (1) <c>RenderTransformOrigin</c>
+/// is broken on these frameless <c>ExtendClientAreaToDecorationsHint</c> windows,
+/// so the center offset is baked into the matrix instead; (2) the pop starts
+/// from <c>LayoutUpdated</c> (not <c>Opened</c>), where Bounds is final — during
+/// Opened it's still physical-px/pre-DPI; (3) the DPI baseline is snapped
+/// (<c>ApplyScale(animate:false)</c>) on open so its 120ms LayoutTransform
+/// transition can't shrink Bounds under the running pop. TransformOperations
+/// (not plain MatrixTransform) is used because the R47/R49 pan-zoom log proved
+/// MatrixTransform silently fails on NativeAOT.
 /// </para>
 /// <para>
 /// <b>R52:</b> magnetic snap during drag. The window snaps to screen work-area
@@ -122,13 +131,61 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
     private readonly ScaleTransform _scaleTransform = new(1.0, 1.0);
 
     /// <summary>
-    /// R46 v9/v13: the Window's RenderTransform TranslateTransform, used for
-    /// the slide-in/slide-out animation. Initialized in the ctor from
-    /// <see cref="Visual.RenderTransform"/> (set in AXAML on the Window).
-    /// Initial X/Y in AXAML = (400, 100) — window renders offset to the
-    /// bottom-right, offscreen-ish. Opened slides it to (0, 0).
+    /// R56: the pop-in scale animation start factor (the card pops from this
+    /// size up to 1.0). 0.85 = a modest 15% grow, like a macOS dock bounce.
     /// </summary>
-    private TranslateTransform _slide = new(400, 100);
+    private const double PopStartScale = 0.85;
+
+    /// <summary>
+    /// R56: pop-IN animation duration. BackEaseOut adds a light overshoot; 350ms
+    /// is long enough to read the overshoot but still snappy.
+    /// </summary>
+    private static readonly TimeSpan PopDuration = TimeSpan.FromMilliseconds(350);
+
+    /// <summary>
+    /// R56: pop-OUT (close) animation duration. Shorter than the pop-in so close
+    /// feels decisive; the scale shrinks 1.0 → <see cref="PopStartScale"/> with a
+    /// CubicEaseIn (accelerate into the shrink), paired with the Window.Transitions
+    /// Opacity fade. This is the symmetric counterpart to the pop-in.
+    /// </summary>
+    private static readonly TimeSpan PopOutDuration = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>
+    /// R56: easing for the pop-OUT (close) shrink. CubicEaseIn accelerates into the
+    /// shrink — reads as "sucked away", the natural inverse of the BackEaseOut pop.
+    /// </summary>
+    private static readonly Easing PopOutEasing = new CubicEaseIn();
+
+    /// <summary>R56: which way the running pop animation is going.</summary>
+    private enum PopDirection { None, In, Out }
+    private PopDirection _popDirection = PopDirection.None;
+
+    /// <summary>
+    /// R56: the easing applied to the pop progress (0→1). BackEaseOut produces a
+    /// single slight overshoot past 1.0 — the classic "pop" settle.
+    /// </summary>
+    private readonly Easing _popEasing = new BackEaseOut();
+
+    /// <summary>
+    /// R56: drives the pop-in. On each tick we compute
+    /// <c>scale = _popEasing.Ease(elapsed/duration)</c>, bake it into a
+    /// center-scaled <see cref="Matrix"/> and push it as a
+    /// <c>TransformOperations</c> on <see cref="OuterShadowBorder"/>. The
+    /// center offset is computed in the matrix (translate(-w/2,-h/2) × scale ×
+    /// translate(w/2,h/2)), so we never depend on <c>RenderTransformOrigin</c>
+    /// — which the v8-v12 exploration (handoff §22) proved is broken on
+    /// <c>ExtendClientAreaToDecorationsHint</c> frameless windows even when set
+    /// on an inner Border.
+    /// </summary>
+    private DispatcherTimer? _popTimer;
+    private long _popStartTicks;
+
+    /// <summary>
+    /// R56: set true in <see cref="Opened"/>; <see cref="OnPopLayoutReady"/>
+    /// consumes it once on the first <c>LayoutUpdated</c> after open and starts
+    /// the pop-in. Gates the pop behind a layout pass so we read valid Bounds.
+    /// </summary>
+    private bool _popPending;
 
     private bool _isDragging;
     private bool _dragCommitted;
@@ -162,15 +219,26 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
     {
         InitializeComponent();
 
-        // R46 v9/v13: grab the TranslateTransform declared as Window.RenderTransform
-        // in AXAML. Avalonia codegen doesn't auto-generate a field for it
-        // (Window-attribute-level elements aren't content children), so we
-        // reach it via RenderTransform. The AXAML sets X=400 Y=100 initial
-        // (offset to bottom-right, offscreen-ish).
-        if (RenderTransform is TranslateTransform slide)
-        {
-            _slide = slide;
-        }
+        // R56: build the pop-in timer. 16ms ≈ 60fps. Each tick rebuilds a
+        // center-scaled matrix and pushes it onto OuterShadowBorder.RenderTransform
+        // via TransformOperations (the NativeAOT-reliable path proven by
+        // GalleryWindow's pan/zoom). We never touch RenderTransformOrigin — its
+        // center-anchor is broken on these frameless
+        // ExtendClientAreaToDecorationsHint windows (v8-v12 log, handoff §22);
+        // the center offset is baked into the matrix instead.
+        // Run at Render priority: the diagnostic log showed the default
+        // (Normal-priority) timer's FIRST tick landed at elapsed=140ms — the
+        // window-open + DPI re-layout + Opacity transition starved it, so the
+        // pop-in jumped to prog≈0.4 (scale≈1.05) and the 0.85→1.05 rise was
+        // never drawn. Render priority runs right after layout each frame.
+        _popTimer = new DispatcherTimer(
+            TimeSpan.FromMilliseconds(16),
+            DispatcherPriority.Render,
+            OnPopTick);
+
+        // R56: wait for layout to settle before starting the pop-in (see the
+        // Opened handler comment — Bounds is stale during Opened).
+        OuterShadowBorder.LayoutUpdated += OnPopLayoutReady;
 
         // Intercept native Close so the runtime can drive Hide()+Dispose().
         // R46 v7: if an animate-out is in flight, let it finish by NOT hiding
@@ -185,14 +253,21 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
         };
         // RenderScaling is finalized only after the window is opened; reapply
         // the layout transform then so the DPI baseline is correct.
-        // R46 v9/v13: Opened triggers the slide-in (TranslateTransform
-        // (400,100) → (0,0) with CubicEaseOut 300ms).
+        // R56: Opened re-applies DPI scale and reveals the window, but does NOT
+        // start the pop-in directly. The diagnostic log proved OuterShadowBorder
+        // .Bounds is STALE during Opened (returns physical px 927×533 @ 153,71;
+        // after layout settles it's DIP 530×305 @ 24,24 — the 1.75× ratio is
+        // exactly RenderScaling). Applying the first pop frame on those stale
+        // bounds bakes a ~30px wrong offset that the next tick corrects → the
+        // "slides in from the side" the user saw. So we wait for LayoutUpdated
+        // (fires after the measure/arrange pass finalises), where Bounds is
+        // correct, then start the pop. See handoff §R47 "stop guessing, read
+        // the log" — the BYH.log PopIn lines diagnosed this.
         Opened += (_, _) =>
         {
-            ApplyScale();
-            _slide.X = 0;
-            _slide.Y = 0;
+            ApplyScale(animate: false); // R56: snap DPI baseline (no transition)
             Opacity = 1.0;
+            _popPending = true; // StartPopIn fires from OnPopLayoutReady.
         };
 
         // Attach the ScaleTransform to the LayoutTransformControl. We mutate
@@ -205,25 +280,6 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
         {
             new DoubleTransition { Property = ScaleTransform.ScaleXProperty, Duration = TimeSpan.FromMilliseconds(120) },
             new DoubleTransition { Property = ScaleTransform.ScaleYProperty, Duration = TimeSpan.FromMilliseconds(120) },
-        };
-
-        // R46 v9/v13: slide-in/slide-out. CubicEaseOut gives fast deceleration
-        // (the window slides in quickly then settles). 300ms matches the
-        // macOS default for sheet/window slide.
-        _slide.Transitions = new Transitions
-        {
-            new DoubleTransition
-            {
-                Property = TranslateTransform.XProperty,
-                Duration = TimeSpan.FromMilliseconds(300),
-                Easing = new CubicEaseOut(),
-            },
-            new DoubleTransition
-            {
-                Property = TranslateTransform.YProperty,
-                Duration = TimeSpan.FromMilliseconds(300),
-                Easing = new CubicEaseOut(),
-            },
         };
 
         // Pixel-preserving scaling: nearest-neighbour keeps source pixels
@@ -279,7 +335,7 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
         _userScale = 1.0;
 
         Show();
-        ApplyScale();
+        ApplyScale(animate: false); // R56: snap DPI baseline on open.
     }
 
     /// <summary>
@@ -299,29 +355,187 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
     /// Pushes <see cref="_userScale"/> + the DPI baseline into the
     /// <see cref="ScaleTransform"/> on <see cref="Scaler"/>.
     /// </summary>
-    private void ApplyScale()
+    /// <param name="animate">
+    /// When true (default), the 120ms DoubleTransition on ScaleX/Y smoothly
+    /// interpolates — desirable for wheel zoom. When false, the transition is
+    /// suppressed so the change snaps. The DPI baseline (1/RenderScaling) is a
+    /// CORRECTION, not a user-visible zoom, so on open we snap it; otherwise the
+    /// 120ms interpolate fights the R56 pop-in (the diagnostic log showed
+    /// OuterShadowBorder.Bounds shrinking 822→470 over ~120ms during the
+    /// DPI-shrink animation, and our center-scaling matrix re-read those
+    /// changing bounds each frame → the pop drifted off-center = "slides in
+    /// from the side").
+    /// </param>
+    private void ApplyScale(bool animate = true)
     {
         double dpi = RenderScaling > 0 ? RenderScaling : 1.0;
         _dpiScale = 1.0 / dpi;
         double effective = _userScale * _dpiScale;
-        _scaleTransform.ScaleX = effective;
-        _scaleTransform.ScaleY = effective;
+        Transitions? saved = _scaleTransform.Transitions;
+        if (!animate)
+        {
+            _scaleTransform.Transitions = null;
+        }
+        try
+        {
+            _scaleTransform.ScaleX = effective;
+            _scaleTransform.ScaleY = effective;
+        }
+        finally
+        {
+            if (!animate)
+            {
+                _scaleTransform.Transitions = saved;
+            }
+        }
     }
 
     /// <summary>
-    /// R46 v9/v13: slides the window out to (400, 100) — reverse of the
-    /// slide-in — giving a macOS-style slide-out on close. The runtime awaits
-    /// this before calling Hide()+Dispose() so the user sees a smooth slide
-    /// instead of an instant disappearance. Must run on the UI thread.
+    /// <summary>
+    /// R56: pop-OUT close animation — the symmetric counterpart to the pop-in.
+    /// Shrinks the card from 1.0 → <see cref="PopStartScale"/> (CubicEaseIn:
+    /// accelerate into the shrink = "sucked away") while the Window.Transitions
+    /// Opacity fades it out. The runtime awaits this before Hide()+Dispose() so
+    /// the user sees a smooth shrink-and-fade, not an instant disappearance.
+    /// Must run on the UI thread.
     /// </summary>
     public async Task AnimateOutAsync()
     {
         _animatingOut = true;
+        // R56: stop any in-flight pop-IN so its direction flag doesn't conflict,
+        // then start the pop-OUT. The shrink runs alongside the Opacity fade.
+        StopPopTimer();
+        StartPopOut();
         Opacity = 0.0;
-        _slide.X = 400;
-        _slide.Y = 100;
-        // Cover the slide transition (300ms) + small margin.
-        await Task.Delay(330);
+        // Cover the pop-OUT (200ms) + small margin.
+        await Task.Delay((int)PopOutDuration.TotalMilliseconds + 40);
+    }
+
+    /// <summary>
+    /// R56: fires on OuterShadowBorder.LayoutUpdated. LayoutUpdated runs after
+    /// the measure/arrange pass, so OuterShadowBorder.Bounds is final here
+    /// (unlike during Opened, where it's still in physical px / pre-DPI). On the
+    /// first LayoutUpdated after an open (<see cref="_popPending"/>), start the
+    /// pop-in; ignore subsequent LayoutUpdated events.
+    /// </summary>
+    private void OnPopLayoutReady(object? sender, EventArgs e)
+    {
+        if (!_popPending)
+        {
+            return;
+        }
+        _popPending = false;
+        StartPopIn();
+    }
+
+    /// <summary>
+    /// R56: starts the pop-IN animation. Seeds the card at <see cref="PopStartScale"/>,
+    /// records the start time, and starts the timer. Called from
+    /// <see cref="OnPopLayoutReady"/> (post-layout, so Bounds is valid).
+    /// </summary>
+    private void StartPopIn()
+    {
+        // Render the first frame immediately at the shrunk start scale so the
+        // window doesn't flash at full size before the timer's first tick.
+        _popDirection = PopDirection.In;
+        ApplyPopMatrix(PopStartScale);
+        _popStartTicks = Environment.TickCount64;
+        _popTimer?.Start();
+    }
+
+    /// <summary>
+    /// R56: starts the pop-OUT (close) animation — the symmetric counterpart to
+    /// the pop-in. Shrinks the card 1.0 → <see cref="PopStartScale"/> over
+    /// <see cref="PopOutDuration"/> with <see cref="PopOutEasing"/> (CubicEaseIn:
+    /// accelerate into the shrink = "sucked away"). The caller drives Opacity→0
+    /// in parallel (Window.Transitions) and awaits ~PopOutDuration before Hide().
+    /// </summary>
+    private void StartPopOut()
+    {
+        _popDirection = PopDirection.Out;
+        // First frame at full size (1.0 = identity); the shrink begins on tick#1.
+        ApplyPopMatrix(1.0);
+        _popStartTicks = Environment.TickCount64;
+        _popTimer?.Start();
+    }
+
+    /// <summary>
+    /// R56: stops the pop timer and (for pop-IN) resets the transform to identity.
+    /// For pop-OUT we leave the shrunk frame in place — the caller hides the
+    /// window next, so clearing it would flash full-size before vanish.
+    /// </summary>
+    private void StopPopTimer()
+    {
+        if (_popTimer is { } t)
+        {
+            t.Stop();
+        }
+        if (_popDirection != PopDirection.Out)
+        {
+            OuterShadowBorder.RenderTransform = null;
+        }
+        _popDirection = PopDirection.None;
+    }
+
+    /// <summary>
+    /// R56: timer tick. Drives BOTH the pop-in and pop-out animations depending
+    /// on <see cref="_popDirection"/>. Computes the eased progress, pushes the
+    /// matching center-scale matrix, and stops the timer (clearing the
+    /// transform) once the animation completes.
+    /// </summary>
+    private void OnPopTick(object? sender, EventArgs e)
+    {
+        bool isOut = _popDirection == PopDirection.Out;
+        double durationMs = (isOut ? PopOutDuration : PopDuration).TotalMilliseconds;
+        long elapsed = Environment.TickCount64 - _popStartTicks;
+        double progress = durationMs <= 0 ? 1.0 : Math.Clamp(elapsed / durationMs, 0.0, 1.0);
+
+        if (progress >= 1.0)
+        {
+            // Done. For pop-IN: clear the transform so the card sits at its true
+            // 1.0 layout size. For pop-OUT: the caller (AnimateOutAsync) owns the
+            // subsequent Hide(); leave the shrunk frame in place, it'll vanish on
+            // Hide. Either way stop the timer.
+            StopPopTimer();
+            return;
+        }
+
+        // Treat the eased value as a PROGRESS fraction and interpolate scale.
+        // Pop-IN: PopStartScale → 1.0 (BackEaseOut overshoots to ~1.05 first).
+        // Pop-OUT: 1.0 → PopStartScale (CubicEaseIn accelerates into the shrink).
+        double eased = (isOut ? PopOutEasing : _popEasing).Ease(progress);
+        double scale = isOut
+            ? 1.0 + (PopStartScale - 1.0) * eased   // 1.0 → 0.85
+            : PopStartScale + (1.0 - PopStartScale) * eased;  // 0.85 → ~1.05 → 1.0
+
+        ApplyPopMatrix(scale);
+    }
+
+    /// <summary>
+    /// R56: builds a center-scaled matrix for <paramref name="scale"/> and
+    /// pushes it onto <see cref="OuterShadowBorder"/> via
+    /// <see cref="TransformOperations"/> (the NativeAOT-reliable path; plain
+    /// MatrixTransform silently fails to apply per the R47/R49 pan-zoom log).
+    /// The matrix encodes translate(-w/2,-h/2) × scale × translate(w/2,h/2) so
+    /// the scale origin is the border's center — this is the whole reason we
+    /// can't rely on RenderTransformOrigin (broken on frameless
+    /// ExtendClientAreaToDecorationsHint windows per handoff §22).
+    /// </summary>
+    private void ApplyPopMatrix(double scale)
+    {
+        double w = OuterShadowBorder.Bounds.Width;
+        double h = OuterShadowBorder.Bounds.Height;
+        if (w <= 0 || h <= 0)
+        {
+            return;
+        }
+        // (1 - scale) × center  =  the offset that keeps the center pinned.
+        double offsetX = (1.0 - scale) * (w / 2.0);
+        double offsetY = (1.0 - scale) * (h / 2.0);
+        var matrix = new Matrix(scale, 0, 0, scale, offsetX, offsetY);
+        var builder = new TransformOperations.Builder(1);
+        builder.AppendMatrix(matrix);
+        OuterShadowBorder.RenderTransform = builder.Build();
     }
 
     /// <summary>Left-button press anywhere on the image: arm a drag.</summary>

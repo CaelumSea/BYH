@@ -12,17 +12,16 @@
         Background="Transparent"
         Topmost="True"
         Opacity="0">
-  <!-- R46 v13: 回滚到 v9 的侧面滑入（用户决定 v8-v12 的 scale 弹性动画探索搁置）。
-       TranslateTransform 从右下方屏幕外滑入到 (0,0) 目标位置。
-       CubicEaseOut 300ms 快速减速。Opacity 配合凘入。 -->
+  <!-- R56: pop-in scale animation is driven entirely from code-behind via a
+       DispatcherTimer that rebuilds a center-scaled TransformOperations matrix
+       each frame (no RenderTransform — that property's origin is broken on
+       ExtendClientAreaToDecorationsHint frameless windows, per the v8-v12 log
+       in handoff §22 / §R46-20). Opacity fade-in/out stays on the Window. -->
   <Window.Transitions>
     <anim:Transitions>
       <anim:DoubleTransition Property="Opacity" Duration="0:0:0.25"/>
     </anim:Transitions>
   </Window.Transitions>
-  <Window.RenderTransform>
-    <TranslateTransform X="400" Y="100" />
-  </Window.RenderTransform>
   <!-- R52: snap guide canvas overlay. Positioned inside the Border but
        above the image. IsHitTestVisible=False so pointer events pass through
        to the drag handlers. Lines drawn at runtime when a snap edge is hit. -->
@@ -35,8 +34,15 @@
          32px-blur shadow room to render; the window expands automatically.
          CornerRadius=14 is slightly larger than the inner Frame's 12 so the
          soft shadow follows the rounded corner. This Border MUST NOT set
-         ClipToBounds (default false) — clipping here would cut the shadow. -->
-    <Border Margin="24"
+         ClipToBounds (default false) — clipping here would cut the shadow.
+         R56: this Border is named so code-behind can read its Bounds (to bake
+         a center-scaled matrix each animation frame). It carries NO
+         RenderTransform in AXAML — the pop matrix is pushed from code-behind
+         via TransformOperations (reliable on NativeAOT, unlike plain
+         MatrixTransform), and the center offset is computed in code so we
+         never rely on the broken RenderTransformOrigin property. -->
+    <Border x:Name="OuterShadowBorder"
+            Margin="24"
             Background="Transparent"
             CornerRadius="14"
             BoxShadow="0 12 32 0 #66000000"
