@@ -136,12 +136,6 @@ internal sealed class SelectionRuntime : IDisposable
     // G press creates a new window. Torn down on runtime Dispose.
     private GalleryWindow? _galleryWindow;
 
-    // R53: long-screenshot (manual scroll) session window. Singleton (an L
-    // press while one is already open just activates it). Nulled on Close.
-    // Torn down on runtime Dispose. Non-terminal like P/G — closing it does
-    // NOT dismiss Ocean Eyes.
-    private LongScreenshotWindow? _longScreenshotWindow;
-
     // R47: numbered badge annotation mode. _oceanEyesAnnotating is 1 while
     // the user is placing badges (between A-on and A-off/Esc). Volatile —
     // read on the keyboard + mouse hook threads, written from the UI thread.
@@ -435,7 +429,7 @@ internal sealed class SelectionRuntime : IDisposable
             MouseDownX: regionRightX, MouseDownY: regionTopY,
             MouseDownTimestampMs: 0, MouseUpTimestampMs: 0,
             SourceRootHwnd: 0, SourceProcessId: 0));
-        _toolbarWindow.SetDiagnosticStatus("未识别 · 按 F/J/Z/R/C/G/L 开始");
+        _toolbarWindow.SetDiagnosticStatus("未识别 · 按 F/J/Z/R/C/G 开始");
         // R42: Ocean Eyes mode — hide buttons, show signature.
         _toolbarWindow.SetOceanEyesSignatureMode();
 
@@ -1351,114 +1345,6 @@ internal sealed class SelectionRuntime : IDisposable
             catch (Exception exception)
             {
                 _logger.Error("OceanEyes", "Gallery spawn failed.", exception);
-            }
-        });
-    }
-
-    /// <summary>
-    /// R53: opens the manual-scroll long-screenshot session window. The user
-    /// framed a region with Ocean Eyes and pressed L; we snapshot the region
-    /// rect on the hook thread, then open <see cref="LongScreenshotWindow"/>
-    /// on the UI thread with a <see cref="LongScreenshotWindow.CaptureFrameDelegate"/>
-    /// that calls <c>ScreenRegionCapture.CaptureRawBgra</c> (the UI layer can't
-    /// reference Platform.Windows, so the capture is injected). Non-terminal —
-    /// does NOT dismiss Ocean Eyes, same as <see cref="ShowGallery"/>.
-    /// </summary>
-    public void ShowLongScreenshotSession()
-    {
-        var rect = _oceanEyesRect; // snapshot (X, Y, W, H) in physical px
-        if (rect.W <= 0 || rect.H <= 0)
-        {
-            _logger.Info("OceanEyes", "Long screenshot: region invalid, ignoring L.");
-            return;
-        }
-        int rx = rect.X, ry = rect.Y, rw = rect.W, rh = rect.H;
-
-        Dispatcher.UIThread.Post(() =>
-        {
-            try
-            {
-                if (_longScreenshotWindow is { } existing && existing.IsVisible)
-                {
-                    existing.Activate();
-                    return;
-                }
-                _longScreenshotWindow?.Close();
-                // Capture callback: the window calls this on each Space press.
-                // Runs on the UI thread; BitBlt is fast enough (~1-3ms) to stay
-                // synchronous. Returns null on Win32 failure (window covered, etc.).
-                LongScreenshotWindow.CaptureFrameDelegate capture = () =>
-                    ScreenRegionCapture.CaptureRawBgra(rx, ry, rw, rh);
-                var window = new LongScreenshotWindow(rx, ry, rw, rh, capture, _logger);
-                window.RequestSave += (bgra, w, h) => SaveLongScreenshot(bgra, w, h);
-                window.RequestCancel += () =>
-                    _logger.Info("OceanEyes", "Long screenshot: session cancelled by user.");
-                window.Closed += (_, _) =>
-                {
-                    if (ReferenceEquals(_longScreenshotWindow, window))
-                    {
-                        _longScreenshotWindow = null;
-                    }
-                };
-                window.Show();
-                _longScreenshotWindow = window;
-            }
-            catch (Exception exception)
-            {
-                _logger.Error("OceanEyes", "Long screenshot spawn failed.", exception);
-            }
-        });
-    }
-
-    /// <summary>
-    /// R53: PNG-encodes the merged long-screenshot canvas and persists it to
-    /// <c>ocean-eyes-long-yyyyMMdd-HHmmss.png</c> in the Ocean Eyes save folder
-    /// (if <see cref="OceanEyesCaptureSettings.AutoSaveEnabled"/>), then copies
-    /// the PNG to the clipboard (if <see cref="OceanEyesCaptureSettings.CopyToClipboardEnabled"/>).
-    /// Mirrors <see cref="SaveOceanEyesScreenshot"/> minus the annotation burn-in
-    /// (long screenshots have no annotations). Called from the UI thread via the
-    /// window's <see cref="LongScreenshotWindow.RequestSave"/> event.
-    /// </summary>
-    private void SaveLongScreenshot(byte[] bgra, int width, int height)
-    {
-        var settings = _oceanEyesCapture;
-        _ = Task.Run(() =>
-        {
-            try
-            {
-                byte[] png = ScreenRegionCapture.EncodeBgraToPng(bgra, width, height);
-
-                if (settings.AutoSaveEnabled)
-                {
-                    string? directory = string.IsNullOrEmpty(settings.SavePath)
-                        ? Path.Combine(
-                            Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-                            "Ocean Eyes")
-                        : settings.Normalize().SavePath;
-                    Directory.CreateDirectory(directory);
-                    string stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
-                    string file = Path.Combine(directory, $"ocean-eyes-long-{stamp}.png");
-                    File.WriteAllBytes(file, png);
-                    _logger.Info("OceanEyes", $"Saved long screenshot ({width}x{height}): {file}");
-                }
-
-                if (settings.CopyToClipboardEnabled)
-                {
-                    try
-                    {
-                        using var clipboard = new Win32Clipboard();
-                        clipboard.SetPng(png);
-                        _logger.Info("OceanEyes", $"Copied long screenshot ({png.Length} PNG bytes) to clipboard.");
-                    }
-                    catch (Exception exception)
-                    {
-                        _logger.Error("OceanEyes", "Long screenshot clipboard copy failed.", exception);
-                    }
-                }
-            }
-            catch (Exception exception)
-            {
-                _logger.Error("OceanEyes", "Long screenshot save failed.", exception);
             }
         });
     }
@@ -2863,18 +2749,6 @@ internal sealed class SelectionRuntime : IDisposable
             return true;
         }
 
-        // R53 long screenshot: L opens the manual-scroll long-screenshot session.
-        // The user scrolls the target themselves, Space captures a frame, the
-        // stitcher appends it, Enter saves, Esc cancels. Does NOT dismiss Ocean
-        // Eyes — same as P/G. MUST be before the A-Z filter (L = 0x4C).
-        const int vkLong = 0x4C; // 'L'
-        if (vkCode == vkLong && Volatile.Read(ref _oceanEyesActive) != 0)
-        {
-            _logger.Info("OceanEyes", "Long screenshot: L → open session (no dismiss).");
-            ShowLongScreenshotSession();
-            return true;
-        }
-
         // Only single-character A-Z (0x41-0x5A) are eligible for shortcuts.
         if (vkCode < 0x41 || vkCode > 0x5A)
         {
@@ -3478,16 +3352,6 @@ internal sealed class SelectionRuntime : IDisposable
         catch (Exception exception)
         {
             _logger.Error("Runtime", "Gallery window cleanup failed.", exception);
-        }
-        // R53: close the long-screenshot session if it's open at shutdown.
-        try
-        {
-            _longScreenshotWindow?.Close();
-            _longScreenshotWindow = null;
-        }
-        catch (Exception exception)
-        {
-            _logger.Error("Runtime", "Long screenshot window cleanup failed.", exception);
         }
         _textCapture.Dispose();
         _logger.Info("Runtime", "Phase 1 selection runtime stopped.");
