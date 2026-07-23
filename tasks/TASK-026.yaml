@@ -1,0 +1,14 @@
+id: TASK-026
+requirement: REQ-024
+title: 合并最新主线并适配新增设置功能
+status: in_progress
+created: '2026-07-24T07:23:36'
+updated: '2026-07-24T07:26:05'
+satisfies:
+- AC-1
+- AC-2
+- AC-3
+- AC-4
+description: 以最新已提交 main 为功能事实源，解决 SettingsWindow 与主题冲突，适配新增 Clipboard History 等配置，并做一轮针对性排版与视觉优化。
+handoff: ''
+execution_log: []

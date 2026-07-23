@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-22T20:36:14'
-secretary_focus: REQ-023
+updated: '2026-07-24T07:26:05'
+secretary_focus: REQ-024
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -88,9 +88,13 @@ requirements:
   title: 设置页艺术字与宝石背景迁移 v8
   status: done
   progress: 1/1
+- id: REQ-024
+  title: 同步主线功能并优化设置界面 v9
+  status: dispatched
+  progress: 0/1
 phase: executing
 next_step: execute
 plan_confirmed_via: quick-user
-plan_confirmed_at: '2026-07-22T20:26:04'
+plan_confirmed_at: '2026-07-24T07:23:36'
 mode: quick
-plan_confirmed_evidence: 用户要求将右上 BYH 改成艺术字，并把左下角宝石背景图移到左上角替代原宝石。
+plan_confirmed_evidence: 用户：现在的BYH后端添加了非常多的功能，请同步到主线的最新版本并优化设置界面。
