@@ -7,7 +7,10 @@
 > **更新 2026-07-20 第四十四批（调研）：R54 剪贴板历史调研完成，规格定稿（v1 纯文本 + Smart auto-group + 50 图上限 + JSON 持久化）。基线内存实测 123MB（含完整 Ocean Eyes 功能），加 R54 预估 +3MB（+2.4%），用户感知不到。详见 §R54。**
 > **更新 2026-07-20 第四十六批：R49 截图相册落地（含托盘入口 + 双击预览 + 右键菜单）。Ocean Eyes 工具栏按 G **或** 托盘右键 → "Open Screenshot Gallery" 弹出标准窗口，瀑布流浏览 `%USERPROFILE%\Pictures\Ocean Eyes\` 历史截图（newest-first）。**双击 = 大图预览**（半透明遮罩 lightbox，底部按钮：复制/删除/打开目录），**右键 = 上下文菜单**（复制/查看/删除/资源管理器中显示），Delete 键删除，Enter 键预览，Esc 两级关闭（先预览后窗口）。不退出 Ocean Eyes（同 P 模式）。代码 +660 行（含 9 个 loader 单测），326/326 测试通过，NativeAOT 0 警告，exe +134KB（超 100KB 预算 34KB，已记录例外——Avalonia ItemsControl/WrapPanel/DataTemplate/ContextMenu/Separator 的 AOT 元数据是固有成本）。详见 §R49。**
 > **更新 2026-07-21 第四十七批：R49 预览缩放/平移 8 轮调试终态。双击预览图支持：滚轮缩放（fit/4 ~ fit×8，光标锚定）+ 左键拖动 1:1 跟手平移 + Esc 关闭。最终架构：`Border ClipToBounds > Canvas > Image Stretch=None` + `Image.RenderTransform = TransformOperations.Builder.AppendMatrix(_matrix)` + 单一 `_matrix` 自管 scale+translate（PanAndZoom `ZoomBorder` 模式）。踩了 6 个 Avalonia 12.1 NativeAOT 独立坑（详见 §R49 教训）：ScrollViewer 接管滚轮 / TransformGroup children 顺序 / LayoutTransformControl 不支持 Translate / Image Stretch=None 仍被父约束 / MatrixTransform 在 AOT 静默失效 / `Matrix *` 运算符语义反转。最终 exe 27,925,504 字节（+139KB vs R48 基线）。诊断方法：临时 `_logger.Info` + 读 `%LOCALAPPDATA%\BYH\logs\BYH.log`，停止猜测让数据说话。**
-> **更新 2026-07-22 第四十八批：R53 长截图 v1 落地（手动滚动模式）。Ocean Eyes 框选后按 **L** → 弹出"BYH · 长截图"标准窗口。用户**自己滚**目标窗口，**Space** 截一帧 + 立即拼一帧（ShareX 风格逐行字节重叠匹配，后台 `Task.Run` 不卡 UI），实时预览随拼接增长（ScrollViewer 自动跟底），**Enter** 保存 `ocean-eyes-long-yyyyMMdd-HHmmss.png`，**Esc** 取消。不退出 Ocean Eyes（同 P/G）。**v1 范围**：仅手动滚动——0 新 P/Invoke，0 AOT 风险，core stitcher 完整单测。自动滚动（SendInput 鼠标滚轮 + 到底检测）+ `msvcrt.memcmp` 性能优化 + 底部页脚裁剪（BottomIgnoreRatio）留 v2。代码 +550 行（stitcher 130 + 窗口 axaml+cs 250 + runtime 接线 100 + 8 个单测 130），334/334 测试通过（Core 258 + Providers 35 + Win.Integration 41），NativeAOT 0 警告，exe +25KB（27,925,504 → 27,951,104，远低于 100KB 预算）。详见 §R53。**
+> **更新 2026-07-22 第五十一批：R54 剪贴板历史 v1 落地（文本 only + Smart auto-group + mask 敏感 + 粘贴可选）。**用户选"最小可用"档：Ctrl+Alt+V 弹出 Maccy 风格搜索窗（克隆 SpotlightWindow 的拼音三段搜索），后台监听 WM_CLIPBOARDUPDATE 自动归类（Ortu 风格规则引擎：链接/代码/JSON/命令/数字/联系人/敏感/文本），敏感条目 ●●●● 防肩窥（点击展开），Pinned 永不淘汰，排除 app 挡 1Password/KeePass。**调研最大发现**：`Win32Clipboard.cs`（815 行）早已有消息窗口 + SubscribeChanges + 序列号去重 + Backup/Restore + GetOwnerProcessId——spec 里"要写"的好几块其实早就有，**唯一要加的是 SetText（照 SetPng 抄）+ GetForegroundProcessName**。**用户拍板 4 档**：最小可用 v1（文本 only）/ 图片不做（留 v2）/ 敏感只 mask 不 DPAPI（留 v2）/ 粘贴都做（默认只写剪贴板，设置可开自动 Ctrl+V）。**架构**：4 阶段实施——① 底层纯函数（ClipboardEntry/ClipboardClassifier/ClipboardHistoryStore + 2 个 Store + ByhApplicationPaths path 属性）② ClipboardHistoryService（App 层，长存 Win32Clipboard + 序号去重 + 排除 app + LRU）③ UI（PinyinSearchHelper 提取共享 + ClipboardHistoryWindow 克隆 Spotlight + SettingsWindow 新 section）④ App.axaml.cs 接线（照 Spotlight 三件套对位加 hotkey+window+service+事件+dispose）。**踩坑**：① ClipboardHistorySettings 静态字段初始化顺序（DefaultExcludeProcessNames 必须在 Default 前，否则 null）；② EvictToMax 初版按列表位置淘汰是错的，改按 CapturedAt 时间戳淘汰最旧非 pinned；③ ClipboardHistoryService 不能放 Platform.Windows（不依赖 Infrastructure），改放 App 层（composition root，三项目都能见）。**安全性**：Win32Clipboard 唯一 window class name（pid+guid），长存实例与现有临时 using 块互不冲突；排除 app 是第一道防线（挡密码管理器），mask 是第二道（防肩窥），剪贴板内容不写日志。0 警告 0 错误，**390/390 测试通过**（+27 剪贴板单测：Classifier 8 组正反例 + Store LRU/Pin/dedup/round-trip + Settings + Trigger），NativeAOT 0 警告，exe **27,928,064 → 28,167,680（+234KB**，超 150KB 预算——R54 是独立模块不归 Ocean Eyes 管辖，且含完整新窗口+服务+设置页+拼音表共享，合理）。⚠️ **需真机验证**：复制各类文本→Ctrl+Alt+V→分组/mask/搜索/粘贴/Pin/删除/排除 app 全通。详见 §R54。**
+> **更新 2026-07-22 第五十批：R56 贴图浮窗缩放弹出/缩走动画落地（v4 终态，用户确认"好了"）。**用户要求把 T 贴图的动画从 R46 v13 侧面滑入改成"简单弹动效果"，选了"缩放弹出"，后又要求关闭也用同款。**开了 4 轮迭代**（v1 ScaleTransform+RenderTransformOrigin → v2 timer+矩阵但 Ease 当绝对值 → v2.1 Ease 插值 → v3 LayoutUpdated 启动 → v4 ApplyScale 瞬间到位），每轮都有用户真机反馈。**踩坑教训**：① RenderTransformOrigin 在 frameless `ExtendClientAreaToDecorationsHint` 窗口整体失效（§R46-22 v11 早证伪，我没读日志重蹈）；② 缓动 Ease 返回值是进度不是绝对值；③ **真根因**：`ApplyScale` 的 DPI 基准 ScaleTransform 挂着 R46 v7 的 120ms DoubleTransition，窗口打开时 DPI 校正慢慢缩，Bounds 实时变化（日志显示 822→470，比例=RenderScaling），pop 每帧拿错基准 = "侧面滑入"。**v4 解**：`ApplyScale(animate:false)` 打开时瞬间到位 + pop 从 LayoutUpdated 启动。诊断靠 §R47 "停止猜测读日志"——临时加 RedactedLogger 写 BYH.log，确认后已删。**架构**：单 DispatcherTimer（16ms Render 优先级）按 PopDirection 枚举驱动 In/Out，每帧烘中心缩放矩阵 `Matrix(scale,0,0,scale,(1-scale)·w/2,(1-scale)·h/2)` 用 TransformOperations 推（NativeAOT 可靠，不用 MatrixTransform）。In=BackEaseOut 350ms 过冲弹，Out=CubicEaseIn 200ms 缩走+淡出。**安全性**：RenderTransform 纯视觉，拖拽和 R52 磁吸（Position+ClientSize）不受影响；ApplyScale 默认仍 animate 平滑滚轮缩放。0 警告 0 错误，255/255 测试，NativeAOT 0 警告，exe +1.5KB（27,926,528→27,928,064）。详见 §R56。**
+> **更新 2026-07-22 第四十九批：R55 置顶截图四周立体阴影落地。Ocean Eyes 截图后按 **T** 贴图，浮动置顶窗口四周加大范围柔和投影（iShot/CleanShot X 风格的悬浮卡片感）。AXAML：把承载图片的 `Frame` Border 包进一个外层 Border，`BoxShadow="0 12 32 0 #66000000"`（offset y=12 / blur=32 / 黑 40%）+ `Margin="24"`（给透明 frameless 窗口留阴影渲染空间——Avalonia BoxShadow 只在元素边界内绘制且受 ClipToBounds 裁剪，窗口精确等于图片尺寸时阴影会被裁掉）。**吸附 gap 修正**（初版误判"吸附边界落在阴影边缘是预期行为"，用户实测发现图片离屏幕/彼此边缘永远隔 24px）：窗口变大后吸附改用 **IMAGE rect**（窗口 rect 四边内缩 24×DPI）运算，吸附后 image 左上角 `-margin` 转回 window 坐标；runtime `GetOtherPinnedBounds` 改报 peer image rect（新公开 `PinnedScreenshotWindow.ImagePhysicalRect`）；引导线画在 image 边缘。inset 纯函数 `MagneticSnapCalculator.InsetRect` 可单测。与 R51（已撤销）的区别：R51 的阴影"看不出"是因 CleanShot X 模型 padding 透明色被不透明原图遮盖；本次投影落在桌面背景上（图像四周全是桌面），一定可见。0 警告 0 错误（NU1900 漏洞库 EOF 是网络瞬时），255/255 测试通过（+5 个吸附 gap 回归），NativeAOT 0 警告，exe +1KB（27,925,504 → 27,926,528）。详见 §R55。**
+> **更新 2026-07-22 第四十八批（R53 落地 → 同日撤销）：R53 长截图（L 键）实施完成（ShareX 风格逐行字节重叠匹配 stitcher + 纯函数单测），经历了 4 轮 UX 模型迭代（标准窗口 → no-activate 浮动工具条 → 纯状态机自动截帧），踩了 3 个架构陷阱（① Ocean Eyes 全屏 RegionSelectOverlay 吞掉鼠标滚轮事件导致无法滚动 ② DismissOverlay→Cancel()→RegionCancelled→ResetForRedraw() 会清零 _oceanEyesActive + 禁用 hook 导致按键全失效 ③ WS_EX_NOACTIVATE 窗口无法接收键盘焦点）。用户最终判定"弹窗有啥用 / 不做了"。本批撤销。撤销的代码：LongScreenshotStitcher.cs / LongScreenshotWindow.axaml(.cs) / L 键分支 / mouse hook 的 WM_MOUSEWHEEL 捕获 / MouseMessageType.MouseWheel 枚举 / MouseEventData.WheelDelta 字段 / 8 个 stitcher 单测。**教训**：长截图这类"需要边操作目标边截屏"的功能，核心矛盾是 BYH 的全局 hook + 全屏 overlay 与"让用户自由操作目标窗口"根本冲突——overlay 不隐藏则吞事件，隐藏则走 Cancel 事件链杀掉 Ocean Eyes 会话。若未来重做，需先重构 overlay 使其支持"鼠标事件穿透"模式（Win32 WS_EX_TRANSPARENT 或 Avalonia IsHitTestVisible=False 的全屏透明层），而非 Hide/Show 切换。详见 §R53。**
 > **更新 2026-07-21 第四十五批（R51 落地 → 同日撤销）：R51 截图美化（B 键）实施完成（纯软件 BGRA 合成，CleanShot X 风格的浮动截图 + 圆角 + 投射阴影），+24.5KB / 0 新依赖 / 340 测试全过。用户真机测试后判定"美化了啥 / 不搞了"——根因是 CleanShot X 模型对深色内容截图美化效果不明显（背景色被不透明原图完全遮盖，阴影 RGB 与深色内容相近不可辨）。本批同日 revert（commit 跟进）。撤销的代码：ScreenshotBeautifier.cs / BeautifyOceanEyesScreenshot / B 键分支 / BurnAnnotationsOntoBgra 拆分 / OceanEyesCaptureSettings +7 字段 / OceanEyesCaptureStore 读写扩展 / 22 个测试。教训：美化模型要默认走 iShot 风格（padding 也是香槟底色 + 图像居中 + 卡片整体阴影），而非 CleanShot X 浮动模型（padding 透明）。如未来重做 R51，参考 iShot 模型，并默认半径/padding 更大（≥16px / ≥48px）让效果在任何内容上都明显。**
 
 ---
@@ -417,55 +420,114 @@ QuickTools 面板可通过全局键盘快捷键打开，不再依赖左右键同
 
 ### 🔥 P1+ 重功能（核心价值，复杂度可控）
 
-#### R53 — 长截图（scrolling screenshot with stitch）✅ v1 完成（手动模式）
+#### R53 — 长截图（scrolling screenshot with stitch）❌ 已撤销
 
-- **触发**：Ocean Eyes overlay 框选后按 **L**（Long）→ 弹出 `LongScreenshotWindow.axaml(.cs)` 标准窗口。用户**自己滚动**目标窗口，按 **Space** 截一帧 + 立即拼一帧（预览实时增长），**Enter** 保存 `ocean-eyes-long-yyyyMMdd-HHmmss.png` 到 `Pictures/Ocean Eyes/`，**Esc** 取消。**不退出 Ocean Eyes**（同 P/G 模式）。
-- **v1 范围（用户 2026-07-22 选定）**：
-  - ✅ **仅手动滚动**（Space 截帧）—— 用户自己滚目标，BYH 只负责截屏 + 拼接。0 新 P/Invoke，0 AOT 风险。
-  - ❌ **自动滚动**（SendInput 鼠标滚轮 + 到底检测）留 v2。
-  - ❌ **`msvcrt.memcmp` 性能优化**留 v2（v1 用 C# 逐字节循环，已够用）。
-  - ❌ **底部页脚裁剪**（BottomIgnoreRatio）留 v2（v1 只有 SideIgnoreRatio）。
+> **2026-07-22 实施 → 同日撤销**（第四十八批）。用户真机测试后判定"弹窗有啥用 / 不做了"。
+> 落地版经历了 4 轮 UX 模型迭代，踩了 3 个架构陷阱：
+> 1. **Ocean Eyes 全屏 RegionSelectOverlay 吞鼠标滚轮事件**——overlay 是全屏 Topmost 窗口，root Canvas 可命中测试但无 PointerWheelChanged handler，滚轮事件被静默丢弃，用户无法滚动目标。
+> 2. **DismissOverlay→Cancel()→RegionCancelled→ResetForRedraw() 事件链**——调 `DismissOverlay` 隐藏 overlay 会触发 `RegionCancelled`，进而 `ResetForRedraw()` 清零 `_oceanEyesActive` + 禁用 hook，导致按键全失效。只能改用 `_annotationOverlay?.Hide()` 直接隐藏（不触发 Cancel），但这不够直观。
+> 3. **WS_EX_NOACTIVATE 窗口无法接收键盘焦点**——浮动工具条不抢焦点是正确设计，但 Space/Enter/Esc 必须通过全局 hook 路由，增加了复杂度。
+>
+> **根因总结**：长截图这类"需要边操作目标窗口边截屏"的功能，与 BYH 的全局 hook + 全屏 overlay 架构根本冲突——overlay 不隐藏则吞鼠标事件，隐藏则走 Cancel 事件链杀掉 Ocean Eyes 会话。用户要的不是"另一个窗口"，而是滚轮自动截帧的无感体验，这需要更底层的重构。
+>
+> **若未来重做**：需先重构 RegionSelectOverlay 支持"鼠标事件穿透"模式（Win32 `WS_EX_TRANSPARENT` 让鼠标事件直达下层窗口，或 Avalonia `IsHitTestVisible=False` 的全屏透明层），而非 Hide/Show 切换。在此基础上，纯状态机模型（L 进入模式 → 滚轮自动截帧 → Enter 保存 → Esc 退出）是正确方向——撤销前的最后一版已经走到了这个架构，只差 overlay 穿透这一步。stitcher 算法本身（ShareX 风格逐行字节重叠匹配）已验证可用，可复用。
   - ❌ OCR / PDF 导出留 v2/v3。
 - **代码量**：~550 行（`LongScreenshotStitcher.cs` 130 + `LongScreenshotWindow.axaml(.cs)` 250 + `SelectionRuntime.cs` 编辑 100 + 8 个单元测试 130）。
 - **依赖**：无新增（stitch 纯 `Buffer.BlockCopy` + `for` 循环；截图复用 `ScreenRegionCapture.CaptureRawBgra`；PNG 编码复用手写 `PngEncoder`；预览用 `WriteableBitmap` + `Lock/Marshal.Copy`）。
 - **资源开销**：常驻 0；运行时 stitch 每帧 ~50-150ms（1080p，C# 逐字节，后台 `Task.Run` 不卡 UI）。v2 换 `memcmp` 后降到 ~10ms/帧。
 - **验收（v1 终态，2026-07-22）**：
   - Debug build 0 警告 0 错误。
-  - **334/334 测试通过**（Core 258 + Providers 35 + Windows.Integration 41，含 R53 新 8 个 stitcher 测试）。
-  - NativeAOT Release publish **0 trim/AOT 警告**。
-  - exe 27,925,504 → **27,951,104 字节**（+25KB，远低于 100KB 预算）。
-  - 实测：Ocean Eyes 框选 → L → 窗口弹出 → 滚动目标 → Space 截帧（预览增长 + 帧数 +1）→ Enter 保存 → Esc 取消（Ocean Eyes 工具栏仍可用）。
-  - 兜底：帧间完全无重叠（如用户拖动了窗口位置）→ 整帧追加 + ⚠️ "N 帧拼接失败（已兜底追加）"提示。
-- **关键设计决策**：
-  - **L 不退出 Ocean Eyes**（与 P/G/A 一致），区别于 T 贴图/Enter 保存（terminal action）。理由：长截图是"扩展捕获"，用户关掉长截图窗口可能想继续标注/翻译/贴图当前刚截的那张。
-  - **核心算法在 Core 层纯函数**（`LongScreenshotStitcher.Append`）：无 I/O、无 P/Invoke、完全可单测。移植 ShareX `ScrollingCaptureManager.CombineImages` 思想——找 canvas 底部与 frame 顶部的最大连续匹配行段，追加非重叠尾部。
-  - **左右裁 5%**（`SideIgnoreRatio=0.05`）容忍侧栏漂移/滚动条宽度变化。**底部裁 10%**（`BottomIgnoreRatio`）原计划裁页脚固定条，但 trim-vs-append 语义微妙（裁掉的行必须从比较 AND 追加中都丢弃，否则页脚每帧重复出现），且手动模式下用户自己控制选区，页脚很少成为问题——故 v1 **移除**底部裁剪，留 v2 在 auto-scroll 场景再加。
-  - **匹配从最大 overlap 往下扫**（`for overlap = min(canvasH, frameH); overlap >= 1; overlap--`），第一个全匹配即为最长重叠。最长优先保证拼接连续性。
-  - **完全匹配失败 → 兜底整帧追加**（`OverlapRows=NoOverlap(-1)`, `Success=false`），用户看到 ⚠️ 提示而非静默丢帧。这是预期行为：用户拖动了窗口位置导致帧间错位，stitcher 无法匹配，但内容不应丢失。
-  - **截图由 runtime 注入**（`CaptureFrameDelegate`）——UI 层（`SelectionAssistant.UI`）不能引用 `Platform.Windows`，所以 `ShowLongScreenshotSession()` 传入一个 lambda `() => ScreenRegionCapture.CaptureRawBgra(rx, ry, rw, rh)`。窗口每次 Space 调用它，截图在 UI 线程同步执行（BitBlt ~1-3ms）。
-  - **预览用 `WriteableBitmap` + `Lock/Marshal.Copy`**（参考 `ColorPickerLoupe.axaml.cs`）。每帧拼接后高度变，重建 bitmap。BGRA→RGBA swizzle（loupe 约定，Avalonia 12.1 无 BGRA 写入路径）。
-  - **ScrollViewer 自动跟底**：拼接后 `Dispatcher.UIThread.Post(() => sv.Offset = new Avalonia.Vector(sv.Offset.X, sv.ScrollBarMaximum.Y))`。注意 `Avalonia.Vector` 必须全限定（`ImplicitUsings` 会引入 `System.Numerics.Vector` 干扰），且 `ScrollBarMaximum` 是 `Vector`（`.Y`）不是 `Size`（`.Height`）。
-  - **stitch 在后台 `Task.Run`**：UI 不卡。`_busy` 标志防 Space 连按导致 canvas 竞态。canvas 在 lambda 里 snapshot，拼接结果回 UI 线程前检查 `_canvasBgra is null`（用户可能在拼接期间关窗）。
-  - **保存镜像 `SaveOceanEyesScreenshot`** 但去掉标注 burn-in（长截图无标注）。文件名 `ocean-eyes-long-yyyyMMdd-HHmmss.png`（带 `-long` 区分普通截图）。
-- **算法复杂度**：O(overlap × width × height)。1080p 一屏 1080 行、宽 1920、每次重叠 ~900 行 → ~2 亿次字节比较，实测 ~50-150ms/帧。v2 换 `memcmp` 降一个数量级。
-- **未做（留 v2）**：
-  - **自动滚动**：SendInput 鼠标滚轮（`MOUSEEVENTF_WHEEL` + `WHEEL_DELTA`，`SendInputHelper` 已有 `MouseInput`/`NativeInput`/`InputUnion` 结构体，只缺常量和方法）+ 到底检测（连续两帧无重叠 = 到底，或 `GetScrollInfo`）。
-  - **`msvcrt.memcmp` P/Invoke**：~10× faster 的逐字节比较。Windows 内置 DLL，AOT 安全。项目 P/Invoke 约定全用 `[DllImport]`（无 `[LibraryImport]`），加一个 `[DllImport("msvcrt.dll")] static extern int memcmp(...)` 即可。
-  - **`BottomIgnoreRatio`**：底部页脚裁剪（trim-vs-append 语义需仔细设计）。
-  - **`ScrollDelay` 配置**：auto-scroll 模式下每滚一档等多久让懒加载页面渲染（默认 300ms）。
-  - **PDF 导出**：参考 Susskind2 用 `PdfSharp`（可选依赖）。
-- **风险（ShareX 自己也提到，永久记录，对 v2 auto-scroll 有效）**：
-  - **懒加载页面**：滚太快没加载完 → 需可配 `ScrollDelay`。
-  - **浮层/动画/视频/广告位**：破坏像素匹配 → 兜底已覆盖（v1 手动模式用户自己控速，风险更低）。
-  - **DRM 内容**：黑屏（与所有截图工具一样，无解）。
-  - **NativeAOT + P/Invoke `msvcrt.memcmp`**（v2）：Windows 内置 DLL，AOT 安全；`[DllImport]` 即可，无需 `[LibraryImport]` source generator。
+- **撤销的代码**：`LongScreenshotStitcher.cs`（纯函数 stitcher，可复用）/ `LongScreenshotWindow.axaml(.cs)`（标准窗口 → no-activate 浮动工具条，已删）/ L 键分支 / mouse hook 的 `WM_MOUSEWHEEL` 捕获 + `MouseMessageType.MouseWheel` 枚举 + `MouseEventData.WheelDelta` 字段 / 8 个 stitcher 单测。
+- **可复用的资产**：
+  - **stitcher 算法**（ShareX 风格逐行字节重叠匹配）已验证可用，逻辑正确，单测全过。未来重做可直接拿回。
+  - **4 轮迭代经验**记录了所有踩过的坑（overlay 吞事件 / Cancel 事件链 / no-activate 焦点），避免重蹈覆辙。
+- **算法**（已验证，记录备查）：移植 ShareX `ScrollingCaptureManager.CombineImages`——找 canvas 底部与 frame 顶部的最大连续匹配行段，追加非重叠尾部。左右裁 5% 容忍侧栏漂移。完全匹配失败 → 兜底整帧追加。O(overlap × width × height)，1080p ~50-150ms/帧（C# 逐字节），v2 换 `msvcrt.memcmp` 降一个数量级。
 - **参考实现**：
   - `ShareX/ShareX.ScreenCaptureLib/ScrollingCaptureManager.cs`（金标准，~25k stars，stitch 算法来源）。
   - `Susskind2/ScrollCapture`（C#/WinForms，更简单；零拼接只导 PDF）。
 
 ---
 
-### 📋 R54 — 剪贴板历史（clipboard history with smart auto-grouping）
+### ✅ R55 — 置顶截图四周立体阴影（large drop shadow on pinned window）
+
+- **触发**：Ocean Eyes 截图后按 **T** 贴图 → 浮动置顶窗口四周加大范围柔和投影，看起来像悬浮在桌面上方的卡片（iShot/CleanShot X 风格）。
+- **v1 范围（用户 2026-07-22 选定"大投影立体感"）**：
+  - ✅ **AXAML 样式变更**：把承载图片的 `Frame` Border 包进一个新的外层 Border，外层 `BoxShadow="0 12 32 0 #66000000"`（offset y=12、blur=32、spread=0、黑 alpha=40%）+ `Margin="24"`。原 `Frame`（CornerRadius=8, ClipToBounds=True）嵌入其内不变。
+  - ✅ **吸附计算修正**（初版误判"吸附边界落在阴影边缘是预期行为"，用户实测发现图片离屏幕/彼此边缘永远隔 24px gap）：拖拽/吸附改为对 **IMAGE rect**（窗口 rect 四边各内缩 `ShadowMarginDip×RenderScaling`）运算，再把吸附后的 image 左上角转回 window 左上角。runtime 的 `GetOtherPinnedBounds` 改报 peer 的 image rect（新公开属性 `PinnedScreenshotWindow.ImagePhysicalRect`）。
+- **核心技术约束（Avalonia 12.1）**：
+  - `BoxShadow` 只在元素边界**内**绘制，受 `ClipToBounds` 裁剪。frameless 透明窗口 `SizeToContent=WidthAndHeight` 时窗口精确等于图片尺寸，图片紧贴窗口边缘 → 阴影无渲染空间会被裁掉。
+  - **阴影渲染解法**：外层 Border 加 `Margin="24"` 让窗口在四周各扩大 24px（透明区），阴影画在这个透明区内。窗口因 `SizeToContent` 自动扩大到 `图片 + 48px`。外层 Border **不设 ClipToBounds**（默认 false），否则阴影被裁。
+  - **吸附 gap 解法**：窗口变大后吸附若仍用 `ClientSize`（= 窗口 = 图片+48px），图片永远离目标边缘 24px。改用 image rect 运算。inset 纯函数放 `MagneticSnapCalculator.InsetRect`（可单测），window 的 `ImageRectForWindow` 委托给它。
+  - 外层 `CornerRadius="10"` 略大于内层 `8`，让柔和阴影贴合圆角。
+- **连带影响（实际需要改的）**：
+  - `SizeToContent=WidthAndHeight` → 窗口自动 = 图片 + 48px（无需改）。
+  - 拖拽（`OnPointerMoved/Released`）→ **改**：算 image rect 喂 `ComputeSnap`，吸附结果 `-margin` 转回 window 坐标。
+  - 吸附（`GetOtherPinnedBounds`，runtime 回调）→ **改**：报 `w.ImagePhysicalRect`（peer image rect），两个贴图 image 边贴 image 边无 gap。
+  - 吸附引导线（`UpdateSnapGuideCanvas`）→ **改**：线画在 image 边缘（`ShadowMarginDip..w-m`），不画在阴影边缘。
+  - `ApplyScale`（DPI baseline `1/RenderScaling`）只缩放 Scaler 内部图片，窗口/阴影边框尺寸不变（无需改）。
+  - 初始位置（region 左上 +16）、滑入动画 `_slide=(400,100)→(0,0)`、双击检测（`DoubleClickPx=8`）、ContextMenu 全部不变（无需改）。
+- **`Frame` 在 code-behind 从未被引用**（只是 axaml 的 x:Name）→ 改其结构安全。
+- **与 R51（已撤销）的区别**：R51 截图美化的阴影"看不出"，根因是 CleanShot X 模型的 padding 透明色被不透明原图遮盖、阴影 RGB 与深色内容相近。本次针对**贴图浮窗**（已在桌面上的 PNG），投影落在**桌面背景**上（不透明图像四周全是桌面），一定可见，与 R51 那种 padding 填色被原图遮盖的情况本质不同。
+- **NativeAOT 安全**：`BoxShadow` 是 Avalonia 内置 styled property，项目已大量使用（IvoryJade.axaml 15+ 处、GalleryWindow.axaml），12.1 已验证可用。无新依赖、无 P/Invoke、无反射。**0 AOT 风险**。
+- **验收（2026-07-22 第四十九批，含吸附修正）**：
+  - `dotnet build` → **0 警告 0 错误**（NU1900 漏洞库拉取 EOF 是网络瞬时问题，`-p:NuGetAudit=false` 即 0 警告，非代码问题）。
+  - **255/255 测试通过**（Core 250 + 新增 5：3 个 `InsetRect` + 2 个吸附 gap 回归）。
+  - NativeAOT Release publish **0 trim/AOT 警告**。
+  - exe 27,925,504 → **27,926,528 字节（+1,024B = 1KB，远低于 5KB 预算）**。
+- **总改动**：AXAML +1 层 Border（~10 行）+ C# 适配层修正（`PinnedScreenshotWindow.axaml.cs` +`ImagePhysicalRect`/`ImageRectForWindow`/吸附坐标转换/引导线 inset，~40 行；`SelectionRuntime.cs` `GetOtherPinnedBounds` 改 4 行；`MagneticSnapCalculator.cs` +`InsetRect` 纯函数 10 行；测试 +5 个 ~70 行）。
+
+---
+
+### ✅ R56 — 贴图浮窗缩放弹出动画（scale pop-in + pop-out，timer + TransformOperations）
+
+- **触发**：用户"改一下贴图的动画,改成简单弹动效果"。Ocean Eyes 截图后按 **T** 贴图，浮窗开启从 R46 v13 的**侧面滑入**改为**缩放弹出**（卡片从 0.85 弹到 1.0，轻微过冲后落定，BackEaseOut 350ms）；关闭也对称改成缩走（1.0→0.85 CubicEaseIn 200ms + 淡出）。用户从三选里选了"缩放弹出（推荐）"，确认后又要求关闭也用同款。
+- **终态架构（v4）**：
+  - **Pop-IN**：`0.85 → ~1.05 过冲 → 1.0`（BackEaseOut 350ms）。**Pop-OUT（关闭）**：`1.0 → 0.85`（CubicEaseIn 200ms）+ Opacity 淡出（Window.Transitions 250ms）。两者复用同一套机制：一个 `DispatcherTimer`（16ms，`DispatcherPriority.Render`），按 `PopDirection` 枚举（In/Out）选 duration + easing + scale 公式。
+  - **绕过 RenderTransformOrigin**：每帧把 eased scale 烘进**中心缩放矩阵** `Matrix(scale,0,0,scale,(1-scale)·w/2,(1-scale)·h/2)`（即 translate(-w/2,-h/2)×scale×translate(w/2,h/2)，中心偏移在矩阵里硬算）。
+  - **NativeAOT 安全的 transform API**：`TransformOperations.Builder(1).AppendMatrix(matrix).Build()` 推到 `OuterShadowBorder.RenderTransform`——**不用** plain `MatrixTransform`（§R47/R49 记录它在 NativeAOT 静默失效）。
+  - **从 LayoutUpdated 启动 pop-in**（不在 Opened 启动）。
+  - **打开时 DPI 基准瞬间到位**：`ApplyScale(animate:false)`。
+- **⚠️ 踩了 4 个坑才成（4 轮迭代，每轮都有用户真机反馈 + BYH.log 诊断）**——这段记录的教训比代码本身更值钱：
+
+  **v1（ScaleTransform + RenderTransformOrigin）—— 用户"闪烁的弹两下,和之前一样"。**
+  - 方案：外层 Border 加 `RenderTransformOrigin=0.5,0.5` + `<ScaleTransform 0.85>`，DoubleTransition + BackEaseOut。
+  - **错误判断**：以为 R55 新增的外层 Border 能让原点居中。**handoff §R46-22 的 v11 早已证伪**：把 ScaleTransform 从 Window 移到内部 Border，原点仍失效（scale 从左上角长）。我没读日志就重蹈覆辙。
+  - **教训**：改动画前**必读 §R46-22**——scale 类动画在 BYH 的 frameless `ExtendClientAreaToDecorationsHint` 窗口上不能用 RenderTransformOrigin（Window 或 Border 上都不行）。
+
+  **v2（timer + TransformOperations 中心矩阵，但 Ease 当绝对值）—— 用户"确实有回弹了,但总是从屏幕右下角滑出来,不是从中央弹"。**
+  - 方案对了一半（绕过 RenderTransformOrigin 用矩阵），但 `OnPopTick` 把 `BackEaseOut.Ease(progress)` 的返回值**直接当绝对 scale**。BackEaseOut 是**进度函数**（0→1，末段 overshoot ~1.1），不是目标值。第一个 tick `progress≈0.046→Ease≈0.21`，卡片瞬间从 0.85 **暴跌到 0.21**，中心矩阵偏移把小卡片往右下角推 = "从右下角滑出来"。
+  - **教训**：缓动函数的返回值是**进度**，要插值进 `[起值, 终值]` 区间，不能当绝对值。
+
+  **v2.1（Ease 插值进 [0.85,1.0]）—— 用户"更丝滑了,但还是侧面划入"。**
+  - 修了 v2 的数学（`scale = 0.85 + 0.15×Ease(progress)`），但**只是更顺了，根因没解**。这一版加了诊断日志（§R47 "停止猜测"原则），让用户复现后读 `BYH.log`。
+
+  **v3/v4（读日志定位真正根因）—— 日志揭示 Bounds 在动画全程从物理像素 822 缩到 DIP 470，比例 = RenderScaling=1.75，耗时 ~120ms。**
+  - **真正根因**：`ApplyScale`（设 DPI 基准 `_scaleTransform=1/RenderScaling`）的 ScaleTransform 上挂着 R46 v7 加的 **120ms DoubleTransition**。所以窗口打开时 DPI 校正在 120ms 里慢慢缩，`OuterShadowBorder.Bounds` 实时变化（822→470），我的 pop 动画每帧都拿**正在变的 Bounds** 算中心矩阵 → 中心基准漂移 = "侧面滑入"。
+  - **v3 修**：pop 从 `LayoutUpdated` 启动（不在 Opened；Opened 时 Bounds 还是物理像素 927×533@153,71，LayoutUpdated 后才是 DIP 530×305@24,24），timer 提到 `DispatcherPriority.Render`。**只解决了"首帧 Bounds 错"的表象，Bounds 仍在缩** → 用户"还是侧面"。
+  - **v4 修（真正的解）**：`ApplyScale(animate:false)`——打开时 DPI 基准**瞬间到位**（临时摘 transition 再设值），Bounds 立即稳定在真实 DIP 尺寸，pop 第一帧就在正确基准上跑。日志确认 v4 后 bounds 从 tick#1 到 tick#10 完全不变（497.1×127.4 稳定）。**用户："好了!"**
+  - **教训**：DPI 基准是**校正**不是用户可见缩放，不该动画；动画 transition 只该留给用户可见的滚轮缩放。诊断日志（§R47 "停止猜测"）是唯一可靠定位手段——4 轮里前 3 轮都在猜。
+
+- **关键技术约束（最终）**：
+  - `RenderTransform` 纯视觉，不改 layout/hit-test/Bounds → 拖拽（Position+ClientSize）和 R52 磁吸（ImagePhysicalRect）**完全不受影响**。
+  - `_popTimer` 的 RenderTransform（弹动）与 `_scaleTransform`（Scaler 的 LayoutTransform，DPI/wheel-zoom）是两套独立 transform；`ApplyScale(animate:false)` 只在打开时摘 transition，滚轮缩放仍 `ApplyScale()`（默认 animate:true）平滑。
+  - pop-in 从 `LayoutUpdated` 启动（`_popPending` flag + 一次性消费），不在 Opened。
+  - pop-out（关闭）`StopPopTimer` 不清 transform（避免缩走后闪一下全尺寸再消失），留给 Hide 直接收。
+  - R55 阴影随外层 Border 一起 scale（自然，阴影和卡片一起 pop）。
+- **连带影响（逐项确认，全部安全）**：拖拽不变 / R52 磁吸不变 / 初始位置（region 左上 +16）不变 / 双击检测（DoubleClickPx=8）不变 / ContextMenu 不变 / 滚轮缩放平滑不变（ApplyScale 默认 animate）。
+- **诊断代码**：开发期临时加了 `RedactedLogger _diag` + `_popTickCount` + START/tick#n 日志（写 BYH.log），**v4 确认后已全部删除**（连 using 一起）。
+- **`anim:` 命名空间**：仍被 `<Window.Transitions>` Opacity transition 使用，保留。
+- **NativeAOT 安全**：DispatcherTimer / TransformOperations / Matrix / BackEaseOut / CubicEaseIn 全是 Avalonia 12.1 内置（已验证 Avalonia.Base.xml 含全套 easing）。DispatcherTimer 项目大量用（ColorPickerLoupe/GalleryWindow/App/SelectionRuntime），TransformOperations GalleryWindow 在用。无新依赖、无 P/Invoke、无反射。**0 AOT 风险**。
+- **验收（2026-07-22 第五十批，v4 终态，已用户确认"好了"）**：
+  - `dotnet build` → **0 警告 0 错误**。
+  - **255/255 测试通过**（Core，回归无破坏）。
+  - NativeAOT Release publish **0 trim/AOT 警告**。
+  - exe 27,926,528 → **27,928,064 字节（+1,536B = 1.5KB，远低于 5KB 预算）**。
+  - ✅ **动画正确性已用户真机确认**（不再是"待验证"）：开启从中央弹 + 轻微过冲落定，关闭从中央缩走 + 淡出，PopIn/PopOut 日志均确认 bounds 稳定、scale 曲线正确。
+- **总改动**：AXAML ~15 行（含注释）+ CS ~110 行（含注释 + pop in/out helper + ApplyScale animate 参数）。0 新依赖、0 新测试、0 新 P/Invoke。诊断日志代码已删。
+
+---
+
+### ✅ R54 — 剪贴板历史（clipboard history with smart auto-grouping，v1 已落地 2026-07-22）
 
 > **独立于 Ocean Eyes 系列**：R44-R53 都是"Ocean Eyes 框选时触发的临时动作"，零常驻；R54 是**常驻型**功能（监听器 24/7 运行 + 历史缓存），是唯一会突破"常驻开销 ≈ 0"契约的 backlog 项。
 > 来源：用户 2026-07-20 提出"如果把剪贴板功能加进来，资源影响怎么样，剪贴板历史、分组等"——目前用 CopyQ（Qt C++，~80-100MB），希望 BYH 整合更轻量的替代。
@@ -604,6 +666,42 @@ BYH 在功能集远超 CopyQ 的情况下只多 23MB，加 R54 后**仍只比 Co
 4. **CopyQ 脚本依赖**：如果用户重度依赖 CopyQ 的 JS 脚本（如"复制后自动 POST 到某 API"），BYH 替代不了。99% 用户不用。
 5. **NativeAOT + `AddClipboardFormatListener`**：必须给隐藏的 message-only 窗口（或复用现有 tray window）注册监听，确保 WM_CLIPBOARDUPDATE 不被 Avalonia 主窗口吞掉。
 
+#### 实现（v1 落地，2026-07-22 第五十一批）
+
+> 用户拍板 4 档范围：**最小可用 v1（文本 only）+ 图片不做（留 v2）+ 敏感只 mask 不 DPAPI（留 v2）+ 粘贴都做（设置选）**。
+
+**调研最大发现（决定改动范围）**：`Win32Clipboard.cs`（815 行）**早已有**消息窗口 + `SubscribeChanges(Action)` + 序列号去重 + `Backup/Restore` + `GetOwnerProcessId`——spec 风险点 #5（"必须建 message-only window"）不存在，直接调 `SubscribeChanges`。**唯一要加的是 `SetText(string)`（照 `SetPng` 抄 GlobalAlloc/SetClipboardData）+ `GetForegroundProcessName()`（排除 app 读源进程名）**。多实例安全：每个 `Win32Clipboard` 唯一 window class name（`BYH.Clipboard.{pid}.{guid}`），长存监听实例与现有临时 `using` 块互不冲突。
+
+**新增文件（11 个）**：
+- `Core/Clipboard/ClipboardEntry.cs`（record：Id/Text/Source/CapturedAt/IsPinned/Group/IsSensitive）
+- `Core/Clipboard/ClipboardGroup.cs`（enum：Sensitive>Link>Json>Code>Shell>Contact>Number>Text 优先级）
+- `Core/Clipboard/ClipboardClassifier.cs`（**Smart auto-group 纯函数**，GeneratedRegex，Sensitive 最高优先级——密码不漏到别的组）
+- `Core/Clipboard/ClipboardHistorySettings.cs`（功能开关：Enabled/AutoPaste/MaxEntries/ExcludeProcessNames/MaskSensitive）
+- `Core/Input/ClipboardHistoryTriggerSettings.cs`（Ctrl+Alt+V 快捷键 record，照 SpotlightTriggerSettings 抄）
+- `Infrastructure/Configuration/ClipboardHistoryStore.cs`（JSON 持久化 + LRU 淘汰 + dedup + BuildPreview mask）
+- `Infrastructure/Configuration/ClipboardHistoryTriggerStore.cs`（快捷键 store，1:1 抄 SpotlightTriggerStore）
+- `Infrastructure/Configuration/ClipboardHistorySettingsStore.cs`（功能开关 store）
+- `App/ClipboardHistoryService.cs`（**核心控制器**：长存 Win32Clipboard + SubscribeChanges + 序号去重 + 排除 app 过滤 + Classifier 归类 + Store 持久化 + LRU；PasteAsync 写剪贴板/可选 Ctrl+V；放在 App 层因为跨 Platform.Windows+Infrastructure+Core 三项目）
+- `UI/Views/PinyinSearchHelper.cs`（**从 SpotlightWindow 提取共享**的拼音三段搜索：substring+initials+pinyin，SpotlightWindow 改成调 helper 零行为变化）
+- `UI/Views/ClipboardHistoryWindow.axaml(.cs)` + `ClipboardHistoryEntryRow.cs`（Maccy 风格弹窗，克隆 SpotlightWindow 结构，加 Pin/Delete/敏感 mask）
+
+**修改文件（4 个）**：
+- `Win32Clipboard.cs`：+`SetText`（照 SetPng）+`GetForegroundProcessName`（GetForegroundWindow+Process.GetProcessById）+`[DllImport] GetForegroundWindow`
+- `ByhApplicationPaths.cs`：+3 path 属性（trigger/settings/history 文件）
+- `App.axaml.cs`：照 Spotlight 三件套对位加 hotkey+window+service+事件+dispose（RegisterInitialClipboardHistoryHotKey/OnClipboardHistoryTriggered toggle/OnClipboardHistoryTriggerSettingsSaved 事务流/OnClipboardHistorySettingsSaved/OnClipboardHistoryClearRequested/Paste/Pin/Delete/Settings）
+- `SettingsWindow.axaml(.cs)`：+SettingsPage.ClipboardHistory 枚举+nav 按钮+section（快捷键卡+功能开关卡：启用/自动粘贴/mask/上限/排除 app/清空按钮）
+
+**Smart auto-group 规则（纯函数 ClipboardClassifier）**：Sensitive（api_key/secret/token/password/AKIA[16]/private_key/Bearer，**最高优先级**）> Link（http(s)/ftp/www）> Json（可 parse 的 {/[）> Code（function/class/import/namespace/def/public/private/return）> Shell（sudo/apt/git/chmod/cd/ls/mkdir/rm）> Contact（邮箱/11位手机）> Number（纯数字金额）> Text（兜底）。
+
+**安全性（三道防线）**：① 排除 app（GetForegroundProcessName 匹配 ExcludeProcessNames，默认 1password/keepass/authy/bitwarden/lastpass/enpass/dashlane，挡密码管理器）② 敏感组 mask（●●●● 点击展开，防肩窥）③ 剪贴板内容**不写日志**（RedactedLogger 只 redact 凭据 shape，不保护任意文本）。DPAPI 加密留 v2。
+
+**踩坑（实施中修复）**：
+1. **ClipboardHistorySettings 静态字段初始化顺序**：`DefaultExcludeProcessNames` 必须在 `Default` 之前声明，否则 `Default = new()` 时 `ExcludeProcessNames` 初始化器引用到 null（C# 静态字段按文本顺序初始化）。
+2. **EvictToMax 初版按列表位置淘汰是错的**：`AddAndEvict` 产出的列表是 `[newest, ...old_in_input_order]`，位置不保证时间序。改为按 `CapturedAt` 时间戳淘汰最旧的非 pinned（LINQ OrderBy + Take + HashSet drop）。
+3. **ClipboardHistoryService 不能放 Platform.Windows**：它依赖 Infrastructure（Store+RedactedLogger），而 Platform.Windows 不引用 Infrastructure。改放 **App 层**（composition root，三项目都能见），与 SelectionRuntime 同位置。
+
+**验收（v1）**：`dotnet build` **0 警告 0 错误**；`dotnet test` **390/390 通过**（+27 剪贴板单测：Classifier 8 组正反例 + Store LRU/Pin/dedup/round-trip/corrupt-file + Settings normalize/clamp/dedup + Trigger）；NativeAOT publish **0 trim/AOT 警告**；exe 27,928,064 → **28,167,680（+234KB**，超 150KB 预算——R54 是独立模块含完整新窗口+服务+设置页+拼音表共享，合理）。已部署。⚠️ **动画/分组/mask/搜索/粘贴/Pin/删除/排除 app 正确性需真机验证**。
+
 ---
 
 ### R44-R54 完成顺序建议
@@ -620,13 +718,15 @@ P1（中等，按需做）
   ✅ R48 标注工具集（依赖 R47 标注 layer，2026-07-20 第四十三批 v2 落地）
   ❌ R51 截图美化（2026-07-21 第四十五批落地 → 同日撤销，CleanShot X 模型对深色内容看不出效果；未来重做改 iShot 模型）
   ✅ R49 截图相册（2026-07-20 第四十六批落地）
+  ✅ R55 置顶截图阴影（2026-07-22 第四十九批落地，纯 AXAML +0 行 C#，T 贴图浮窗四周大投影）
+  ✅ R56 贴图缩放弹出/缩走动画（2026-07-22 第五十批 v4 终态，timer + TransformOperations 中心矩阵；开 4 轮迭代——v1 RenderTransformOrigin 失效、v2 Ease 当绝对值、v3 首帧 Bounds 错、v4 ApplyScale 瞬间到位解真根因；诊断日志确认后已删）
   R50 带壳截图
 
 P1+（重功能，最后做）
-  ✅ R53 长截图（2026-07-22 第四十八批 v1 落地，手动滚动模式；auto-scroll 留 v2）
+  ❌ R53 长截图（2026-07-22 第四十八批落地 → 同日撤销，overlay 架构冲突；stitcher 算法可复用）
 
 独立模块（不依赖 Ocean Eyes）
-  R54 剪贴板历史（2026-07-20 调研完成，规格定稿，待开工；唯一常驻型功能）
+  ✅ R54 剪贴板历史（2026-07-22 第五十一批 v1 落地，文本 only + Smart auto-group + mask 敏感 + Ctrl+Alt+V 弹窗；图片/DPAPI/SQLite 留 v2）
 ```
 
 ### 每项落地的统一验收清单
@@ -643,7 +743,7 @@ P1+（重功能，最后做）
 
 ## 待办（非紧急，与 R44-R54 平行）
 
-- **R54 剪贴板历史**（2026-07-20 调研完成，规格定稿，待用户拍板开工）— 独立模块，详见上方 §R54。
+- **R54 剪贴板历史 v2**（v1 已于 2026-07-22 第五十一批落地，文本 only + Smart auto-group + mask 敏感 + Ctrl+Alt+V 弹窗）。v2 待办：图片条目（96×96 缩略图 + 原图存盘 + 50 张上限，复用 GalleryWindow 的 `Bitmap.DecodeToWidth`）/ 敏感组 DPAPI 加密（复用 `DpapiSecretStore`）/ SQLite + FTS5 全文搜索（+1.5MB 依赖）。详见 §R54。
 - **安装包 / 代码签名 / 开机启动**（v0.1 收尾）。
 - **P1.7 DPI/多显示器定位**（单屏 mouse+16px）。
 - **P1.8 应用语料库 95% 验收**。

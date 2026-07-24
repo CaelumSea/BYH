@@ -1,0 +1,143 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
+        x:Class="SelectionAssistant.UI.Views.ClipboardHistoryWindow"
+        Title="BYH · Clipboard"
+        Width="560"
+        Height="520"
+        CanResize="False"
+        ShowActivated="True"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterScreen"
+        WindowDecorations="None"
+        ExtendClientAreaToDecorationsHint="True"
+        TransparencyLevelHint="AcrylicBlur"
+        Background="Transparent"
+        Topmost="True"
+        KeyDown="OnWindowKeyDown">
+  <Border x:Name="RootBorder"
+          Classes="FloatingSurface"
+          Padding="14"
+          CornerRadius="12">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
+
+      <!-- Search input row: clipboard icon + TextBox. Same gold-lace frame
+           machinery as SpotlightWindow. -->
+      <Grid Grid.Row="0" ColumnDefinitions="28,*,Auto" ColumnSpacing="8">
+        <TextBlock Grid.Column="0"
+                   Text="📋"
+                   FontSize="15"
+                   VerticalAlignment="Center"
+                   HorizontalAlignment="Center" />
+        <Border Grid.Column="1"
+                Classes="SpotlightGoldFrame"
+                CornerRadius="12"
+                Padding="8,3">
+          <TextBox x:Name="SearchInput"
+                   Classes="SpotlightSearch"
+                   PlaceholderText="搜索剪贴板历史…"
+                   FontSize="15"
+                   FontWeight="SemiBold"
+                   Padding="0,1"
+                   VerticalAlignment="Center"
+                   VerticalContentAlignment="Center"
+                   BorderThickness="0"
+                   Background="Transparent"
+                   TextChanged="OnSearchInputTextChanged" />
+        </Border>
+      </Grid>
+
+      <!-- Category header -->
+      <TextBlock Grid.Row="1"
+                 Classes="Kicker"
+                 Text="剪贴板历史"
+                 FontSize="10" />
+
+      <!-- Filtered results list -->
+      <Border Grid.Row="2"
+              Background="Transparent"
+              BorderBrush="{DynamicResource ByhHairlineBrush}"
+              BorderThickness="0,1,0,0"
+              Padding="0,8,0,0">
+        <ScrollViewer x:Name="ResultsScroll"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto">
+          <ItemsControl x:Name="ResultsList">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="views:ClipboardHistoryEntryRow">
+                <!-- Bind "Active" class to IsSelected — same compiled-bindings
+                     pattern as SpotlightWindow (AVLN2000-safe, NativeAOT-safe). -->
+                <Border Classes="SpotlightRow"
+                        Classes.Active="{Binding IsSelected}"
+                        Background="Transparent"
+                        Padding="8,6"
+                        Margin="0,1"
+                        CornerRadius="8"
+                        PointerPressed="OnRowPointerPressed">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                      <TextBlock Text="{Binding Preview}"
+                                 Classes="SpotlightRowName"
+                                 FontSize="13"
+                                 FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Border Classes="Badge" Padding="5,1" IsVisible="{Binding GroupLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                          <TextBlock Classes="Muted" FontSize="9" Text="{Binding GroupLabel}" />
+                        </Border>
+                        <TextBlock Classes="Muted"
+                                   FontSize="10"
+                                   IsVisible="{Binding SourceLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                   Text="{Binding SourceLabel}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Classes="Muted" FontSize="10" Text="{Binding TimeLabel}" />
+                      </StackPanel>
+                    </StackPanel>
+                    <TextBlock Grid.Column="1"
+                               FontSize="13"
+                               VerticalAlignment="Center"
+                               Text="★"
+                               IsVisible="{Binding IsPinned}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Border>
+
+      <!-- Footer: settings + keycap hints -->
+      <Grid Grid.Row="3"
+            ColumnDefinitions="Auto,*,Auto"
+            ColumnSpacing="8"
+            Margin="0,6,0,0">
+        <Button Grid.Column="0"
+                Classes="Ghost"
+                Click="OnSettingsClick"
+                Padding="6,2"
+                FontSize="11"
+                Content="⚙ 设置" />
+        <StackPanel Grid.Column="2"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    VerticalAlignment="Center">
+          <Border Classes="Badge" Padding="6,2">
+            <TextBlock FontSize="10" Text="↑↓ 选择" />
+          </Border>
+          <Border Classes="Badge" Padding="6,2">
+            <TextBlock FontSize="10" Text="↵ 粘贴" />
+          </Border>
+          <Border Classes="Badge" Padding="6,2">
+            <TextBlock FontSize="10" Text="⌘P 置顶" />
+          </Border>
+          <Border Classes="Badge" Padding="6,2">
+            <TextBlock FontSize="10" Text="Del 删除" />
+          </Border>
+          <Border Classes="Badge" Padding="6,2">
+            <TextBlock FontSize="10" Text="Esc 关闭" />
+          </Border>
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </Border>
+</Window>

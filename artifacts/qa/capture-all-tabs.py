@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Capture BYH Settings window across all five navigation tabs.
+"""Capture BYH Settings window across all six navigation tabs.
 
 Nav-button coordinates are relative to the window client area for the
 default 1320x800 logical window at 175% DPI.
@@ -46,11 +46,12 @@ except Exception:
 # Navigation button centers relative to the complete window rectangle.
 # Measured from the default layout at 175% DPI, including the title bar.
 NAV_BUTTONS = [
-    ("general", 455, 348),
-    ("provider", 455, 423),
-    ("actions", 455, 499),
-    ("vision", 455, 573),
-    ("launcher", 455, 651),
+    ("general", 455, 305),
+    ("provider", 455, 370),
+    ("actions", 455, 438),
+    ("vision", 455, 505),
+    ("launcher", 455, 573),
+    ("clipboard", 455, 641),
 ]
 
 # Keep every capture on the same monitor and at the same origin. BYH may be

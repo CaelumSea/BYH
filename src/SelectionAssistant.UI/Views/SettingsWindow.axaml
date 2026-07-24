@@ -12,7 +12,7 @@
         WindowStartupLocation="CenterScreen"
         KeyDown="OnWindowKeyDown">
   <Grid ColumnDefinitions="190,170,*,270"
-        RowDefinitions="*,260"
+        RowDefinitions="*,220"
         ColumnSpacing="12"
         RowSpacing="12"
         Margin="12">
@@ -35,24 +35,24 @@
                Stretch="UniformToFill"
                Opacity="0.30"
                IsHitTestVisible="False" />
-        <Grid Margin="8,10,8,8" RowDefinitions="Auto,*,Auto">
-        <StackPanel Grid.Row="0" Spacing="5" Margin="4,0,4,12">
-          <Border Width="58"
-                  Height="58"
+        <Grid Margin="8,8,8,7" RowDefinitions="Auto,*,Auto">
+        <StackPanel Grid.Row="0" Spacing="3" Margin="4,0,4,7">
+          <Border Width="48"
+                  Height="48"
                   HorizontalAlignment="Center"
                   Background="{DynamicResource ByhGemGlowBrush}"
-                  CornerRadius="29"
+                  CornerRadius="24"
                   Padding="3">
-            <Border Width="52"
-                    Height="52"
+            <Border Width="42"
+                    Height="42"
                     Background="{DynamicResource ByhSurfaceBrush}"
                     BorderBrush="{DynamicResource ByhHairlineBrush}"
                     BorderThickness="1"
-                    CornerRadius="26"
+                    CornerRadius="21"
                     ClipToBounds="True">
               <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
-                     Width="72"
-                     Height="72"
+                     Width="60"
+                     Height="60"
                      Stretch="UniformToFill"
                      HorizontalAlignment="Center"
                      VerticalAlignment="Center" />
@@ -60,24 +60,24 @@
           </Border>
           <TextBlock Text="BYH"
                      Classes="DisplayTitle"
-                     FontSize="23"
+                     FontSize="21"
                      HorizontalAlignment="Center" />
           <TextBlock Text="By Your Hand"
                      Classes="Secondary"
-                     FontSize="11"
+                     FontSize="10"
                      HorizontalAlignment="Center" />
-          <Border Width="36"
+          <Border Width="32"
                   Height="2"
                   HorizontalAlignment="Center"
                   Background="{DynamicResource ByhGoldBrush}"
                   CornerRadius="1" />
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Spacing="5" VerticalAlignment="Top">
+        <StackPanel Grid.Row="1" Spacing="3" VerticalAlignment="Top">
 
           <Button x:Name="GeneralNavButton"
                   Classes="SettingsNav Active"
-                  Padding="12,10"
+                  Padding="12,8"
                   Click="OnShowGeneralClick">
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
@@ -88,7 +88,7 @@
 
           <Button x:Name="ProviderNavButton"
                   Classes="SettingsNav"
-                  Padding="12,10"
+                  Padding="12,8"
                   Click="OnShowProviderClick">
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
@@ -99,7 +99,7 @@
 
           <Button x:Name="FunctionsNavButton"
                   Classes="SettingsNav"
-                  Padding="12,10"
+                  Padding="12,8"
                   Click="OnShowFunctionsClick">
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
@@ -110,7 +110,7 @@
 
           <Button x:Name="VisionNavButton"
                   Classes="SettingsNav"
-                  Padding="12,10"
+                  Padding="12,8"
                   Click="OnShowVisionClick">
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
@@ -121,7 +121,7 @@
 
           <Button x:Name="LauncherNavButton"
                   Classes="SettingsNav"
-                  Padding="12,10"
+                  Padding="12,8"
                   Click="OnShowLauncherClick">
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
@@ -129,28 +129,39 @@
               <TextBlock Grid.Column="1" Text="Launcher" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
             </Grid>
           </Button>
+
+          <Button x:Name="ClipboardHistoryNavButton"
+                  Classes="SettingsNav"
+                  Padding="12,8"
+                  Click="OnShowClipboardHistoryClick">
+            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
+              <Path Classes="NavIcon"
+                    Data="M4,2 L20,2 A2,2 0 0 1 22,4 L22,16 A2,2 0 0 1 20,18 L8,18 L4,22 Z" />
+              <TextBlock Grid.Column="1" Text="Clipboard" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
         </StackPanel>
 
         <!-- Reference nav card carries a gem ornament at both ends; this is
              the smaller foot gem mirroring the emblem above the brand. -->
         <Border Grid.Row="2"
-                Width="28"
-                Height="28"
-                CornerRadius="14"
+                Width="22"
+                Height="22"
+                CornerRadius="11"
                 Background="{DynamicResource ByhGemGlowBrush}"
                 Padding="2"
                 HorizontalAlignment="Center"
-                Margin="0,6,0,0">
-          <Border Width="24"
-                  Height="24"
-                  CornerRadius="12"
+                Margin="0,4,0,0">
+          <Border Width="18"
+                  Height="18"
+                  CornerRadius="9"
                   Background="{DynamicResource ByhSurfaceBrush}"
                   BorderBrush="{DynamicResource ByhHairlineBrush}"
                   BorderThickness="1"
                   ClipToBounds="True">
             <Image Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-emblem.jpg"
-                   Width="32"
-                   Height="32"
+                   Width="26"
+                   Height="26"
                    Stretch="UniformToFill"
                    HorizontalAlignment="Center"
                    VerticalAlignment="Center" />
@@ -175,15 +186,15 @@
             ColumnDefinitions="*,Auto"
             RowDefinitions="Auto,Auto"
             ColumnSpacing="24"
-            RowSpacing="18"
-            Margin="28,22,26,18">
-          <StackPanel Spacing="5">
+            RowSpacing="12"
+            Margin="28,16,26,12">
+          <StackPanel Spacing="3">
             <TextBlock Text="WELCOME BACK" Classes="Kicker" />
             <StackPanel Orientation="Horizontal" Spacing="9">
               <TextBlock x:Name="PageTitleText"
                          Text="General"
                          Classes="DisplayTitle"
-                         FontSize="26" />
+                         FontSize="25" />
               <TextBlock Text="✦"
                          Foreground="{DynamicResource ByhGoldBrush}"
                          FontSize="18"
@@ -244,7 +255,7 @@
         <!-- General -->
         <StackPanel x:Name="GeneralSection" Spacing="0">
           <!-- Section: Ocean Eyes Trigger sits directly on the surface. -->
-          <StackPanel Spacing="12" Margin="24,18,24,0">
+          <StackPanel Spacing="12" Margin="24,14,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Ocean Eyes Trigger"
@@ -453,7 +464,7 @@
 
         <!-- Translation providers -->
         <StackPanel x:Name="ProviderSection" IsVisible="False" Spacing="0">
-          <StackPanel x:Name="EditFormBorder" Spacing="16" Margin="24,18,24,0">
+          <StackPanel x:Name="EditFormBorder" Spacing="16" Margin="24,14,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <StackPanel Spacing="4">
                   <TextBlock Text="Provider Profiles"
@@ -576,7 +587,7 @@
 
         <!-- Prompt functions -->
         <StackPanel x:Name="FunctionsSection" IsVisible="False" Spacing="0">
-          <StackPanel x:Name="PromptTemplatesCard" Spacing="16" Margin="24,18,24,0">
+          <StackPanel x:Name="PromptTemplatesCard" Spacing="16" Margin="24,14,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Actions &amp; Prompts"
@@ -626,7 +637,7 @@
 
         <!-- Vision OCR -->
         <StackPanel x:Name="VisionSection" IsVisible="False" Spacing="0">
-          <StackPanel Spacing="16" Margin="24,18,24,0">
+          <StackPanel Spacing="16" Margin="24,14,24,0">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
               <StackPanel Spacing="4">
                 <TextBlock Text="Vision Recognition"
@@ -741,7 +752,7 @@
 
         <!-- Launcher -->
         <StackPanel x:Name="LauncherSection" IsVisible="False" Spacing="0">
-          <StackPanel Spacing="16" Margin="24,18,24,0">
+          <StackPanel Spacing="16" Margin="24,14,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Launcher"
@@ -853,6 +864,130 @@
               </Grid>
             </StackPanel>
           </StackPanel>
+
+
+        <!-- Clipboard history follows the same continuous-surface rhythm as
+             the five existing pages: one editorial header, then quiet inset
+             groups instead of stacked standalone cards. -->
+        <StackPanel x:Name="ClipboardHistorySection" IsVisible="False" Spacing="0">
+          <StackPanel Spacing="16" Margin="24,14,24,0">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+              <StackPanel Spacing="3">
+                <TextBlock Text="Clipboard History"
+                           Classes="CardTitle"
+                           FontSize="15"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="Recall recent text without leaving the keyboard."
+                           Classes="Muted"
+                           FontSize="9" />
+              </StackPanel>
+              <ToggleSwitch x:Name="ClipboardHistoryEnabledToggle"
+                            Grid.Column="1"
+                            OnContent="Recording"
+                            OffContent="Paused"
+                            IsChecked="True"
+                            VerticalAlignment="Center" />
+            </Grid>
+
+            <Border Classes="InnerCard" Padding="14">
+              <StackPanel Spacing="12">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                  <TextBlock Text="Global Hotkey"
+                             Classes="CardTitle"
+                             FontSize="13"
+                             FontWeight="SemiBold"
+                             VerticalAlignment="Center" />
+                  <ToggleSwitch x:Name="ClipboardHistoryKeyboardShortcutToggle"
+                                Grid.Column="1"
+                                OnContent="On"
+                                OffContent="Off"
+                                IsChecked="True"
+                                VerticalAlignment="Center" />
+                </Grid>
+
+                <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,112" ColumnSpacing="10">
+                  <CheckBox Grid.Column="0" x:Name="ClipboardHistoryCtrlModifierCheckBox" Content="Ctrl" IsChecked="True" />
+                  <CheckBox Grid.Column="1" x:Name="ClipboardHistoryAltModifierCheckBox" Content="Alt" IsChecked="True" />
+                  <CheckBox Grid.Column="2" x:Name="ClipboardHistoryShiftModifierCheckBox" Content="Shift" />
+                  <CheckBox Grid.Column="3" x:Name="ClipboardHistoryWinModifierCheckBox" Content="Win" />
+                  <ComboBox Grid.Column="5" x:Name="ClipboardHistoryShortcutKeyComboBox" />
+                </Grid>
+
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                  <Button Content="Save Hotkey"
+                          Classes="Primary"
+                          Click="OnSaveClipboardHistoryTriggerClick" />
+                  <TextBlock x:Name="ClipboardHistoryShortcutStatusText"
+                             Grid.Column="1"
+                             Text="Current: Ctrl+Alt+V"
+                             FontSize="11"
+                             VerticalAlignment="Center" />
+                </Grid>
+              </StackPanel>
+            </Border>
+
+            <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
+
+            <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+              <StackPanel Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="Behavior &amp; Privacy"
+                           Classes="CardTitle"
+                           FontSize="13"
+                           FontWeight="SemiBold" />
+                <TextBlock x:Name="ClipboardHistorySettingsStatusText"
+                           Text=""
+                           FontSize="9" />
+              </StackPanel>
+              <Button Grid.Column="1"
+                      Content="Save Settings"
+                      Classes="Primary"
+                      Click="OnSaveClipboardHistorySettingsClick" />
+              <Button Grid.Column="2"
+                      Content="Clear History"
+                      Classes="Ghost"
+                      Click="OnClearClipboardHistoryClick" />
+            </Grid>
+
+            <Grid ColumnDefinitions="0.9*,1.1*" ColumnSpacing="14">
+              <Border Grid.Column="0" Classes="InnerCard" Padding="12">
+                  <StackPanel Spacing="8">
+                    <ToggleSwitch x:Name="ClipboardHistoryAutoPasteToggle"
+                                  OnContent="Auto-paste"
+                                  OffContent="Copy only"
+                                  IsChecked="False" />
+                    <ToggleSwitch x:Name="ClipboardHistoryMaskSensitiveToggle"
+                                  OnContent="Mask sensitive"
+                                  OffContent="Show plain"
+                                  IsChecked="True" />
+                    <Grid ColumnDefinitions="*,82" ColumnSpacing="10">
+                      <TextBlock Text="Max entries"
+                                 Classes="Secondary"
+                                 FontSize="11"
+                                 VerticalAlignment="Center" />
+                      <TextBox Grid.Column="1"
+                               x:Name="ClipboardHistoryMaxEntriesInput"
+                               Text="1000"
+                               FontSize="12" />
+                    </Grid>
+                  </StackPanel>
+              </Border>
+
+              <Border Grid.Column="1" Classes="InnerCard" Padding="12">
+                  <StackPanel Spacing="9">
+                    <TextBlock Text="Excluded applications"
+                               Classes="Secondary"
+                               FontSize="11" />
+                    <TextBox x:Name="ClipboardHistoryExcludeAppsInput"
+                             Text="1password, keepass, authy, bitwarden"
+                             FontSize="12"
+                             MinHeight="54"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap" />
+                  </StackPanel>
+              </Border>
+            </Grid>
+          </StackPanel>
+        </StackPanel>
         </Grid>
       </ScrollViewer>
 
@@ -1002,15 +1137,15 @@
     <!-- Portrait-led welcome card plus real runtime summary. The character art
          is the actual BYH app icon supplied by the user, not decorative mock data. -->
     <Border Grid.Column="3"
-            Grid.Row="0"
-            Classes="MetallicFrame Thin PhoneFrame"
-            MaxHeight="480"
+             Grid.Row="0"
+             Classes="MetallicFrame Thin PhoneFrame"
+             MaxHeight="520"
             Margin="0,10"
             VerticalAlignment="Stretch"
             Background="{DynamicResource ByhPanelIvoryBrush}">
       <Border Classes="MacroClip PhoneClip"
               Background="{DynamicResource ByhPanelIvoryBrush}">
-        <Grid RowDefinitions="136,*,Auto">
+        <Grid RowDefinitions="122,*,Auto">
         <Image Grid.RowSpan="3"
                Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
                Stretch="UniformToFill"
@@ -1132,6 +1267,29 @@
                   <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
                     <TextBlock Text="VISION OCR" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
                     <TextBlock x:Name="SummaryVisionText"
+                               Text="Loading…"
+                               FontSize="9"
+                               FontWeight="SemiBold"
+                               TextWrapping="Wrap" />
+                  </StackPanel>
+                </Grid>
+                <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                  <Border Width="24"
+                          Height="24"
+                          CornerRadius="12"
+                          VerticalAlignment="Center"
+                          Background="{DynamicResource ByhAccentSoftBrush}"
+                          BorderBrush="#40D9C28A"
+                          BorderThickness="1"
+                          BoxShadow="0 2 6 0 #109F5E30">
+                    <Path Classes="MiniIcon"
+                          Stroke="{DynamicResource ByhAccentBrush}"
+                          Data="M5,3 L19,3 A2,2 0 0 1 21,5 L21,17 A2,2 0 0 1 19,19 L9,19 L5,22 Z M9,7 L17,7 M9,11 L17,11 M9,15 L14,15" />
+                  </Border>
+                  <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                    <TextBlock Text="CLIPBOARD HOTKEY" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock x:Name="SummaryClipboardText"
                                Text="Loading…"
                                FontSize="9"
                                FontWeight="SemiBold"
