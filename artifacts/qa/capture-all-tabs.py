@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Capture BYH Settings window across all six navigation tabs.
 
-Nav-button coordinates are relative to the window client area for the
-default 1320x800 logical window at 175% DPI.
+Navigation uses stable Avalonia Automation IDs through Windows UI Automation.
+Measured coordinates remain as a compatibility fallback for machines where
+the UIAutomationClient assembly is unavailable.
 """
 import ctypes
+import os
 import subprocess
 import sys
 import time
@@ -43,15 +45,16 @@ try:
 except Exception:
     user32.SetProcessDPIAware()
 
-# Navigation button centers relative to the complete window rectangle.
-# Measured from the default layout at 175% DPI, including the title bar.
+# Navigation button centers are relative to the complete window rectangle.
+# They are used only as a fallback and were measured at 175% DPI, including
+# the title bar.
 NAV_BUTTONS = [
-    ("general", 455, 305),
-    ("provider", 455, 370),
-    ("actions", 455, 438),
-    ("vision", 455, 505),
-    ("launcher", 455, 573),
-    ("clipboard", 455, 641),
+    ("general", "BYH.Settings.Nav.General", 455, 305),
+    ("provider", "BYH.Settings.Nav.Translation", 455, 370),
+    ("actions", "BYH.Settings.Nav.Actions", 455, 438),
+    ("vision", "BYH.Settings.Nav.Vision", 455, 505),
+    ("launcher", "BYH.Settings.Nav.Launcher", 455, 573),
+    ("clipboard", "BYH.Settings.Nav.Clipboard", 455, 641),
 ]
 
 # Keep every capture on the same monitor and at the same origin. BYH may be
@@ -59,6 +62,32 @@ NAV_BUTTONS = [
 # tabs; re-anchoring makes the screenshots deterministic.
 CAPTURE_X = 100
 CAPTURE_Y = 0
+
+# Windows PowerShell ships with Windows and can use the platform's
+# UIAutomationClient assembly without adding a Python package dependency.
+UIA_INVOKE_SCRIPT = r"""
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName UIAutomationClient
+$windowHandle = [IntPtr]([Int64]$env:BYH_UIA_HWND)
+$automationId = $env:BYH_UIA_AUTOMATION_ID
+$window = [System.Windows.Automation.AutomationElement]::FromHandle($windowHandle)
+if ($null -eq $window) {
+    throw "Window automation element was not found."
+}
+$condition = [System.Windows.Automation.PropertyCondition]::new(
+    [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+    $automationId)
+$element = $window.FindFirst(
+    [System.Windows.Automation.TreeScope]::Descendants,
+    $condition)
+if ($null -eq $element) {
+    throw "Automation ID '$automationId' was not found."
+}
+$pattern = $element.GetCurrentPattern(
+    [System.Windows.Automation.InvokePattern]::Pattern)
+([System.Windows.Automation.InvokePattern]$pattern).Invoke()
+[Console]::Out.Write('invoked')
+"""
 
 
 def anchor_window(hwnd):
@@ -138,9 +167,67 @@ def click_client(hwnd, rel_x, rel_y):
     time.sleep(0.18)
 
 
+def invoke_automation_id(hwnd, automation_id):
+    env = os.environ.copy()
+    env["BYH_UIA_HWND"] = str(hwnd)
+    env["BYH_UIA_AUTOMATION_ID"] = automation_id
+    try:
+        result = subprocess.run(
+            [
+                "powershell.exe",
+                "-NoLogo",
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                UIA_INVOKE_SCRIPT,
+            ],
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=10,
+            env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, str(exc)
+
+    if result.returncode == 0 and result.stdout.strip() == "invoked":
+        return True, ""
+
+    detail = (result.stderr or result.stdout or "unknown UIA error").strip()
+    return False, " ".join(detail.splitlines())
+
+
+def click_navigation(hwnd, automation_id, rel_x, rel_y, require_uia):
+    anchor_window(hwnd)
+    invoked, detail = invoke_automation_id(hwnd, automation_id)
+    if invoked:
+        print(f"navigation=UIA automation_id={automation_id}")
+        return
+
+    if require_uia:
+        raise RuntimeError(
+            f"UI Automation failed for {automation_id}: {detail}")
+
+    print(
+        f"navigation=coordinate-fallback automation_id={automation_id} "
+        f"reason={detail}")
+    click_client(hwnd, rel_x, rel_y)
+
+
 def main():
+    if len(sys.argv) < 3:
+        raise SystemExit(
+            "usage: capture-all-tabs.py <BYH.exe> <output-dir> "
+            "[--require-uia]")
+
     exe = Path(sys.argv[1])
     out_dir = Path(sys.argv[2])
+    unknown = set(sys.argv[3:]) - {"--require-uia"}
+    if unknown:
+        raise SystemExit(f"unknown arguments: {sorted(unknown)}")
+    require_uia = "--require-uia" in sys.argv[3:]
     out_dir.mkdir(parents=True, exist_ok=True)
 
     proc = subprocess.Popen([str(exe), "--open-settings"])
@@ -151,10 +238,10 @@ def main():
     print(f"window hwnd={hwnd} title={title!r} {w}x{h}")
 
     try:
-        for tab, rel_x, rel_y in NAV_BUTTONS:
-            if tab != "general":
-                click_client(hwnd, rel_x, rel_y)
-                time.sleep(1.5)
+        for tab, automation_id, rel_x, rel_y in NAV_BUTTONS:
+            click_navigation(
+                hwnd, automation_id, rel_x, rel_y, require_uia)
+            time.sleep(1.5)
             capture(hwnd, out_dir / f"v25-unified-tabs-{tab}-default-nativeaot.png")
     finally:
         subprocess.run(["taskkill", "/F", "/PID", str(proc.pid)], capture_output=True)

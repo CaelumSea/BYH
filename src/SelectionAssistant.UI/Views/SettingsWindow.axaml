@@ -10,6 +10,7 @@
         CanResize="True"
         Background="{DynamicResource ByhBackgroundBrush}"
         WindowStartupLocation="CenterScreen"
+        AutomationProperties.AutomationId="BYH.Settings.Window"
         KeyDown="OnWindowKeyDown">
   <Grid ColumnDefinitions="190,170,*,270"
         RowDefinitions="*,220"
@@ -78,6 +79,7 @@
           <Button x:Name="GeneralNavButton"
                   Classes="SettingsNav Active"
                   Padding="12,8"
+                  AutomationProperties.AutomationId="BYH.Settings.Nav.General"
                   Click="OnShowGeneralClick">
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
@@ -89,6 +91,7 @@
           <Button x:Name="ProviderNavButton"
                   Classes="SettingsNav"
                   Padding="12,8"
+                  AutomationProperties.AutomationId="BYH.Settings.Nav.Translation"
                   Click="OnShowProviderClick">
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
@@ -100,6 +103,7 @@
           <Button x:Name="FunctionsNavButton"
                   Classes="SettingsNav"
                   Padding="12,8"
+                  AutomationProperties.AutomationId="BYH.Settings.Nav.Actions"
                   Click="OnShowFunctionsClick">
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
@@ -111,6 +115,7 @@
           <Button x:Name="VisionNavButton"
                   Classes="SettingsNav"
                   Padding="12,8"
+                  AutomationProperties.AutomationId="BYH.Settings.Nav.Vision"
                   Click="OnShowVisionClick">
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
@@ -122,6 +127,7 @@
           <Button x:Name="LauncherNavButton"
                   Classes="SettingsNav"
                   Padding="12,8"
+                  AutomationProperties.AutomationId="BYH.Settings.Nav.Launcher"
                   Click="OnShowLauncherClick">
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
@@ -133,6 +139,7 @@
           <Button x:Name="ClipboardHistoryNavButton"
                   Classes="SettingsNav"
                   Padding="12,8"
+                  AutomationProperties.AutomationId="BYH.Settings.Nav.Clipboard"
                   Click="OnShowClipboardHistoryClick">
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"

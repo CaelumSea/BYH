@@ -1,12 +1,20 @@
 # BYH 当前交接快照
 
-> 更新时间：2026-07-24 REQ-024 增量
+> 更新时间：2026-07-24 REQ-025 增量
 > 本文件是下一位 Agent 的首要入口，优先级高于目录内的历史快照。
 > 项目根：`C:\dvr\gh-kb\selection-assistant`
 > **模块文档**：`docs/architecture/00-architecture-overview.md`（改任何模块先看这个）
 > 路线图待办：见 `handoff\BACKLOG-roadmap.md`（R44-R53 新增）
 
-## 0. REQ-024：主线功能同步 + Settings v9
+## 0. REQ-025：Settings 截图 UIA 自动化
+
+- 六个设置导航按钮新增稳定的 `BYH.Settings.Nav.*` Automation ID；窗口本身为 `BYH.Settings.Window`。
+- `artifacts/qa/capture-all-tabs.py` 现优先使用 Windows `UIAutomationClient` 按 ID 调用按钮，不再依赖 DPI 敏感坐标；坐标只作为兼容回退。
+- QA 可传 `--require-uia` 禁止回退。本轮对 Release 与 NativeAOT 均实跑六页，全部输出 `navigation=UIA`，无回退。
+- NativeAOT：`artifacts/publish/win-x64-nativeuia/BYH.exe`，28,227,584 bytes，SHA-256 `258162A3E9691CF7E6A158886ACA6249E6090188C0DCBFCA9FFA4927F75F1A42`。
+- 完整证据与 reqbase 修复复核见 `output/TASK-027-verification.md`。结论：任务编号与核心命令编码修复有效，但默认 GBK 测试 runner/子进程解码及 quick REQ.md 的 AC 文本渲染仍未完整修好；本轮未改 Skills-Hub。
+
+## 0a. REQ-024：主线功能同步 + Settings v9
 
 - 工作分支：`task/REQ-012-metallic-frames`
 - 合并提交：`8fa9130`（将已提交 `main@565fa1f` 合入；包含 R55/R56 贴图改进、R53 回滚与 R54 Clipboard History v1）。

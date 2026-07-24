@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-24T08:20:20'
-secretary_focus: REQ-024
+updated: '2026-07-24T08:57:52'
+secretary_focus: REQ-025
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -92,9 +92,13 @@ requirements:
   title: 同步主线功能并优化设置界面 v9
   status: done
   progress: 1/1
+- id: REQ-025
+  title: 设置页截图 UIA 自动化可靠性
+  status: done
+  progress: 1/1
 phase: executing
 next_step: execute
 plan_confirmed_via: quick-user
-plan_confirmed_at: '2026-07-24T07:23:36'
+plan_confirmed_at: '2026-07-24T08:39:36'
 mode: quick
-plan_confirmed_evidence: 用户：现在的BYH后端添加了非常多的功能，请同步到主线的最新版本并优化设置界面。
+plan_confirmed_evidence: 用户：如果你觉得有需要，就添加一下。
