@@ -1,6 +1,6 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-24T07:26:05'
+updated: '2026-07-24T08:20:20'
 secretary_focus: REQ-024
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
@@ -90,8 +90,8 @@ requirements:
   progress: 1/1
 - id: REQ-024
   title: 同步主线功能并优化设置界面 v9
-  status: dispatched
-  progress: 0/1
+  status: done
+  progress: 1/1
 phase: executing
 next_step: execute
 plan_confirmed_via: quick-user

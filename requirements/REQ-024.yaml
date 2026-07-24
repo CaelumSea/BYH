@@ -1,13 +1,13 @@
 id: REQ-024
 title: 同步主线功能并优化设置界面 v9
-status: dispatched
+status: done
 lite: true
 score_kind: aesthetic
 created: '2026-07-24T07:23:36'
-updated: '2026-07-24T07:26:05'
+updated: '2026-07-24T08:20:20'
 aligned_via: quick-user
 aligned_at: '2026-07-24T07:23:36'
-aesthetic_template: ''
+aesthetic_template: frontend
 acceptance_criteria:
 - id: AC-1
   text: UI 分支合入 main 最新已提交功能且不丢失现有设置页视觉成果
@@ -28,7 +28,7 @@ acceptance_criteria:
 tasks:
 - id: TASK-026
   title: 合并最新主线并适配新增设置功能
-  status: in_progress
+  status: done
 aesthetic_score:
   scored_at: ''
   scored_by: ''

@@ -1,10 +1,19 @@
 # BYH 当前交接快照
 
-> 更新时间：2026-07-22 第五十二批增量
+> 更新时间：2026-07-24 REQ-024 增量
 > 本文件是下一位 Agent 的首要入口，优先级高于目录内的历史快照。
 > 项目根：`C:\dvr\gh-kb\selection-assistant`
 > **模块文档**：`docs/architecture/00-architecture-overview.md`（改任何模块先看这个）
 > 路线图待办：见 `handoff\BACKLOG-roadmap.md`（R44-R53 新增）
+
+## 0. REQ-024：主线功能同步 + Settings v9
+
+- 工作分支：`task/REQ-012-metallic-frames`
+- 合并提交：`8fa9130`（将已提交 `main@565fa1f` 合入；包含 R55/R56 贴图改进、R53 回滚与 R54 Clipboard History v1）。
+- 主工作树在合并时还有另一位 Agent 的未提交 Clipboard WIP；本分支没有复制或覆盖它。后续若该 WIP 已提交，先把新的 `main` 再合入本分支。
+- Settings 现有六个页签：General / Translation / Actions / Vision / Launcher / Clipboard。Clipboard 页完整绑定主线的快捷键、记录、自动粘贴、敏感遮罩、容量、排除应用、保存和清空事件。
+- 响应式修正：底栏由 260 调整为 220 logical px，导航品牌头和六项间距收紧；1240×680 最小尺寸下 Clipboard 不再被裁掉；右侧手机恢复为只比主窗格略矮，并新增真实 Clipboard 快捷键摘要。
+- 验证：Release 0 warning / 0 error；Providers 35 + Core 314 + Windows 41 = **390/390**；NativeAOT `BYH.exe` 28,226,560 bytes；截图见 `artifacts/qa/req-024-v9-nativeaot/`。
 
 ## 1. 一句话状态
 
