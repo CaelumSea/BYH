@@ -255,9 +255,14 @@
       <ScrollViewer x:Name="SettingsContentScroll"
                     Grid.Row="1"
                     Padding="0"
+                    AutomationProperties.AutomationId="BYH.Settings.ContentScroll"
                     VerticalScrollBarVisibility="Hidden"
                     HorizontalScrollBarVisibility="Disabled">
-        <Grid>
+        <!-- Keep one shared bottom safe area inside the scroll extent.  The
+             continuous-surface redesign removed the old 28 px ScrollViewer
+             padding, which left most pages ending directly under the rounded
+             clip even though their offset had technically reached 100%. -->
+        <Grid Margin="0,0,0,24">
 
         <!-- General -->
         <StackPanel x:Name="GeneralSection" Spacing="0">
@@ -396,7 +401,7 @@
           <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" Margin="24,16" />
 
           <!-- Section: Ocean Eyes Capture sits directly on the surface. -->
-          <StackPanel Spacing="12" Margin="24,0,24,18">
+          <StackPanel Spacing="12" Margin="24,0,24,0">
                 <TextBlock Text="Ocean Eyes Capture"
                            Classes="CardTitle"
                            FontSize="15"

@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-24T08:57:52'
-secretary_focus: REQ-025
+updated: '2026-07-24T10:28:17'
+secretary_focus: REQ-026
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -96,9 +96,13 @@ requirements:
   title: 设置页截图 UIA 自动化可靠性
   status: done
   progress: 1/1
+- id: REQ-026
+  title: 设置页滚动范围与底部内容完整性修复
+  status: done
+  progress: 1/1
 phase: executing
 next_step: execute
 plan_confirmed_via: quick-user
-plan_confirmed_at: '2026-07-24T08:39:36'
+plan_confirmed_at: '2026-07-24T10:00:33'
 mode: quick
-plan_confirmed_evidence: 用户：如果你觉得有需要，就添加一下。
+plan_confirmed_evidence: 用户：设置里面有些窗口的滚轮滚得比较短，最底部可能有些信息没显示全，就滚到底了。你看一下。

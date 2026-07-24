@@ -89,6 +89,37 @@ $pattern = $element.GetCurrentPattern(
 [Console]::Out.Write('invoked')
 """
 
+UIA_SCROLL_BOTTOM_SCRIPT = r"""
+$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName UIAutomationClient
+$windowHandle = [IntPtr]([Int64]$env:BYH_UIA_HWND)
+$automationId = 'BYH.Settings.ContentScroll'
+$window = [System.Windows.Automation.AutomationElement]::FromHandle($windowHandle)
+if ($null -eq $window) {
+    throw "Window automation element was not found."
+}
+$condition = [System.Windows.Automation.PropertyCondition]::new(
+    [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+    $automationId)
+$element = $window.FindFirst(
+    [System.Windows.Automation.TreeScope]::Descendants,
+    $condition)
+if ($null -eq $element) {
+    throw "Automation ID '$automationId' was not found."
+}
+$pattern = $element.GetCurrentPattern(
+    [System.Windows.Automation.ScrollPattern]::Pattern)
+$scroll = [System.Windows.Automation.ScrollPattern]$pattern
+if (-not $scroll.Current.VerticallyScrollable) {
+    [Console]::Out.Write('not-scrollable')
+    exit 0
+}
+$scroll.SetScrollPercent(
+    [System.Windows.Automation.ScrollPattern]::NoScroll,
+    100.0)
+[Console]::Out.Write('scrolled-to-bottom')
+"""
+
 
 def anchor_window(hwnd):
     user32.ShowWindow(hwnd, 9)  # SW_RESTORE
@@ -199,6 +230,73 @@ def invoke_automation_id(hwnd, automation_id):
     return False, " ".join(detail.splitlines())
 
 
+def scroll_to_bottom_with_uia(hwnd):
+    env = os.environ.copy()
+    env["BYH_UIA_HWND"] = str(hwnd)
+    try:
+        result = subprocess.run(
+            [
+                "powershell.exe",
+                "-NoLogo",
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                UIA_SCROLL_BOTTOM_SCRIPT,
+            ],
+            capture_output=True,
+            text=True,
+            errors="replace",
+            timeout=10,
+            env=env,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, str(exc)
+
+    status = result.stdout.strip()
+    if result.returncode == 0 and status in {
+        "scrolled-to-bottom",
+        "not-scrollable",
+    }:
+        return True, status
+
+    detail = (result.stderr or result.stdout or "unknown UIA error").strip()
+    return False, " ".join(detail.splitlines())
+
+
+def scroll_to_bottom_with_wheel(hwnd):
+    """Compatibility fallback when ScrollPattern is unavailable."""
+    anchor_window(hwnd)
+    rect = wintypes.RECT()
+    user32.GetWindowRect(hwnd, ctypes.byref(rect))
+    width = rect.right - rect.left
+    height = rect.bottom - rect.top
+    # Point inside the central settings surface, away from editable controls.
+    user32.SetCursorPos(
+        rect.left + int(width * 0.55),
+        rect.top + int(height * 0.42),
+    )
+    time.sleep(0.1)
+    for _ in range(48):
+        user32.mouse_event(0x0800, 0, 0, (-120) & 0xFFFFFFFF, 0)
+    time.sleep(0.4)
+
+
+def scroll_to_bottom(hwnd, require_uia):
+    anchor_window(hwnd)
+    scrolled, detail = scroll_to_bottom_with_uia(hwnd)
+    if scrolled:
+        print(f"scroll=UIA status={detail}")
+        return
+
+    if require_uia:
+        raise RuntimeError(f"UI Automation scroll failed: {detail}")
+
+    print(f"scroll=wheel-fallback reason={detail}")
+    scroll_to_bottom_with_wheel(hwnd)
+
+
 def click_navigation(hwnd, automation_id, rel_x, rel_y, require_uia):
     anchor_window(hwnd)
     invoked, detail = invoke_automation_id(hwnd, automation_id)
@@ -220,14 +318,15 @@ def main():
     if len(sys.argv) < 3:
         raise SystemExit(
             "usage: capture-all-tabs.py <BYH.exe> <output-dir> "
-            "[--require-uia]")
+            "[--require-uia] [--include-bottom]")
 
     exe = Path(sys.argv[1])
     out_dir = Path(sys.argv[2])
-    unknown = set(sys.argv[3:]) - {"--require-uia"}
+    unknown = set(sys.argv[3:]) - {"--require-uia", "--include-bottom"}
     if unknown:
         raise SystemExit(f"unknown arguments: {sorted(unknown)}")
     require_uia = "--require-uia" in sys.argv[3:]
+    include_bottom = "--include-bottom" in sys.argv[3:]
     out_dir.mkdir(parents=True, exist_ok=True)
 
     proc = subprocess.Popen([str(exe), "--open-settings"])
@@ -242,7 +341,19 @@ def main():
             click_navigation(
                 hwnd, automation_id, rel_x, rel_y, require_uia)
             time.sleep(1.5)
-            capture(hwnd, out_dir / f"v25-unified-tabs-{tab}-default-nativeaot.png")
+            top_name = (
+                f"settings-{tab}-top-nativeaot.png"
+                if include_bottom
+                else f"v25-unified-tabs-{tab}-default-nativeaot.png"
+            )
+            capture(hwnd, out_dir / top_name)
+            if include_bottom:
+                scroll_to_bottom(hwnd, require_uia)
+                time.sleep(0.6)
+                capture(
+                    hwnd,
+                    out_dir / f"settings-{tab}-bottom-nativeaot.png",
+                )
     finally:
         subprocess.run(["taskkill", "/F", "/PID", str(proc.pid)], capture_output=True)
         print("terminated BYH.exe")

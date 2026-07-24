@@ -2765,6 +2765,34 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 
 ---
 
+## 3t. 本会话（第五十四批增量）完成：设置页滚动范围与底部安全区修复
+
+> 更新时间：2026-07-24 第五十四批增量（REQ-026 / TASK-028）
+
+### 已完成
+
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 找到回归根因：v25 将中央 `ScrollViewer` 的旧底部 padding 清零后，除 General 外的页面都以 0 间距结束；滚动偏移虽然已到 100%，最后一项仍贴进圆角裁切区。
+  - 在六页共享的内容 Grid 上恢复统一的 24 px 底部安全区，并移除 General 单独的 18 px 尾距。
+  - 为滚动容器新增 `BYH.Settings.ContentScroll` Automation ID。
+- `artifacts/qa/capture-all-tabs.py`
+  - 新增 `--include-bottom`：每页截顶部后，通过 UIA `ScrollPattern` 精确滚到 100% 再截底部。
+  - 短页会诚实报告 `not-scrollable`；UIA 不可用时仍保留滚轮回退。
+
+### 验证
+
+- Release build：0 警告、0 错误。
+- 测试：390/390 通过。
+- NativeAOT publish：通过。
+- 六页顶部 + 底部共 12 张 NativeAOT 截图：
+  - General / Translation / Vision / Launcher / Clipboard：`scrolled-to-bottom`
+  - Actions：`not-scrollable`，页面内容完整且没有无意义滚动
+- 证据：`artifacts/qa/req-026-scroll-nativeaot/`
+- 明细：`output/TASK-028-verification.md`
+- 用户日常主线 BYH 已恢复；没有覆盖主仓库中其他 Agent 尚未提交的新版后端产物。
+
+---
+
 ## 9. 下一位 Agent 的明确执行顺序
 
 ### 当前状态：R24-R34 全部完成（R23 + R31 + R32 + R34 待真机行为验证）
