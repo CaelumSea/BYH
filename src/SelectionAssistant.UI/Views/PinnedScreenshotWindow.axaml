@@ -32,9 +32,14 @@
          inside the element bounds and is clipped by ClipToBounds) would be
          invisible. Margin=24 grows the window on all sides to give the
          32px-blur shadow room to render; the window expands automatically.
-         CornerRadius=14 is slightly larger than the inner Frame's 12 so the
-         soft shadow follows the rounded corner. This Border MUST NOT set
-         ClipToBounds (default false) — clipping here would cut the shadow.
+         CornerRadius matches the inner Frame (both 11) so the soft shadow
+         follows the same rounded corner as the image — no double outline.
+         This Border MUST NOT set ClipToBounds (default false) — clipping
+         here would cut the shadow.
+         R97: the outer/inner radii are kept EQUAL (previously 14 outer vs
+         12 inner produced two misaligned arcs = rough "double outline" at
+         each corner). Radius also tuned to 11 — slightly smaller than the
+         original 12 per user preference.
          R56: this Border is named so code-behind can read its Bounds (to bake
          a center-scaled matrix each animation frame). It carries NO
          RenderTransform in AXAML — the pop matrix is pushed from code-behind
@@ -44,7 +49,7 @@
     <Border x:Name="OuterShadowBorder"
             Margin="24"
             Background="Transparent"
-            CornerRadius="14"
+            CornerRadius="13"
             BoxShadow="0 12 32 0 #66000000"
             HorizontalAlignment="Center"
             VerticalAlignment="Center">
@@ -52,7 +57,7 @@
               Background="Transparent"
               BorderBrush="Transparent"
               BorderThickness="0"
-              CornerRadius="12"
+              CornerRadius="13"
               Padding="0"
               ClipToBounds="True">
         <LayoutTransformControl x:Name="Scaler">

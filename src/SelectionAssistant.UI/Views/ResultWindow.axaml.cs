@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using SelectionAssistant.Core.Translation;
 
 namespace SelectionAssistant.UI.Views;
@@ -31,7 +32,46 @@ public partial class ResultWindow : Window
             Hide();
             CloseRequested?.Invoke();
         };
+
+        // R54 v2 bug fix: auto-close on deactivation (popup semantics). When the
+        // user clicks away / Alt-Tabs / switches windows / minimizes, the
+        // translation window hides itself. This fixes "trigger translate again
+        // after the previous window was left open → the new result doesn't come
+        // to the front": because the old window was deactivated and hidden, the
+        // next trigger is a fresh Show() that lands on top naturally. Skipped
+        // while busy (loading or streaming) so a long translation isn't aborted
+        // mid-stream when the user glances at another window.
+        //
+        // Guard against an immediate Deactivated right after Show(): Windows
+        // sometimes fires Deactivated if the previously-focused window reclaims
+        // focus during the Show transition. Without the grace period, the just-
+        // opened window would be hidden before the user ever sees it ("first
+        // trigger doesn't come to top" bug). We arm the auto-close only after a
+        // short delay following activation, so the initial popup is stable.
+        Deactivated += (_, _) =>
+        {
+            if (IsBusy)
+            {
+                return;
+            }
+            if (!_autoCloseArmed)
+            {
+                return; // within the post-Show grace period — ignore stray deactivation
+            }
+            _autoCloseArmed = false;
+            Hide();
+            CloseRequested?.Invoke();
+        };
     }
+
+    // R54 v2 bug fix: false during the grace period right after Show(), so an
+    // immediate spurious Deactivated (focus handoff from the previously-active
+    // window) doesn't hide the just-opened window. Armed by a dispatcher timer
+    // ~400ms after activation — long enough to ride out the Show transition,
+    // short enough that a genuine "user clicked away" shortly after is still
+    // caught. Volatile: written on the UI thread (timer callback), read in the
+    // Deactivated handler (also UI thread, but volatile documents intent).
+    private volatile bool _autoCloseArmed;
 
     public event Action? RetryRequested;
 
@@ -47,6 +87,25 @@ public partial class ResultWindow : Window
     /// action without exposing the private field.
     /// </summary>
     public string? GetTranslatedText() => _translatedText;
+
+    /// <summary>
+    /// R54 v2 bug fix: true while a translation is in flight (loading placeholder
+    /// shown, or streaming chunks still arriving). The Deactivated auto-close
+    /// handler checks this so it never hides the window mid-translation — the
+    /// result must land somewhere visible, and a hidden window during streaming
+    /// would silently drop the user's request. Once ShowResult / ShowError runs
+    /// (both set LoadingBar.IsVisible = false), the window becomes eligible for
+    /// auto-close on the next deactivation.
+    /// </summary>
+    /// <remarks>
+    /// Driven solely by <see cref="LoadingBar"/> visibility: ShowLoading sets it
+    /// true, and both ShowResult and ShowError set it false. Streaming providers
+    /// leave LoadingBar visible throughout the stream (AppendPartialResult never
+    /// touches it), so this correctly tracks busy state across both one-shot and
+    /// streaming flows without depending on <c>_streamingStarted</c> (which
+    /// ShowResult doesn't reset and would wrongly keep the window busy forever).
+    /// </remarks>
+    private bool IsBusy => LoadingBar.IsVisible;
 
     public void ShowLoading(TranslationRequest request, string providerName)
     {
@@ -193,12 +252,46 @@ public partial class ResultWindow : Window
 
     private void ShowAndActivate()
     {
+        // R97: hold Topmost=true for the window's entire visible lifetime.
+        // Pinned screenshot windows are permanently WS_EX_TOPMOST
+        // (PinnedScreenshotWindow sets Topmost="True" in AXAML), so a
+        // translation window that only briefly flashes Topmost and then drops
+        // it (the old R54 v2 approach) sinks back below the pinned screenshot
+        // the moment Topmost flips off — the translation popup ends up hidden
+        // behind the pin. Holding Topmost keeps the result above the pin for
+        // as long as it's shown.
+        //
+        // This does NOT leave a rogue topmost window on screen: the Deactivated
+        // handler above auto-hides the window the instant the user clicks away
+        // / Alt-Tabs (after the 400ms grace period), so the topmost state is
+        // ephemeral in practice. The only case where Topmost persists through a
+        // focus switch is a streaming translation (IsBusy gates auto-close),
+        // which is the desired behavior — the user is waiting on that result.
+        _autoCloseArmed = false; // disarm during the Show transition
         if (!IsVisible)
         {
             Show();
         }
 
+        Topmost = true;
         Activate();
+        // Topmost stays true for the window's visible lifetime — see comment
+        // above. (The previous R54 v2 code dropped Topmost on the next
+        // dispatch, which is exactly what let the permanently-topmost pinned
+        // screenshot window cover this popup.)
+
+        // Arm auto-close after a short grace period. The delay rides out the
+        // spurious Deactivated that Windows fires during the Show/Activate
+        // transition (the previously-focused window momentarily reclaims focus).
+        // 400ms is long enough to cover the handoff, short enough that a genuine
+        // "user clicked away" right after is still caught.
+        var armTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        armTimer.Tick += (_, _) =>
+        {
+            armTimer.Stop();
+            _autoCloseArmed = true;
+        };
+        armTimer.Start();
     }
 
     private static string FormatLanguage(string language) => language switch

@@ -130,6 +130,25 @@ public sealed unsafe class Win32Clipboard : IClipboardAccess, IDisposable
             : null;
     }
 
+    /// <summary>
+    /// R54 v2: reads the current clipboard image as a raw <c>CF_DIB</c> byte
+    /// payload (BITMAPINFOHEADER + pixels), or null when the clipboard holds no
+    /// image or the payload exceeds <see cref="MaxDibBytes"/>. Mirrors
+    /// <see cref="GetText"/>: bounded open retry, size-capped read. The caller
+    /// (<c>DibToPngConverter</c>) turns the DIB into a PNG for disk storage.
+    /// </summary>
+    public byte[]? GetImageDib()
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        return TryWithOpenClipboard(
+            () => IsClipboardFormatAvailable(CfDib)
+                ? TryReadGlobalBytes(CfDib, MaxDibBytes)
+                : null,
+            out byte[]? dib)
+            ? dib
+            : null;
+    }
+
     public bool Restore(ClipboardSnapshot snapshot, uint expectedSequence)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
@@ -259,6 +278,143 @@ public sealed unsafe class Win32Clipboard : IClipboardAccess, IDisposable
                 {
                     GlobalFree(memory);
                 }
+            }
+        }
+    }
+
+    /// <summary>
+    /// R54 v2: writes a raw <c>CF_DIB</c> payload (BITMAPINFOHEADER + pixels,
+    /// exactly what <see cref="GetImageDib"/> returns) to the clipboard. CF_DIB
+    /// (format 8) is the universally-recognized Windows image format — Word,
+    /// Paint, chat clients, and every image editor paste from it. Used by
+    /// clipboard-history image paste-back (we store the original DIB captured
+    /// at copy time, so paste restores the exact same bytes the source app put
+    /// up — no PNG→DIB re-encode that could lose alpha or change dimensions).
+    /// </summary>
+    /// <remarks>
+    /// Mirrors <see cref="SetPng"/>: bounded open retry, empties first, allocates
+    /// a movable HGLOBAL, hands ownership to the system on success. Returns false
+    /// on empty input, size cap, or open/set failure.
+    /// </remarks>
+    public bool SetImageDib(byte[] dib)
+    {
+        ArgumentNullException.ThrowIfNull(dib);
+        if (dib.Length == 0 || dib.Length > MaxDibBytes)
+        {
+            return false;
+        }
+
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+
+        nint memory = AllocateGlobal(dib);
+        try
+        {
+            return TryWithOpenClipboard(
+                () =>
+                {
+                    if (!EmptyClipboard())
+                    {
+                        return false;
+                    }
+                    return SetClipboardData(CfDib, memory) != 0;
+                },
+                out bool placed) && placed;
+        }
+        finally
+        {
+            if (memory != 0)
+            {
+                if (IsClipboardFormatAvailable(CfDib))
+                {
+                    // Ownership transferred — nothing to free.
+                }
+                else
+                {
+                    GlobalFree(memory);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// R54 v2 bug fix: writes BOTH a raw <c>CF_DIB</c> payload and the registered
+    /// <c>CF_PNG</c> format in a single atomic <see cref="EmptyClipboard"/> +
+    /// <see cref="SetClipboardData"/> pair. Ocean Eyes screenshots are copied here
+    /// so that every image consumer sees the image:
+    /// <list type="bullet">
+    ///   <item>Word / Paint / older chat clients read <c>CF_DIB</c> (format 8).</item>
+    ///   <item>Modern editors (VS Code, some browsers, image-aware chat) read
+    ///   <c>CF_PNG</c> (registered format, preserves alpha + exact bytes).</item>
+    ///   <item>BYH's own clipboard history reads <c>CF_DIB</c> (see
+    ///   <c>ClipboardHistoryService.TryCaptureImage</c>).</item>
+    /// </list>
+    /// Previously <see cref="SetPng"/> alone left only <c>CF_PNG</c> on the
+    /// clipboard, so BYH's history (and most Windows apps) couldn't see the
+    /// screenshot — that was the "history doesn't capture Ocean Eyes screenshots"
+    /// bug. Writing both formats in one open/empty/set sequence is atomic: no
+    /// intermediate state where the clipboard holds only one format.
+    /// <para>
+    /// <paramref name="dib"/> is optional: if null (PNG→DIB conversion failed),
+    /// only <c>CF_PNG</c> is written — best-effort degradation rather than
+    /// failing the whole copy. Returns true if at least one format was placed.
+    /// </para>
+    /// </summary>
+    public bool SetImageDibAndPng(byte[] png, byte[]? dib)
+    {
+        ArgumentNullException.ThrowIfNull(png);
+        if (png.Length == 0 || png.Length > MaxDibBytes)
+        {
+            return false;
+        }
+        if (dib is { Length: 0 } or { Length: > int.MaxValue })
+        {
+            dib = null; // treat empty/oversized as "no DIB, PNG only"
+        }
+
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+
+        uint pngFormat = RegisterClipboardFormatW("PNG");
+        if (pngFormat == 0)
+        {
+            return false;
+        }
+
+        nint pngMemory = AllocateGlobal(png);
+        nint dibMemory = dib is null ? 0 : AllocateGlobal(dib);
+        try
+        {
+            return TryWithOpenClipboard(
+                () =>
+                {
+                    if (!EmptyClipboard())
+                    {
+                        return false;
+                    }
+                    bool pngOk = SetClipboardData(pngFormat, pngMemory) != 0;
+                    bool dibOk = false;
+                    if (dibMemory != 0)
+                    {
+                        dibOk = SetClipboardData(CfDib, dibMemory) != 0;
+                    }
+                    // Success if at least one format landed. PNG is the primary
+                    // artifact (matches what SetPng always wrote); DIB is the
+                    // compatibility bonus. If PNG failed but DIB ok, still true
+                    // (the image is on the clipboard either way).
+                    return pngOk || dibOk;
+                },
+                out bool placed) && placed;
+        }
+        finally
+        {
+            // Each HGLOBAL's ownership is decided independently: re-query each
+            // format to see if the system now owns it. Unowned handles are freed.
+            if (pngMemory != 0 && !IsClipboardFormatAvailable(pngFormat))
+            {
+                GlobalFree(pngMemory);
+            }
+            if (dibMemory != 0 && !IsClipboardFormatAvailable(CfDib))
+            {
+                GlobalFree(dibMemory);
             }
         }
     }

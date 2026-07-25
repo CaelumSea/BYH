@@ -5,6 +5,7 @@ using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.Launcher;
 using SelectionAssistant.Core.Translation;
 using System.Collections.ObjectModel;
@@ -140,8 +141,9 @@ public partial class SpotlightWindow : Window
     // ── Search matching ──
     //
     // Three-tier matching (substring → initials scan → pinyin initials) is
-    // centralized in <see cref="PinyinSearchHelper"/>, shared with
-    // ClipboardHistoryWindow (R54).
+    // centralized in <see cref="PinyinSearchHelper"/> (Core.Clipboard, R101
+    // moved it from UI.Views so it is unit-testable without a UI reference),
+    // shared with ClipboardHistoryWindow (R54).
 
     /// <summary>Returns true if <paramref name="name"/> matches <paramref name="query"/>.</summary>
     private static bool MatchesQuery(string name, string query) =>

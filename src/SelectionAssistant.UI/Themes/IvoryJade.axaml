@@ -44,6 +44,12 @@
       <Color x:Key="ByhColorErrorSoft">#FFF5DEDA</Color>
       <Color x:Key="ByhColorInfo">#FF55737A</Color>
       <Color x:Key="ByhColorInfoSoft">#FFDFEAEC</Color>
+      <!-- R54 v2: pink for entry-tag (annotation) badges — distinct from the
+           olive custom-tab badges, the gold auto-group badge, and every
+           semantic feedback color. A muted rose so it reads as "label/annotation"
+           without clashing with the warm ivory palette. -->
+      <Color x:Key="ByhColorPink">#FFC26B8A</Color>
+      <Color x:Key="ByhColorPinkSoft">#FFF6E0E8</Color>
       <Color x:Key="ByhColorFocus">#FF899845</Color>
 
       <!-- Keep Fluent controls (checkboxes, toggles, progress) on-brand.
@@ -89,6 +95,8 @@
       <SolidColorBrush x:Key="ByhErrorSoftBrush" Color="{StaticResource ByhColorErrorSoft}" />
       <SolidColorBrush x:Key="ByhInfoBrush" Color="{StaticResource ByhColorInfo}" />
       <SolidColorBrush x:Key="ByhInfoSoftBrush" Color="{StaticResource ByhColorInfoSoft}" />
+      <SolidColorBrush x:Key="ByhPinkBrush" Color="{StaticResource ByhColorPink}" />
+      <SolidColorBrush x:Key="ByhPinkSoftBrush" Color="{StaticResource ByhColorPinkSoft}" />
       <SolidColorBrush x:Key="ByhFocusBrush" Color="{StaticResource ByhColorFocus}" />
       <SolidColorBrush x:Key="ByhFocusRingBrush" Color="#38667731" />
 
@@ -263,6 +271,37 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
   </Style>
+  <!-- R54 v2: inline custom-TAB badges on each clipboard-history row (the
+       custom tabs an entry was assigned to via "Move to…"). Soft olive fill +
+       olive border. Distinct from EntryTagBadge (gold) so the two kinds read as
+       different layers at a glance. -->
+  <Style Selector="Border.TagBadge">
+    <Setter Property="Background" Value="{DynamicResource ByhPrimarySoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPrimaryBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
+  </Style>
+  <!-- R54 v2: inline entry-TAG badges (free-form annotations like "AWS"/
+       "Stripe" added via "Add tag…"). Pink fill + pink border — visually
+       distinct from the olive TagBadge (custom-tab assignments) and the gold
+       Badge (auto-group) so all three kinds read as separate layers. -->
+  <Style Selector="Border.EntryTagBadge">
+    <Setter Property="Background" Value="{DynamicResource ByhPinkSoftBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPinkBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
+  </Style>
+  <!-- R103: "Archived" badge for entries that fell off the live window and were
+       moved to the monthly archive (batch 102). Neutral gray so it reads as
+       "historical / not currently active", distinct from the gold/olive/pink
+       badges above. Uses existing surface-secondary + border-subtle resources —
+       no new brush needed. -->
+  <Style Selector="Border.ArchiveBadge">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderSubtleBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
+  </Style>
   <Style Selector="Border.FloatingSurface">
     <Setter Property="Background" Value="{DynamicResource ByhFloatingSurfaceBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource ByhFloatingBorderBrush}" />
@@ -333,6 +372,91 @@
   <Style Selector="Border.SpotlightRow.Active TextBlock.SpotlightRowName">
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="Foreground" Value="#FFB89A5C" />
+  </Style>
+  <!-- R54 v1.2 v3: expanded full-text block — softer ink + measured line gap so
+       a long paste reads as prose, not a wall. The Active override below keeps
+       the bronze tone when the row is also selected. -->
+  <Style Selector="TextBlock.ExpandedText">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="Border.SpotlightRow.Active TextBlock.ExpandedText">
+    <Setter Property="Foreground" Value="#FF8A6D2F" />
+  </Style>
+
+  <!-- R54 v1.2 v5: Lucide vector icons used as tag icons. Stroke follows the
+       surrounding text color so the icon matches an active/inactive nav row.
+       The SettingsNav.Active override turns the stroke bronze to match the bold
+       label text. -->
+  <Style Selector="Path.TagIcon">
+    <Setter Property="Stroke" Value="{DynamicResource ByhTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="Button.SettingsNav:pointerover Path.TagIcon">
+    <Setter Property="Stroke" Value="{DynamicResource ByhAccentBrush}" />
+  </Style>
+  <Style Selector="Button.SettingsNav.Active Path.TagIcon">
+    <Setter Property="Stroke" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+  </Style>
+  <!-- R54 v1.2 v6: custom-tag nav row. The whole row is a Border (NOT a Button)
+       so we can own pointer capture for drag-to-reorder AND deliver a click
+       (select tab) on an under-threshold release — without fighting the Button
+       internal capture state machine. These styles mirror Button.SettingsNav so
+       the row looks identical to the built-in tabs (same padding, corner radius,
+       hover/active fills, gold active frame). The .Dragging class dims the row
+       while it is being dragged; .Active matches the SettingsNav.Active look. -->
+  <Style Selector="Border.TagNavRow">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="12" />
+    <!-- Match the built-in Button.SettingsNav rows exactly: the built-in
+         BuildNavButton overrides Padding to 6,5 and uses FontSize 10, so the
+         custom-tag row must use the same to align pixel-for-pixel. -->
+    <Setter Property="Padding" Value="6,5" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Transitions">
+      <Setter.Value>
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.08" />
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.08" />
+        </Transitions>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <!-- The label + "#" placeholder inherit the same secondary ink color the
+       built-in Button.SettingsNav tabs use, so inactive custom tags match the
+       built-in rows. The .Active override below flips them to onPrimary. -->
+  <Style Selector="Border.TagNavRow TextBlock.TagLabel">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
+  </Style>
+  <Style Selector="Border.TagNavRow:pointerover TextBlock.TagLabel">
+    <Setter Property="Foreground" Value="{DynamicResource ByhAccentBrush}" />
+  </Style>
+  <Style Selector="Border.TagNavRow:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+  </Style>
+  <Style Selector="Border.TagNavRow.Active">
+    <Setter Property="Background" Value="{DynamicResource ByhGoldNavBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+  </Style>
+  <Style Selector="Border.TagNavRow.Active:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhGoldNavBrush}" />
+  </Style>
+  <Style Selector="Border.TagNavRow.Active TextBlock.TagLabel">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+    <Setter Property="FontWeight" Value="Bold" />
+  </Style>
+  <!-- The custom-tag icon (a Lucide/user Path) must mirror the built-in tabs'
+       hover→accent and active→onPrimary color shifts, so the icon never reads
+       as a different color from its row. -->
+  <Style Selector="Border.TagNavRow:pointerover Path.TagIcon">
+    <Setter Property="Stroke" Value="{DynamicResource ByhAccentBrush}" />
+  </Style>
+  <Style Selector="Border.TagNavRow.Active Path.TagIcon">
+    <Setter Property="Stroke" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+  </Style>
+  <Style Selector="Border.TagNavRow.Dragging">
+    <Setter Property="Opacity" Value="0.45" />
   </Style>
 
   <!-- R43 Spotlight search box wrapper Border: identical gold-lace frame as

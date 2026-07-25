@@ -62,6 +62,36 @@ public sealed record ByhApplicationPaths(string BaseDirectory)
     public string ClipboardHistoryFile =>
         Path.Combine(BaseDirectory, "clipboard-history.json");
 
+    /// <summary>R54 v1.1 clipboard-history tags + entry→tag assignments (JSON).
+    /// Kept separate from <see cref="ClipboardHistoryFile"/> so the main history
+    /// schema stays frozen; tag edits never rewrite the (large) history file.</summary>
+    public string ClipboardHistoryTagsFile =>
+        Path.Combine(BaseDirectory, "clipboard-history-tags.json");
+
+    /// <summary>R54 v1.2 v6: user-imported icon library (SVG path-data extracted
+    /// from imported SVG files). Kept separate so importing icons never
+    /// rewrites the tag-assignment file. Each entry is (name, pathData); the
+    /// stored tag-icon value is <c>user:&lt;name&gt;</c>.</summary>
+    public string ClipboardHistoryIconLibraryFile =>
+        Path.Combine(BaseDirectory, "clipboard-history-icons.json");
+
+    /// <summary>R54 v2: directory holding PNG files for image clipboard entries
+    /// (screenshots / copied bitmaps). Each image entry stores only the file
+    /// name in <c>clipboard-history.json</c>; the PNG lives here. Evicted/deleted
+    /// entries have their PNG removed to avoid the Ditto-style disk bloat where
+    /// images embedded in the store file balloon its size.</summary>
+    public string ClipboardImagesDirectory =>
+        Path.Combine(BaseDirectory, "clipboard-images");
+
+    /// <summary>R102: directory holding monthly archive shards
+    /// (<c>YYYY-MM.json</c>) for clipboard entries evicted from
+    /// <see cref="ClipboardHistoryFile"/> by LRU. Text entries that fall off
+    /// the end of the live window are appended here instead of being silently
+    /// dropped, giving users a long-term searchable history. Managed by
+    /// <c>ClipboardArchiveStore</c>.</summary>
+    public string ClipboardArchiveDirectory =>
+        Path.Combine(BaseDirectory, "clipboard-archive");
+
     /// <summary>
     /// R37: user-configurable toolbar built-in shortcut keys for Prompt/Copy/
     /// Paste (defaults R/C/V). Missing file = built-in defaults.
@@ -100,5 +130,7 @@ public sealed record ByhApplicationPaths(string BaseDirectory)
         Directory.CreateDirectory(BaseDirectory);
         Directory.CreateDirectory(LogsDirectory);
         Directory.CreateDirectory(SecretsDirectory);
+        Directory.CreateDirectory(ClipboardImagesDirectory);
+        Directory.CreateDirectory(ClipboardArchiveDirectory);
     }
 }

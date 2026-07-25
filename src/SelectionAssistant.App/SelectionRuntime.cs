@@ -111,6 +111,18 @@ internal sealed class SelectionRuntime : IDisposable
     // hook thread to decide "cached text ready" vs "must await task".
     private string? _oceanEyesOcrText;
     private int _oceanEyesOcrDone; // Volatile flag: 0 = not done, 1 = done
+    // R54 v2 bug fix: true while the selection/Ocean Eyes toolbar is actually
+    // visible on screen. Set in the onToolbarShown / ShowToolbarForOceanEyes
+    // paths; cleared in onToolbarHidden / DismissOceanEyes. Read on the keyboard
+    // hook thread to gate action-key dispatch (F/J/Z/R/C): without this check,
+    // pressing F would fall through to DispatchToolbarActionKey →
+    // GetLastCapturedText (which has a clipboard fallback) → wrongly trigger a
+    // translation. Only a visible toolbar gives F/J/Z their action semantics.
+    // (R97: the hook is no longer kept armed while pins exist — Esc no longer
+    // closes pinned windows — so the only time the hook is armed is while the
+    // toolbar / Ocean Eyes is active, which is exactly when this flag is true.)
+    // volatile: written on the UI thread, read on the WH_KEYBOARD_LL hook thread.
+    private volatile bool _toolbarVisible;
     // User-configurable: where screenshots go + whether to auto-save / copy.
     // Reference-atomic swap from the UI thread; read by SaveOceanEyesScreenshot.
     private OceanEyesCaptureSettings _oceanEyesCapture = OceanEyesCaptureSettings.Default;
@@ -128,6 +140,9 @@ internal sealed class SelectionRuntime : IDisposable
     // (Esc/Enter/action) does NOT close pinned windows; only runtime Dispose
     // tears them down. The HWNDs are wrapped in NoActivateWindowHost so they
     // stay always-on-top without stealing focus.
+    // R97: closing a pinned window is via double-click or right-click context
+    // menu only (handled inside PinnedScreenshotWindow). Esc no longer closes
+    // pins — the global keyboard hook is NOT kept armed while pins exist.
     private readonly List<PinnedScreenshotWindow> _pinnedWindows = new();
     private readonly List<NoActivateWindowHost> _pinnedHosts = new();
 
@@ -191,22 +206,19 @@ internal sealed class SelectionRuntime : IDisposable
                 // Enable shortcut dispatching while the toolbar is visible.
                 // The hook itself stays installed for the whole app lifetime;
                 // this only flips a flag read inside the callback.
+                _toolbarVisible = true; // R54 v2 bug fix: gate action-key dispatch
                 _keyboardHook.SetEnabled(true);
             },
             onToolbarHidden: () =>
             {
                 // Disable dispatching so typing in the source app is not
                 // filtered while the toolbar is hidden.
-                // R46 v6: keep the hook armed if pinned windows exist — Esc
-                // needs to route through the hook to close them (they're
-                // WS_EX_NOACTIVATE, can't get focus). Without this guard, the
-                // onToolbarHidden callback fired by _windowHost.Hide() inside
-                // DismissOceanEyes would re-disable the hook AFTER the T
-                // branch's SetEnabled(true), silently breaking Esc-close-pinned.
-                if (_pinnedWindows.Count == 0)
-                {
-                    _keyboardHook.SetEnabled(false);
-                }
+                // R97: the hook is unconditionally disabled here. Esc no longer
+                // closes pinned windows (removed), so there's no reason to keep
+                // the global hook armed while pins exist — it would only
+                // intercept keystrokes the user intended for the focused app.
+                _toolbarVisible = false; // R54 v2 bug fix
+                _keyboardHook.SetEnabled(false);
             });
         IReadOnlyList<PolicyRule> userPolicyRules = LoadUserCapturePolicies(paths.CapturePolicyFile);
         _capturePolicyProvider = WindowsDefaultCapturePolicies.CreateProvider(userPolicyRules);
@@ -443,6 +455,7 @@ internal sealed class SelectionRuntime : IDisposable
         // Arm the Ocean Eyes flag + the keyboard hook so Enter / F / J / Z /
         // R / C all route through OnToolbarKeyPressed.
         Volatile.Write(ref _oceanEyesActive, 1);
+        _toolbarVisible = true; // R54 v2 bug fix: gate action-key dispatch
         _keyboardHook.SetEnabled(true);
     }
 
@@ -579,7 +592,8 @@ internal sealed class SelectionRuntime : IDisposable
                 // If BGRA is null (older capture path), fall back to PNG decode.
                 byte[] finalPng = BurnAnnotationsIntoPng(
                     png, _oceanEyesBgra, _oceanEyesRect.W, _oceanEyesRect.H,
-                    annotations, dpiScale, originXDip, originYDip);
+                    annotations, dpiScale, originXDip, originYDip,
+                    out byte[]? finalBgra);
 
                 if (settings.AutoSaveEnabled)
                 {
@@ -597,13 +611,34 @@ internal sealed class SelectionRuntime : IDisposable
                 if (settings.CopyToClipboardEnabled)
                 {
                     byte[] clipPng = finalPng;
+                    // R54 v2 bug fix: convert to CF_DIB so EVERY image consumer
+                    // sees the screenshot. Previously SetPng wrote only the
+                    // registered "PNG" format, which BYH's own clipboard history
+                    // (reads CF_DIB) and most Windows apps (Word/Paint/chat) ignore
+                    // — that was the "history doesn't capture Ocean Eyes screenshots"
+                    // bug. SetImageDibAndPng writes both formats atomically.
+                    //
+                    // CRITICAL: build the DIB from finalBgra (the raw/annotated
+                    // BGRA buffer) via ConvertBgraToDib — NOT by decoding the PNG.
+                    // Avalonia 12's Bitmap.CopyPixels throws
+                    // ArgumentOutOfRangeException('stride') on many PNGs (the very
+                    // bug that crashed SaveOceanEyesScreenshot here before). The
+                    // BGRA path is pure byte-array math (BuildDibFromBgra), zero
+                    // Avalonia dependency, zero stride risk. Falls back to PNG
+                    // decoding only if finalBgra is null (capture path didn't
+                    // provide it), which may fail — that's the degraded case.
+                    int dibW = _oceanEyesRect.W, dibH = _oceanEyesRect.H;
+                    byte[]? clipDib = finalBgra is not null
+                        ? PngToDibConverter.ConvertBgraToDib(finalBgra, dibW, dibH)
+                        : PngToDibConverter.ConvertPngToDib(clipPng);
                     _ = Task.Run(() =>
                     {
                         try
                         {
                             using var clipboard = new Win32Clipboard();
-                            clipboard.SetPng(clipPng);
-                            _logger.Info("OceanEyes", $"Copied {clipPng.Length} PNG bytes to clipboard.");
+                            clipboard.SetImageDibAndPng(clipPng, clipDib);
+                            string dibInfo = clipDib is null ? " (DIB convert failed, PNG only)" : $", {clipDib.Length} DIB";
+                            _logger.Info("OceanEyes", $"Copied {clipPng.Length} PNG bytes{dibInfo} to clipboard.");
                         }
                         catch (Exception exception)
                         {
@@ -646,6 +681,7 @@ internal sealed class SelectionRuntime : IDisposable
         // Clear flags immediately (thread-safe Volatile writes) so any
         // concurrent hook callback sees the inactive state right away.
         Volatile.Write(ref _oceanEyesActive, 0);
+        _toolbarVisible = false; // R54 v2 bug fix
         _oceanEyesPng = null;
         _oceanEyesBgra = null;
         // R41: clear lazy-OCR state so the next Ocean Eyes session starts fresh.
@@ -654,18 +690,11 @@ internal sealed class SelectionRuntime : IDisposable
         Volatile.Write(ref _oceanEyesOcrDone, 0);
         // Disable the hook immediately (Volatile.Write, thread-safe) so no
         // second keypress can sneak in before the UI work below runs.
-        // R46 v6: keep the hook armed if pinned windows still exist — Esc
-        // needs to route through the hook to close them (they're
-        // WS_EX_NOACTIVATE, can't get focus). The hook callback's Esc branch
-        // short-circuits before any toolbar/Ocean Eyes logic when
-        // _oceanEyesActive == 0, so other keys pass through to the focused
-        // app unchanged. When the last pinned window closes (ClosePinned /
-        // CloseAllPinned), the hook is disarmed there.
-        bool keepHookForPinned = _pinnedWindows.Count > 0;
-        if (!keepHookForPinned)
-        {
-            _keyboardHook.SetEnabled(false);
-        }
+        // R97: unconditional. Esc no longer closes pinned windows, so nothing
+        // in the hook callback needs the hook to stay armed after the toolbar
+        // is dismissed — keeping it armed would only intercept keys meant for
+        // the focused app.
+        _keyboardHook.SetEnabled(false);
 
         // R42 fix: this method is called from the keyboard hook callback
         // (hook thread) via OnToolbarKeyPressed. UI operations (_windowHost,
@@ -876,14 +905,32 @@ internal sealed class SelectionRuntime : IDisposable
         IReadOnlyList<IAnnotationItem> items,
         double dpiScale,
         double originXDip,
-        double originYDip)
+        double originYDip,
+        out byte[]? finalBgra)
     {
+        // R54 v2 bug fix: out param returns the annotation-burned BGRA buffer
+        // (top-down, width×height×4) so the caller can build a CF_DIB directly
+        // from it — bypassing Avalonia's Bitmap.CopyPixels stride bug that
+        // throws on many PNGs. Null when there are no annotations AND no raw
+        // BGRA was provided (caller must then decode the PNG itself, which may
+        // fail). When items.Count == 0 but rawBgra is present, we still return
+        // it (cheap clone) so the DIB path works for annotation-free captures.
+        finalBgra = null;
         if (png is null)
         {
             return Array.Empty<byte>();
         }
         if (items.Count == 0)
         {
+            // R54 v2 bug fix: even with no annotations, surface the raw BGRA so
+            // the clipboard path can build a DIB without PNG decoding. Cheap
+            // clone (no drawing happens); the caller treats null as "must decode
+            // PNG, may fail".
+            if (rawBgra is { Length: > 0 } && regionW > 0 && regionH > 0
+                && rawBgra.Length == regionW * regionH * 4)
+            {
+                finalBgra = (byte[])rawBgra.Clone();
+            }
             return png;
         }
 
@@ -910,7 +957,7 @@ internal sealed class SelectionRuntime : IDisposable
             byte[]? decoded = DecodePngToBgra(png, out width, out height);
             if (decoded is null || width <= 0 || height <= 0)
             {
-                return png; // decode failed — return original
+                return png; // decode failed — return original (finalBgra stays null)
             }
             bgra = decoded;
         }
@@ -1004,7 +1051,9 @@ internal sealed class SelectionRuntime : IDisposable
             }
         }
 
-        // Re-encode to PNG.
+        // Re-encode to PNG. R54 v2 bug fix: surface the burned BGRA so the
+        // caller can build a CF_DIB without PNG decoding (Avalonia stride bug).
+        finalBgra = bgra;
         return ScreenRegionCapture.EncodeBgraToPng(bgra, width, height);
     }
 
@@ -1487,7 +1536,11 @@ internal sealed class SelectionRuntime : IDisposable
                 window.Hide();
                 window.Dispose();
 
-                // R46 v6: hook disarm when pinned list empty + no Ocean Eyes.
+                // R46 v6 / R97: defensive hook disarm when no pinned windows
+                // remain AND no Ocean Eyes session is active. Esc no longer
+                // closes pins, so nothing keeps the hook armed for pins
+                // anymore — this just guarantees the hook is off if we're
+                // fully idle, in case some earlier path forgot to disarm.
                 if (_pinnedWindows.Count == 0 &&
                     Volatile.Read(ref _oceanEyesActive) == 0)
                 {
@@ -1561,11 +1614,9 @@ internal sealed class SelectionRuntime : IDisposable
         _oceanEyesOcrText = null;
         Volatile.Write(ref _oceanEyesOcrDone, 0);
         _windowHost.Hide();
-        // R46 v6: keep hook armed if pinned windows exist (Esc-close-pinned).
-        if (_pinnedWindows.Count == 0)
-        {
-            _keyboardHook.SetEnabled(false);
-        }
+        // R97: unconditional disarm — Esc no longer closes pins (see the
+        // matching change in OnToolbarKeyPressed / onToolbarHidden).
+        _keyboardHook.SetEnabled(false);
     }
 
     /// <summary>
@@ -2440,7 +2491,9 @@ internal sealed class SelectionRuntime : IDisposable
         }
         try
         {
-            // R46 v6: keep hook armed if pinned windows exist (Esc-close-pinned).
+            // R46 v6 / R97: defensive disarm — see ClosePinned for the same
+            // check. Esc no longer closes pins, so this just ensures the hook
+            // is off when fully idle.
             if (_pinnedWindows.Count == 0)
             {
                 _keyboardHook.SetEnabled(false);
@@ -2497,38 +2550,15 @@ internal sealed class SelectionRuntime : IDisposable
     /// </summary>
     private bool OnToolbarKeyPressed(int vkCode)
     {
-        // R46 v6: Esc closes the topmost pinned window when no Ocean Eyes
-        // session is active. Pinned windows are WS_EX_NOACTIVATE (never get
-        // focus), so they can't catch Esc themselves — we route through the
-        // global keyboard hook. The hook is kept enabled while pinned windows
-        // exist (see PinOceanEyesScreenshot re-arming + ClosePinned/CloseAllPinned
-        // disabling when the list empties + the onToolbarHidden callback guard).
-        // LIFO order: index Count-1 is the most-recently-pinned window (top of
-        // stack). First Esc closes it, second Esc closes the next, etc.
+        // R97: Esc no longer closes pinned windows. The pinned window is
+        // permanently WS_EX_TOPMOST (and the ESC-close mechanism required
+        // keeping the global keyboard hook armed while any pin existed),
+        // which meant Esc was intercepted to close the pin instead of
+        // reaching whatever the user actually wanted to close (a modal
+        // dialog, an editor, etc.). Close a pinned window with double-click
+        // or the right-click context menu instead (both handled inside
+        // PinnedScreenshotWindow itself, no global hook involvement).
         const int vkEscape = 0x1B;
-        if (vkCode == vkEscape &&
-            Volatile.Read(ref _oceanEyesActive) == 0 &&
-            _pinnedWindows.Count > 0)
-        {
-            try
-            {
-                _logger.Info("OceanEyes", $"Esc-close pinned: closing topmost of {_pinnedWindows.Count} pinned window(s).");
-                Dispatcher.UIThread.Post(() =>
-                {
-                    if (_pinnedWindows.Count > 0)
-                    {
-                        var top = _pinnedWindows[_pinnedWindows.Count - 1];
-                        ClosePinned(top);
-                    }
-                });
-            }
-            catch (Exception exception)
-            {
-                _logger.Error("OceanEyes", "Esc-close pinned failed.", exception);
-            }
-            return true;
-        }
-
         if (vkCode == vkEscape)
         {
             try
@@ -2686,19 +2716,13 @@ internal sealed class SelectionRuntime : IDisposable
             {
                 _logger.Info("OceanEyes", "Pin screenshot: T → spawn pinned window + dismiss Ocean Eyes.");
                 PinOceanEyesScreenshot();
-                // R46 v6: DismissOceanEyes is called AFTER PinOceanEyesScreenshot
-                // because Pin registers the window in _pinnedWindows on the
-                // UI-thread Post (async). DismissOceanEyes's hook-disarm check
-                // (_pinnedWindows.Count > 0) may not yet see the new window —
-                // but the hook is re-armed by the T branch's own check below.
+                // R97: PinOceanEyesScreenshot registers the window in
+                // _pinnedWindows on a UI-thread Post, then calls
+                // DismissOceanEyes (which disarms the hook unconditionally).
+                // Esc no longer closes pins, so there is nothing to re-arm
+                // the hook for after pinning — let it stay disarmed. Close a
+                // pinned window with double-click or right-click instead.
                 DismissOceanEyes();
-                // R46 v6: keep the keyboard hook armed so Esc can close pinned
-                // windows (they're WS_EX_NOACTIVATE, can't get focus). The hook
-                // callback's new Esc branch (top of OnToolbarKeyPressed)
-                // short-circuits before any Ocean Eyes / toolbar logic, so
-                // other keys pass through to the focused app unchanged.
-                // ClosePinned/CloseAllPinned disable the hook when the list empties.
-                _keyboardHook.SetEnabled(true);
             }
             catch (Exception exception)
             {
@@ -2750,6 +2774,23 @@ internal sealed class SelectionRuntime : IDisposable
 
         // Only single-character A-Z (0x41-0x5A) are eligible for shortcuts.
         if (vkCode < 0x41 || vkCode > 0x5A)
+        {
+            return false;
+        }
+
+        // R54 v2 bug fix: only dispatch action keys (F/J/Z/R/C and any
+        // user-bound A-Z template) when the toolbar is actually visible.
+        // Without this gate, pressing F with no visible toolbar would fall
+        // through to DispatchToolbarActionKey → GetLastCapturedText (which has
+        // a clipboard fallback) and wrongly trigger a translation. Pass the
+        // key through to the focused app instead — F/J/Z have no action
+        // semantics without a visible toolbar.
+        // (R97: the hook is no longer kept armed for pins, so in practice the
+        // only time this callback runs at all is while the toolbar / Ocean
+        // Eyes is active — but this gate remains a correct, cheap defense.)
+        // The OE-specific branches (Enter/T/P/A/G) gate on _oceanEyesActive
+        // themselves and are unaffected.
+        if (!_toolbarVisible)
         {
             return false;
         }

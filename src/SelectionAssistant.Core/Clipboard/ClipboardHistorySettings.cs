@@ -26,6 +26,16 @@ public sealed record ClipboardHistorySettings
     /// oldest non-pinned entry is evicted on each capture. Range [10, 5000].</summary>
     public int MaxEntries { get; init; } = 1000;
 
+    /// <summary>R54 v2: master switch for image capture. When false, image
+    /// copies are ignored (text-only behavior, same as v1). Default true.</summary>
+    public bool CaptureImagesEnabled { get; init; } = true;
+
+    /// <summary>R54 v2: maximum number of non-pinned <b>image</b> entries kept,
+    /// independent of <see cref="MaxEntries"/> (images are larger, so they get a
+    /// smaller cap). Range [5, 500]. When exceeded the oldest non-pinned image
+    /// entry is evicted (and its PNG deleted) on each image capture.</summary>
+    public int MaxImageEntries { get; init; } = 50;
+
     /// <summary>Default privacy exclusion list — common password managers and
     /// authenticator apps. Users can add/remove via Settings. Declared before
     /// <see cref="Default"/> so the static initializer runs first and
@@ -52,6 +62,7 @@ public sealed record ClipboardHistorySettings
     public ClipboardHistorySettings Normalize() => this with
     {
         MaxEntries = Math.Clamp(MaxEntries, 10, 5000),
+        MaxImageEntries = Math.Clamp(MaxImageEntries, 5, 500),
         ExcludeProcessNames = ExcludeProcessNames
             .Where(s => !string.IsNullOrWhiteSpace(s))
             .Select(s => s.Trim())
@@ -64,6 +75,10 @@ public sealed record ClipboardHistorySettings
         if (MaxEntries is < 10 or > 5000)
         {
             throw new ArgumentOutOfRangeException(nameof(MaxEntries), "MaxEntries must be between 10 and 5000.");
+        }
+        if (MaxImageEntries is < 5 or > 500)
+        {
+            throw new ArgumentOutOfRangeException(nameof(MaxImageEntries), "MaxImageEntries must be between 5 and 500.");
         }
     }
 }

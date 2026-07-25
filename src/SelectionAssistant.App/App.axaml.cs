@@ -13,6 +13,7 @@ using SelectionAssistant.Infrastructure.Logging;
 using SelectionAssistant.Platform.Windows.Capture;
 using SelectionAssistant.Platform.Windows.Clipboard;
 using SelectionAssistant.Platform.Windows.Input;
+using SelectionAssistant.Platform.Windows.Secrets;
 using SelectionAssistant.UI.Views;
 
 namespace SelectionAssistant.App;
@@ -217,9 +218,30 @@ public partial class App : Application
             settingsWindow.ClipboardHistorySettingsSaved += OnClipboardHistorySettingsSaved;
             settingsWindow.ClipboardHistoryClearRequested += OnClipboardHistoryClearRequested;
             clipboardHistoryWindow.PasteRequested += OnClipboardHistoryPasteRequested;
+            clipboardHistoryWindow.CopyRequested += OnClipboardHistoryCopyRequested;
             clipboardHistoryWindow.PinToggled += OnClipboardHistoryPinToggled;
             clipboardHistoryWindow.DeleteRequested += OnClipboardHistoryDeleteRequested;
+            // R54 v2: per-entry annotation tags (independent of custom-tag tabs).
+            clipboardHistoryWindow.EntryTagAdded += OnClipboardHistoryEntryTagAdded;
+            clipboardHistoryWindow.EntryTagRemoved += OnClipboardHistoryEntryTagRemoved;
+            clipboardHistoryWindow.ClearOlderRequested += OnClipboardHistoryClearOlderRequested;
+            clipboardHistoryWindow.PreviewClearOlderRequested += OnClipboardHistoryPreviewClearOlder;
             clipboardHistoryWindow.SettingsRequested += OnClipboardHistorySettingsRequested;
+            // R54 v1.1: tag management (custom tags + favorite + per-entry assign).
+            clipboardHistoryWindow.CreateCustomTagRequested += OnClipboardHistoryCreateCustomTag;
+            clipboardHistoryWindow.RenameCustomTagRequested += OnClipboardHistoryRenameCustomTag;
+            clipboardHistoryWindow.DeleteCustomTagRequested += OnClipboardHistoryDeleteCustomTag;
+            clipboardHistoryWindow.AssignTagRequested += OnClipboardHistoryAssignTag;
+            clipboardHistoryWindow.UnassignTagRequested += OnClipboardHistoryUnassignTag;
+            clipboardHistoryWindow.FavoriteToggled += OnClipboardHistoryFavoriteToggled;
+            // R54 v2: built-in group override (fix a wrong auto-classification).
+            clipboardHistoryWindow.GroupOverrideRequested += OnClipboardHistoryGroupOverride;
+            // R54 v1.2: icon + drag-to-reorder.
+            clipboardHistoryWindow.SetTagIconRequested += OnClipboardHistorySetTagIcon;
+            clipboardHistoryWindow.ReorderTagRequested += OnClipboardHistoryReorderTag;
+            // R54 v1.2 v6: user-imported icon library.
+            clipboardHistoryWindow.ImportIconsRequested += OnClipboardHistoryImportIcons;
+            clipboardHistoryWindow.RemoveUserIconRequested += OnClipboardHistoryRemoveUserIcon;
 
             // R24/R40: region-select overlay. R40 entry point: Ctrl+Alt+Q goes
             // straight into the overlay (no panel). On confirm → capture PNG →
@@ -264,11 +286,21 @@ public partial class App : Application
                 try
                 {
                     var clipboard = new Win32Clipboard();
+                    // R54 v2 Phase 2: encrypt sensitive entries' text in the
+                    // persisted JSON via DPAPI (CurrentUser scope). Constructed
+                    // unconditionally — if construction itself ever fails it
+                    // falls into the outer catch and the service stays null.
+                    var entryCipher = new DpapiEntryCipher();
                     _clipboardHistoryService = new ClipboardHistoryService(
                         clipboard,
                         _paths.ClipboardHistoryFile,
+                        _paths.ClipboardHistoryTagsFile,
+                        _paths.ClipboardHistoryIconLibraryFile,
+                        _paths.ClipboardImagesDirectory,
                         _clipboardHistorySettings,
-                        clipboardLogger);
+                        clipboardLogger,
+                        entryCipher,
+                        _paths.ClipboardArchiveDirectory);
                 }
                 catch (Exception exception)
                 {
@@ -896,14 +928,68 @@ public partial class App : Application
 
     private void RefreshClipboardHistoryWindow()
     {
-        if (_clipboardHistoryService is null || _clipboardHistoryWindow is null)
+        if (_clipboardHistoryService is null || _clipboardHistoryWindow is null || _paths is null)
         {
             return;
         }
 
         bool maskSensitive = _clipboardHistorySettings.MaskSensitiveEnabled;
         IReadOnlyList<ClipboardEntry> snapshot = _clipboardHistoryService.Snapshot;
-        _clipboardHistoryWindow.SetEntries(snapshot, maskSensitive);
+        // R103: also push the archive snapshot so the window can surface
+        // archived entries in search results. Lazily loaded + cached on the
+        // service; cheap to call repeatedly.
+        IReadOnlyList<ClipboardEntry> archive = _clipboardHistoryService.ArchiveSnapshot;
+        // Direct field access after the null guard (same shape the original
+        // SetEntries call used; the analyzer accepts it for the same reason).
+        _clipboardHistoryWindow.SetImagesDirectory(_paths.ClipboardImagesDirectory);
+        _clipboardHistoryWindow.SetEntries(snapshot, archive, maskSensitive);
+        PushClipboardHistoryTags();
+    }
+
+    /// <summary>
+    /// R54 v1.1: pushes the current tag data (custom tags + per-entry favorite
+    /// flag + per-entry custom-tag assignments) into the window. Called after
+    /// every entry refresh and after every tag mutation, so the nav bar and the
+    /// per-row ❤ markers / "移动到…" submenu stay in sync with the store.
+    /// </summary>
+    private void PushClipboardHistoryTags()
+    {
+        if (_clipboardHistoryService is null || _clipboardHistoryWindow is null)
+        {
+            return;
+        }
+
+        ClipboardTagData tags = _clipboardHistoryService.Tags;
+        IReadOnlyList<ClipboardEntry> snapshot = _clipboardHistoryService.Snapshot;
+
+        // Entry id → favorite flag (true when assigned the ❤收藏 tag).
+        var favoriteById = new Dictionary<Guid, bool>();
+        // Entry id → custom-tag names assigned (excludes the favorite tag, which
+        // has its own dedicated marker/tab).
+        var customTagsById = new Dictionary<Guid, IReadOnlyList<string>>();
+        foreach (ClipboardEntry entry in snapshot)
+        {
+            if (!tags.Assignments.TryGetValue(entry.Id, out IReadOnlySet<string>? assigned) ||
+                assigned.Count == 0)
+            {
+                continue;
+            }
+
+            favoriteById[entry.Id] = assigned.Contains(ClipboardTagData.FavoriteTagName);
+            var customs = assigned
+                .Where(t => t != ClipboardTagData.FavoriteTagName)
+                .ToList();
+            if (customs.Count > 0)
+            {
+                customTagsById[entry.Id] = customs;
+            }
+        }
+
+        _clipboardHistoryWindow.SetTags(tags.CustomTags, favoriteById, customTagsById, tags.TagIcons);
+
+        // R54 v1.2 v6: also push the user-imported icon library so the picker's
+        // "我的图标" group + the import/remove affordances stay current.
+        _clipboardHistoryWindow.SetUserIcons(_clipboardHistoryService.IconLibrary.Icons);
     }
 
     /// <summary>
@@ -996,9 +1082,27 @@ public partial class App : Application
     private void OnClipboardHistoryPasteRequested(Guid id)
     {
         if (_clipboardHistoryService is null) return;
-        ClipboardEntry? entry = _clipboardHistoryService.Snapshot.FirstOrDefault(e => e.Id == id);
+        // R103: FindEntryById searches the live snapshot first, then the archive
+        // cache — so archived entries can be pasted back without the caller
+        // knowing whether the id is live or archived.
+        ClipboardEntry? entry = _clipboardHistoryService.FindEntryById(id);
         if (entry is null) return;
-        _clipboardHistoryService.PasteAsync(entry);
+        // Double-click paste always auto-pastes into the target (the universal
+        // Win+V/Maccy/CopyQ contract: double-click = "paste here now"). The
+        // PasteAsync adds a short focus-recovery delay after the window Hide().
+        _clipboardHistoryService.PasteAsync(entry, autoPaste: true);
+    }
+
+    /// <summary>R54 v1.1: "复制（不关闭）" — writes the clipboard only (no Ctrl+V
+    /// auto-paste), window stays open so the user can pick several entries. The
+    /// user pastes manually with Ctrl+V into whichever target they choose.</summary>
+    private void OnClipboardHistoryCopyRequested(Guid id)
+    {
+        if (_clipboardHistoryService is null) return;
+        // R103: FindEntryById covers both live and archived entries.
+        ClipboardEntry? entry = _clipboardHistoryService.FindEntryById(id);
+        if (entry is null) return;
+        _clipboardHistoryService.PasteAsync(entry, autoPaste: false);
     }
 
     private void OnClipboardHistoryPinToggled(Guid id)
@@ -1013,10 +1117,136 @@ public partial class App : Application
         RefreshClipboardHistoryWindow();
     }
 
+    // R54 v2: per-entry annotation tags. Add/Remove delegate to the service
+    // (which rebuilds the entry via `with` + persists), then the snapshot is
+    // re-pushed so the badge appears/disappears immediately.
+    private void OnClipboardHistoryEntryTagAdded(Guid id, string tag)
+    {
+        _clipboardHistoryService?.AddEntryTag(id, tag);
+        RefreshClipboardHistoryWindow();
+    }
+
+    private void OnClipboardHistoryEntryTagRemoved(Guid id, string tag)
+    {
+        _clipboardHistoryService?.RemoveEntryTag(id, tag);
+        RefreshClipboardHistoryWindow();
+    }
+
+    // R54 v2: clear every entry older than the reference, keeping protected
+    // entries (pinned/favorited/custom-tag/entry-tag). The service does the
+    // protected-check; we just refresh the snapshot afterward.
+    private void OnClipboardHistoryClearOlderRequested(Guid id)
+    {
+        _clipboardHistoryService?.ClearOlderEntries(id);
+        RefreshClipboardHistoryWindow();
+    }
+
+    // R54 v2: dry-run count for the confirmation dialog (delete N / keep M).
+    private (int wouldDelete, int wouldKeep) OnClipboardHistoryPreviewClearOlder(Guid id)
+    {
+        return _clipboardHistoryService?.PreviewClearOlder(id) ?? (0, 0);
+    }
+
     private void OnClipboardHistorySettingsRequested()
     {
         _clipboardHistoryWindow?.Hide();
         RefreshAndShowSettings();
+    }
+
+    // ── R54 v1.1: tag-management handlers ──
+    //
+    // Each forwards to the matching ClipboardHistoryService method (which
+    // persists atomically), then refreshes the window so the nav bar, row
+    // markers, and "移动到…" submenu reflect the new state. Tag mutations only
+    // rewrite clipboard-history-tags.json (never the large history file).
+
+    private void OnClipboardHistoryCreateCustomTag(string name)
+    {
+        _clipboardHistoryService?.AddCustomTag(name);
+        PushClipboardHistoryTags();
+    }
+
+    private void OnClipboardHistoryRenameCustomTag(string oldName, string newName)
+    {
+        _clipboardHistoryService?.RenameCustomTag(oldName, newName);
+        PushClipboardHistoryTags();
+    }
+
+    private void OnClipboardHistoryDeleteCustomTag(string name)
+    {
+        _clipboardHistoryService?.DeleteCustomTag(name);
+        PushClipboardHistoryTags();
+    }
+
+    private void OnClipboardHistoryAssignTag(Guid entryId, string tagName)
+    {
+        _clipboardHistoryService?.AssignToTag(entryId, tagName);
+        PushClipboardHistoryTags();
+    }
+
+    private void OnClipboardHistoryUnassignTag(Guid entryId, string tagName)
+    {
+        _clipboardHistoryService?.UnassignFromTag(entryId, tagName);
+        PushClipboardHistoryTags();
+    }
+
+    private void OnClipboardHistoryFavoriteToggled(Guid entryId)
+    {
+        _clipboardHistoryService?.ToggleFavorite(entryId);
+        PushClipboardHistoryTags();
+    }
+
+    // R54 v2: set (or clear, when group is null) the user's manual correction
+    // of the auto-classified group. The service flips IsSensitive in lockstep
+    // when the target/clear is Sensitive (so masking + DPAPI-at-rest follow the
+    // user's correction). A snapshot re-push updates the badge and the tab the
+    // entry belongs to. Note: tags don't change here, so no PushClipboardHistoryTags.
+    private void OnClipboardHistoryGroupOverride(Guid entryId, ClipboardGroup? group)
+    {
+        _clipboardHistoryService?.SetGroupOverride(entryId, group);
+        RefreshClipboardHistoryWindow();
+    }
+
+    // ── R54 v1.2: icon + reorder handlers ──
+
+    private void OnClipboardHistorySetTagIcon(string tagName, string emoji)
+    {
+        _clipboardHistoryService?.SetTagIcon(tagName, emoji);
+        PushClipboardHistoryTags();
+    }
+
+    private void OnClipboardHistoryReorderTag(string tagName, int toIndex)
+    {
+        _clipboardHistoryService?.MoveTag(tagName, toIndex);
+        PushClipboardHistoryTags();
+    }
+
+    // ── R54 v1.2 v6: user-imported icon library ──
+
+    private void OnClipboardHistoryImportIcons(IReadOnlyList<(string FileName, string SvgContent)> files)
+    {
+        if (_clipboardHistoryService is null) return;
+        var extracted = new List<UserIcon>();
+        int skipped = 0;
+        foreach ((string fileName, string svg) in files)
+        {
+            string? data = UserIconLibraryStore.ExtractPathData(svg);
+            if (string.IsNullOrEmpty(data)) { skipped++; continue; }
+            string name = UserIconLibraryStore.NameFromFile(fileName);
+            extracted.Add(new UserIcon(name, data));
+        }
+        if (extracted.Count > 0)
+        {
+            _clipboardHistoryService.AddUserIcons(extracted);
+        }
+        PushClipboardHistoryTags();
+    }
+
+    private void OnClipboardHistoryRemoveUserIcon(string iconName)
+    {
+        if (_clipboardHistoryService is null) return;
+        _clipboardHistoryService.RemoveUserIcon(iconName);
+        PushClipboardHistoryTags();
     }
 
     /// <summary>

@@ -1,10 +1,11 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
         x:Class="SelectionAssistant.UI.Views.ClipboardHistoryWindow"
         Title="BYH · Clipboard"
-        Width="560"
-        Height="520"
+        Width="680"
+        Height="560"
         CanResize="False"
         ShowActivated="True"
         ShowInTaskbar="False"
@@ -15,126 +16,325 @@
         Background="Transparent"
         Topmost="True"
         KeyDown="OnWindowKeyDown">
+  <!-- R100 动画1: 窗口弹动走 RootBorder 的 ScaleTransform(见 code-behind),
+       不用 Window.Opacity —— 用户反馈 Opacity 渐变时 AcrylicBlur 半透明背景
+       会透出桌面("还有背景"), 故只用 scale 弹动(0.85↔1.0 BackEaseOut)。 -->
   <Border x:Name="RootBorder"
           Classes="FloatingSurface"
-          Padding="14"
-          CornerRadius="12">
-    <Grid RowDefinitions="Auto,Auto,*,Auto" RowSpacing="10">
+          Padding="12"
+          CornerRadius="12"
+          PointerPressed="OnRootPointerPressed">
+    <Grid ColumnDefinitions="128,*" ColumnSpacing="8">
 
-      <!-- Search input row: clipboard icon + TextBox. Same gold-lace frame
-           machinery as SpotlightWindow. -->
-      <Grid Grid.Row="0" ColumnDefinitions="28,*,Auto" ColumnSpacing="8">
-        <TextBlock Grid.Column="0"
-                   Text="📋"
-                   FontSize="15"
-                   VerticalAlignment="Center"
-                   HorizontalAlignment="Center" />
-        <Border Grid.Column="1"
-                Classes="SpotlightGoldFrame"
-                CornerRadius="12"
-                Padding="8,3">
-          <TextBox x:Name="SearchInput"
-                   Classes="SpotlightSearch"
-                   PlaceholderText="搜索剪贴板历史…"
-                   FontSize="15"
-                   FontWeight="SemiBold"
-                   Padding="0,1"
-                   VerticalAlignment="Center"
-                   VerticalContentAlignment="Center"
-                   BorderThickness="0"
-                   Background="Transparent"
-                   TextChanged="OnSearchInputTextChanged" />
-        </Border>
-      </Grid>
+      <!-- R54 v1.1/v1.2: vertical left nav bar (128 px, reuses SettingsNav style).
+           Built-in group/pin/favorite tabs + dynamic custom-tag buttons + 新建.
+           Tab right-click → rename/delete/set-icon custom tab; drag to reorder
+           custom tabs (v1.2). Built-in tabs are always shown (even when empty)
+           so the structure is stable; only custom tabs are added/removed. The
+           nav is rebuilt in code (SetTags) so custom tabs can be reordered. -->
+      <Border Grid.Column="0"
+              Classes="NavTowerFrame"
+              ClipToBounds="True">
+        <!-- Wrap the tower layout in a parent Grid so the drag-reorder caret
+             (a Canvas overlay) can float above the nav buttons without
+             perturbing the StackPanel layout it hit-tests against. -->
+        <Grid>
+          <Grid Margin="3,5,3,5" RowDefinitions="Auto,*,Auto">
+            <Border Grid.Row="0"
+                    Margin="2,0,2,4"
+                    Padding="0,0,0,4"
+                    BorderBrush="{DynamicResource ByhHairlineBrush}"
+                    BorderThickness="0,0,0,1">
+              <TextBlock Classes="Kicker"
+                         Text="TABS"
+                         HorizontalAlignment="Center"
+                         FontSize="10" />
+            </Border>
+            <ScrollViewer Grid.Row="1"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+              <StackPanel x:Name="NavButtonsPanel" Spacing="3" />
+            </ScrollViewer>
 
-      <!-- Category header -->
-      <TextBlock Grid.Row="1"
-                 Classes="Kicker"
-                 Text="剪贴板历史"
-                 FontSize="10" />
-
-      <!-- Filtered results list -->
-      <Border Grid.Row="2"
-              Background="Transparent"
-              BorderBrush="{DynamicResource ByhHairlineBrush}"
-              BorderThickness="0,1,0,0"
-              Padding="0,8,0,0">
-        <ScrollViewer x:Name="ResultsScroll"
-                      HorizontalScrollBarVisibility="Disabled"
-                      VerticalScrollBarVisibility="Auto">
-          <ItemsControl x:Name="ResultsList">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="views:ClipboardHistoryEntryRow">
-                <!-- Bind "Active" class to IsSelected — same compiled-bindings
-                     pattern as SpotlightWindow (AVLN2000-safe, NativeAOT-safe). -->
-                <Border Classes="SpotlightRow"
-                        Classes.Active="{Binding IsSelected}"
-                        Background="Transparent"
-                        Padding="8,6"
-                        Margin="0,1"
-                        CornerRadius="8"
-                        PointerPressed="OnRowPointerPressed">
-                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                    <StackPanel Grid.Column="0" Spacing="2">
-                      <TextBlock Text="{Binding Preview}"
-                                 Classes="SpotlightRowName"
-                                 FontSize="13"
-                                 FontWeight="SemiBold"
-                                 TextTrimming="CharacterEllipsis" />
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <Border Classes="Badge" Padding="5,1" IsVisible="{Binding GroupLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                          <TextBlock Classes="Muted" FontSize="9" Text="{Binding GroupLabel}" />
-                        </Border>
-                        <TextBlock Classes="Muted"
-                                   FontSize="10"
-                                   IsVisible="{Binding SourceLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                                   Text="{Binding SourceLabel}"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Classes="Muted" FontSize="10" Text="{Binding TimeLabel}" />
-                      </StackPanel>
-                    </StackPanel>
-                    <TextBlock Grid.Column="1"
-                               FontSize="13"
-                               VerticalAlignment="Center"
-                               Text="★"
-                               IsVisible="{Binding IsPinned}" />
-                  </Grid>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
-        </ScrollViewer>
+            <!-- Footer: settings gear pinned to the bottom of the nav tower.
+                 R54 v1.2: the tag-name input moved to a separate TagNameDialog
+                 (modal popup), so this column is now just the nav list + gear. -->
+            <Button Grid.Row="2"
+                    x:Name="SettingsFooterButton"
+                    Classes="SettingsNav"
+                    Padding="10,8"
+                    Margin="0,6,0,0"
+                    Click="OnSettingsClick">
+              <Grid ColumnDefinitions="18,*" ColumnSpacing="8">
+                <Path Classes="NavIcon"
+                      Width="14" Height="14"
+                      Data="M12,8 a4,4 0 1 1 0,8 a4,4 0 1 1 0,-8 M12,2 v2 M12,20 v2 M2,12 h2 M20,12 h2 M4.9,4.9 l1.4,1.4 M17.7,17.7 l1.4,1.4 M4.9,19.1 l1.4,-1.4 M17.7,6.3 l1.4,-1.4" />
+                <TextBlock Grid.Column="1" Text="Settings" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+              </Grid>
+            </Button>
+          </Grid>
+          <!-- R54 v1.2 v3: overlay Canvas for the drag-reorder insertion caret.
+               Children are added from code-behind (ShowDragCaret). The Canvas is
+               transparent to pointer hits so it never blocks the buttons below. -->
+          <Canvas x:Name="NavTowerOverlay"
+                  IsHitTestVisible="False" />
+        </Grid>
       </Border>
 
-      <!-- Footer: settings + keycap hints -->
-      <Grid Grid.Row="3"
-            ColumnDefinitions="Auto,*,Auto"
-            ColumnSpacing="8"
-            Margin="0,6,0,0">
-        <Button Grid.Column="0"
-                Classes="Ghost"
-                Click="OnSettingsClick"
-                Padding="6,2"
-                FontSize="11"
-                Content="⚙ 设置" />
-        <StackPanel Grid.Column="2"
+      <!-- Right panel: search box + filtered list (unchanged machinery). -->
+      <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
+
+        <!-- Search input row: clipboard icon + TextBox. Same gold-lace frame
+             machinery as SpotlightWindow. -->
+        <Grid Grid.Row="0" ColumnDefinitions="28,*,Auto" ColumnSpacing="8">
+          <TextBlock Grid.Column="0"
+                     Text="📋"
+                     FontSize="15"
+                     VerticalAlignment="Center"
+                     HorizontalAlignment="Center" />
+          <Border Grid.Column="1"
+                  Classes="SpotlightGoldFrame"
+                  CornerRadius="12"
+                  Padding="8,3">
+            <TextBox x:Name="SearchInput"
+                     Classes="SpotlightSearch"
+                     PlaceholderText="Search clipboard history…"
+                     FontSize="15"
+                     FontWeight="SemiBold"
+                     Padding="0,1"
+                     VerticalAlignment="Center"
+                     VerticalContentAlignment="Center"
+                     BorderThickness="0"
+                     Background="Transparent"
+                     TextChanged="OnSearchInputTextChanged" />
+          </Border>
+        </Grid>
+
+        <!-- Category header (shows the active tab name + count). -->
+        <TextBlock x:Name="CategoryHeader"
+                   Grid.Row="1"
+                   Classes="Kicker"
+                   Text="Clipboard History"
+                   FontSize="10" />
+
+        <!-- Filtered results list. ContextMenu is attached dynamically per row
+             in code-behind (it depends on the row's flags + the current custom
+             tags, both of which change at runtime). -->
+        <Border Grid.Row="2"
+                Background="Transparent"
+                BorderBrush="{DynamicResource ByhHairlineBrush}"
+                BorderThickness="0,1,0,0"
+                Padding="0,6,0,0">
+          <ScrollViewer x:Name="ResultsScroll"
+                        HorizontalScrollBarVisibility="Disabled"
+                        VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="ResultsList">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="views:ClipboardHistoryEntryRow">
+                  <!-- Bind "Active" class to IsSelected — same compiled-bindings
+                       pattern as SpotlightWindow (AVLN2000-safe, NativeAOT-safe). -->
+                  <Border Classes="SpotlightRow"
+                          Classes.Active="{Binding IsSelected}"
+                          Classes.Expanded="{Binding IsExpanded}"
+                          Background="Transparent"
+                          Padding="8,6"
+                          Margin="0,1"
+                          CornerRadius="8"
+                          PointerPressed="OnRowPointerPressed"
+                          PointerReleased="OnRowPointerReleased">
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                      <StackPanel Grid.Column="0" Spacing="3">
+                        <!-- R54 v2: image rows. Collapsed = 64×64 thumbnail + meta
+                             (single click expands to a larger preview; double-click
+                             pastes). Expanded = a row-width preview image above the
+                             meta line. Both gated by IsImage; collapse/expand by
+                             IsExpanded. Thumbnail is decoded off-thread in
+                             LoadThumbnails; the expanded view reuses the same
+                             decoded bitmap (no second decode). -->
+                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                    IsVisible="{Binding IsImage}">
+                          <Border CornerRadius="6" ClipToBounds="True"
+                                  Width="64" Height="64"
+                                  VerticalAlignment="Center"
+                                  Background="{DynamicResource ByhSurfaceBrush}"
+                                  IsVisible="{Binding !IsExpanded}">
+                            <Image Width="64" Height="64"
+                                   Stretch="Uniform"
+                                   Source="{Binding Thumbnail}" />
+                          </Border>
+                          <StackPanel Spacing="3" VerticalAlignment="Center">
+                            <TextBlock Classes="SpotlightRowName"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Text="Image" />
+                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                              <Border Classes="Badge" Padding="5,1">
+                                <TextBlock Classes="Muted" FontSize="9" Text="Image" />
+                              </Border>
+                              <!-- R54 v2: inline entry-tag badges (see text row). -->
+                              <ItemsControl ItemsSource="{Binding EntryTags}">
+                                <ItemsControl.ItemsPanel>
+                                  <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" />
+                                  </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="sys:String">
+                                    <Border Classes="EntryTagBadge" Padding="5,1">
+                                      <TextBlock Classes="Muted" FontSize="9" Text="{Binding}" />
+                                    </Border>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                              <!-- R54 v2: custom-tab badges (see text row). -->
+                              <ItemsControl ItemsSource="{Binding CustomTags}">
+                                <ItemsControl.ItemsPanel>
+                                  <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" />
+                                  </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                  <DataTemplate x:DataType="sys:String">
+                                    <Border Classes="TagBadge" Padding="5,1">
+                                      <TextBlock Classes="Muted" FontSize="9" Text="{Binding, StringFormat='# {0}'}" />
+                                    </Border>
+                                  </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                              </ItemsControl>
+                              <TextBlock Classes="Muted"
+                                         FontSize="10"
+                                         IsVisible="{Binding SourceLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                         Text="{Binding SourceLabel}"
+                                         TextTrimming="CharacterEllipsis" />
+                              <TextBlock Classes="Muted" FontSize="10" Text="{Binding TimeLabel}" />
+                            </StackPanel>
+                          </StackPanel>
+                        </StackPanel>
+                        <!-- R54 v2: expanded image preview — a larger, row-width
+                             image (max 280px tall so it doesn't dominate the list).
+                             R100: 展开/收起瞬切(无动画)。曾试 MaxHeight transition 方案,
+                             用户反馈"割裂 + 收缩位置不对", 已回退到 IsVisible 瞬切,
+                             与文字展开保持一致。 -->
+                        <Border CornerRadius="8" ClipToBounds="True"
+                                MaxHeight="280" HorizontalAlignment="Left"
+                                Background="{DynamicResource ByhSurfaceBrush}"
+                                IsVisible="{Binding IsExpanded}">
+                          <Image Stretch="Uniform" MaxWidth="400" MaxHeight="280"
+                                 Source="{Binding FullBitmap}" />
+                        </Border>
+                        <!-- R54 v1.2: collapsed = single-line ellipsis preview;
+                             expanded = wrapped full text (ExpandedText). The two
+                             TextBlocks are mutually exclusive via IsExpanded.
+                             v1.2 v3: expanded text uses a lighter weight + a
+                             roomier LineHeight so long content reads as a
+                             comfortable block instead of a cramped blob.
+                             R54 v2: hidden for image rows (IsImage). -->
+                        <TextBlock Text="{Binding Preview}"
+                                   Classes="SpotlightRowName"
+                                   FontSize="13"
+                                   FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis"
+                                   IsVisible="{Binding !IsExpanded}" />
+                        <TextBlock Text="{Binding ExpandedText}"
+                                   Classes="SpotlightRowName ExpandedText"
+                                   FontSize="14"
+                                   FontWeight="Normal"
+                                   TextWrapping="Wrap"
+                                   MaxLines="16"
+                                   LineHeight="20"
+                                   IsVisible="{Binding IsExpanded}" />
+                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                          <!-- R103: "Archived" badge — only on rows from the monthly
+                               archive (evicted from the live window by LRU). Sits
+                               first so it's the most visible marker; neutral gray
+                               reads as "historical". Hidden for live rows. -->
+                          <Border Classes="ArchiveBadge" Padding="5,1" IsVisible="{Binding IsArchived}">
+                            <TextBlock Classes="Muted" FontSize="9" Text="Archived" />
+                          </Border>
+                          <Border Classes="Badge" Padding="5,1" IsVisible="{Binding GroupLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <TextBlock Classes="Muted" FontSize="9" Text="{Binding GroupLabel}" />
+                          </Border>
+                          <!-- R54 v2: inline entry-tag badges so a glance tells you
+                               which entry this is ("AWS", "Stripe"). Each badge is a
+                               free-form annotation tag added via "Add tag…" (independent
+                               of the custom-tag tab system). Empty list = no badges. -->
+                          <ItemsControl ItemsSource="{Binding EntryTags}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4" />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="sys:String">
+                                <Border Classes="EntryTagBadge" Padding="5,1">
+                                  <TextBlock Classes="Muted" FontSize="9" Text="{Binding}" />
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <!-- R54 v2: custom-tab badges — the custom tabs this
+                               entry was assigned to via "Move to…". A "#" prefix
+                               mirrors the nav bar's custom-tab label so the two
+                               read as the same thing. Distinct from EntryTags
+                               (which carry no prefix) at a glance. -->
+                          <ItemsControl ItemsSource="{Binding CustomTags}">
+                            <ItemsControl.ItemsPanel>
+                              <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="4" />
+                              </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="sys:String">
+                                <Border Classes="TagBadge" Padding="5,1">
+                                  <TextBlock Classes="Muted" FontSize="9" Text="{Binding, StringFormat='# {0}'}" />
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <TextBlock Classes="Muted"
+                                     FontSize="10"
+                                     IsVisible="{Binding SourceLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                     Text="{Binding SourceLabel}"
+                                     TextTrimming="CharacterEllipsis" />
+                          <TextBlock Classes="Muted" FontSize="10" Text="{Binding TimeLabel}" />
+                        </StackPanel>
+                      </StackPanel>
+                      <TextBlock Grid.Column="1"
+                                 FontSize="13"
+                                 VerticalAlignment="Center"
+                                 Text="❤"
+                                 IsVisible="{Binding IsFavorite}" />
+                      <TextBlock Grid.Column="2"
+                                 FontSize="13"
+                                 VerticalAlignment="Center"
+                                 Text="★"
+                                 IsVisible="{Binding IsPinned}" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Border>
+
+        <!-- Footer: keycap hints. Settings button moved to the nav footer. -->
+        <StackPanel Grid.Row="3"
                     Orientation="Horizontal"
                     Spacing="6"
+                    Margin="0,4,0,0"
+                    HorizontalAlignment="Right"
                     VerticalAlignment="Center">
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="↑↓ 选择" />
+            <TextBlock FontSize="10" Text="↑↓ Select" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="↵ 粘贴" />
+            <TextBlock FontSize="10" Text="Dbl-click Paste" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="⌘P 置顶" />
+            <TextBlock FontSize="10" Text="Right-click Menu" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="Del 删除" />
-          </Border>
-          <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="Esc 关闭" />
+            <TextBlock FontSize="10" Text="Esc Close" />
           </Border>
         </StackPanel>
       </Grid>
