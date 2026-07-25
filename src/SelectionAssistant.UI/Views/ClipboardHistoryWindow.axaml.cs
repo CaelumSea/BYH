@@ -2656,6 +2656,36 @@ public partial class ClipboardHistoryWindow : Window
         try { BeginMoveDrag(e); } catch { /* ignore: e.g. already moved */ }
     }
 
+    /// <summary>R54 v2: resize the frameless window by dragging one of the four
+    /// transparent corner handles (ResizeCornerNW/NE/SW/SE in the AXAML). Each
+    /// corner maps to a <see cref="WindowEdge"/>; BeginResizeDrag hands the
+    /// gesture to the OS just like BeginMoveDrag does for the chrome. Only
+    /// left-button initiates a resize — right-click falls through so any future
+    /// context menu on the corner still opens. This handler is reached BEFORE
+    /// OnRootPointerPressed's BeginMoveDrag because the corner Border is the
+    /// event source (not RootBorder), so the move-drag guard skips it; there is
+    /// no conflict between move and resize.</summary>
+    private void OnResizeCornerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.PointerUpdateKind
+            != PointerUpdateKind.LeftButtonPressed)
+        {
+            return;
+        }
+        if (sender is not Control corner)
+        {
+            return;
+        }
+        WindowEdge edge = corner.Name switch
+        {
+            "ResizeCornerNW" => WindowEdge.NorthWest,
+            "ResizeCornerNE" => WindowEdge.NorthEast,
+            "ResizeCornerSW" => WindowEdge.SouthWest,
+            _ => WindowEdge.SouthEast,
+        };
+        try { BeginResizeDrag(edge, e); } catch { /* ignore: already resizing */ }
+    }
+
     // ── Per-row ContextMenu (built dynamically — depends on row flags + the
     //    current custom-tag list, both of which change at runtime) ──
 

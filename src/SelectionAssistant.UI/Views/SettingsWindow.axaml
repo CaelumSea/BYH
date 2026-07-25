@@ -981,6 +981,20 @@
                                Text="1000"
                                FontSize="12" />
                     </Grid>
+                    <ToggleSwitch x:Name="ClipboardHistoryCaptureImagesToggle"
+                                  OnContent="Capture images"
+                                  OffContent="Text only"
+                                  IsChecked="True" />
+                    <Grid ColumnDefinitions="*,82" ColumnSpacing="10">
+                      <TextBlock Text="Max image entries"
+                                 Classes="Secondary"
+                                 FontSize="11"
+                                 VerticalAlignment="Center" />
+                      <TextBox Grid.Column="1"
+                               x:Name="ClipboardHistoryMaxImageEntriesInput"
+                               Text="50"
+                               FontSize="12" />
+                    </Grid>
                   </StackPanel>
               </Border>
 

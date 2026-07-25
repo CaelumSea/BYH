@@ -4,9 +4,11 @@
         xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
         x:Class="SelectionAssistant.UI.Views.ClipboardHistoryWindow"
         Title="BYH · Clipboard"
-        Width="680"
-        Height="560"
-        CanResize="False"
+        Width="800"
+        Height="620"
+        MinWidth="580"
+        MinHeight="420"
+        CanResize="True"
         ShowActivated="True"
         ShowInTaskbar="False"
         WindowStartupLocation="CenterScreen"
@@ -24,9 +26,15 @@
           Padding="12"
           CornerRadius="12"
           PointerPressed="OnRootPointerPressed">
-    <Grid ColumnDefinitions="128,*" ColumnSpacing="8">
+    <!-- Wrap the two-panel layout in a parent Grid so four transparent
+         "resize corner" Borders can float above it (later siblings render
+         on top in Avalonia). Each corner calls BeginResizeDrag on press;
+         OnRootPointerPressed's e.Source==RootBorder guard skips them, so
+         window-drag and window-resize never collide. -->
+    <Grid>
+      <Grid ColumnDefinitions="96,*" ColumnSpacing="8">
 
-      <!-- R54 v1.1/v1.2: vertical left nav bar (128 px, reuses SettingsNav style).
+      <!-- R54 v1.1/v1.2: vertical left nav bar (96 px, reuses SettingsNav style).
            Built-in group/pin/favorite tabs + dynamic custom-tag buttons + 新建.
            Tab right-click → rename/delete/set-icon custom tab; drag to reorder
            custom tabs (v1.2). Built-in tabs are always shown (even when empty)
@@ -58,18 +66,19 @@
 
             <!-- Footer: settings gear pinned to the bottom of the nav tower.
                  R54 v1.2: the tag-name input moved to a separate TagNameDialog
-                 (modal popup), so this column is now just the nav list + gear. -->
+                 (modal popup), so this column is now just the nav list + gear.
+                 Compact sizing for the 104px rail (icon 13 + tight spacing). -->
             <Button Grid.Row="2"
                     x:Name="SettingsFooterButton"
                     Classes="SettingsNav"
-                    Padding="10,8"
+                    Padding="8,7"
                     Margin="0,6,0,0"
                     Click="OnSettingsClick">
-              <Grid ColumnDefinitions="18,*" ColumnSpacing="8">
+              <Grid ColumnDefinitions="15,*" ColumnSpacing="6">
                 <Path Classes="NavIcon"
-                      Width="14" Height="14"
+                      Width="13" Height="13"
                       Data="M12,8 a4,4 0 1 1 0,8 a4,4 0 1 1 0,-8 M12,2 v2 M12,20 v2 M2,12 h2 M20,12 h2 M4.9,4.9 l1.4,1.4 M17.7,17.7 l1.4,1.4 M4.9,19.1 l1.4,-1.4 M17.7,6.3 l1.4,-1.4" />
-                <TextBlock Grid.Column="1" Text="Settings" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="Settings" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
               </Grid>
             </Button>
           </Grid>
@@ -126,6 +135,7 @@
                 BorderThickness="0,1,0,0"
                 Padding="0,6,0,0">
           <ScrollViewer x:Name="ResultsScroll"
+                        Margin="0,0,-12,0"
                         HorizontalScrollBarVisibility="Disabled"
                         VerticalScrollBarVisibility="Auto">
             <ItemsControl x:Name="ResultsList">
@@ -338,6 +348,46 @@
           </Border>
         </StackPanel>
       </Grid>
+      </Grid>
+
+      <!-- R54 v2 resize: four transparent corner handles. They sit above the
+           two-panel Grid (later sibling = higher z-order in Avalonia) and each
+           calls BeginResizeDrag on left-press. The cursor hints the diagonal.
+           Negative margins push each handle OUT past RootBorder's 12px padding
+           so its outer corner aligns with the window's outer edge — that's where
+           the user visually expects a resize corner to be. The handle then
+           extends inward 18px (12 chrome + 6 content), giving a generous grab
+           area without occluding interactive controls. These borders are the
+           top-most siblings so they win hit-testing over the chrome ring's
+           BeginMoveDrag handler. -->
+      <Border x:Name="ResizeCornerNW"
+              Width="18" Height="18"
+              Margin="-12,-12,0,0"
+              HorizontalAlignment="Left" VerticalAlignment="Top"
+              Background="Transparent"
+              Cursor="TopLeftCorner"
+              PointerPressed="OnResizeCornerPressed" />
+      <Border x:Name="ResizeCornerNE"
+              Width="18" Height="18"
+              Margin="0,-12,-12,0"
+              HorizontalAlignment="Right" VerticalAlignment="Top"
+              Background="Transparent"
+              Cursor="TopRightCorner"
+              PointerPressed="OnResizeCornerPressed" />
+      <Border x:Name="ResizeCornerSW"
+              Width="18" Height="18"
+              Margin="-12,0,0,-12"
+              HorizontalAlignment="Left" VerticalAlignment="Bottom"
+              Background="Transparent"
+              Cursor="BottomLeftCorner"
+              PointerPressed="OnResizeCornerPressed" />
+      <Border x:Name="ResizeCornerSE"
+              Width="18" Height="18"
+              Margin="0,0,-12,-12"
+              HorizontalAlignment="Right" VerticalAlignment="Bottom"
+              Background="Transparent"
+              Cursor="BottomRightCorner"
+              PointerPressed="OnResizeCornerPressed" />
     </Grid>
   </Border>
 </Window>

@@ -388,6 +388,20 @@
     <Setter Property="CornerRadius" Value="12" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, 0 3 10 0 #104A2B19, 0 10 26 0 #144A2B19" />
   </Style>
+  <!-- R54 clipboard-history left nav tower. A compact raised tile that hosts
+       the vertical tab rail (built-in tabs + custom tags + footer gear). Uses
+       the same ivory-champagne material language as InnerCard/LiftedPanel but
+       stands slightly taller (a touch more cast shadow) so the nav reads as a
+       distinct frame from the entry list beside it. Rebuilt after the
+       metallic-frames branch removed the pre-R54 NavTowerFrame definition. -->
+  <Style Selector="Border.NavTowerFrame">
+    <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
+    <Setter Property="BorderBrush" Value="#70E8C89A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #D8FFFFFF, inset 0 0 0 1 #B8FFFDF8, inset 0 0 0 2 #2CF3DCBA, 0 2 8 0 #0D6B4B2A, 0 8 22 0 #106B4B2A" />
+  </Style>
   <!-- Rounded content clip for every macro panel. It deliberately has no
        border or shadow: those belong exclusively to MetallicFrame.Thin. -->
   <Style Selector="Border.MacroClip">
@@ -856,8 +870,12 @@
   <!-- Reference-style settings navigation: restrained line icons, quiet ivory
        rows, and a warm-gold active state. -->
   <Style Selector="Button.SettingsNav">
-    <Setter Property="Width" Value="146" />
-    <Setter Property="HorizontalAlignment" Value="Center" />
+    <!-- Stretch to the host column (settings nav rail ≈170px, clipboard
+         history left rail 104px). A hard Width here (task tried 146) breaks
+         clipboard-history buttons, which share this style but live in a
+         narrower column — they overflowed the 128px rail. Stretch + the
+         parent StackPanel/Grid column width is the correct sizing source. -->
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
     <Setter Property="Padding" Value="14,11" />

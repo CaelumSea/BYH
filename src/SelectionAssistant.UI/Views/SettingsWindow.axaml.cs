@@ -361,6 +361,9 @@ public partial class SettingsWindow : Window
         ClipboardHistoryAutoPasteToggle.IsChecked = settings.AutoPasteEnabled;
         ClipboardHistoryMaskSensitiveToggle.IsChecked = settings.MaskSensitiveEnabled;
         ClipboardHistoryMaxEntriesInput.Text = settings.MaxEntries.ToString();
+        // R54 v2: image capture master switch + separate (smaller) image cap.
+        ClipboardHistoryCaptureImagesToggle.IsChecked = settings.CaptureImagesEnabled;
+        ClipboardHistoryMaxImageEntriesInput.Text = settings.MaxImageEntries.ToString();
         ClipboardHistoryExcludeAppsInput.Text = string.Join(", ", settings.ExcludeProcessNames);
     }
 
@@ -849,6 +852,13 @@ public partial class SettingsWindow : Window
             ? parsed
             : ClipboardHistorySettings.Default.MaxEntries;
 
+        // R54 v2: separate (smaller) cap for image entries — falls back to the
+        // default if the user clears the box or types non-numeric text. Normalize
+        // below clamps it to [5, 500] and Validate raises if somehow out of range.
+        int maxImageEntries = int.TryParse(ClipboardHistoryMaxImageEntriesInput.Text, out int imgParsed)
+            ? imgParsed
+            : ClipboardHistorySettings.Default.MaxImageEntries;
+
         var exclude = (ClipboardHistoryExcludeAppsInput.Text ?? string.Empty)
             .Split(',', '\n', ';')
             .Select(s => s.Trim())
@@ -861,6 +871,8 @@ public partial class SettingsWindow : Window
             AutoPasteEnabled = ClipboardHistoryAutoPasteToggle.IsChecked == true,
             MaskSensitiveEnabled = ClipboardHistoryMaskSensitiveToggle.IsChecked == true,
             MaxEntries = maxEntries,
+            CaptureImagesEnabled = ClipboardHistoryCaptureImagesToggle.IsChecked == true,
+            MaxImageEntries = maxImageEntries,
             ExcludeProcessNames = exclude,
         }.Normalize();
 
