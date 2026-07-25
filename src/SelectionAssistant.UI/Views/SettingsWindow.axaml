@@ -765,14 +765,22 @@
         <!-- Launcher -->
         <StackPanel x:Name="LauncherSection" IsVisible="False" Spacing="0">
           <StackPanel Spacing="16" Margin="24,14,24,0">
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Launcher"
                              Classes="CardTitle"
                              FontSize="15"
                              FontWeight="SemiBold" />
+                  <TextBlock x:Name="LauncherScanStatusText"
+                             Text=""
+                             Classes="Secondary"
+                             FontSize="9" />
                 </StackPanel>
                 <Button Grid.Column="1"
+                        Content="🔍 扫描已安装应用"
+                        Classes="Ghost"
+                        Click="OnScanInstalledAppsClick" />
+                <Button Grid.Column="2"
                         Content="＋ Add Launcher"
                         Classes="Primary"
                         Click="OnAddLauncherClick" />

@@ -123,7 +123,66 @@ public sealed class LauncherEntryStoreTests
             Assert.DoesNotContain("arguments", json);
             Assert.DoesNotContain("workingDirectory", json);
             Assert.DoesNotContain("iconOverride", json);
+            // IsAutoDetected defaults to false and must be omitted so user-added
+            // entries stay byte-identical to the pre-flag schema.
+            Assert.DoesNotContain("isAutoDetected", json);
             Assert.Contains("\"launcher-minimal\"", json);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void SaveThenLoad_RoundTripsIsAutoDetected()
+    {
+        // Scanner-imported entries must persist their flag so the UI can mark
+        // them (and a re-scan can skip them as already-imported).
+        string path = TempPath();
+        try
+        {
+            var set = new LauncherEntrySet();
+            set.Add(new LauncherEntry(
+                Id: "launcher-scanned",
+                Name: "Scanned App",
+                Kind: LauncherKind.LocalApp,
+                Target: @"C:\Program Files\Scanned\scanned.exe",
+                IsAutoDetected: true));
+
+            LauncherEntryStore.Save(set, path);
+            var loaded = LauncherEntryStore.LoadIfExists(path);
+
+            var e = Assert.Single(loaded.Entries);
+            Assert.True(e.IsAutoDetected);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Load_OldFileWithoutIsAutoDetected_DefaultsFalse()
+    {
+        // A pre-flag JSON file (no isAutoDetected field) must load with the
+        // field defaulting to false — backward compatibility.
+        string path = TempPath();
+        try
+        {
+            string json = """
+            {
+              "schemaVersion": 1,
+              "entries": [
+                { "id": "launcher-legacy", "name": "Legacy", "kind": "localApp", "target": "C:\\legacy.exe" }
+              ]
+            }
+            """;
+            File.WriteAllText(path, json);
+
+            var loaded = LauncherEntryStore.LoadIfExists(path);
+            var e = Assert.Single(loaded.Entries);
+            Assert.False(e.IsAutoDetected);
         }
         finally
         {

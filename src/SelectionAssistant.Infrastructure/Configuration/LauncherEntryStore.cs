@@ -152,6 +152,13 @@ public static class LauncherEntryStore
         {
             writer.WriteString("iconOverride", entry.IconOverride);
         }
+        // Only write isAutoDetected when true — keeps user-added entries (the
+        // common case) byte-identical to the pre-flag schema, so old files never
+        // grow and the field is effectively opt-in for scanner-imported rows.
+        if (entry.IsAutoDetected)
+        {
+            writer.WriteBoolean("isAutoDetected", true);
+        }
         writer.WriteEndObject();
     }
 
@@ -205,6 +212,9 @@ public static class LauncherEntryStore
             iconElement.ValueKind == JsonValueKind.String
                 ? (iconElement.GetString() ?? string.Empty) : string.Empty;
 
+        bool isAutoDetected = element.TryGetProperty("isAutoDetected", out JsonElement autoElement) &&
+            autoElement.ValueKind == JsonValueKind.True;
+
         return new LauncherEntry(
             Id: id,
             Name: name,
@@ -212,6 +222,7 @@ public static class LauncherEntryStore
             Target: target,
             Arguments: arguments,
             WorkingDirectory: workingDir,
-            IconOverride: iconOverride);
+            IconOverride: iconOverride,
+            IsAutoDetected: isAutoDetected);
     }
 }

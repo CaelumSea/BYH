@@ -193,6 +193,13 @@ public partial class SettingsWindow : Window
     /// <summary>Request to move a launcher entry. Args = (id, delta) where -1=up, +1=down.</summary>
     public event Action<string, int>? LauncherEntryMoved;
 
+    /// <summary>
+    /// Request to scan the system for installed apps (Start Menu shortcuts).
+    /// No args — the handler runs the detector, dedupes against existing
+    /// entries, and shows a selection dialog itself.
+    /// </summary>
+    public event Action? ScanInstalledAppsRequested;
+
     /// <summary>R24 track B: request to save the vision OCR settings.</summary>
     public event Action<VisionCaptureSettings>? VisionSettingsSaved;
 
@@ -438,6 +445,18 @@ public partial class SettingsWindow : Window
         RefreshLauncherRows(entries);
 
     /// <summary>
+    /// Sets the launcher scan status line under the Launcher title. Used by App
+    /// to report the result of an installed-app scan/import ("已导入 3 个" or
+    /// "没有发现新的可导入应用。").
+    /// </summary>
+    public void SetLauncherSettingsStatus(string message, bool isError)
+    {
+        if (LauncherScanStatusText is null) return;
+        LauncherScanStatusText.Text = message;
+        SetFeedbackTone(LauncherScanStatusText, isError);
+    }
+
+    /// <summary>
     /// Updates the icon for a launcher row identified by <paramref name="entryId"/>.
     /// Used by App to push asynchronously-loaded icons. Posts to UI thread.
     /// </summary>
@@ -484,6 +503,16 @@ public partial class SettingsWindow : Window
         editor.EntryCreated += (name, kind, target, args, workDir) =>
             LauncherEntryAdded?.Invoke(name, kind, target, args, workDir);
         editor.ShowForNew();
+    }
+
+    /// <summary>
+    /// "🔍 扫描已安装应用" clicked: defer to the App layer, which owns the
+    /// detector + dedup + selection dialog. The settings window is just the
+    /// event source — it stays responsive while App runs the scan off-thread.
+    /// </summary>
+    private void OnScanInstalledAppsClick(object? sender, RoutedEventArgs e)
+    {
+        ScanInstalledAppsRequested?.Invoke();
     }
 
     private void OpenLauncherEditor(string id)

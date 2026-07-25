@@ -23,4 +23,11 @@
     <ProjectReference Include="..\SelectionAssistant.Core\SelectionAssistant.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Expose internal helpers (WindowsStartMenuDetector's pure extraction
+         logic, etc.) to the integration test project so they can be tested
+         without making them public API. -->
+    <InternalsVisibleTo Include="SelectionAssistant.Windows.IntegrationTests" />
+  </ItemGroup>
+
 </Project>

@@ -2286,6 +2286,53 @@ internal sealed class SelectionRuntime : IDisposable
     }
 
     /// <summary>
+    /// Batch-adds auto-detected launcher entries (from the Start Menu scanner).
+    /// Each entry gets a fresh <c>launcher-*</c> id with <see cref="LauncherEntry.IsAutoDetected"/>
+    /// set true so the UI can mark them as scanner-imported. Persists once at
+    /// the end (not per-entry) for efficiency. Entries whose Target already
+    /// exists in the set are skipped (dedup). Returns the number actually added.
+    /// </summary>
+    public Task<int> AddAutoDetectedLauncherEntriesAsync(IReadOnlyList<DetectedApp> apps)
+    {
+        ArgumentNullException.ThrowIfNull(apps);
+        try
+        {
+            int added = 0;
+            foreach (DetectedApp app in apps)
+            {
+                // Dedup by target — skip if the user already added this exe
+                // (manually or via a previous scan).
+                if (_launcherEntries.FindByTarget(app.ExecutablePath) is not null)
+                {
+                    continue;
+                }
+                string id = LauncherEntryIds.CustomPrefix + Guid.NewGuid().ToString("N")[..8];
+                var entry = new LauncherEntry(
+                    Id: id,
+                    Name: app.Name,
+                    Kind: LauncherKind.LocalApp,
+                    Target: app.ExecutablePath,
+                    IsAutoDetected: true);
+                if (_launcherEntries.Add(entry))
+                {
+                    added++;
+                }
+            }
+            if (added > 0)
+            {
+                LauncherEntryStore.Save(_launcherEntries, _paths.LauncherEntriesFile);
+                _logger.Info("Launcher", $"Imported {added} auto-detected app(s) from scan.");
+            }
+            return Task.FromResult(added);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("Launcher", "Failed to persist auto-detected launcher entries.", exception);
+            return Task.FromResult(0);
+        }
+    }
+
+    /// <summary>
     /// Updates an existing launcher entry (looked up by id). All fields are
     /// replaced with the supplied values, including the name (the editor allows
     /// renaming). Returns false if the id was not found.

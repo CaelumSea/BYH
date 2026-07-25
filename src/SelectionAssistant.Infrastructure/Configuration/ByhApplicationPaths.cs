@@ -132,5 +132,8 @@ public sealed record ByhApplicationPaths(string BaseDirectory)
         Directory.CreateDirectory(SecretsDirectory);
         Directory.CreateDirectory(ClipboardImagesDirectory);
         Directory.CreateDirectory(ClipboardArchiveDirectory);
+        // Launcher icon cache (extracted .exe icons persisted as PNG so the
+        // settings/spotlight lists don't re-extract on every refresh).
+        Directory.CreateDirectory(LauncherIconsDirectory);
     }
 }

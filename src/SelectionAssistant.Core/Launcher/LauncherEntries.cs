@@ -28,7 +28,8 @@ public sealed record LauncherEntry(
     string Target,
     string Arguments = "",
     string WorkingDirectory = "",
-    string IconOverride = "")
+    string IconOverride = "",
+    bool IsAutoDetected = false)
 {
     /// <summary>
     /// True when <see cref="Arguments"/> contains at least one
@@ -89,6 +90,24 @@ public sealed class LauncherEntrySet
     /// <summary>Finds the entry for an id, or null if not present.</summary>
     public LauncherEntry? Find(string id) =>
         _entries.FirstOrDefault(e => e.Id == id);
+
+    /// <summary>
+    /// Finds the first entry whose <see cref="LauncherEntry.Target"/> matches
+    /// <paramref name="target"/> (case-insensitive, trimmed). Used by the
+    /// installed-app scanner to deduplicate against entries the user already
+    /// added (manual or previously imported) — two launcher rows pointing at the
+    /// same exe are almost always a mistake.
+    /// </summary>
+    public LauncherEntry? FindByTarget(string target)
+    {
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return null;
+        }
+        string normalized = target.Trim();
+        return _entries.FirstOrDefault(e =>
+            string.Equals(e.Target, normalized, StringComparison.OrdinalIgnoreCase));
+    }
 
     /// <summary>
     /// Adds a new entry. The id must use the <c>launcher-</c> prefix and not

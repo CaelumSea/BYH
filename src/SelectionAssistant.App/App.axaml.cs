@@ -10,9 +10,11 @@ using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
 using SelectionAssistant.Infrastructure.Configuration;
 using SelectionAssistant.Infrastructure.Logging;
+using SelectionAssistant.Platform.Abstractions;
 using SelectionAssistant.Platform.Windows.Capture;
 using SelectionAssistant.Platform.Windows.Clipboard;
 using SelectionAssistant.Platform.Windows.Input;
+using SelectionAssistant.Platform.Windows.Launcher;
 using SelectionAssistant.Platform.Windows.Secrets;
 using SelectionAssistant.UI.Views;
 
@@ -21,6 +23,10 @@ namespace SelectionAssistant.App;
 public partial class App : Application
 {
     private SelectionRuntime? _runtime;
+    // R54 v2: installed-app detector for the Launcher "scan installed apps"
+    // feature. Constructed eagerly (cheap — it just holds the Start Menu paths)
+    // and invoked off the UI thread when the user requests a scan.
+    private readonly IInstalledAppDetector _detector = new WindowsStartMenuDetector();
     private TrayIcon? _trayIcon;
     private ToolbarWindow? _toolbarWindow;
     private ResultWindow? _resultWindow;
@@ -199,6 +205,7 @@ public partial class App : Application
             settingsWindow.LauncherEntrySaved += OnLauncherEntrySaved;
             settingsWindow.LauncherEntryDeleted += OnLauncherEntryDeleted;
             settingsWindow.LauncherEntryMoved += OnLauncherEntryMoved;
+            settingsWindow.ScanInstalledAppsRequested += OnScanInstalledAppsRequested;
             settingsWindow.VisionSettingsSaved += OnVisionSettingsSaved;
             settingsWindow.OceanEyesTriggerSettingsSaved += OnOceanEyesTriggerSettingsSaved;
             settingsWindow.OceanEyesCaptureSettingsSaved += OnOceanEyesCaptureSettingsSaved;
@@ -473,6 +480,70 @@ public partial class App : Application
         if (_runtime is null) return;
         await _runtime.AddLauncherEntryAsync(name, kind, target, args, workDir);
         await RefreshSettingsAsync();
+    }
+
+    /// <summary>
+    /// "🔍 扫描已安装应用" clicked. Runs the Start Menu detector off the UI
+    /// thread (~100-500ms), dedupes against existing launcher entries by target
+    /// path, then shows a selection dialog. Whatever the user confirms is
+    /// batch-added with <c>IsAutoDetected=true</c>, then a refresh propagates
+    /// the new rows (and kicks off lazy icon loading) to both windows.
+    /// </summary>
+    private async void OnScanInstalledAppsRequested()
+    {
+        if (_runtime is null || _settingsWindow is null) return;
+
+        // 1. Scan off-thread (it reads hundreds of .lnk files).
+        IReadOnlyList<DetectedApp> allDetected =
+            await Task.Run(() => _detector.DetectInstalledApps());
+
+        // 2. Dedupe against entries the user already added (by target path) so
+        // the dialog only shows genuinely new apps.
+        var existing = _runtime.GetLauncherEntries().AsList();
+        var existingTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var e in existing)
+        {
+            if (!string.IsNullOrEmpty(e.Target))
+            {
+                existingTargets.Add(e.Target);
+            }
+        }
+        var candidates = allDetected
+            .Where(a => !existingTargets.Contains(a.ExecutablePath))
+            .ToList();
+        if (candidates.Count == 0)
+        {
+            // Nothing new — don't even open the dialog.
+            _settingsWindow.SetLauncherSettingsStatus("没有发现新的可导入应用。", isError: false);
+            return;
+        }
+
+        // 3. Show the selection dialog. The iconExtractor callback runs on a
+        // background thread per row and returns PNG bytes (or null); the dialog
+        // marshals each result to the UI thread itself.
+        List<DetectedApp> selected = await InstalledAppsScanDialog.ShowAsync(
+            _settingsWindow,
+            candidates,
+            iconExtractor: exePath => SelectionAssistant.Platform.Windows.Launcher
+                .WindowsIconExtractor.ExtractSmallIconPng(exePath));
+
+        if (selected.Count == 0)
+        {
+            return;
+        }
+
+        // 4. Batch-add with IsAutoDetected=true (one persist, not N).
+        int added = await _runtime.AddAutoDetectedLauncherEntriesAsync(selected);
+
+        // 5. Refresh pushes the new rows + triggers icon loading.
+        await RefreshSettingsAsync();
+
+        if (_settingsWindow is not null)
+        {
+            _settingsWindow.SetLauncherSettingsStatus(
+                added > 0 ? $"已导入 {added} 个应用。" : "没有新应用被导入。",
+                isError: false);
+        }
     }
 
     private async void OnLauncherEntrySaved(
@@ -1518,6 +1589,30 @@ public partial class App : Application
     }
 
     /// <summary>
+    /// Returns the cache file path for a launcher exe icon, or null if the
+    /// cache directory is unavailable. The key is the SHA256 hex of the target
+    /// path (lowercased) so re-scans and restarts hit the cache instead of
+    /// re-running SHGetFileInfo. Files are plain PNGs inside LauncherIconsDirectory.
+    /// </summary>
+    private string? GetLauncherIconCacheFile(string target)
+    {
+        if (_paths is null || string.IsNullOrEmpty(target))
+        {
+            return null;
+        }
+        // Lowercase before hashing so case-only path differences (C:\ vs c:\)
+        // share one cache entry — the extractor ignores case anyway.
+        byte[] hash = System.Security.Cryptography.SHA256.HashData(
+            System.Text.Encoding.Unicode.GetBytes(target.ToLowerInvariant()));
+        var name = new System.Text.StringBuilder(hash.Length * 2);
+        foreach (byte b in hash)
+        {
+            name.Append(b.ToString("x2"));
+        }
+        return System.IO.Path.Combine(_paths.LauncherIconsDirectory, name.ToString() + ".png");
+    }
+
+    /// <summary>
     /// Walks the entries and loads each icon off the UI thread. For LocalApp,
     /// extracts from the exe via <see cref="WindowsIconExtractor"/>; for WebUrl,
     /// fetches a favicon. Pushes results back via the windows' UpdateLauncherIcon
@@ -1545,13 +1640,36 @@ public partial class App : Application
 
                     if (bitmap is null)
                     {
-                        byte[]? png = await Task.Run(() =>
-                            SelectionAssistant.Platform.Windows.Launcher.WindowsIconExtractor
-                                .ExtractSmallIconPng(entry.Target));
-                        if (png is { Length: > 0 })
+                        // R54 v2: disk cache for extracted exe icons. The cache
+                        // key is the SHA256 of the target path so re-scans and
+                        // app restarts load from PNG files instead of re-running
+                        // SHGetFileInfo on every refresh (hundreds of ms × N).
+                        string? cacheFile = GetLauncherIconCacheFile(entry.Target);
+                        if (cacheFile is not null && System.IO.File.Exists(cacheFile))
                         {
-                            using var stream = new System.IO.MemoryStream(png);
-                            bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+                            try
+                            {
+                                bitmap = new Avalonia.Media.Imaging.Bitmap(cacheFile);
+                            }
+                            catch { /* corrupt cache file — re-extract below */ }
+                        }
+
+                        if (bitmap is null)
+                        {
+                            byte[]? png = await Task.Run(() =>
+                                SelectionAssistant.Platform.Windows.Launcher.WindowsIconExtractor
+                                    .ExtractSmallIconPng(entry.Target));
+                            if (png is { Length: > 0 })
+                            {
+                                using var stream = new System.IO.MemoryStream(png);
+                                bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+                                // Persist to cache for next time (best-effort).
+                                if (cacheFile is not null)
+                                {
+                                    try { System.IO.File.WriteAllBytes(cacheFile, png); }
+                                    catch { /* cache write failure is non-fatal */ }
+                                }
+                            }
                         }
                     }
                 }
