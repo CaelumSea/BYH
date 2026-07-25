@@ -1,0 +1,38 @@
+id: REQ-024
+title: 同步主线功能并优化设置界面 v9
+status: done
+lite: true
+score_kind: aesthetic
+created: '2026-07-24T07:23:36'
+updated: '2026-07-24T08:20:20'
+aligned_via: quick-user
+aligned_at: '2026-07-24T07:23:36'
+aesthetic_template: frontend
+acceptance_criteria:
+- id: AC-1
+  text: UI 分支合入 main 最新已提交功能且不丢失现有设置页视觉成果
+  satisfied_by:
+  - TASK-026
+- id: AC-2
+  text: 主线新增的设置项在 Ivory Jade 多窗格界面中完整可用、状态可保存
+  satisfied_by:
+  - TASK-026
+- id: AC-3
+  text: 默认与最小窗口尺寸下信息层级清晰，无裁切、空白页或异常嵌套
+  satisfied_by:
+  - TASK-026
+- id: AC-4
+  text: Release 构建、完整测试、Windows NativeAOT 发布和截图验收全部通过
+  satisfied_by:
+  - TASK-026
+tasks:
+- id: TASK-026
+  title: 合并最新主线并适配新增设置功能
+  status: done
+aesthetic_score:
+  scored_at: ''
+  scored_by: ''
+  dimensions: {}
+  total: null
+aesthetic_notes: []
+aligned_evidence: 用户：现在的BYH后端添加了非常多的功能，请同步到主线的最新版本并优化设置界面。

@@ -1,0 +1,34 @@
+id: REQ-026
+title: 设置页滚动范围与底部内容完整性修复
+status: done
+lite: true
+score_kind: correctness
+created: '2026-07-24T10:00:33'
+updated: '2026-07-24T10:28:17'
+aligned_via: quick-user
+aligned_at: '2026-07-24T10:00:33'
+aesthetic_template: ''
+acceptance_criteria:
+- id: AC-1
+  text: 六个设置页均可滚动到真实内容底部，最后一项完整可见且有安全留白。
+  satisfied_by:
+  - TASK-028
+- id: AC-2
+  text: 短内容页面不产生无意义的过度滚动，切换页面后从顶部开始。
+  satisfied_by:
+  - TASK-028
+- id: AC-3
+  text: Release 构建、测试与六页顶部/底部截图验证通过。
+  satisfied_by:
+  - TASK-028
+tasks:
+- id: TASK-028
+  title: 复现并修复六个设置页的底部滚动裁切
+  status: done
+aesthetic_score:
+  scored_at: ''
+  scored_by: ''
+  dimensions: {}
+  total: null
+aesthetic_notes: []
+aligned_evidence: 用户：设置里面有些窗口的滚轮滚得比较短，最底部可能有些信息没显示全，就滚到底了。你看一下。

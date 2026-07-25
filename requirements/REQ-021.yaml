@@ -1,0 +1,43 @@
+id: REQ-021
+title: 设置页对称小手机与参考式左栏 v6
+status: done
+lite: true
+score_kind: aesthetic
+created: '2026-07-22T19:25:46'
+updated: '2026-07-22T19:40:32'
+aligned_via: quick-user
+aligned_at: '2026-07-22T19:25:46'
+aesthetic_template: ''
+acceptance_criteria:
+- id: AC-1
+  text: 紧凑手机面板在右侧上方区域垂直居中，上下留白近似均衡，并与相邻主面板形成协调对称关系。
+  satisfied_by:
+  - TASK-023
+- id: AC-2
+  text: 手机内部头像、状态摘要、任务列表与底部导航完整显示，默认与最小窗口均无裁切重叠。
+  satisfied_by:
+  - TASK-023
+- id: AC-3
+  text: 最左栏采用 Theme Concept、Color Palette、Typography、Icon Style 四段结构，分隔清晰、留白充足、无拥挤卡片。
+  satisfied_by:
+  - TASK-023
+- id: AC-4
+  text: 'Color Palette 展示 Primary #E8C89A、Secondary #D5A86A、Accent #8FAE5A、Deep Brown
+    #6B4B2A、Cream #FFF7EE、Ivory #F6F1E6、Border #EAD8B8 七个色样。'
+  satisfied_by:
+  - TASK-023
+- id: AC-5
+  text: 不改变设置功能与绑定行为，Release 构建、测试和 Windows NativeAOT 发布通过，并完成五个页签截图验收。
+  satisfied_by:
+  - TASK-023
+tasks:
+- id: TASK-023
+  title: 居中手机面板并重构七色色板左栏
+  status: done
+aesthetic_score:
+  scored_at: ''
+  scored_by: ''
+  dimensions: {}
+  total: null
+aesthetic_notes: []
+aligned_evidence: 用户明确指出手机应与旁边窗口对称而非顶对齐，并要求左栏直接学习参考图四段结构、扩充 Color Index。

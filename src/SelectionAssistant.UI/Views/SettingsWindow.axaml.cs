@@ -342,6 +342,9 @@ public partial class SettingsWindow : Window
             ClipboardHistoryShortcutKeyComboBox.SelectedItem = ClipboardHistoryTriggerSettings.Default.Key;
         }
         ClipboardHistoryShortcutStatusText.Text = statusMessage ?? $"Current: {settings.ToDisplayText()}";
+        SummaryClipboardText.Text = settings.KeyboardShortcutEnabled
+            ? settings.ToDisplayText()
+            : "Disabled";
         SetFeedbackTone(ClipboardHistoryShortcutStatusText, isError);
     }
 

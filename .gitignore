@@ -40,6 +40,10 @@ TestResults/
 *.swp
 *~
 
+## --- Python QA tooling ---
+__pycache__/
+*.py[cod]
+
 ## --- 操作系统垃圾 ---
 Thumbs.db
 ehthumbs.db

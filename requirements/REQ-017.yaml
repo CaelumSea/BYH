@@ -1,0 +1,38 @@
+id: REQ-017
+title: 设置页阴影层次与左栏柔化 v2
+status: done
+lite: true
+score_kind: aesthetic
+created: '2026-07-22T16:30:50'
+updated: '2026-07-22T16:49:22'
+aligned_via: quick-user
+aligned_at: '2026-07-22T16:30:50'
+aesthetic_template: ''
+acceptance_criteria:
+- id: AC-1
+  text: 大面板参考 Hotkey 卡片建立一致的柔和浮起阴影，同时保持边框克制且无厚重描边
+  satisfied_by:
+  - TASK-019
+- id: AC-2
+  text: 最左侧栏横线与纵线使用一致的细度和低对比颜色，不再出现纵线明显更粗的问题
+  satisfied_by:
+  - TASK-019
+- id: AC-3
+  text: 导航塔和最左概念栏增加适度立体层次，默认与最小窗口下阴影连续且不裁切
+  satisfied_by:
+  - TASK-019
+- id: AC-4
+  text: Release 构建、测试、NativeAOT 发布及视觉截图验证通过
+  satisfied_by:
+  - TASK-019
+tasks:
+- id: TASK-019
+  title: 统一立体阴影并优化左侧栏线条
+  status: done
+aesthetic_score:
+  scored_at: ''
+  scored_by: ''
+  dimensions: {}
+  total: null
+aesthetic_notes: []
+aligned_evidence: 用户：这个的阴影效果就挺好的，其他边框也可以参考；左边栏横纵线粗细不一样，柔和一点，左边也优化增加立体感。

@@ -1,16 +1,33 @@
 # BYH 当前交接快照
 
-> 更新时间：2026-07-20 第四十一批增量
+> 更新时间：2026-07-24 REQ-025 增量
 > 本文件是下一位 Agent 的首要入口，优先级高于目录内的历史快照。
 > 项目根：`C:\dvr\gh-kb\selection-assistant`
 > **模块文档**：`docs/architecture/00-architecture-overview.md`（改任何模块先看这个）
 > 路线图待办：见 `handoff\BACKLOG-roadmap.md`（R44-R53 新增）
 
+## 0. REQ-025：Settings 截图 UIA 自动化
+
+- 六个设置导航按钮新增稳定的 `BYH.Settings.Nav.*` Automation ID；窗口本身为 `BYH.Settings.Window`。
+- `artifacts/qa/capture-all-tabs.py` 现优先使用 Windows `UIAutomationClient` 按 ID 调用按钮，不再依赖 DPI 敏感坐标；坐标只作为兼容回退。
+- QA 可传 `--require-uia` 禁止回退。本轮对 Release 与 NativeAOT 均实跑六页，全部输出 `navigation=UIA`，无回退。
+- NativeAOT：`artifacts/publish/win-x64-nativeuia/BYH.exe`，28,227,584 bytes，SHA-256 `258162A3E9691CF7E6A158886ACA6249E6090188C0DCBFCA9FFA4927F75F1A42`。
+- 完整证据与 reqbase 修复复核见 `output/TASK-027-verification.md`。结论：任务编号与核心命令编码修复有效，但默认 GBK 测试 runner/子进程解码及 quick REQ.md 的 AC 文本渲染仍未完整修好；本轮未改 Skills-Hub。
+
+## 0a. REQ-024：主线功能同步 + Settings v9
+
+- 工作分支：`task/REQ-012-metallic-frames`
+- 合并提交：`8fa9130`（将已提交 `main@565fa1f` 合入；包含 R55/R56 贴图改进、R53 回滚与 R54 Clipboard History v1）。
+- 主工作树在合并时还有另一位 Agent 的未提交 Clipboard WIP；本分支没有复制或覆盖它。后续若该 WIP 已提交，先把新的 `main` 再合入本分支。
+- Settings 现有六个页签：General / Translation / Actions / Vision / Launcher / Clipboard。Clipboard 页完整绑定主线的快捷键、记录、自动粘贴、敏感遮罩、容量、排除应用、保存和清空事件。
+- 响应式修正：底栏由 260 调整为 220 logical px，导航品牌头和六项间距收紧；1240×680 最小尺寸下 Clipboard 不再被裁掉；右侧手机恢复为只比主窗格略矮，并新增真实 Clipboard 快捷键摘要。
+- 验证：Release 0 warning / 0 error；Providers 35 + Core 314 + Windows 41 = **390/390**；NativeAOT `BYH.exe` 28,226,560 bytes；截图见 `artifacts/qa/req-024-v9-nativeaot/`。
+
 ## 1. 一句话状态
 
 `BYH`（By Your Hand）= Windows NativeAOT 选词翻译 + AI 动作工具。选中文字 → 不抢焦点的工具条 → 翻译/总结/解释/自定义功能；**R34 工具栏可见时按 F/J/Z/R（或任意配置的单字符）立即触发对应动作，按键被吞掉不传源程序，Esc 关闭，快捷键在设置→自定义功能里改**；**R37/R41 内建工具栏快捷键 R/C（提示词/复制）作为兜底入口，不隐藏工具栏；R37 修复批：后台线程调 Avalonia UI API 导致 C 崩/R 没反应，改用 `Dispatcher.UIThread.Post` 派发 + 吞键判断提前；R/C 全可在设置→常规→工具栏快捷键卡片里改（含禁用），新 settings 文件 `toolbar-shortcuts.json`；R39 把工具栏"已取词"状态区从 R37 的 Italic Georgia 文字版 "byh" 升级为用户提供的真实手写体透明底 PNG wordmark（"By Your Hand" 全文），裁剪到内容 bbox + 缩到 103×36（~5KB），打包为 `avares://SelectionAssistant.UI/Assets/Theme/byh-wordmark.png`；清理了 IvoryJade.axaml 里 R37 留下的 `TextBlock.WordmarkArt` 死样式**；**R40 大改版：Fast tool / QuickTools 改名 Ocean Eyes，围绕视觉模型为核心重做——`Ctrl+Alt+Q` 不再弹面板，直接进入全屏框选（UIA 辅助框选默认 ON，悬停桌面元素即贴合 bbox，用户一拖拽即停止辅助）；框完区域 → 共用工具栏出现在区域右上角（F=翻译 / J=解释 / Z=总结 / R=提示词 / C=复制，全部零改动复用划词 PromptTemplate 管线）→ 视觉模型 OCR 提取文本喂入工具栏 → 用户按 `Enter` 保存截图（默认 `%USERPROFILE%\Pictures\Ocean Eyes\ocean-eyes-yyyyMMdd-HHmmss.png` + 复制剪贴板）/ `Esc` 退出；QuickToolsWindow.axaml(.cs) 删除，迁移读旧 `quick-tools.json` 透明无感升级，新 settings 文件 `ocean-eyes.json` + `ocean-eyes-capture.json`**；**R41 交互重构：左键释放=确认框选（替代双击/Enter 主入口）；右键=区分语义——框选中右键取消（现有），工具栏在时右键重画（mouse hook `SwallowCheck` 吞掉右键 + `overlay.Reset()` 清空 rect + 重新辅助框选，OCR 缓存清空）；OCR 改惰性——工具栏确认后立即出现显示"未识别 · 按 F/J/Z/R/C 开始"（按钮全 disabled），首次按动作键才触发 OCR（`EnsureOceanEyesOcrAsync` 缓存 task 复用，同区域后续动作键几乎瞬间）；Enter 存图/Esc 退出均不 OCR；V 粘贴键删除（`ToolbarShortcutSettings.PasteKey` 移除，旧 toolbar-shortcuts.json 的 pasteKey 字段读时忽略）**；**R32 独立 Spotlight 搜索面板（Ctrl+Alt+Space，PowerToys-Run 风格 + Ivory Jade 配色）**。多厂商 Provider，DPAPI 密钥，全局可编辑提示词预设 + 用户自定义功能。左右键 chord 因与右键菜单冲突默认关闭，仅作可选兼容入口。**R24-R42 全部完成。第三十二批：R42 — Ocean Eyes overlay 锁定 + 单击确认 UIA + 白虚线 + 中间透明 + Move 删除 + R41 SwallowCheck 回收 + 截图竞态修复。** 第三十三批：Spotlight 搜索增强——三级匹配（子串 + 词首字母/camelCase 缩写 + 拼音首字母），内置 ~600 常用汉字拼音表，无外部依赖。启动器新增 7 个应用（A HUB / CC Switch / RK Keyboard / QQ / 微信 / 微信输入法 / KeySilk）+ ChatGPT 桌面端更名 Codex。**第三十四批：R43 — Spotlight 选中态可读性（两次尝试）。第一版以为是 `ItemsControl` 异步 realize 容器的时机问题，叠了 `LayoutUpdated` + `Dispatcher.Post` + generation 守底，结果无效——真因是 `ItemsControl.ContainerFromIndex` 返回内部 `ContentPresenter` 而非 DataTemplate 的 `Border`，给 container 加 class 永远命中不了 `Border.SpotlightRow.Active` 选择器。第二版改用**数据绑定驱动 class**：`LauncherEntryRow` 实现 `INotifyPropertyChanged` + 新增 `IsSelected`，DataTemplate 根 Border 写 `Classes.Active="{Binding IsSelected}"`（Avalonia 12 class-条件绑定），切换 `IsSelected` 时 Avalonia 自己把 Active 加到真实 Border 上。Active 视觉：`SurfaceSelected`（淡豆绿）填充 + 玉色边框 + 左侧 3px 玉色 inset 强调条 + 名称 Bold 玉色；`Active:pointerover` 守护选中色不被 hover 覆盖。顺手补 `TextBox.SpotlightSearch:focus` 抑制通用 `TextBox:focus` 2px 玉色边框（消除"搜索框变绿"错觉）。**第三十五批：R43 续——选中态 + 搜索框金花边视觉精修 + 全局 accent 改色。选中行 + 搜索框共享同一套"金花边"设计：外金边 `#FFD9C28A` + 香槟缝 `#FFFCF7EA` + 亮金内线 glint `#FFF4E7C8` + 香槟填充（via BoxShadow inset 多层叠加在 Border 上）。搜索框用 `Border.SpotlightGoldFrame` 包装 TextBox（只包 TextBox 不包闪电图标），内层 TextBox 通过 `Style.Resources` 覆盖 8 个 FluentTheme `TextControl*` resource key 全 Transparent 才能彻底消除自己的边框，避免"两层框"。全局 `SystemAccentColor` 整条色阶从玉色改成金色（影响所有 Fluent 控件：TextBox focus ring、CheckBox、Toggle、ProgressBar 等）——这是经过染色测试（临时改红色验证）后确认的唯一能让 FluentTheme TextBox focus visual 变色的层级。最大教训：FluentTheme TextBox 模板内部硬画 focus visual，不看 `BorderBrush`，只读 `SystemAccentColor`；遇到"颜色不对"的疑难第一时间做染色测试，不要反复改样式顺序/特异性/包装层。** **第三十六批：本批无代码改动——制定 R44-R53 Ocean Eyes 扩展 roadmap（来源：对照 `xiaowang.com` 小旺 AI 截图功能清单 + gh cli 搜索 Windows 长截图社区实现）。10 项功能写入 `handoff/BACKLOG-roadmap.md`：R44 取色器 / R45 二维码识别（ZXing.Net，纯托管）/ R46 贴图（钉图为浮动小窗，复用 NoActivateWindowHost）/ R47 数字序号标注 / R48 标注工具集（矩形/椭圆/箭头/画笔/高亮，依赖 R47 layer）/ R49 截图相册（缩略图网格浏览 `Pictures/Ocean Eyes/`）/ R50 带壳截图（Mac/iPhone/Browser 等外壳模板，Skia 合成）/ R51 截图美化（padding+阴影+圆角）/ R52 磁力吸（贴图自动吸附，依赖 R46）/ R53 长截图（移植 ShareX `ScrollingCaptureManager.CombineImages` 的 `memcmp` 像素匹配 + bestMatch 兜底算法，~600 行 0 新依赖）。明确排除：录屏 MP4 / GIF / 视频编辑 / AI 抠图（CPU/GPU 重，偏离 Ocean Eyes 轻量定位）。完成顺序建议：P0 先做 R44/R45/R47/R46（互不依赖，可并行）→ R52（依赖 R46）→ P1 R48-R51 → P1+ R53。每项统一验收：0 警告 + exe 增量 <100KB（除 ZXing +200KB / 外壳资源 +500KB-1MB）+ 双路径同步 + 机器侧验证 + handoff §3 新增章节。** **第三十七批：R44 取色器落地——Ocean Eyes 框选确认后按 P 弹出跟随鼠标的 6 倍放大镜（15×15 BGRA → 150×150 RGBA WriteableBitmap，中心古金色十字），HEX/RGB 实时显示，再次 P 取消、Esc 退出、左键任意位置确认（mouse hook 路由）；确认后 `#RRGGBB` 进剪贴板 + 工具栏状态槽显示"已复制 #RRGGBB"。`ScreenRegionCapture` 抽出共用 BitBlt→BGRA 管线（`CaptureRawBgra` + `SamplePixel`，跳过 PNG 编码避免 30Hz 采样爆 CPU）；新增 `ColorFormatter`（纯函数 hex/RGB 格式化，11 单测）+ `ColorPickerLoupe.axaml(.cs)`（`NoActivateWindowHost` 不抢焦，`DispatcherTimer` 33ms tick，`Screens.ScreenFromPoint` 工作区 clamp）；`SelectionRuntime` 新增 P 键分支（Enter 后、A-Z filter 前，Ocean Eyes 限定，跳过 OCR 路径）+ `StartColorPicker`/`HideColorPicker`/`SampleCursorRegion`/`OnColorPicked`/`GetCursorPos` P/Invoke；mouse hook `_colorPickerActive` 短路（左键 down → ConfirmPick + 吞，不触发 toolbar dismiss / 新 selection）；`DismissOceanEyes`/`ResetForRedraw`/`Dispose` 全部清理 loupe。0 新依赖。** **第三十八批：R46 贴图落地（v7 含六轮用户反馈调整 + Esc bug 修复）——Ocean Eyes 框选确认后按 T 把当前缓存 PNG 钉成 always-on-top 浮动小窗（干净裸图，圆角无金边，带出现/关闭凘入凘出 + 滚轮缩放平滑过渡动画）。v2 改动：(a) 修默认尺寸自动放大。(b) 滚轮缩放 ×1.1 clamp。(c) 去边框去标题栏。(d) 双击关闭（v2 用 Avalonia `DoubleTapped`——v3 弃用）。**v3 修复（用户反馈"依然没有双击关闭"+"缩放损失图像数据"）：(e) 双击改手动检测**（500ms / 8px）。**(f) 缩放改像素保真**：`BitmapInterpolationMode.None` nearest-neighbor。**v4 修复（用户反馈"默认只看到中间少部分"+"滚轮仅压缩信息"——根因终于定位）：(g) Avalonia `Stretch="None"` 是裁剪不是缩放**，v2/v3 设 `Width/Height` 只改裁剪框。v4 改用 `LayoutTransformControl` + `ScaleTransform` 真正重新 measure。**v5 调整（用户反馈"添加圆角边框 + T 后自动关闭选框"）：(h) 圆角古金边框**。**(i) T 变 terminal action**。**v6 调整（用户反馈"不需要边框保持干净 + 添加 esc 关闭 + 最小化有限度"）：(j) 去掉金边只留圆角 clip**。**(k) MinScale 0.1→0.25**。**(l) Esc 关闭贴图**——全局 keyboard hook 路由，`OnToolbarKeyPressed` 顶部加新 Esc 分支 LIFO 关闭最后一个贴图，三处协同保活 hook（`DismissOceanEyes` 改条件禁用 / T 分支末尾 `SetEnabled(true)` / `ClosePinned`/`CloseAllPinned` 列表空时禁用）。**v6 Esc bug 修复（用户反馈"ESC 没有用"——深度日志定位根因）**：T 分支的 `SetEnabled(true)` 之后，`DismissOceanEyes` 的 UI-thread Post `_windowHost.Hide()` 触发了 `ToolbarSessionView.onToolbarHidden` 回调，回调里**无条件** `SetEnabled(false)` 又把 hook 关了。修复：`onToolbarHidden` 加 `_pinnedWindows.Count == 0` 守护；同样守护加到 `ResetForRedraw` 和 `StopKeyboardHookQuiet`。**v7 调整（用户反馈"添加动画"）：(m) 出现动画**——Window 初始 `Opacity="0"`，AXAML 加 `<DoubleTransition Property="Opacity" Duration="0:0:0.15"/>`，`Opened` 事件设 `Opacity=1.0` 自动 150ms ease-out 凘入。**(n) 关闭动画**——`AnimateOutAsync()` 设 `Opacity=0` 凘出（150ms DoubleTransition）+ `Task.Delay(180)` 等过渡完成，`ClosePinned` 改 `async` 在 Hide+Dispose 前 `await window.AnimateOutAsync()`；窗口从 `_pinnedWindows` 列表移除在动画**开始前**（防快速二次 Esc 重入）。**(o) 滚轮缩放平滑过渡**——`ScaleTransform.Transitions` 加 `DoubleTransition` for `ScaleX`/`ScaleY`（120ms），滚轮改 `_userScale` 后 `ApplyScale` 设新 ScaleX/Y，Avalonia 自动 120ms 插值（不再瞬间跳变）。关键：Transitions 挂在 `ScaleTransform` 实例上（它是 `Animatable`），不是挂在 `LayoutTransformControl.LayoutTransform`（`LayoutTransform` 是 `Transform` 类型，换实例不能 DoubleTransition；只改 ScaleX/Y 属性可以）。**v8-v12 动画探索（5 个版本迭代，最终 v13 回滚搁置）**——v7 是纯 Opacity 凃入，用户反馈“弹出可以改为 mac 类似的放大弹出吗”。**v8**：scale 0.85→1.0 BackEaseOut（用户反馈“没变化，从侧面弹出”）。**v9 误解**：我误以为“从侧面弹出”是要侧面滑入，改成 TranslateTransform 侧边滑入（用户后续澄清是要 scale 弹簧，不是侧滑）。**v10**：scale 0.3→1.0 BackEaseOut 350ms（用户反馈“抖了好几下”+“从左上角弹不是正中间”）。**v11**：改 CubicEaseOut + 移到 Border.RenderTransform（用户反馈“没变化，依然从左上角”）。**v12**：Avalonia 关键帧 Animation 0.5→1.15→1.0（Mac 弹簧：小→过冲→稳定）+ 显式 `Frame.RenderTransformOrigin = RelativePoint(0.5,0.5,Relative)`（用户决定“算了先就这样吧”搁置）。**核心未解问题**：`ExtendClientAreaToDecorationsHint=True` 窗口上 RenderTransformOrigin 不可靠——AXAML 属性和 code-behind RelativePoint 都不能让 scale 从中心放大，实际从左上角放大。**v13 回滚**：回到 v9 的 TranslateTransform 侧边滑入（`Window.RenderTransform = TranslateTransform(400,100)→(0,0)` CubicEaseOut 300ms）——用户认可这个效果作为暂定方案。code-behind + AXAML 都恢复 v9 状态，移除所有 v10-v12 的 ScaleTransform / 关键帧 Animation / RenderTransformOrigin 代码。scale 弹簧动画**搁置，以后再说**（详见 §3x §22 完整探索日志 + 未来修复思路）。0 新依赖。**
 
-**测试**：232/232 通过（Core 156 = R44 前 145 + ColorFormatter 11；Providers 35；Windows 41）。NativeAOT 发布成功，第四十一批设置页框架比例与双层边框精修版 exe = 27,671,552 字节（`BYH.exe`）。
+**测试**：232/232 通过（Core 156 = R44 前 145 + ColorFormatter 11；Providers 35；Windows 41）。NativeAOT 发布成功，第四十二批金属质感双圆角框版 exe = 27,670,528 字节（`BYH.exe`）。
 
 ---
 
@@ -1880,6 +1897,126 @@ await Task.Delay(330);  // 300ms 滑出 + 余量
 
 ---
 
+## 3ab. 本会话（第四十二批增量）完成的工作：R54 金属质感双圆角结构框
+
+本批直接研究用户提供的四张边框局部参考图，不调用 huashu-design；所有修改位于 Git 分支 `task/REQ-012-metallic-frames` 的独立 worktree。
+
+### 完成内容
+
+- 新增 `ByhMetallicEdgeBrush`：1 DIP 外缘按铜金 → 香槟 → 深金 → 亮金变化，避免普通恒色描边。
+- 新增单一 `MetallicFrame` 结构样式：2 DIP 象牙光学缝、3 DIP 处 1 DIP 浅金内曲线，以及只在底侧显现的低透明度暖棕投影；圆角和直边始终同心。
+- `MetallicFrame.Compact` 只覆盖圆角半径，用于窄导航塔；主设置、右侧概览、System Overview、Window controls 使用标准 24 DIP 半径。
+- 移除设置页 `DecorativeFrame SettingsFrame` 的 class 叠加。两者原先设置完全相同的一组属性，后声明者会覆盖前者，并没有形成真实双层结构。
+- `FlatRail`、`PearlCard`、`PorcelainCard` 保持原样：最左产品栏仍为平直分栏，内部信息卡不镶结构金框。
+
+### 验证证据
+
+- Release build：0 警告、0 错误；完整测试 **232/232**。
+- win-x64 NativeAOT：0 警告、0 PDB；`BYH.exe` = **27,670,528 bytes**。
+- 175% DPI 默认尺寸：`artifacts/qa/ivory-jade-settings-v10-metallic-default-nativeaot.png`。
+- 175% DPI、1240×680 logical 最小尺寸：`artifacts/qa/ivory-jade-settings-v10-metallic-minimum-nativeaot.png`。
+- 圆角局部：`artifacts/qa/ivory-jade-settings-v10-metallic-corner-detail.png`。
+- 独立报告：`output/TASK-014-metallic-frame-verification.md`。
+
+### OMP 分工
+
+- `xiaomi-mimo/mimo-v2.5-pro` 第一次只读盘点 frame class、应用位置和 Avalonia BoxShadow 风险；第二次只做架构文档与验证报告草稿。
+- 主 Agent 负责参考图光学拆解、主题实现、diff 审核、默认/最小尺寸视觉判断、测试、NativeAOT 发布与 Git 收口。
+
+---
+
+## 3ac. 本会话（第四十三批增量）完成的工作：REQ-012 设置页 Foamie 参考图精修 + main 合并
+
+本批按用户提供的 Foamie 设计系统参考图精修设置页 UI（不调用 huashu-design），并先把 main 合入 `task/REQ-012-metallic-frames`（merge commit `fddb9a6`：冲突仅 BYH.exe 二进制与 index.yaml，后者保留 main 全文 + 补 REQ-012 done 条目；main 带入 R49 预览缩放修复、R52 磁力吸附、R48 标注工具集、R53 长截图）。
+
+### 完成内容
+
+- **截图管线修复（关键坑）**：`artifacts/qa/capture-settings.py` 现在为 `SetWindowPos`/`SetForegroundWindow` 显式声明 `argtypes`——64 位下裸传 `-1` 会被 ctypes 截成 `0xFFFFFFFF`，`HWND_TOPMOST` 静默失效，导致抓到的全是前台浏览器/Obsidian 画面（此前 v11 两张截图即因此作废）。抓图前 topmost、抓后还原。
+- **主题 `IvoryJade.axaml`**：`ByhGoldNavBrush` 改垂直三段焦糖渐变（`#F0D5A1→#DCA85E→#C08337`，更饱满）；`SettingsNav.Active` 圆角 12→14（Avalonia 的 Button **没有 BoxShadow 属性**，AVLN2000，投影方案放弃）；新增 `TextBlock.CardTitle`（衬线 SemiBold，统一全页标题字族）与 `Path.MiniIcon`（13px 线图标，Stroke 内联给定）。
+- **视图 `SettingsWindow.axaml`**：8 个卡片分区标题全部加 `Classes="CardTitle"`（原无衬线混排）；导航卡 Grid 改 `Auto,*,Auto` 加底部小宝石徽标（26px 圆形，最小高度下余量仅 ~37px，故从 30 缩到 26，再大会挤掉 Launcher 按钮）；Current setup 三行加圆形 soft-tint 图标徽章（provider=地球/AccentSoft、hotkey=键盘/WarningSoft、OCR=眼睛/SuccessSoft，对齐参考图 Today's Summary）；底部 Runtime 绿点外套 26px SuccessSoft 圆徽章；左栏与底部色块改方形（20x20 / 16x16，参考图 COLOR PALETTE 样式）；Runtime 文本加 `TextWrapping="Wrap"` 修最小宽度裁切。
+- 未动：MetallicFrame 集中样式、五结构窗格、平直 FlatRail、Pearl/Porcelain 内卡克制度、jade Primary 按钮（参考图虽有焦糖主按钮，但 jade 主按钮是 R43 既定品牌决定）。
+
+### 验证证据
+
+- Release build：0 警告、0 错误；完整测试 **334/334**（main 合并后 232→334）。
+- win-x64 NativeAOT：0 警告、0 PDB；`BYH.exe` = **27,959,808 bytes**。
+- 175% DPI 默认尺寸：`artifacts/qa/ivory-jade-settings-v12-foamie-refined-default-nativeaot.png`。
+- 175% DPI、1240×680 logical 最小尺寸：`artifacts/qa/ivory-jade-settings-v12-foamie-refined-minimum-nativeaot.png`。
+- 可信基线对比：`artifacts/qa/before-default.png` / `before-minimum.png`。
+- `docs/architecture/08-theme-system.md` 组件语义类表已同步（SettingsNav.Active / CardTitle / MiniIcon）。
+- **待用户验收**：v12 两张截图已提交（commit `e728f1f`），等用户确认后 REQ-012 可视同收尾。
+
+---
+
+## 3ad. 本会话（第四十四批增量）完成的工作：REQ-012 设置页 Foamie 氛围/立体感/精致感深化
+
+用户反馈 v12「几乎没改」，本批在保留五窗格结构、FlatRail、MetallicFrame 集中样式、克制内卡的前提下，从主题资源层大幅强化立体感（浮影+受光面）、精致感（金属边+宝石光晕+徽章细边）和氛围感（暖光径向光晕+云纹显影）。
+
+### 完成内容
+
+- **主题 `IvoryJade.axaml`**：
+  * 新增 `ByhAtmosphereBrush`（暖色径向光晕）和 `ByhGemGlowBrush`（翡翠径向光晕）。
+  * `ByhMetallicEdgeBrush` 加亮香槟高光，金属边对比度更高。
+  * `ByhGoldNavBrush` 从三段升为四段，顶部增加香槟高光，并新增 `ByhGoldNavBorderBrush` 凸面边框渐变，让 active 药丸在 Avalonia Button（无 BoxShadow）上也能读出 3D 体积。
+  * `MetallicFrame` 阴影加深为三层环境光+投影，并加顶部微光。
+  * `PearlCard` / `PorcelainCard` 加顶部强光高光边和更明显的浮动阴影。
+  * `StatusPill` / `Badge` 加内高光和微阴影。
+  * `GemPortrait` 增加翡翠色外发光环。
+- **视图 `SettingsWindow.axaml`**：
+  * 全布局底层加 `ByhAtmosphereBrush` 暖光光晕。
+  * 各面板 ornament 云纹透明度大幅提升（nav 0.30 / main 0.10 / rail 0.22 / right 0.28）。
+  * 导航卡顶部 emblem 与底部 foot gem 套 `ByhGemGlowBrush`。
+  * 欢迎标题放大（24→26），右上角 IVORY JADE 徽章也套 gem glow。
+  * 右侧人物卡背景圆改 `ByhGemGlowBrush`。
+  * Current setup / Runtime 图标徽章放大到 28px、加 1px 金边和软阴影。
+  * 左栏底部 emblem 与色板小方块加 lift 阴影。
+- 未动：五结构窗格、FlatRail、内卡克制度、jade Primary 按钮、SelectionRuntime / LongScreenshot / 翻译 / OCR / 快捷键逻辑。
+
+### 验证证据
+
+- Release build：0 警告、0 错误；完整测试 **334/334**。
+- win-x64 NativeAOT：0 警告、0 PDB；`BYH.exe` = **27,959,296 bytes**。
+- 175% DPI 默认尺寸：`artifacts/qa/ivory-jade-settings-v13-atmosphere-default-nativeaot.png`。
+- 175% DPI、1240×680 logical 最小尺寸：`artifacts/qa/ivory-jade-settings-v13-atmosphere-minimum-nativeaot.png`。
+- 可信基线对比：`artifacts/qa/before-default.png` / `before-minimum.png`。
+- `docs/architecture/08-theme-system.md` 已同步新 token 与组件类描述。
+- **待用户验收**：v13 两张截图已提交（commit `aaeb31a`），等用户确认。
+
+### 踩坑
+
+1. Avalonia `RadialGradientBrush` 用 `RadiusX`/`RadiusY` 而非 `Radius`，`Center`/`GradientOrigin` 用百分比字符串；直接用 WPF 语法会 AVLN2000。
+2. Avalonia `BoxShadow` 颜色必须是 6 位或 8 位 HEX，写错成 9 位会在运行时 `Color.Parse` 抛 `FormatException`；主题 AXAML 编译不报错（颜色串在运行时才解析）。
+
+---
+
+## 3ae. 本会话（第四十五批增量）完成的工作：REQ-012 设置页 LiftedPanel 双层大圆角重构
+
+用户再发参考图 `@image#1:Clipboard_Screenshot.png`，指出主内容区应改为上下两层大圆角框搭在一起，每个大边框添加外围阴影以增强纵深感。本批在保留五窗格结构、FlatRail、MetallicFrame 集中样式的前提下，把原来扁平并列的 `PearlCard` 重构成「大 LiftedPanel → 内部 InnerCard → 内容」的参考图层级。
+
+### 完成内容
+
+- **主题 `IvoryJade.axaml`**：
+  * 新增 `ByhShadowLifted`（两层柔和 lift 影）与 `ByhShadowDeep`（三层环境+投影，用于大面板）。
+  * 新增 `Border.LiftedPanel`：圆角 18px、1px 金褐边、顶部强光高光边、1px 内象牙隙、多层弥散阴影，让面板从背景真正浮起。
+  * 新增 `Border.InnerCard`：圆角 14px、奶油渐变、顶部微光 + 1px 隙，用于包裹大面板内的输入块，避免三层嵌套厚重。
+- **视图 `SettingsWindow.axaml`**：
+  * `GeneralSection` 改为上下两个 `LiftedPanel`：上层合并 Ocean Eyes Trigger + Toolbar Shortcuts（中间用 Hairline 分隔，类似参考图堆叠卡片）；下层是 Ocean Eyes Capture，并把 Auto-save / Copy to Clipboard 并排到同一行以节省纵向空间。
+  * `ProviderSection` 与 `FunctionsSection` 各用一个 `LiftedPanel` 包裹；内部 API Key 与 Prompt Templates 输入区改用 `InnerCard`。
+  * `VisionSection` 改为上下两个 `LiftedPanel`：上层 Vision Recognition，下层 OCR Model + Recognition Strategy。
+  * `LauncherSection` 改为上下两个 `LiftedPanel`：上层 Launcher list，下层 Spotlight Hotkey。
+- 未动：五结构窗格、FlatRail、jade Primary 按钮、SelectionRuntime / LongScreenshot / 翻译 / OCR / 快捷键逻辑。
+
+### 验证证据
+
+- Release build：0 警告、0 错误；完整测试 **334/334**。
+- win-x64 NativeAOT：0 警告、0 PDB；`BYH.exe` = **27,956,224 bytes**。
+- 175% DPI 默认尺寸：`artifacts/qa/ivory-jade-settings-v14-lifted-default-nativeaot.png`。
+- 175% DPI、1240×680 logical 最小尺寸：`artifacts/qa/ivory-jade-settings-v14-lifted-minimum-nativeaot.png`。
+- 可信基线对比：`artifacts/qa/before-default.png` / `before-minimum.png`。
+- **待用户验收**：v14 两张截图已提交（commit `0b8d6a4`），等用户确认。
+
+---
+
 ## 3c. 本会话（第十四批增量）完成的工作：R26 Ivory Jade 主题
 
 - 新增 `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`：完整语义色、反馈色、alpha 派生色、圆角、阴影与全局组件类。
@@ -2324,12 +2461,12 @@ _quickToolsWindow?.ShowAt(x, y, selected);
 
 ## 5. 当前验证证据
 
-最后验证：2026-07-20（第四十一批：R30 设置页标注图框架精修）。
+最后验证：2026-07-20（第四十二批：R54 金属质感双圆角结构框）。
 
-- **第四十一批当前发布物**：`artifacts/publish/win-x64-nativeuia/BYH.exe`，27,671,552 bytes；当前 PID 41408 已从该路径启动并恢复默认窗口尺寸。
-- **第四十一批自动测试**：**232/232**（Core 156 + Providers 35 + Windows 41），0 失败、0 跳过。
-- **第四十一批视觉复核**：NativeAOT 默认尺寸与 175% DPI、1240×680 logical 最小尺寸均通过；证据为 `ivory-jade-settings-v9-annotated-*-nativeaot.png`。
-- **第四十一批结构审计**：导航装饰图在内框内容层；最左栏为直角 FlatRail；System Overview 无标题分隔线；根布局下排为 260 logical px。
+- **第四十二批当前发布物**：`artifacts/publish/win-x64-nativeuia/BYH.exe`，27,670,528 bytes；当前 PID 43192 已从该分支 worktree 路径启动并恢复默认窗口尺寸。
+- **第四十二批自动测试**：**232/232**（Core 156 + Providers 35 + Windows 41），0 失败、0 跳过。
+- **第四十二批视觉复核**：NativeAOT 默认尺寸与 175% DPI、1240×680 logical 最小尺寸均通过；证据为 `ivory-jade-settings-v10-metallic-*-nativeaot.png`。
+- **第四十二批结构审计**：结构窗格统一使用 `MetallicFrame`；外金属渐变、象牙缝与浅金内曲线同心；FlatRail/内部卡片未被过度装饰。
 
 - `dotnet test`：**213/213**（Core 137 + Providers 35 + Windows 41），0 失败、0 跳过。
 - NativeAOT 发布成功，**0 AOT/裁剪警告**；exe 26,899,968 bytes（~25.6MB）。
@@ -2440,6 +2577,222 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 
 ---
 
+## 3l. 本会话（第四十六批增量）完成的工作：REQ-012 设置页头部卡片圆角阴影
+
+### 改动
+
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 顶部标题区（`WELCOME BACK / General / 状态 pills / IVORY JADE`）由平底边框改为 `Classes="LiftedPanel"`，获得 20px 大圆角、多层弥散阴影与顶部高光边，与参考图的欢迎卡片质感一致。
+  - `ScrollViewer` 顶部内边距由 24 降至 14，使头部卡片与下方第一个 `LiftedPanel`（Ocean Eyes Trigger）视觉紧密相连。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v15-header-card-*-nativeaot.png`（默认 1320×800 + 最小 1240×680，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 60348）。
+
+---
+
+## 3m. 本会话（第四十七批增量）完成的工作：REQ-012 头部卡片精修为 HeroCard
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - 新增 `HeroCard`：极淡背景 `#FDFBF8`、暖色细边 `#D0E1C4A3`、24px 大圆角、柔和漫射阴影（去掉 inset 高光边），避免 `LiftedPanel` 在头部造成的厚重感。
+  - 新增 `HeroPill`：扁平小药丸，用于 `LOCAL FIRST / INSTANT CAPTURE / WINDOWS NATIVEAOT` 状态标签。
+  - 新增 `ThemePill`：扁平圆角徽章，用于右上角 `IVORY JADE` 主题标识。
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 顶部标题区从 `LiftedPanel` 改为 `HeroCard`，并在 `MetallicFrame` 内留出 12px 边距，让头部卡片像参考图一样轻盈地浮在中央面板里。
+  - 状态 pills 和主题 badge 改用新的扁平样式，去掉厚重阴影与 accent 填充。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v16-hero-card-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 22828）。
+
+---
+
+## 3n. 本会话（第四十八批增量）完成的工作：REQ-012 细框 + 主区卡片撑满窗口
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - 新增 `MetallicFrame.Thin`：padding 降到 2px，去掉多层深阴影，只保留一条极淡的象牙缝 + 柔和 1px 外影，让所有大边框变细。
+  - `HeroCard` 阴影进一步收小，避免在小边距下被裁切。
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 所有 `MetallicFrame`（导航、中央主区、右侧欢迎卡、底部 System Overview、右下角窗口控制）全部加上 `Thin`。
+  - 中央主区 `HeroCard` 头部边距从 12 → 4，让它几乎贴到细边框。
+  - `ScrollViewer` 内边距从 28,24,28,28 → 14,10,14,14，`GeneralSection` 卡片间距从 14 → 10，让内容卡片更撑满主窗口。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v18-fill-window-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 44964）。
+
+---
+
+## 3o. 本会话（第四十九批增量）完成的工作：REQ-012 General 页单张大底
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - 新增 `SurfacePanel`：用于填满 `MetallicFrame` 内部的连续大卡片，背景 `#FFFCFAF7`、1px 极淡暖边、22px 圆角、顶部微高光 + 极轻外影，复现参考图里外层大框的干净表面。
+  - `InnerCard` 调得更淡：背景 `#FAFFFDFC`、边框 `#38D9C28A`、圆角 12px、阴影收小到 `0 1 3`，避免在单底上反复“浮起”。
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 中央主区内部包上一层 `SurfacePanel`，填满细边框。
+  - 顶部 `WELCOME BACK / General / 状态 pills / IVORY JADE` 直接印在 `SurfacePanel` 表面上，不再单独做 `HeroCard`。
+  - 移除主内容区 ornament 云纹纹理，保持表面干净。
+  - `GeneralSection` 内部从多个 `LiftedPanel` 改为三个连续的 section：`Ocean Eyes Trigger` → divider → `Toolbar Shortcuts` → divider → `Ocean Eyes Capture`，所有功能块直接坐在同一张大底上，只有输入区才用轻量 `InnerCard`。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v19-single-surface-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 31196）。
+
+---
+
+## 3p. 本会话（第五十批增量）完成的工作：REQ-012 弥散阴影 + 更淡边框 + 背景压暗
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - `InnerCard`：加顶部 inset 高光；底部阴影改为两层弥散影；边框透明度降低。
+  - `SurfacePanel`：加内侧象牙缝；底部阴影改为两层弥散影；边框更淡。
+  - `MetallicFrame.Thin`：阴影改为两层软影；内侧缝更淡。
+  - `HeroPill` / `ThemePill`：边框更淡并加顶部 inset 高光。
+  - `ByhColorBackground` 微压暗，让卡片通过明度差自然浮出。
+- 修复：修正 9 位 HEX 颜色 `#EFFFFFEFA` → 8 位 `#E6FFFFFA`，避免 NativeAOT 运行时 `Color.Parse` 崩溃。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v20-diffuse-shadows-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 41136）。
+
+---
+
+## 3q. 本会话（第五十一批增量）完成的工作：REQ-012 外圈大边框淡出
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - `MetallicFrame.Thin`：覆盖 `BorderBrush` 为 `#90E1C4A3`（极淡暖边），背景改为 `ByhBackgroundBrush`，让外圈 rim 几乎不可见；内侧缝透明度降到 `#70D9B97D`。
+  - `SurfacePanel`：背景提亮到 `#FFFDFBF8`，边框降到 `#A8E1C4A3`。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v21-thin-outer-rim-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 6808）。
+
+---
+
+## 3r. 本会话（第五十二批增量）完成的工作：REQ-012 阴影加重 + 边框再淡 + 背景压暗
+
+### 改动
+
+- `src/SelectionAssistant.UI/Themes/IvoryJade.axaml`
+  - `ByhColorBackground`：从 `#FFF5F0E8` 压暗到 `#FFF0E9DE`，让浅色卡片通过明度差自然浮出。
+  - `SurfacePanel`：边框从 `#A8E1C4A3` 大幅降到 `#20E1C4A3`；底部阴影改为三层弥散影 `0 4 14` / `0 16 44` / `0 32 72`，立体感明显增强。
+  - `InnerCard`：顶部加 inset 高光；底部阴影改为两层 `0 3 10` / `0 10 26`；边框降到 `#18D9C28A`。
+  - `MetallicFrame.Thin`：边框从 `#90E1C4A3` 降到 `#28E1C4A3`；阴影改为两层软影 `0 3 10` / `0 10 28`。
+  - `HeroPill` / `ThemePill`：边框分别降到 `#70E1C4A3` / `#78E1C4A3`。
+- `artifacts/publish/win-x64-nativeuia/BYH.exe`：重新 NativeAOT publish。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- QA 截图：`artifacts/qa/ivory-jade-settings-v24-fainter-borders-*-nativeaot.png`（默认 + 最小窗口，175% DPI）。
+- 用户日常 BYH 实例已恢复（PID 38480）。
+
+---
+
+## 3s. 本会话（第五十三批增量）完成：统一五个 tab 为 SurfacePanel 连续布局 + 修复 Launcher 空白
+
+> 更新时间：2026-07-22 第五十三批增量（已完成，commit `2e7892e`）
+
+### 已完成
+
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 将 `ProviderSection`、`FunctionsSection`、`VisionSection`、`LauncherSection` 内部原来独立的 `LiftedPanel` 卡片统一移除，改为与 `GeneralSection` 一致的 **单张 `SurfacePanel` 大底 + 功能区分隔线 + `InnerCard` 输入区** 结构。
+  - 命名引用迁移：`EditFormBorder`、`PromptTemplatesCard` 分别移到对应内部 StackPanel，避免编译失败。
+  - **修复 Launcher tab 空白 bug**（根因+修复见下）。
+- `artifacts/qa/capture-all-tabs.py`
+  - 新增自动化脚本：启动 QA BYH，依次点击左侧导航按钮，截取 General / Provider / Actions / Vision / Launcher 五个 tab 的默认尺寸图，用于验证风格统一。
+
+### 验证
+
+- `dotnet build -c Release`：0 警告 0 错误。
+- `dotnet test -c Release`：334/334 通过。
+- `dotnet publish -c Release -r win-x64`：0 警告。
+- 多 tab 截图已生成：
+  - `artifacts/qa/v25-unified-tabs-{general,provider,actions,vision,launcher}-default-nativeaot.png`
+  - `artifacts/qa/v26-verify/v25-unified-tabs-{general,provider,actions,vision,launcher}-default-nativeaot.png`（修复后验证）
+  - `artifacts/qa/ivory-jade-settings-v25-unified-tabs-general-{default,minimum}-nativeaot.png`
+
+### Launcher 空白 Bug 修复详情
+
+- **症状**：切换到 Launcher tab 后，仅页面头部标题 "Launcher" 显示，下方列表和 Spotlight Hotkey 区块完全空白。
+- **根因**：用 `xml.etree.ElementTree` 解析 axaml 并打印 parent-chain，发现 `LauncherSection` 被嵌套进 `VisionSection`（父链 `.../Grid/StackPanel[VisionSection]/StackPanel[LauncherSection]`）。v25 编辑时 `VisionSection` 的收尾 `</StackPanel>` 被误放到 `LauncherSection` 之后（原行 853），导致 Launcher 成了 Vision 的子元素。切到 Launcher 时 `LauncherSection.IsVisible=True` 但父 `VisionSection.IsVisible=False` → 整个主体被折叠。XML 标签仍平衡（"合法"），编译器/Avalonia 不报错，肉眼极易漏。
+- **修复**：将 `VisionSection` 收尾 `</StackPanel>` 从 Launcher 块末尾移至 Launcher 注释之前（新增一行），使 `LauncherSection` 与其他四个 section 平级（同为 ScrollViewer 内 `<Grid>` 直接子元素）；同时删除调试用半透明红底 `Background="#20FF0000"`。
+- **验证**：ElementTree 父链确认 LauncherSection 已为独立 sibling；真机截图确认 Launcher 列表（8 条目）和 Spotlight Hotkey 区块均正常渲染。
+
+### 提交
+
+- Commit `2e7892e`：`feat(REQ-012): v25 unified tab layout + fix Launcher blank (VisionSection nesting)`
+- 工作树干净，用户日常 BYH 实例已恢复（PID 28652）。
+
+---
+
+## 3t. 本会话（第五十四批增量）完成：设置页滚动范围与底部安全区修复
+
+> 更新时间：2026-07-24 第五十四批增量（REQ-026 / TASK-028）
+
+### 已完成
+
+- `src/SelectionAssistant.UI/Views/SettingsWindow.axaml`
+  - 找到回归根因：v25 将中央 `ScrollViewer` 的旧底部 padding 清零后，除 General 外的页面都以 0 间距结束；滚动偏移虽然已到 100%，最后一项仍贴进圆角裁切区。
+  - 在六页共享的内容 Grid 上恢复统一的 24 px 底部安全区，并移除 General 单独的 18 px 尾距。
+  - 为滚动容器新增 `BYH.Settings.ContentScroll` Automation ID。
+- `artifacts/qa/capture-all-tabs.py`
+  - 新增 `--include-bottom`：每页截顶部后，通过 UIA `ScrollPattern` 精确滚到 100% 再截底部。
+  - 短页会诚实报告 `not-scrollable`；UIA 不可用时仍保留滚轮回退。
+
+### 验证
+
+- Release build：0 警告、0 错误。
+- 测试：390/390 通过。
+- NativeAOT publish：通过。
+- 六页顶部 + 底部共 12 张 NativeAOT 截图：
+  - General / Translation / Vision / Launcher / Clipboard：`scrolled-to-bottom`
+  - Actions：`not-scrollable`，页面内容完整且没有无意义滚动
+- 证据：`artifacts/qa/req-026-scroll-nativeaot/`
+- 明细：`output/TASK-028-verification.md`
+- 用户日常主线 BYH 已恢复；没有覆盖主仓库中其他 Agent 尚未提交的新版后端产物。
+
+---
+
 ## 9. 下一位 Agent 的明确执行顺序
 
 ### 当前状态：R24-R34 全部完成（R23 + R31 + R32 + R34 待真机行为验证）
@@ -2463,6 +2816,8 @@ Copy-Item src\SelectionAssistant.App\bin\Release\net10.0-windows\win-x64\publish
 **R30 第二次 follow-up**（2026-07-20 第四十批完成）：直接以用户参考图为准，设置面板统一为简洁英文，五个导航入口加入统一轮廓线图标；主窗格与卡片使用低对比金线、象牙内高光、香槟 glint 与暖色柔影形成层叠立体感。默认与 175% DPI 最小尺寸均通过，最新证据见 `ivory-jade-settings-v8-english-depth-*.png`。后续不要恢复冗长说明、混合语言、emoji 图标或粗深边框。
 
 **R30 第三次 follow-up**（2026-07-20 第四十一批完成）：按用户红色标注图收紧导航塔双层边框到约 5px，将底重心装饰图移入导航内框；设置页下排由 204 增高到 260 logical px，System Overview 去标题分隔线；最左产品栏取消圆角外框，改用 1.5px 古金竖线分栏。默认与 175% DPI 最小尺寸均通过，证据见 `ivory-jade-settings-v9-annotated-*-nativeaot.png`。
+
+**R54 金属质感 follow-up**（2026-07-20 第四十二批完成，分支 `task/REQ-012-metallic-frames`）：结构框改为单一 `MetallicFrame`，用渐变古金真实外缘 + 2 DIP 象牙缝 + 3 DIP 浅金内曲线 + 暖色底影复现参考图；移除无效的 `DecorativeFrame SettingsFrame` 属性覆盖组合。默认与最小 NativeAOT 视觉证据见 `ivory-jade-settings-v10-metallic-*-nativeaot.png`。
 
 **R31 重启 Mutex race 修复**（2026-07-18，机器侧验证通过，**待用户真机点托盘「重启 BYH」最终确认**）：详见 §3g。修复"点重启 → 托盘消失且新进程没起"的 race。代码层已验证：Mutex static 字段、`ReleaseForRestart()` 在 spawn 前、`--restart` 重试 30×100ms、AbandonedMutex 兜底、Avalonia 容忍未知参数。
 

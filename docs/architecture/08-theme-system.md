@@ -35,6 +35,8 @@ Ivory Jade 是 BYH 的首个正式主题：瓷器象牙白承担大面积背景�
 | accent-hover | `#6E3519` | `ByhAccentHoverBrush` |
 | accent-soft | `#E8D3B8` | `ByhAccentSoftBrush` |
 | decorative-gold | `#C2A36D` | `ByhGoldBrush` |
+| atmosphere-glow | 暖色径向光晕（中心 #F4E7C8 40% → 透明） | `ByhAtmosphereBrush` |
+| gem-glow | 翡翠色径向光晕（中心 #899845 37% → 透明） | `ByhGemGlowBrush` |
 | text-primary | `#3A2417` | `ByhTextPrimaryBrush` |
 | text-secondary | `#7D604A` | `ByhTextSecondaryBrush` |
 | text-placeholder | `#A58C78` | `ByhTextPlaceholderBrush` |
@@ -59,14 +61,16 @@ Ivory Jade 是 BYH 的首个正式主题：瓷器象牙白承担大面积背景�
 |---|---|
 | `Card` | 普通卡片：surface + subtle border + 12px 圆角 + 小阴影 |
 | `CardWarm` | 次级分组：surface-secondary，无阴影 |
-| `PearlCard` / `PearlInset` | 设置页高保真奶油材料：渐变、细金边、暖色阴影或内嵌分组 |
-| `DecorativeFrame` | 设置页侧栏和主内容的双层金边圆角框架 |
-| `SettingsFrame` / `PorcelainCard` | R29 设置页专用外框与轻量瓷器卡片；边界比 PearlCard 更克制 |
-| `NavTowerFrame` | 设置页 BYH 导航塔：5px 紧凑双线层次、象牙内高光与暖色柔影 |
+| `PearlCard` / `PearlInset` | 设置页高保真奶油材料：渐变、细金边、顶部强光高光边、暖色浮动阴影或内嵌分组 |
+| `MetallicFrame` | R54 设置页结构外框：1-DIP 高对比金属渐变边（ByhMetallicEdgeBrush：bronze→silver-champagne→gold→bronze）+ 2-DIP 象牙光学间隙 + 1-DIP 浅金内曲线（3 DIP 处）+ 顶部微光 + 深三层浮动阴影，同心圆角 24px |
+| `MetallicFrame.Compact` | MetallicFrame 紧凑变体：圆角降至 18px，用于侧栏等窄面板 |
+| `PorcelainCard` | 设置页轻量瓷器卡片；奶油渐变 + 细金边 + 顶部高光边 + 内嵌双层高光 + 浮动阴影 |
 | `FlatRail` | 最左侧产品概念栏：无圆角、无外框阴影，仅由右侧古金竖线分隔 |
-| `GemPortrait` | 右上 APP icon 人物焦点的金边珠光圆形框 |
-| `StatusPill` | 顶部真实能力标签，不承载虚构统计 |
-| `SettingsNav` + `Active` | 侧栏导航；默认透明，活动态为暖金渐变，jade focus ring 保留键盘可达性 |
+| `GemPortrait` | 右上 APP icon 人物焦点的金边珠光圆形框 + 翡翠色外发光环（ByhGemGlowBrush） |
+| `StatusPill` | 顶部真实能力标签：象牙底 + 金边 + 顶部内高光 + 微阴影，不承载虚构统计 |
+| `SettingsNav` + `Active` | 侧栏导航；默认透明，活动态为垂直四段焦糖渐变（ByhGoldNavBrush：highlight→champagne→caramel→bronze）+ 凸面边框渐变（ByhGoldNavBorderBrush）+ 14px 圆角 + 更饱满的 padding，jade focus ring 保留键盘可达性 |
+| `CardTitle` | 卡片分区标题：与 DisplayTitle 同族衬线（Georgia），SemiBold，尺寸降到 15px，保证全页标题衬线统一 |
+| `MiniIcon` | 概览行 13px 线图标（Stroke 内联给定），配合 26px 圆形 soft-tint 徽章使用（Current setup / Runtime 行） |
 | `Badge` | 小面积暖色徽章：accent-soft + gold 细边 |
 | `FloatingSurface` | Toolbar / QuickTools 的带透明度象牙材料 |
 | `Primary` | 保存、运行、OCR 等当前区域主要动作 |
@@ -87,11 +91,17 @@ Ivory Jade 是 BYH 的首个正式主题：瓷器象牙白承担大面积背景�
 
 ## 形状和深度
 
-- 小/中/大圆角：8 / 12 / 18 px。
-- 小阴影：`0 1 3`、约 5% `#4A2B19`；中阴影：`0 7 22`、约 6% `#4A2B19`。R30 进一步减轻设置页容器深度，避免边框抢内容。
-- 设置页珠光阴影：`0 5 18`、暖焦糖低透明度；R30 新增 `ByhHairlineBrush`，大窗格和分隔线优先用 hairline/低 alpha 材料。
-- R30 第二次 follow-up 的立体边缘公式：半透明暖金外发丝线 + 1px 内侧象牙高光 + 极淡香槟 inner glint + 低透明度暖棕外投影。四层都必须保持低对比，禁止用单条深色粗边模拟立体感。
-- R30 第三次 follow-up 将导航塔的双层视觉间距固定在约 5px：外金线、象牙缝与内侧浅金线必须靠近；装饰图属于内框内容层，不能放在不透明内框后方只露一条边。
+- 小/中/大圆角：8 / 12 / 18 px。MetallicFrame 使用 24px 圆角，Compact 变体 18px。
+- 小阴影：`0 1 3`、约 5% `#4A2B19`；中阴影：`0 7 22`、约 6% `#4A2B19`。
+- MetallicFrame 五层 BoxShadow 构成完整的光学层次（由外至内）：
+  1. `0 1 1 #7AFFF8E8` — 暖色底部微光
+  2. `0 5 15 #176E3519` — 柔和暖棕中层投影
+  3. `0 10 28 #0D4A2B19` — 深层外散投影
+  4. `inset 0 0 0 2 #FFFFFCF7` — 2-DIP 象牙光学间隙（第一层内阴影）
+  5. `inset 0 0 0 3 #B8D9B97D` — 1-DIP 浅金内曲线（第二层内阴影，3 DIP 处）
+- 外层真实边框（`ByhMetallicEdgeBrush`，1 DIP）提供金属渐变：左上青铜 → 长边香槟 → 右下深金 → 终点亮金，模拟参考图的金属光泽。
+- 内层背景 `#F9FFFDFC` 近白象牙，与 2-DIP 间隙色接近，形成同心圆角的光学连续性。
+- 设置页珠光阴影：`0 5 18`、暖焦糖低透明度；`ByhHairlineBrush` 用于大窗格和分隔线。
 - Avalonia `TextBox` 不暴露 `BoxShadow`，焦点态用 2px primary 边框；不要重新添加无效 setter。
 
 ## 不变量
@@ -106,7 +116,8 @@ Ivory Jade 是 BYH 的首个正式主题：瓷器象牙白承担大面积背景�
 8. 右上人物图固定复用 `avares://BYH/Assets/app-icon.png`；新增辅助模块只能呈现真实配置或静态说明。
 9. `ivory-jade-emblem.jpg` 用于圆形徽记时必须放大后居中裁切，不能把源图四周边缘缩进可视区域；左侧三个说明板块保持等高。
 10. Settings 面板导航与界面文案使用简洁英文；说明文字只保留操作语义、当前值、兼容性/安全提示和错误反馈。导航图标统一使用轻量轮廓线，不得混入彩色 emoji 或风格不一致的图标库。
-11. 最左侧产品概念栏必须保持无圆角的平直分栏，只用约 1.5px 古金色右侧竖线与工作区分隔；导航塔保留圆角双层框，两者不能混用同一种外框。
+
+11. 最左侧产品概念栏（FlatRail）必须保持无圆角的平直分栏，只用约 1.5px 古金色右侧竖线与工作区分隔；设置页结构性窗格（导航栏与主内容区）使用 MetallicFrame 或 MetallicFrame.Compact，FlatRail 和内部 PearlCard/PorcelainCard 表面不使用 MetallicFrame。两者不能混用同一种外框。
 
 ## 验证
 
@@ -139,3 +150,6 @@ dotnet publish src\SelectionAssistant.App\SelectionAssistant.App.csproj `
 - `artifacts/qa/ivory-jade-settings-v9-annotated-minimum-nativeaot.png`（R30 第三次 follow-up：175% DPI、1240×680 logical 最小尺寸）
 - `artifacts/qa/ivory-jade-quick-tools.png`
 - `artifacts/qa/ivory-jade-region-overlay.png`
+- `artifacts/qa/ivory-jade-settings-v10-metallic-default-nativeaot.png`（R54 MetallicFrame 结构框，NativeAOT 默认尺寸）
+- `artifacts/qa/ivory-jade-settings-v10-metallic-minimum-nativeaot.png`（R54 MetallicFrame 结构框，175% DPI、1240×680 logical 最小尺寸）
+- `artifacts/qa/ivory-jade-settings-v10-metallic-corner-detail.png`（R54 主面板左上角金属渐变外缘、象牙缝与浅金内曲线局部）

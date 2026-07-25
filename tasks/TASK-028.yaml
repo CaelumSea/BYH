@@ -1,0 +1,45 @@
+id: TASK-028
+requirement: REQ-026
+title: 复现并修复六个设置页的底部滚动裁切
+status: done
+created: '2026-07-24T10:00:33'
+updated: '2026-07-24T10:28:17'
+satisfies:
+- AC-1
+- AC-2
+- AC-3
+description: 统一检查中央设置区的 ScrollViewer extent、页面尾部间距与裁切行为，并补充可重复的底部截图验收。
+handoff: 'v25 连续面板将旧 ScrollViewer padding 清零，导致除 General 外的页尾贴入圆角裁切区。 现由 SettingsContentScroll
+  内层 Grid 统一提供 24 px 底部安全区，General 的单独尾距已移除。 QA 脚本可用 --include-bottom 经 UIA ScrollPattern
+  截取六页顶部和真实底部；Actions 正确报告 not-scrollable，其余五页均到达 100%。主仓库仍有其他 Agent 的未提交后端改动， 本任务仅更新独立
+  UI worktree，未覆盖日常实例。
+
+  [自检修复] [edge_coverage] 统一页尾安全区，并以 UIA 100% 滚动、短页不滚动及 12 张 NativeAOT 截图覆盖边界。'
+execution_log:
+- step: 1
+  action: 审计中央 ScrollViewer 与六个页面根节点的尾部间距。
+  result: General 有 18 px 尾距；Translation、Actions、Vision、Launcher、Clipboard 为 0，确认
+    v25 padding 清零回归。
+  timestamp: '2026-07-24T10:02:00'
+- step: 2
+  action: 为六页共享内容 Grid 增加 24 px 底部安全区，并移除 General 的一次性尾距。
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  timestamp: '2026-07-24T10:05:00'
+- step: 3
+  action: 为 SettingsContentScroll 增加 Automation ID，并扩展截图脚本的 UIA 底部滚动验收。
+  artifact: artifacts/qa/capture-all-tabs.py
+  timestamp: '2026-07-24T10:07:00'
+- step: 4
+  action: 执行 Release 构建与完整测试。
+  result: 0 warnings/errors；Providers 35/35、Core 314/314、Windows 41/41，总计 390/390。
+  timestamp: '2026-07-24T10:10:00'
+- step: 5
+  action: 发布 NativeAOT 并对六页分别截取顶部和 100% 底部。
+  result: 五个长页 scrolled-to-bottom；Actions not-scrollable；零 UIA fallback；共 12 张截图。
+  artifact: artifacts/qa/req-026-scroll-nativeaot
+  timestamp: '2026-07-24T10:16:00'
+- step: 6
+  action: 目视检查页尾完整性并恢复用户日常主线 BYH。
+  result: 最后控件均完整显示且留白一致；日常实例恢复，未覆盖其他 Agent 的未提交后端产物。
+  artifact: output/TASK-028-verification.md
+  timestamp: '2026-07-24T10:24:36'

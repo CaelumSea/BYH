@@ -1,0 +1,38 @@
+id: REQ-022
+title: 设置页左栏节奏与手机比例 v7
+status: done
+lite: true
+score_kind: aesthetic
+created: '2026-07-22T19:52:04'
+updated: '2026-07-22T20:04:44'
+aligned_via: quick-user
+aligned_at: '2026-07-22T19:52:04'
+aesthetic_template: ''
+acceptance_criteria:
+- id: AC-1
+  text: 左栏 Theme Concept 与 Color Palette 的多余纵向留白减少，Typography 与 Icon Style 获得更舒展的高度，四段整体分布均衡。
+  satisfied_by:
+  - TASK-024
+- id: AC-2
+  text: 右上手机面板在默认窗口仅比相邻主设置面板稍矮，仍保持上下近似对称留白。
+  satisfied_by:
+  - TASK-024
+- id: AC-3
+  text: 最小窗口下左栏文字、七色色样、字体样张、五个图标和手机内容无重叠或裁切。
+  satisfied_by:
+  - TASK-024
+- id: AC-4
+  text: 不改变功能逻辑，Release 构建、334 项测试、NativeAOT 发布和截图验证通过。
+  satisfied_by:
+  - TASK-024
+tasks:
+- id: TASK-024
+  title: 均衡左栏分段并拉高手机面板
+  status: done
+aesthetic_score:
+  scored_at: ''
+  scored_by: ''
+  dimensions: {}
+  total: null
+aesthetic_notes: []
+aligned_evidence: 用户指出左下角过紧、上方留白过多，且右上手机应只比相邻窗口稍矮。
