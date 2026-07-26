@@ -1245,8 +1245,27 @@ public partial class SettingsWindow : Window
             SystemPrompt = string.IsNullOrWhiteSpace(SystemPromptInput.Text)
                 ? null
                 : SystemPromptInput.Text,
-            TimeoutSeconds = (int)(TimeoutInput.Value ?? 60),
+            // Clamp explicitly — the NumericUpDown's Maximum can be relaxed
+            // without notice, and the unchecked (int) cast would silently
+            // truncate. Validate() below still asserts the final range.
+            TimeoutSeconds = Math.Clamp((int)(TimeoutInput.Value ?? 60), 10, 300),
         };
+
+        // Validate before persisting — every other save handler in this file
+        // does the same. Keeps bad input (empty name, empty BaseUrl, out-of-
+        // range timeout) from being written to providers.json and propagated
+        // to a live provider instance.
+        try
+        {
+            updated.Validate();
+        }
+        catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
+        {
+            ApiKeyStatusText.Text = ex.Message;
+            SetFeedbackTone(ApiKeyStatusText, isError: true);
+            return;
+        }
+
         SaveProviderRequested?.Invoke(updated);
     }
 

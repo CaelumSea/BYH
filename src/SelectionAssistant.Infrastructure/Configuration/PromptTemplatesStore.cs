@@ -129,11 +129,9 @@ public static class PromptTemplatesStore
                 writer.Flush();
             }
 
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-            File.Move(tempPath, path);
+            // Atomic replace (single API on Windows). Avoids the gap left by
+            // Delete-then-Move where a crash between the two leaves NO file.
+            File.Move(tempPath, path, overwrite: true);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

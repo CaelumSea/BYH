@@ -21,7 +21,52 @@ public sealed record ProviderProfileEntry(
     string ChatCompletionsPath,
     int TimeoutSeconds,
     int MaxSourceCharacters,
-    string? SystemPrompt = null);
+    string? SystemPrompt = null)
+{
+    /// <summary>
+    /// Sanity-checks the entry before it is persisted or applied to a live
+    /// provider. Mirrors the <c>Validate()</c> convention used by the input /
+    /// capture settings records. Throws <see cref="ArgumentException"/> on the
+    /// first invalid field. The Settings save handler calls this in a try/catch
+    /// to keep bad input (empty name, empty BaseUrl, out-of-range timeout) from
+    /// being written to <c>providers.json</c>.
+    /// </summary>
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(Id))
+        {
+            throw new ArgumentException("Provider id must not be empty.", nameof(Id));
+        }
+        if (string.IsNullOrWhiteSpace(Name))
+        {
+            throw new ArgumentException("Provider name must not be empty.", nameof(Name));
+        }
+        if (string.IsNullOrWhiteSpace(BaseUrl))
+        {
+            throw new ArgumentException("Provider BaseUrl must not be empty.", nameof(BaseUrl));
+        }
+        if (string.IsNullOrWhiteSpace(DefaultModel))
+        {
+            throw new ArgumentException("Provider default model must not be empty.", nameof(DefaultModel));
+        }
+        if (string.IsNullOrWhiteSpace(ChatCompletionsPath))
+        {
+            throw new ArgumentException("Provider chat completions path must not be empty.", nameof(ChatCompletionsPath));
+        }
+        if (TimeoutSeconds is < 10 or > 300)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(TimeoutSeconds),
+                "TimeoutSeconds must be between 10 and 300 seconds.");
+        }
+        if (MaxSourceCharacters is < 1000 or > 1_000_000)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(MaxSourceCharacters),
+                "MaxSourceCharacters must be between 1000 and 1,000,000.");
+        }
+    }
+}
 
 public sealed record ProviderConfiguration(
     string? DefaultProviderId,
@@ -193,12 +238,11 @@ public static class ProviderConfigurationLoader
                 writer.Flush();
             }
 
-            // Atomic move: temp → final. Overwrites existing file.
-            if (File.Exists(path))
-            {
-                File.Delete(path);
-            }
-            File.Move(tempPath, path);
+            // Atomic move: temp → final. Overwrites existing file in a single
+            // Win32 call (File.Move with overwrite:true → MoveFileEx with
+            // MOVEAPLACE_REPLACE_EXISTING). Avoids the gap left by
+            // Delete-then-Move where a crash between the two leaves NO file.
+            File.Move(tempPath, path, overwrite: true);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
