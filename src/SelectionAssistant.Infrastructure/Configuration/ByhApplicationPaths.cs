@@ -5,6 +5,10 @@ public sealed record ByhApplicationPaths(string BaseDirectory)
     public string CapturePolicyFile =>
         Path.Combine(BaseDirectory, "capture-policies.json");
 
+    /// <summary>User-facing display name used by the settings welcome card.</summary>
+    public string UserProfileFile =>
+        Path.Combine(BaseDirectory, "profile.json");
+
     public string ProvidersFile =>
         Path.Combine(BaseDirectory, "providers.json");
 

@@ -1,0 +1,39 @@
+id: TASK-038
+requirement: REQ-027
+title: 实现可自定义用户名与手机卡动态问候
+status: done
+created: '2026-07-26T14:51:00'
+updated: '2026-07-26T15:08:24'
+satisfies:
+- AC-16
+description: 新增受校验的本地用户显示名配置、General 编辑入口、即时更新的 Hi! {用户名} 手机卡问候，以及启动加载和持久化测试。
+handoff: 手机卡问候已从静态 GOOD MORNING 改为 Hi! {DisplayName}。显示名由 UserProfileSettings/UserProfileStore
+  管理，写入 %LOCALAPPDATA%\BYH\profile.json； General 页 Personal Greeting 卡负责编辑。保存事件经 App
+  持久化后回推同一设置窗口， 因而手机卡即时更新。空白输入 Normalize 为 Windows 用户名。
+execution_log:
+- step: 1
+  action: 梳理现有设置存储、App 启动加载与 SettingsWindow 回推模式
+  result: 选择独立 profile.json，避免与尚未实现的 appearance.json 皮肤系统耦合。
+  timestamp: '2026-07-26T14:54:00+08:00'
+- step: 2
+  action: 实现用户显示名模型、AOT-safe 原子 JSON 存储与路径
+  artifact: src/SelectionAssistant.Infrastructure/Configuration/UserProfileStore.cs
+  result: 支持 schema v1、4 KB 上限、32 字符校验、空白回退 Windows 用户名。
+  timestamp: '2026-07-26T14:58:00+08:00'
+- step: 3
+  action: 接通 General 编辑入口、App 保存事件与手机卡动态问候
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  result: 显示为 Hi! {用户名}；保存成功后无需重启即可更新。
+  timestamp: '2026-07-26T15:01:00+08:00'
+- step: 4
+  action: 完成单元测试、全量构建测试与 NativeAOT 发布
+  command: dotnet build SelectionAssistant.slnx -c Debug; dotnet test SelectionAssistant.slnx
+    -c Debug --no-build; dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj
+    -c Release -r win-x64 /p:PublishAot=true
+  result: Debug 构建 0 warning/0 error；578 项测试通过；NativeAOT 发布成功。
+  timestamp: '2026-07-26T15:04:00+08:00'
+- step: 5
+  action: 使用 Windows UI Automation 验证真实 NativeAOT 窗口
+  result: 输入 BYH Tester 并保存后，手机问候立即更新为 BYH Tester；profile.json schemaVersion=1 且 displayName
+    正确。随后恢复 Windows 用户名并重启，问候恢复验证 Matches=True。
+  timestamp: '2026-07-26T15:07:00+08:00'

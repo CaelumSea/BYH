@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using SelectionAssistant.Core.Appearance;
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.Input;
@@ -60,6 +61,7 @@ public partial class App : Application
     private ClipboardHistoryService? _clipboardHistoryService;
     // R37: toolbar built-in shortcut keys (Prompt/Copy/Paste, defaults R/C/V).
     private ToolbarShortcutSettings _toolbarShortcuts = ToolbarShortcutSettings.Default;
+    private UserProfileSettings _userProfileSettings = UserProfileSettings.Default;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
     private ByhApplicationPaths? _paths;
 
@@ -160,6 +162,17 @@ public partial class App : Application
                 _spotlightLoadWarning ??= "Invalid toolbar shortcuts. Safe defaults restored.";
             }
 
+            string? userProfileLoadWarning = null;
+            try
+            {
+                _userProfileSettings = UserProfileStore.LoadIfExists(_paths.UserProfileFile);
+            }
+            catch (ProviderConfigurationException)
+            {
+                _userProfileSettings = UserProfileSettings.Default;
+                userProfileLoadWarning = "Invalid profile settings. Windows username restored.";
+            }
+
             var toolbarWindow = new ToolbarWindow();
             var resultWindow = new ResultWindow();
             var settingsWindow = new SettingsWindow();
@@ -173,6 +186,10 @@ public partial class App : Application
             _spotlightWindow = spotlightWindow;
             _clipboardHistoryWindow = clipboardHistoryWindow;
             settingsWindow.Configure(_paths.CapturePolicyFile);
+            settingsWindow.SetUserProfileSettings(
+                _userProfileSettings,
+                userProfileLoadWarning,
+                isError: userProfileLoadWarning is not null);
             settingsWindow.SetOceanEyesTriggerSettings(
                 _oceanEyesTrigger,
                 _oceanEyesLoadWarning,
@@ -210,6 +227,7 @@ public partial class App : Application
             settingsWindow.OceanEyesTriggerSettingsSaved += OnOceanEyesTriggerSettingsSaved;
             settingsWindow.OceanEyesCaptureSettingsSaved += OnOceanEyesCaptureSettingsSaved;
             settingsWindow.ToolbarShortcutsSaved += OnToolbarShortcutsSaved;
+            settingsWindow.UserProfileSettingsSaved += OnUserProfileSettingsSaved;
             toolbarWindow.PromptRequested += OnPromptRequested;
             promptWindow.PromptRunRequested += OnPromptRun;
 
@@ -1414,6 +1432,33 @@ public partial class App : Application
             (requested.AutoSaveEnabled ? " · Auto-save" : " · No file") +
             (requested.CopyToClipboardEnabled ? " · Clipboard" : " · No clipboard") +
             (requested.UiaAssistEnabled ? " · UIA snap" : " · Free selection"),
+            isError: false);
+    }
+
+    private void OnUserProfileSettingsSaved(UserProfileSettings requested)
+    {
+        if (_paths is null) return;
+        requested = requested.Normalize();
+
+        try
+        {
+            requested.Validate();
+            UserProfileStore.Save(requested, _paths.UserProfileFile);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or ProviderConfigurationException)
+        {
+            _settingsWindow?.SetUserProfileSettings(
+                _userProfileSettings,
+                exception.Message,
+                isError: true);
+            return;
+        }
+
+        _userProfileSettings = requested;
+        _settingsWindow?.SetUserProfileSettings(
+            requested,
+            "Saved · Hi! " + requested.DisplayName,
             isError: false);
     }
 

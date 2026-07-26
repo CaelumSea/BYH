@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using SelectionAssistant.Core.Appearance;
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.Input;
@@ -261,11 +262,27 @@ public partial class SettingsWindow : Window
     /// </summary>
     public event Action<ToolbarShortcutSettings>? ToolbarShortcutsSaved;
 
+    /// <summary>Request to persist the display name used by the phone greeting.</summary>
+    public event Action<UserProfileSettings>? UserProfileSettingsSaved;
+
     // ── Data push from runtime → UI ──
 
     public void Configure(string capturePolicyFile)
     {
         PolicyPathText.Text = capturePolicyFile;
+    }
+
+    public void SetUserProfileSettings(
+        UserProfileSettings settings,
+        string? statusMessage = null,
+        bool isError = false)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        settings = settings.Normalize();
+        ProfileDisplayNameInput.Text = settings.DisplayName;
+        GreetingUserNameText.Text = settings.DisplayName;
+        ProfileStatusText.Text = statusMessage ?? "Greeting: Hi! " + settings.DisplayName;
+        SetFeedbackTone(ProfileStatusText, isError);
     }
 
     public void SetOceanEyesTriggerSettings(
@@ -418,6 +435,24 @@ public partial class SettingsWindow : Window
         target.Classes.Remove("FeedbackSuccess");
         target.Classes.Remove("FeedbackError");
         target.Classes.Add(isError ? "FeedbackError" : "FeedbackSuccess");
+    }
+
+    private void OnSaveUserProfileClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var settings = new UserProfileSettings
+            {
+                DisplayName = ProfileDisplayNameInput.Text ?? string.Empty,
+            }.Normalize();
+            settings.Validate();
+            UserProfileSettingsSaved?.Invoke(settings);
+        }
+        catch (ArgumentException exception)
+        {
+            ProfileStatusText.Text = exception.Message;
+            SetFeedbackTone(ProfileStatusText, isError: true);
+        }
     }
 
     /// <summary>

@@ -2,7 +2,7 @@ id: REQ-027
 title: BYH 皮肤自定义与运行时切换系统
 status: dispatched
 created: '2026-07-26T09:24:17'
-updated: '2026-07-26T13:24:16'
+updated: '2026-07-26T15:08:24'
 score_kind: aesthetic
 aesthetic_template: ''
 acceptance_criteria:
@@ -77,6 +77,11 @@ acceptance_criteria:
   text: 移除设置页自绘标题栏、双箭头及窗口按钮自动隐藏模式，恢复最初稳定的独立系统标题栏；保留已经完成的最大化响应式列宽、手机卡比例与底部面板高度调整。
   satisfied_by:
   - TASK-037
+- id: AC-16
+  text: 右上手机摘要卡使用 Hi! {用户名} 问候；默认采用 Windows 当前用户名，用户可在 General 页面编辑并保存覆盖值，保存后即时更新，重启后从
+    %LOCALAPPDATA%\BYH\profile.json 恢复；空白值恢复系统用户名。
+  satisfied_by:
+  - TASK-038
 tasks:
 - id: TASK-029
   title: 一体化设置标题栏与手机卡交互导航
@@ -105,6 +110,9 @@ tasks:
 - id: TASK-037
   title: 恢复独立系统标题栏并保留响应式布局
   status: done
+- id: TASK-038
+  title: 实现可自定义用户名与手机卡动态问候
+  status: done
 aesthetic_score:
   scored_at: ''
   scored_by: ''
@@ -112,5 +120,5 @@ aesthetic_score:
   total: null
 aesthetic_notes: []
 aligned_via: ask-user
-aligned_at: '2026-07-26T13:06:08'
-aligned_evidence: 用户：只改标题栏改回最开始，其他全屏缩放和窗口尺寸关系保留。
+aligned_at: '2026-07-26T14:51:00'
+aligned_evidence: 用户：接下来改右上角的good morning为Hi! xxx用户名可以自定义
