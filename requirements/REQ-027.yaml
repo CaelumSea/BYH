@@ -2,7 +2,7 @@ id: REQ-027
 title: BYH 皮肤自定义与运行时切换系统
 status: dispatched
 created: '2026-07-26T09:24:17'
-updated: '2026-07-26T16:41:27'
+updated: '2026-07-26T16:54:55'
 score_kind: aesthetic
 aesthetic_template: ''
 acceptance_criteria:
@@ -43,6 +43,7 @@ acceptance_criteria:
   - TASK-035
   - TASK-036
   - TASK-037
+  - TASK-039
 - id: AC-8
   text: 设置窗口恢复独立的系统标题栏，使用 Windows 原生最小化、最大化、关闭、拖动、双击最大化、Snap Layout 与高 DPI 行为；主题主体从标题栏下方开始。
   satisfied_by:
@@ -65,6 +66,7 @@ acceptance_criteria:
   text: 中央工作区重构为上下两个独立圆角窗格：顶部为紧凑设置搜索栏，底部为主要内容区；边框、间距和阴影延续 Ivory Jade 参考图的轻盈层次。
   satisfied_by:
   - TASK-035
+  - TASK-039
 - id: AC-13
   text: 设置搜索可按标题、关键词和功能定位设置项，结果可点击/键盘访问并导航到对应页面及控件；无结果与清空状态明确。
   satisfied_by:
@@ -112,6 +114,9 @@ tasks:
   status: done
 - id: TASK-038
   title: 实现可自定义用户名与手机卡动态问候
+  status: done
+- id: TASK-039
+  title: 收紧中央双窗格并增加连接底托
   status: done
 aesthetic_score:
   scored_at: ''

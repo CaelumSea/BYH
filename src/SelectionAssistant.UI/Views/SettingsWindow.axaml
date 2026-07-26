@@ -192,7 +192,17 @@
     <Grid Grid.Column="2"
           Grid.Row="0"
           RowDefinitions="Auto,*"
-          RowSpacing="10">
+          RowSpacing="2">
+      <!-- A nearly hidden underlay bridges the two shells. Only its thin
+           porcelain-gold seam remains visible in the two-DIP gap, making the
+           search capsule feel gently stacked on the content tray. -->
+      <Border Grid.Row="1"
+              Classes="PaneBridge"
+              Height="14"
+              Margin="14,-8,14,0"
+              VerticalAlignment="Top"
+              IsHitTestVisible="False" />
+
       <Border Grid.Row="0"
               Classes="MetallicFrame Thin SearchFrame">
         <Border Classes="MacroClip SearchClip">
