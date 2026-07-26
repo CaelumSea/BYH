@@ -59,3 +59,11 @@ execution_log:
   action: 验证受控右栏宽度的构建与发布
   result: AXAML 解析通过；Debug 构建 0 warning/0 error；NativeAOT 发布通过。
   timestamp: '2026-07-26T11:39:00+08:00'
+- step: 11
+  action: 让左侧概念栏与导航栏在全屏时适度扩展
+  result: 概念栏由 190 响应式增长至最多 230，导航栏由 170 增长至最多 210；默认尺寸保持原宽度。
+  timestamp: '2026-07-26T11:46:00+08:00'
+- step: 12
+  action: 验证四列完整响应式布局
+  result: AXAML 解析通过；Debug 构建 0 warning/0 error；NativeAOT 发布通过。
+  timestamp: '2026-07-26T11:49:00+08:00'

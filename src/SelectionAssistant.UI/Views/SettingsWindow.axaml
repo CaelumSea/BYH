@@ -35,8 +35,12 @@
           RowSpacing="12"
           Margin="12,0,12,12">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="190" />
-        <ColumnDefinition Width="170" />
+        <ColumnDefinition Width="0.22*"
+                          MinWidth="190"
+                          MaxWidth="230" />
+        <ColumnDefinition Width="0.20*"
+                          MinWidth="170"
+                          MaxWidth="210" />
         <ColumnDefinition Width="*" />
         <ColumnDefinition Width="0.36*"
                           MinWidth="270"
