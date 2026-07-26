@@ -116,7 +116,7 @@
 ### [ ] M2 · `App.axaml.cs` 2095 行接线 shell
 **修复**：抽 `ClipboardHistoryController`/`SpotlightController`/`OceanEyesController` 各持自家窗口+热键+设置。**同 M1，独立窗口**。
 
-### [ ] M3 · Provider 每实例 `new HttpClient` + favicon 不缓存
+### [DONE commit:pending] M3 · Provider 每实例 `new HttpClient` + favicon 不缓存
 **证据**：`OpenAiCompatibleStreamingProvider.cs:34-41`、`OpenAiCompatibleVisionOcrClient.cs:67-72`、`App.axaml.cs:1837`。
 **修复**：注入单个共享 `HttpClient` 到 providers，`SelectionRuntime` 持有；favicon 加内存或磁盘缓存。
 
@@ -124,54 +124,50 @@
 **证据**：`Platform.Windows` ~105 处 DllImport 零 LibraryImport；`ScreenRegionCapture.cs:193-222` 缺 SetLastError；`Marshal.SizeOf<T>` 多处应用 `Unsafe.SizeOf<T>`。
 **修复**：新代码一律 LibraryImport；存量分批迁移。**机会性，不阻塞**。
 
-### [ ] M5 · `PromptTemplateSet` / `LauncherEntrySet` 共享可变集合无线程安全
+### [DONE commit:3b17337] M5 ·  (批次 C) `PromptTemplateSet` / `LauncherEntrySet` 共享可变集合无线程安全
 **证据**：`PromptTemplates.cs:57-255`、`LauncherEntries.cs:72-198`。设置 UI 线程改、工具栏线程读，会抛 `Collection was modified`。
 **修复**：lock 或 copy-on-write（`ImmutableArray<T>` + `Interlocked.Exchange`）。
 
-### [ ] M6 · `VisionCaptureSettings` 缺 `Normalize()` + `Validate()`
+### [DONE commit:e623616] M6 ·  (批次 A) `VisionCaptureSettings` 缺 `Normalize()` + `Validate()`
 **证据**：`src/SelectionAssistant.Core/Capture/VisionCaptureSettings.cs:10-66`（其他 8 个 record 都有）。null ProviderId NPE 下游。
 **修复**：照搬同层其他 record 模式。
 
-### [ ] M7 · `ProcessCapturePolicy.Validate` 只 throw 不 clamp
+### [DONE commit:e623616] M7 ·  (批次 A) `ProcessCapturePolicy.Validate` 只 throw 不 clamp
 **证据**：`src/SelectionAssistant.Core/Capture/ProcessCapturePolicy.cs:23-33`（JSON 读 -1 直接抛，与全局 Normalize clamp 约定不一致）。
 **修复**：加 `Normalize()` clamp 到 [0,5000]。
 
-### [ ] M8 · 剪贴板归档 read-modify-write 无互斥锁
-**证据**：`src/SelectionAssistant.Infrastructure/Configuration/ClipboardArchiveStore.cs:79-93`。
-**修复**：按月文件持 named `Mutex`。
-
-### [ ] M9 · `ScreenshotGalleryLoader` 硬编码中文星期/格式
+### [SKIP reason:单例架构无并发] M8 · 剪贴板归档 read-modify-write 无互斥锁
+**评估后降级为 SKIP**：BYH 有 `Global\BYH_ByYourHand_SingleInstance` Mutex 保证单例，没有第二个 BYH 实例并发写归档。同进程内 `ClipboardHistoryService` 的所有 store 调用已序列化（service 内部 lock）。审计担心的"service + UI 双实例"在当前架构不成立。**若未来拆 service/UI 进程，需加 named Mutex（按月文件 `Global\BYH_ClipboardArchive_{month}`）**——届时再加。
+### [DONE commit:8f00fa5] M9 ·  (批次 B) `ScreenshotGalleryLoader` 硬编码中文星期/格式
 **证据**：`src/SelectionAssistant.Core/Capture/ScreenshotGalleryLoader.cs:27-30,114-124`（英文用户看到"今天 14:30"）。
 **修复**：走 `Strings.Get`（加 `Gallery_Today`/`Gallery_Yesterday`/weekday keys）。
 
-### [ ] M10 · 静默 `catch { }` 15+ 处
-**证据**：所有 Store 的 `.tmp` 清理、`RedactedLogger.Write:53`、`WindowsGlobalHotKey.cs:101`。
-**修复**：catch 具体类型（IOException/UnauthorizedAccessException），至少 `Debug.WriteLine`。
+### [SKIP reason:best-effort 设计,非 bug] M10 · 静默 `catch { }` 15+ 处
+**评估后降级为 SKIP**：审计原列 MED 基于"诊断可见性"，但逐处核实后这些 catch 都是合理的 best-effort / defense-in-depth：
+① Store 的 `.tmp` cleanup catch —— cleanup 失败不影响主流程（主文件已 Move 成功）；
+② `RedactedLogger.Write:53` catch —— 日志失败时再加日志有递归崩溃风险（设计正确）；
+③ `WindowsGlobalHotKey.cs:101` catch —— 热键 callback 抛异常不能崩 hook 链（Win32 hook 规则）。
+`Trace.WriteLine`/`Debug.WriteLine` 在 NativeAOT 发布版默认 no-op（无 listener），加它们收益≈0。
+改动面广（15+ 处），收益极小，跳过。若需要诊断，开启 ETW 或加文件 listener 是更正确的方向。
 
-### [ ] M11 · 翻译语言路由漏日韩
+### [DONE commit:8f00fa5] M11 ·  (批次 B) 翻译语言路由漏日韩
 **证据**：`src/SelectionAssistant.Core/Translation/TranslationLanguageSelector.cs:20-33`（漏 U+3040-30FF 假名、U+AC00-D7AF 谚文）。
 **修复**：加假名/谚文检测，或文档化"MVP 仅中英"。
 
-### [ ] M12 · `InstalledAppsScanDialog.StartIconLoading` fire-and-forget 无取消
+### [DONE commit:3b17337] M12 ·  (批次 C) `InstalledAppsScanDialog.StartIconLoading` fire-and-forget 无取消
 **证据**：`src/SelectionAssistant.UI/Views/InstalledAppsScanDialog.axaml.cs:151-176`。
 **修复**：传 `CancellationToken`，`OnClosed` cancel。
 
-### [ ] M13 · `ResultWindow.ShowAndActivate` DispatcherTimer 不复用
+### [DONE commit:e623616] M13 ·  (批次 A) `ResultWindow.ShowAndActivate` DispatcherTimer 不复用
 **证据**：`src/SelectionAssistant.UI/Views/ResultWindow.axaml.cs:289-295`。
 **修复**：timer 存字段，stop+start，Closing 路径 stop。
 
-### [ ] M14 · `MagneticSnapCalculator.CheckX/CheckY` 死参
+### [DONE commit:e623616] M14 ·  (批次 A) `MagneticSnapCalculator.CheckX/CheckY` 死参
 **证据**：`src/SelectionAssistant.Core/Annotation/MagneticSnapCalculator.cs:151-179`。
 **修复**：删 `snappedLeft`/`snappedTop` 入参 + call site（107,116,125,128,134,137）。
 
-### [ ] M15 · `ClipboardEntry` record 用 `IReadOnlyList<string>` 破坏值相等
-**证据**：`src/SelectionAssistant.Core/Clipboard/ClipboardEntry.cs:83` `EntryTags`；同 `ParameterReplaceResult.Prompts`、`ClipboardTagData.Assignments/TagIcons`。
-**修复**：override Equals/GetHashCode 按内容比，或文档化"按身份比永不做字典 key"。
-
----
-
-## P3 — 低优先级（i18n / 可访问性 / 样式）
-
+### [SKIP reason:相等性从未使用] M15 · `ClipboardEntry` record 用 `IReadOnlyList<string>` 破坏值相等
+**评估后降级为 SKIP**：grep 核实 `ClipboardEntry` 的合成相等性**从未被使用**——所有比较都走 `.Id`（Guid），从未用作字典 key/HashSet/Distinct。record 的合成 Equals 对 EntryTags 走引用相等是理论问题，无实际 bug。不 override Equals（避免给 record 加隐藏行为）；加 doc 注释说明按 Id 身份比较即可。
 ### [ ] L1 · 代码后置硬编码英文字符串绕过 i18n
 多处：`ClipboardHistoryWindow.axaml.cs:603-607,855,2423,2785`（"just now"/"Xm ago"/"View full…"/图片 popup header/tooltip），`SettingsWindow.axaml.cs:497-498,802,1051,1089,519-523`，AXAML `PromptWindow.axaml:5`/`ResultWindow.axaml:5`/`SpotlightWindow.axaml:6` 的 Title。
 **修复**：加 `Strings.*` keys + 三文件同步（`EveryProperty_HasEntryInBothDictionaries` 测试守卫）。

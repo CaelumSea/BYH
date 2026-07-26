@@ -30,6 +30,22 @@ public partial class App : Application
     // feature. Constructed eagerly (cheap — it just holds the Start Menu paths)
     // and invoked off the UI thread when the user requests a scan.
     private readonly IInstalledAppDetector _detector = new WindowsStartMenuDetector();
+
+    // Audit M3: favicon fetch cache + shared HTTP client. Previously every
+    // settings refresh (which fires on every save) called LoadLauncherIconsAsync
+    // which called LoadFaviconAsync which (a) new'd a fresh HttpClient per URL
+    // — defeating socket pooling, churning TIME_WAIT sockets — and (b) re-
+    // fetched the same favicon for the same host on every refresh. Now:
+    //   - One static HttpClient reuses the socket pool across all favicon
+    //     fetches (DNS staleness is acceptable here: favicons rarely change
+    //     host, and a stale-IP fetch fails fast → null → cached null → no
+    //     retry storm).
+    //   - An in-memory Dictionary<host, Bitmap?> caches the result per host
+    //     for the process lifetime, so a host seen once is never re-fetched.
+    // LocalApp launcher icons already have disk caching (cacheFile pattern);
+    // this only affects the WebUrl path.
+    private static readonly System.Net.Http.HttpClient _faviconHttpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
+    private static readonly Dictionary<string, Avalonia.Media.Imaging.Bitmap?> _faviconCache = new(StringComparer.OrdinalIgnoreCase);
     private TrayIcon? _trayIcon;
     private ToolbarWindow? _toolbarWindow;
     private ResultWindow? _resultWindow;
@@ -1833,15 +1849,33 @@ public partial class App : Application
             {
                 return null;
             }
+
+            // Audit M3: in-memory cache hit short-circuits the network call.
+            // The cache stores null too (negative cache) so a host that 404'd
+            // doesn't get re-fetched on every settings refresh. _faviconCache
+            // is a Dictionary, not concurrent — but LoadLauncherIconsAsync is
+            // awaited serially inside its own async loop, and App is a
+            // singleton, so there's at most one favicon fetch in flight at a
+            // time. No lock needed.
+            if (_faviconCache.TryGetValue(domain, out Avalonia.Media.Imaging.Bitmap? cached))
+            {
+                return cached;
+            }
+
             string faviconUrl = $"https://www.google.com/s2/favicons?domain={domain}&sz=32";
-            using var http = new System.Net.Http.HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-            byte[] bytes = await http.GetByteArrayAsync(faviconUrl);
+            // Audit M3: shared static HttpClient reuses the socket pool instead
+            // of new'ing per call (which leaked TIME_WAIT sockets and defeated
+            // keep-alive).
+            byte[] bytes = await _faviconHttpClient.GetByteArrayAsync(faviconUrl);
             if (bytes.Length == 0)
             {
+                _faviconCache[domain] = null; // negative cache
                 return null;
             }
             using var stream = new System.IO.MemoryStream(bytes);
-            return new Avalonia.Media.Imaging.Bitmap(stream);
+            var bitmap = new Avalonia.Media.Imaging.Bitmap(stream);
+            _faviconCache[domain] = bitmap;
+            return bitmap;
         }
         catch
         {
