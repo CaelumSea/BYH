@@ -443,6 +443,60 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, 0 3 10 0 #149F5E30" />
   </Style>
+  <!-- The handset dock is navigation, not decoration. A transparent Button
+       owns input/focus semantics while the nested Border preserves the soft
+       circular materials from the original mockup. -->
+  <Style Selector="Button.PhoneDockButton">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="17" />
+  </Style>
+  <Style Selector="Button.PhoneDockButton.Center">
+    <Setter Property="Width" Value="42" />
+    <Setter Property="Height" Value="42" />
+    <Setter Property="CornerRadius" Value="21" />
+  </Style>
+  <Style Selector="Button.PhoneDockButton:pointerover">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.PhoneDockButton:pressed">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.PhoneDockButton:pointerover Border.PhoneDockItem">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhHairlineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.PhoneDockButton:pressed Border.PhoneDockItem">
+    <Setter Property="Background" Value="{DynamicResource ByhPrimarySoftBrush}" />
+  </Style>
+  <Style Selector="Button.PhoneDockButton.Active Border.PhoneDockItem">
+    <Setter Property="Background" Value="{DynamicResource ByhAccentSoftBrush}" />
+  </Style>
+  <Style Selector="Button.PhoneDockButton.Center Border.PhoneDockItem">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.PhoneDockButton.Center.Active Border.PhoneDockItem">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSelectedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPrimaryBrush}" />
+  </Style>
+  <Style Selector="Button.PhoneDockButton:focus-visible Border.PhoneDockItem">
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhFocusBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
   <Style Selector="Path.PhoneDockIcon">
     <Setter Property="Width" Value="13" />
     <Setter Property="Height" Value="13" />
@@ -452,6 +506,9 @@
     <Setter Property="StrokeThickness" Value="1.45" />
     <Setter Property="HorizontalAlignment" Value="Center" />
     <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.PhoneDockButton.Active Path.PhoneDockIcon">
+    <Setter Property="Stroke" Value="{DynamicResource ByhPrimaryBrush}" />
   </Style>
   <!-- R55 elegant hero card for the settings page header. Much lighter than
        LiftedPanel: a whisper-thin warm border, very soft diffuse shadow, and

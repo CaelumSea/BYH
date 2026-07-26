@@ -102,6 +102,15 @@ public partial class SettingsWindow : Window
         SetNavigationState(LauncherNavButton, page == SettingsPage.Launcher);
         SetNavigationState(ClipboardHistoryNavButton, page == SettingsPage.ClipboardHistory);
 
+        // The phone summary card is a compact secondary navigator. Keep its
+        // state in lockstep with the full navigation rail so mouse, keyboard,
+        // and automation users receive the same selected-page feedback.
+        SetNavigationState(PhoneGeneralButton, page == SettingsPage.General);
+        SetNavigationState(PhoneProviderButton, page == SettingsPage.Provider);
+        SetNavigationState(PhoneVisionButton, page == SettingsPage.Vision);
+        SetNavigationState(PhoneClipboardButton, page == SettingsPage.ClipboardHistory);
+        SetNavigationState(PhoneLauncherButton, page == SettingsPage.Launcher);
+
         (PageTitleText.Text, PageSubtitleText.Text) = page switch
         {
             SettingsPage.General =>

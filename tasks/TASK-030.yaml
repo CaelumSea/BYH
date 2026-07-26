@@ -1,0 +1,12 @@
+id: TASK-030
+requirement: REQ-027
+title: 拆分固定组件样式与可切换主题令牌
+status: pending
+created: '2026-07-26T09:43:01'
+updated: '2026-07-26T09:43:01'
+satisfies:
+- AC-3
+- AC-7
+description: 在无视觉回归前提下拆分主题边界、替换固定图片和高影响硬编码资源，并建立主题资源契约测试。
+handoff: ''
+execution_log: []

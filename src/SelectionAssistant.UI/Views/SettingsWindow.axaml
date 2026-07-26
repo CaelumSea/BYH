@@ -8,15 +8,33 @@
         MinWidth="1240"
         MinHeight="680"
         CanResize="True"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="36"
+        WindowDecorations="Full"
         Background="{DynamicResource ByhBackgroundBrush}"
         WindowStartupLocation="CenterScreen"
         AutomationProperties.AutomationId="BYH.Settings.Window"
         KeyDown="OnWindowKeyDown">
-  <Grid ColumnDefinitions="190,170,*,270"
-        RowDefinitions="*,220"
-        ColumnSpacing="12"
-        RowSpacing="12"
-        Margin="12">
+  <Grid RowDefinitions="36,*">
+    <!--
+      Keep Windows in charge of the caption buttons and resize chrome, but let
+      the themed client surface flow behind them. The marked strip preserves
+      native dragging and double-click-to-maximize while avoiding a detached
+      operating-system title bar above the Ivory Jade composition.
+    -->
+    <!-- WindowDecorations=Full already paints the app icon/title and caption
+         controls. This layer contributes only the themed material and drag
+         region; adding a second title here would overlap the native one. -->
+    <Border Grid.Row="0"
+            Background="{DynamicResource ByhBackgroundBrush}"
+            WindowDecorationProperties.ElementRole="TitleBar" />
+
+    <Grid Grid.Row="1"
+          ColumnDefinitions="190,170,*,270"
+          RowDefinitions="*,220"
+          ColumnSpacing="12"
+          RowSpacing="12"
+          Margin="12,0,12,12">
 
     <!-- R54 atmosphere: a large warm radial glow behind the floating panels,
          echoing the soft bokeh light pools in the Foamie reference. -->
@@ -201,6 +219,7 @@
               <TextBlock x:Name="PageTitleText"
                          Text="General"
                          Classes="DisplayTitle"
+                         AutomationProperties.AutomationId="BYH.Settings.PageTitle"
                          FontSize="25" />
               <TextBlock Text="✦"
                          Foreground="{DynamicResource ByhGoldBrush}"
@@ -1335,32 +1354,66 @@
           </StackPanel>
         </ScrollViewer>
 
-        <!-- Phone-style bottom dock mirrors the reference handset without
-             inventing new settings behavior. It is a compact status/navigation
-             language for the existing summary card. -->
+        <!-- Phone-style bottom dock: a real secondary navigator. The five
+             buttons mirror the reference handset and reuse existing settings
+             pages, so the compact card is useful without inventing new data. -->
         <Border Grid.Row="2" Margin="10,4,10,10" Classes="PhoneDock">
-          <Grid ColumnDefinitions="*,*,*,*,*" Height="34">
-            <Border Grid.Column="0" Classes="PhoneDockItem Active">
-              <Path Classes="PhoneDockIcon"
-                    Data="M3,10 L12,3 L21,10 M5,9 L5,20 L19,20 L19,9 M9,20 L9,14 L15,14 L15,20" />
-            </Border>
-            <Border Grid.Column="1" Classes="PhoneDockItem">
-              <Path Classes="PhoneDockIcon"
-                    Data="M12,3 L19,8 L16,18 L8,18 L5,8 Z M5,8 L19,8 M8,18 L12,8 L16,18" />
-            </Border>
-            <Border Grid.Column="2" Classes="PhoneDockItem Center">
-              <Path Classes="PhoneDockIcon"
-                    Stroke="{DynamicResource ByhPrimaryBrush}"
-                    Data="M12,21 C12,14 7,12 4,7 C10,7 12,10 12,14 M12,21 C12,13 17,10 20,5 C14,5 12,9 12,14" />
-            </Border>
-            <Border Grid.Column="3" Classes="PhoneDockItem">
-              <Path Classes="PhoneDockIcon"
-                    Data="M3,6 L21,6 L21,18 L3,18 Z M3,7 L12,14 L21,7" />
-            </Border>
-            <Border Grid.Column="4" Classes="PhoneDockItem">
-              <Path Classes="PhoneDockIcon"
-                    Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M12,2 L13,5 M12,19 L12,22 M2,12 L5,12 M19,12 L22,12 M5,5 L7,7 M17,17 L19,19 M19,5 L17,7 M7,17 L5,19" />
-            </Border>
+          <Grid ColumnDefinitions="*,*,*,*,*" Height="42">
+            <Button x:Name="PhoneGeneralButton"
+                    Grid.Column="0"
+                    Classes="PhoneDockButton Active"
+                    ToolTip.Tip="General"
+                    AutomationProperties.AutomationId="BYH.Settings.PhoneNav.General"
+                    Click="OnShowGeneralClick">
+              <Border Classes="PhoneDockItem">
+                <Path Classes="PhoneDockIcon"
+                      Data="M3,10 L12,3 L21,10 M5,9 L5,20 L19,20 L19,9 M9,20 L9,14 L15,14 L15,20" />
+              </Border>
+            </Button>
+            <Button x:Name="PhoneProviderButton"
+                    Grid.Column="1"
+                    Classes="PhoneDockButton"
+                    ToolTip.Tip="Translation"
+                    AutomationProperties.AutomationId="BYH.Settings.PhoneNav.Translation"
+                    Click="OnShowProviderClick">
+              <Border Classes="PhoneDockItem">
+                <Path Classes="PhoneDockIcon"
+                      Data="M12,3 L19,8 L16,18 L8,18 L5,8 Z M5,8 L19,8 M8,18 L12,8 L16,18" />
+              </Border>
+            </Button>
+            <Button x:Name="PhoneVisionButton"
+                    Grid.Column="2"
+                    Classes="PhoneDockButton Center"
+                    ToolTip.Tip="Vision"
+                    AutomationProperties.AutomationId="BYH.Settings.PhoneNav.Vision"
+                    Click="OnShowVisionClick">
+              <Border Classes="PhoneDockItem Center">
+                <Path Classes="PhoneDockIcon"
+                      Data="M12,21 C12,14 7,12 4,7 C10,7 12,10 12,14 M12,21 C12,13 17,10 20,5 C14,5 12,9 12,14" />
+              </Border>
+            </Button>
+            <Button x:Name="PhoneClipboardButton"
+                    Grid.Column="3"
+                    Classes="PhoneDockButton"
+                    ToolTip.Tip="Clipboard"
+                    AutomationProperties.AutomationId="BYH.Settings.PhoneNav.Clipboard"
+                    Click="OnShowClipboardHistoryClick">
+              <Border Classes="PhoneDockItem">
+                <Path Classes="PhoneDockIcon"
+                      Data="M3,6 L21,6 L21,18 L3,18 Z M3,7 L12,14 L21,7" />
+              </Border>
+            </Button>
+            <Button x:Name="PhoneLauncherButton"
+                    Grid.Column="4"
+                    Classes="PhoneDockButton"
+                    ToolTip.Tip="Launcher"
+                    AutomationProperties.AutomationId="BYH.Settings.PhoneNav.Launcher"
+                    Click="OnShowLauncherClick">
+              <Border Classes="PhoneDockItem">
+                <Path Classes="PhoneDockIcon"
+                      Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M12,2 L13,5 M12,19 L12,22 M2,12 L5,12 M19,12 L22,12 M5,5 L7,7 M17,17 L19,19 M19,5 L17,7 M7,17 L5,19" />
+              </Border>
+            </Button>
           </Grid>
         </Border>
         </Grid>
@@ -1500,5 +1553,6 @@
         </Grid>
       </Border>
     </Border>
+    </Grid>
   </Grid>
 </Window>

@@ -212,6 +212,19 @@ The first delivery should show Import/Export only after the local schema and
 validation are proven. The editor should expose semantic roles, not a list of
 internal `Byh...` resource keys.
 
+The phone-style summary panel remains a compact secondary navigator. Its dock
+uses real focusable buttons:
+
+- Home → General;
+- Gem → Translation;
+- central leaf → Vision / Ocean Eyes;
+- Mail → Clipboard;
+- Gear → Launcher.
+
+The selected state mirrors the primary left navigation. Hover, pressed, focus,
+and selected feedback use the same Ivory Jade material vocabulary; the larger
+central leaf remains visually dominant without becoming a separate command.
+
 ## 8. Delivery sequence
 
 ### Batch A — theme boundary and integrated title bar

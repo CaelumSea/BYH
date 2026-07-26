@@ -1,41 +1,70 @@
 id: REQ-027
 title: BYH 皮肤自定义与运行时切换系统
-status: drafting
+status: dispatched
 created: '2026-07-26T09:24:17'
-updated: '2026-07-26T09:34:20'
+updated: '2026-07-26T10:02:49'
 score_kind: aesthetic
 aesthetic_template: ''
 acceptance_criteria:
 - id: AC-1
   text: 至少提供 Ivory Jade 与一个视觉差异明显的内置皮肤；切换后所有已打开 BYH 窗口即时更新，无需重启。
-  satisfied_by: []
+  satisfied_by:
+  - TASK-031
 - id: AC-2
   text: 当前皮肤与用户调整项写入 %LOCALAPPDATA%\BYH\appearance.json，重启后恢复；文件损坏、皮肤缺失或资源无效时自动回退
     Ivory Jade。
-  satisfied_by: []
+  satisfied_by:
+  - TASK-031
 - id: AC-3
   text: 皮肤只控制语义颜色、材质、形状、阴影、字体和受限装饰资产，不得改变快捷键、布局结构、命令绑定、后台服务或数据文件。
-  satisfied_by: []
+  satisfied_by:
+  - TASK-030
 - id: AC-4
   text: 设置页提供皮肤列表、缩略预览、即时试用、应用、取消恢复及恢复默认操作；试用态不得提前覆盖持久配置。
-  satisfied_by: []
+  satisfied_by:
+  - TASK-032
 - id: AC-5
   text: 自定义编辑器至少覆盖基础背景、表面、主色、强调色、文字、边框、圆角和阴影强度，并在保存前检查必需字段、颜色格式和基本文字对比度。
-  satisfied_by: []
+  satisfied_by:
+  - TASK-032
 - id: AC-6
   text: 用户主题采用版本化 JSON 清单与受限图片资源，不执行外部代码、不加载用户 AXAML；非法路径、超限图片和未知 schema 版本被拒绝。
-  satisfied_by: []
+  satisfied_by:
+  - TASK-032
 - id: AC-7
   text: Debug 构建、核心测试和 win-x64 NativeAOT 发布通过；切换皮肤不改变 Ocean Eyes、Toolbar、Spotlight、Clipboard
     History 与 Launcher 的交互行为。
-  satisfied_by: []
+  satisfied_by:
+  - TASK-030
+  - TASK-031
+  - TASK-032
 - id: AC-8
   text: 设置窗口内容延伸至系统标题栏，顶部背景与主体连续；保留原生最小化、最大化、关闭、拖动、双击最大化、Snap Layout 与高 DPI 行为。
-  satisfied_by: []
-tasks: []
+  satisfied_by:
+  - TASK-029
+- id: AC-9
+  text: 右侧手机摘要卡的五个底部图标是可聚焦、可点击的真实按钮，分别导航至 General、Translation、Vision、Clipboard 与 Launcher，并与左侧导航同步选中态。
+  satisfied_by:
+  - TASK-029
+tasks:
+- id: TASK-029
+  title: 一体化设置标题栏与手机卡交互导航
+  status: done
+- id: TASK-030
+  title: 拆分固定组件样式与可切换主题令牌
+  status: pending
+- id: TASK-031
+  title: 实现内置主题目录、运行时切换与外观持久化
+  status: pending
+- id: TASK-032
+  title: 实现皮肤选择、即时试用与受限自定义编辑器
+  status: pending
 aesthetic_score:
   scored_at: ''
   scored_by: ''
   dimensions: {}
   total: null
 aesthetic_notes: []
+aligned_via: ask-user
+aligned_at: '2026-07-26T09:42:34'
+aligned_evidence: 用户：我想添加一个皮肤自定义和切换的功能；随后要求先基于现有主题优化一体化标题栏和手机卡按钮。
