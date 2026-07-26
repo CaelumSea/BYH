@@ -113,6 +113,16 @@ public sealed record ByhApplicationPaths(string BaseDirectory)
     public string LauncherIconsDirectory =>
         Path.Combine(BaseDirectory, "launcher-icons");
 
+    /// <summary>UI language preference ("language": "en"|"zh-CN"). Missing
+    /// file = auto-detect from the OS UI culture (see
+    /// <see cref="SelectionAssistant.Core.I18n.AppLanguage.DetectFromOS"/>).
+    /// First launch on a Chinese Windows → Chinese UI; everything else →
+    /// English. Once the user picks a language in Settings → General, the
+    /// choice is persisted here and wins over OS detection on every later
+    /// launch.</summary>
+    public string UiLanguageFile =>
+        Path.Combine(BaseDirectory, "ui-language.json");
+
     public string SecretsDirectory =>
         Path.Combine(BaseDirectory, "secrets");
 

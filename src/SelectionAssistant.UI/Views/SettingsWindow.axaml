@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.SettingsWindow"
         Title="BYH · Settings"
         Width="1320"
@@ -266,8 +267,48 @@
 
         <!-- General -->
         <StackPanel x:Name="GeneralSection" Spacing="0">
-          <!-- Section: Ocean Eyes Trigger sits directly on the surface. -->
+          <!-- Language card. Sits at the top of General so users find it
+               immediately. Save persists ui-language.json and triggers a
+               restart (Strings' dictionary is snapshotted at process start,
+               so a fresh process is what actually swaps the UI text). -->
           <StackPanel Spacing="12" Margin="24,14,24,0">
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+              <StackPanel Spacing="3">
+                <TextBlock Text="{x:Static i18n:Strings.Settings_LanguageCard_Title}"
+                           Classes="CardTitle"
+                           FontSize="15"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_LanguageCard_Subtitle}"
+                           Classes="Muted"
+                           FontSize="10"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+            </Grid>
+
+            <Border Classes="InnerCard" Padding="12">
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+                <ComboBox x:Name="LanguageComboBox"
+                          Grid.Column="0"
+                          HorizontalAlignment="Stretch"
+                          SelectedIndex="0" />
+                <Button Grid.Column="1"
+                        x:Name="SaveLanguageButton"
+                        Content="{x:Static i18n:Strings.Settings_LanguageCard_SaveButton}"
+                        Classes="Primary"
+                        Click="OnSaveLanguageClick" />
+                <TextBlock Grid.Column="2"
+                           x:Name="LanguageStatusText"
+                           Classes="Secondary"
+                           FontSize="11"
+                           VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+          </StackPanel>
+
+          <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" Margin="24,16" />
+
+          <!-- Section: Ocean Eyes Trigger sits directly on the surface. -->
+          <StackPanel Spacing="12" Margin="24,0,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="Ocean Eyes Trigger"

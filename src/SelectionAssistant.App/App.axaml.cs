@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -6,6 +7,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.Clipboard;
+using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
 using SelectionAssistant.Infrastructure.Configuration;
@@ -60,6 +62,11 @@ public partial class App : Application
     private ClipboardHistoryService? _clipboardHistoryService;
     // R37: toolbar built-in shortcut keys (Prompt/Copy/Paste, defaults R/C/V).
     private ToolbarShortcutSettings _toolbarShortcuts = ToolbarShortcutSettings.Default;
+    // UI language. Loaded BEFORE any window is constructed so the Strings
+    // static ctor (which reads AppLanguage.Current) picks the right dictionary
+    // and XAML {x:Static loc:Strings.Xxx} bindings resolve correctly. Missing
+    // ui-language.json → auto-detect from the OS UI culture.
+    private AppLanguage _uiLanguage = AppLanguage.English;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
     private ByhApplicationPaths? _paths;
 
@@ -76,6 +83,34 @@ public partial class App : Application
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             _paths = ByhApplicationPaths.CreateDefault();
             _paths.EnsureDirectories();
+
+            // UI language: read ui-language.json (or auto-detect from the OS on
+            // first launch), then publish AppLanguage.Current + the thread UI
+            // culture BEFORE any window is constructed. Strings' static ctor
+            // snapshots AppLanguage.Current when the first Strings.Xxx member is
+            // touched (which happens during XAML resolution in the window ctor),
+            // so this ordering is what makes the right dictionary take effect.
+            // A corrupt file falls back to OS detection rather than crashing.
+            try
+            {
+                _uiLanguage = UiLanguageStore.LoadIfExists(_paths.UiLanguageFile);
+            }
+            catch (ProviderConfigurationException)
+            {
+                _uiLanguage = AppLanguage.DetectFromOS();
+            }
+            AppLanguage.Set(_uiLanguage);
+            try
+            {
+                CultureInfo.CurrentUICulture = new CultureInfo(_uiLanguage.Code);
+                CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.CurrentUICulture;
+            }
+            catch (CultureNotFoundException)
+            {
+                // Unknown culture code — leave the framework defaults in place;
+                // AppLanguage.Current is still correct so Strings resolves right.
+            }
+
             // R40: tell the trigger store where the legacy quick-tools.json lives
             // so a first launch can transparently migrate pre-R40 bindings. The
             // new file (ocean-eyes.json) is written on the next Save.
@@ -187,11 +222,17 @@ public partial class App : Application
                 _clipboardHistoryLoadWarning,
                 isError: _clipboardHistoryLoadWarning is not null);
             settingsWindow.SetClipboardHistorySettings(_clipboardHistorySettings);
+            settingsWindow.SetUiLanguage(_uiLanguage);
             desktop.MainWindow = toolbarWindow;
 
             settingsWindow.OpenConfigDirectoryRequested += () => OpenDirectory(_paths.BaseDirectory);
             settingsWindow.OpenLogDirectoryRequested += () => OpenDirectory(_paths.LogsDirectory);
             settingsWindow.ExitRequested += RequestExit;
+            // Language switch: persist the choice then trigger the existing
+            // Mutex-handoff restart path. Strings' static ctor only re-runs in
+            // a fresh process, so a restart (not a live refresh) is what makes
+            // the new language actually take effect across all XAML bindings.
+            settingsWindow.UiLanguageSaved += OnUiLanguageSaved;
             settingsWindow.SetActiveProviderRequested += OnSetActiveProvider;
             settingsWindow.AddProviderFromPresetRequested += OnAddProviderFromPreset;
             settingsWindow.SaveProviderRequested += OnSaveProvider;
@@ -1809,6 +1850,33 @@ public partial class App : Application
             FileName = path,
             UseShellExecute = true,
         });
+    }
+
+    /// <summary>
+    /// Persists the user's language choice to <c>ui-language.json</c> then
+    /// restarts BYH. Strings' static dictionary is snapshotted at process
+    /// start, so a restart (not a live refresh) is what actually swaps the UI
+    /// language across all XAML <c>{x:Static loc:Strings.Xxx}</c> bindings.
+    /// Reuses the proven Mutex-handoff restart path used by the tray menu.
+    /// </summary>
+    private void OnUiLanguageSaved(AppLanguage language)
+    {
+        if (_paths is null)
+        {
+            return;
+        }
+        try
+        {
+            UiLanguageStore.Save(language, _paths.UiLanguageFile);
+        }
+        catch (ProviderConfigurationException)
+        {
+            // Persist failed — don't restart into a stale state. The user will
+            // see the old language and can retry. (Saving rarely fails; the
+            // store wraps I/O errors as ProviderConfigurationException.)
+            return;
+        }
+        RequestRestart();
     }
 
     /// <summary>

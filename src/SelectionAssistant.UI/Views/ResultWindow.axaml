@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.ResultWindow"
         Title="BYH · Translation"
         Width="560"
@@ -12,11 +13,11 @@
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
       <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
         <StackPanel>
-          <TextBlock Text="Translation"
+          <TextBlock Text="{x:Static i18n:Strings.Result_Title}"
                      Classes="DisplayTitle"
                      FontSize="20" />
           <TextBlock x:Name="LanguagePairText"
-                     Text="English → 简体中文"
+                     Text="{x:Static i18n:Strings.Result_DefaultLanguagePair}"
                      Classes="Secondary"
                      FontSize="12"
                      Margin="0,3,0,0" />
@@ -26,7 +27,7 @@
                 Padding="9,5"
                 VerticalAlignment="Center">
           <TextBlock x:Name="ProviderText"
-                     Text="测试提供器"
+                     Text="{x:Static i18n:Strings.Result_DefaultProvider}"
                      Classes="Accent"
                      FontSize="11" />
         </Border>
@@ -36,7 +37,7 @@
               Classes="CardWarm"
               Padding="12">
         <StackPanel Spacing="6">
-          <TextBlock Text="原文"
+          <TextBlock Text="{x:Static i18n:Strings.Result_SourceLabel}"
                      Classes="Muted"
                      FontSize="11" />
           <TextBox x:Name="SourceTextBox"
@@ -67,7 +68,7 @@
               BorderThickness="1"
               Padding="14">
         <TextBox x:Name="ResultTextBox"
-                 Text="正在翻译…"
+                 Text="{x:Static i18n:Strings.Result_Loading}"
                  IsReadOnly="True"
                  AcceptsReturn="True"
                  TextWrapping="Wrap"
@@ -80,35 +81,35 @@
 
       <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
         <TextBlock x:Name="PrivacyText"
-                   Text="MyMemory 测试模式 · 选中文字会通过 HTTPS 发送"
+                   Text="{x:Static i18n:Strings.Result_PrivacyTestMode}"
                    Classes="Muted"
                    FontSize="10"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis" />
         <Button x:Name="CopySourceButton"
                 Grid.Column="1"
-                Content="复制原文"
+                Content="{x:Static i18n:Strings.Result_CopySource}"
                 IsEnabled="False"
                 Click="OnCopySourceClick" />
         <Button x:Name="CopyButton"
                 Grid.Column="2"
                 Classes="Primary"
-                Content="复制译文"
+                Content="{x:Static i18n:Strings.Result_CopyTranslation}"
                 IsEnabled="False"
                 Click="OnCopyClick" />
         <Button x:Name="ReplaceButton"
                 Grid.Column="3"
                 Classes="Ghost"
-                Content="替换"
+                Content="{x:Static i18n:Strings.Result_Replace}"
                 IsEnabled="False"
                 Click="OnReplaceClick" />
         <Button x:Name="RetryButton"
                 Grid.Column="4"
-                Content="重试"
+                Content="{x:Static i18n:Strings.Common_Retry}"
                 IsEnabled="False"
                 Click="OnRetryClick" />
         <Button Grid.Column="5"
-                Content="关闭"
+                Content="{x:Static i18n:Strings.Common_Close}"
                 Click="OnCloseClick" />
       </Grid>
     </Grid>

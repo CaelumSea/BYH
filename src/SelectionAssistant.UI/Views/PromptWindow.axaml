@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.PromptWindow"
         Title="BYH · Prompt Now"
         Width="480"
@@ -14,11 +15,11 @@
     <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10">
 
       <StackPanel Grid.Row="0" Spacing="4">
-        <TextBlock Text="Prompt Now"
+        <TextBlock Text="{x:Static i18n:Strings.Prompt_Heading}"
                    Classes="DisplayTitle"
                    FontSize="18" />
         <TextBlock x:Name="SourcePreview"
-                   Text="对已选中的文字运行你输入的指令。"
+                   Text="{x:Static i18n:Strings.Prompt_DefaultPreview}"
                    Classes="Secondary"
                    FontSize="11"
                    TextWrapping="Wrap" />
@@ -26,24 +27,24 @@
 
       <TextBox Grid.Row="1"
                x:Name="PromptInput"
-               PlaceholderText="例如：用一句话解释这段代码在做什么"
+               PlaceholderText="{x:Static i18n:Strings.Prompt_Placeholder}"
                AcceptsReturn="True"
                TextWrapping="Wrap"
                FontSize="13" />
 
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-        <TextBlock Text="用当前 Provider 运行 · 结果会流式显示"
+        <TextBlock Text="{x:Static i18n:Strings.Prompt_FooterHint}"
                    Classes="Muted"
                    FontSize="10"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis" />
         <Button Grid.Column="1"
-                Content="取消"
+                Content="{x:Static i18n:Strings.Common_Cancel}"
                 Click="OnCancelClick" />
         <Button Grid.Column="2"
                 x:Name="RunButton"
                 Classes="Primary"
-                Content="运行"
+                Content="{x:Static i18n:Strings.Common_Run}"
                 IsEnabled="False"
                 Click="OnRunClick" />
       </Grid>

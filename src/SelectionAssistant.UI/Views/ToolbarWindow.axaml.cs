@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Translation;
 using SelectionAssistant.Platform.Abstractions;
 using System.Collections.ObjectModel;
@@ -90,7 +91,7 @@ public partial class ToolbarWindow : Window
         SummarizeButton.IsEnabled = false;
         PromptButton.IsEnabled = false;
         CopyButton.IsEnabled = false;
-        StatusText.Text = $"取词中 · {gesture.MouseUpX},{gesture.MouseUpY}";
+        StatusText.Text = string.Format(Strings.Toolbar_StatusCapturing, gesture.MouseUpX, gesture.MouseUpY);
         // Pending/diagnostic states show StatusText; hide the wordmark so the
         // user only sees the "byh" art text once capture actually succeeded.
         StatusText.IsVisible = true;
@@ -202,10 +203,10 @@ public partial class ToolbarWindow : Window
         PromptButton.IsEnabled = enabled;
         CopyButton.IsEnabled = enabled;
         StatusText.Text = _capturedText is not null
-            ? $"已取词 · {result.Source}"
+            ? string.Format(Strings.Toolbar_StatusCaptured, result.Source)
             : result.Source == CaptureSource.ManualFallback
-                ? "需要手动复制"
-                : "暂未取到文本";
+                ? Strings.Toolbar_StatusNeedManualCopy
+                : Strings.Toolbar_StatusEmpty;
         // R37/R39: 取词成功时切到透明底 "By Your Hand" 艺术字 wordmark（替代
         // "已取词 · Accessibility" 这种诊断式文本——品牌字更有"已就绪"的语义且
         // 符合品牌统一目标）；其它状态（需要手动复制 / 暂未取到 / 取词中）仍显示

@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
+using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Translation;
 
 namespace SelectionAssistant.UI.Views;
@@ -115,7 +116,7 @@ public partial class ResultWindow : Window
         LanguagePairText.Text = FormatLanguage(request.SourceLanguage) +
             " → " + FormatLanguage(request.TargetLanguage);
         ProviderText.Text = providerName;
-        ResultTextBox.Text = "正在翻译…";
+        ResultTextBox.Text = Strings.Result_Loading;
         LoadingBar.IsVisible = true;
         ErrorText.IsVisible = false;
         CopyButton.IsEnabled = false;
@@ -162,7 +163,7 @@ public partial class ResultWindow : Window
     public void ShowError(string userMessage)
     {
         _translatedText = null;
-        ResultTextBox.Text = "没有可显示的译文";
+        ResultTextBox.Text = Strings.Result_EmptyResult;
         LoadingBar.IsVisible = false;
         ErrorText.Text = userMessage;
         SetFeedbackTone(ErrorText, isError: true);
@@ -184,14 +185,14 @@ public partial class ResultWindow : Window
         var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
         if (clipboard is null)
         {
-            ErrorText.Text = "无法访问系统剪贴板。";
+            ErrorText.Text = Strings.Result_ClipboardAccessError;
             SetFeedbackTone(ErrorText, isError: true);
             ErrorText.IsVisible = true;
             return;
         }
 
         await clipboard.SetTextAsync(text);
-        ErrorText.Text = "已复制译文";
+        ErrorText.Text = Strings.Result_CopiedTranslation;
         SetFeedbackTone(ErrorText, isError: false);
         ErrorText.IsVisible = true;
     }
@@ -206,14 +207,14 @@ public partial class ResultWindow : Window
         var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
         if (clipboard is null)
         {
-            ErrorText.Text = "无法访问系统剪贴板。";
+            ErrorText.Text = Strings.Result_ClipboardAccessError;
             SetFeedbackTone(ErrorText, isError: true);
             ErrorText.IsVisible = true;
             return;
         }
 
         await clipboard.SetTextAsync(text);
-        ErrorText.Text = "已复制原文";
+        ErrorText.Text = Strings.Result_CopiedSource;
         SetFeedbackTone(ErrorText, isError: false);
         ErrorText.IsVisible = true;
     }
@@ -296,8 +297,8 @@ public partial class ResultWindow : Window
 
     private static string FormatLanguage(string language) => language switch
     {
-        "zh-CN" => "简体中文",
-        "en" => "English",
+        "zh-CN" => Strings.Result_LangChinese,
+        "en" => Strings.Result_LangEnglish,
         _ => language,
     };
 }

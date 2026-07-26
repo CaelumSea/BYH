@@ -14,6 +14,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using SelectionAssistant.Core.Capture;
+using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Infrastructure.Logging;
 
 namespace SelectionAssistant.UI.Views;
@@ -338,7 +339,7 @@ public partial class GalleryWindow : Window
         if (sender is MenuItem { Tag: GalleryItemViewModel vm })
         {
             RequestCopy?.Invoke(vm.Entry.FilePath);
-            UpdateCount(_items.Count, suffix: " · 已复制");
+            UpdateCount(_items.Count, suffix: Strings.Gallery_CopiedSuffix);
         }
     }
 
@@ -621,7 +622,7 @@ public partial class GalleryWindow : Window
         if (_selected is { } vm)
         {
             RequestCopy?.Invoke(vm.Entry.FilePath);
-            UpdateCount(_items.Count, suffix: " · 已复制");
+            UpdateCount(_items.Count, suffix: Strings.Gallery_CopiedSuffix);
         }
     }
 
@@ -703,8 +704,8 @@ public partial class GalleryWindow : Window
     private void UpdateCount(int entriesCount, string suffix = "")
     {
         CountText.Text = entriesCount == 0
-            ? $"0 张{suffix}"
-            : $"{entriesCount} 张{suffix}";
+            ? $"0{Strings.Gallery_CountSuffix}{suffix}"
+            : $"{entriesCount}{Strings.Gallery_CountSuffix}{suffix}";
     }
 
     private void OnClosed(object? sender, EventArgs e)

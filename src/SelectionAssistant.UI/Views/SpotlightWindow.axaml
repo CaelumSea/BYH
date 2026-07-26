@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.SpotlightWindow"
         Title="BYH · Launcher"
         Width="560"
@@ -54,7 +55,7 @@
       <!-- Category header -->
       <TextBlock Grid.Row="1"
                  Classes="Kicker"
-                 Text="启动器"
+                 Text="{x:Static i18n:Strings.Spotlight_CategoryLauncher}"
                  FontSize="10" />
 
       <!-- Filtered results list -->
@@ -122,22 +123,22 @@
                 Click="OnSettingsClick"
                 Padding="6,2"
                 FontSize="11"
-                Content="⚙ 设置" />
+                Content="{x:Static i18n:Strings.Spotlight_FooterSettings}" />
         <StackPanel Grid.Column="2"
                     Orientation="Horizontal"
                     Spacing="6"
                     VerticalAlignment="Center">
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="↑↓ 选择" />
+            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Spotlight_FooterSelect}" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="↵ 启动" />
+            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Spotlight_FooterLaunch}" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="Ctrl+↵ 设置" />
+            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Spotlight_FooterEdit}" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="Esc 关闭" />
+            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Spotlight_FooterClose}" />
           </Border>
         </StackPanel>
       </Grid>

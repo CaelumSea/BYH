@@ -1,9 +1,10 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:SelectionAssistant.UI.Views"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.GalleryWindow"
         x:DataType="vm:GalleryWindow"
-        Title="BYH · 截图相册"
+        Title="{x:Static i18n:Strings.Gallery_Title}"
         Width="900" Height="640"
         MinWidth="600" MinHeight="400"
         CanResize="True"
@@ -24,13 +25,13 @@
       <!-- Top bar: title + count + hint -->
       <Border Grid.Row="0" Padding="16,12" Background="#22FFFFFF">
         <StackPanel Orientation="Horizontal" Spacing="12">
-          <TextBlock Text="📷 截图相册" FontWeight="SemiBold" FontSize="16"
+          <TextBlock Text="{x:Static i18n:Strings.Gallery_Heading}" FontWeight="SemiBold" FontSize="16"
                      VerticalAlignment="Center"/>
           <TextBlock x:Name="CountText" Classes="Secondary"
                      FontSize="12" VerticalAlignment="Center"/>
           <TextBlock Classes="Secondary"
                      FontSize="12"
-                     Text="双击查看 · 右键更多操作 · Esc 关闭"
+                     Text="{x:Static i18n:Strings.Gallery_Hint}"
                      VerticalAlignment="Center"/>
         </StackPanel>
       </Border>
@@ -56,17 +57,17 @@
                       PointerEntered="OnItemPointerEntered">
                 <Border.ContextMenu>
                   <ContextMenu>
-                    <MenuItem Header="复制到剪贴板"
+                    <MenuItem Header="{x:Static i18n:Strings.Gallery_CtxCopy}"
                               Click="OnContextCopy_Click"
                               Tag="{Binding}"/>
-                    <MenuItem Header="查看大图"
+                    <MenuItem Header="{x:Static i18n:Strings.Gallery_CtxPreview}"
                               Click="OnContextPreview_Click"
                               Tag="{Binding}"/>
                     <Separator/>
-                    <MenuItem Header="删除文件"
+                    <MenuItem Header="{x:Static i18n:Strings.Gallery_CtxDelete}"
                               Click="OnContextDelete_Click"
                               Tag="{Binding}"/>
-                    <MenuItem Header="在资源管理器中显示"
+                    <MenuItem Header="{x:Static i18n:Strings.Gallery_CtxReveal}"
                               Click="OnContextReveal_Click"
                               Tag="{Binding}"/>
                   </ContextMenu>
@@ -92,7 +93,7 @@
               Background="Transparent">
         <StackPanel HorizontalAlignment="Center" Spacing="8">
           <TextBlock Text="📭" FontSize="48" HorizontalAlignment="Center"/>
-          <TextBlock Text="还没有截图" FontSize="14" HorizontalAlignment="Center"
+          <TextBlock Text="{x:Static i18n:Strings.Gallery_EmptyTitle}" FontSize="14" HorizontalAlignment="Center"
                      Classes="Secondary"/>
           <TextBlock x:Name="EmptyStatePath" FontSize="11"
                      Classes="Secondary" HorizontalAlignment="Center"/>
@@ -121,7 +122,7 @@
             <TextBlock Grid.Column="1"
                        Foreground="#CCFFFFFF"
                        FontSize="12"
-                       Text="Esc / 点击空白处关闭"
+                       Text="{x:Static i18n:Strings.Gallery_PreviewCloseHint}"
                        VerticalAlignment="Center"/>
           </Grid>
         </Border>
@@ -183,13 +184,13 @@
           <StackPanel Orientation="Horizontal"
                       HorizontalAlignment="Center"
                       Spacing="8">
-            <Button Content="📋 复制"
+            <Button Content="{x:Static i18n:Strings.Gallery_PreviewCopy}"
                     Click="OnPreviewCopy_Click"
                     Padding="16,6"/>
-            <Button Content="🗑 删除"
+            <Button Content="{x:Static i18n:Strings.Gallery_PreviewDelete}"
                     Click="OnPreviewDelete_Click"
                     Padding="16,6"/>
-            <Button Content="📁 打开目录"
+            <Button Content="{x:Static i18n:Strings.Gallery_PreviewReveal}"
                     Click="OnPreviewReveal_Click"
                     Padding="16,6"/>
           </StackPanel>

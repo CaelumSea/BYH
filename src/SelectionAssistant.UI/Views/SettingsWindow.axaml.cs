@@ -4,6 +4,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.Clipboard;
+using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
 using SelectionAssistant.Core.Translation;
@@ -230,11 +231,92 @@ public partial class SettingsWindow : Window
     /// </summary>
     public event Action<ToolbarShortcutSettings>? ToolbarShortcutsSaved;
 
+    /// <summary>
+    /// UI language changed. App persists <c>ui-language.json</c> and triggers
+    /// a restart — Strings' dictionary is snapshotted at process start, so a
+    /// fresh process is what actually swaps the UI text.
+    /// </summary>
+    public event Action<AppLanguage>? UiLanguageSaved;
+
+    /// <summary>Tracks the language the App pushed in at startup.</summary>
+    private AppLanguage _currentUiLanguage = AppLanguage.English;
+
     // ── Data push from runtime → UI ──
 
     public void Configure(string capturePolicyFile)
     {
         PolicyPathText.Text = capturePolicyFile;
+    }
+
+    /// <summary>
+    /// Pushes the current UI language into the General → Language ComboBox and
+    /// status line. Called once at startup after the App reads
+    /// <c>ui-language.json</c>. The ComboBox is populated from
+    /// <see cref="AppLanguage.Supported"/> (English / 简体中文) and the current
+    /// selection is set to match <paramref name="language"/>.
+    /// </summary>
+    public void SetUiLanguage(AppLanguage language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+        _currentUiLanguage = language;
+        if (LanguageComboBox is null) return;  // defensive: XAML hot-reload path
+
+        // Populate the dropdown with the two supported languages, shown in
+        // their own native names (English / 简体中文) so the user can read the
+        // choice regardless of the currently active language.
+        LanguageComboBox.Items.Clear();
+        int selectedIndex = 0;
+        for (int i = 0; i < AppLanguage.Supported.Count; i++)
+        {
+            AppLanguage lang = AppLanguage.Supported[i];
+            LanguageComboBox.Items.Add(lang.IsChinese
+                ? Strings.Settings_LanguageName_Chinese
+                : Strings.Settings_LanguageName_English);
+            if (lang.Code == language.Code)
+            {
+                selectedIndex = i;
+            }
+        }
+        LanguageComboBox.SelectedIndex = selectedIndex;
+        UpdateLanguageStatus(language);
+    }
+
+    private void UpdateLanguageStatus(AppLanguage language)
+    {
+        if (LanguageStatusText is null) return;
+        string name = language.IsChinese
+            ? Strings.Settings_LanguageName_Chinese
+            : Strings.Settings_LanguageName_English;
+        LanguageStatusText.Text = string.Format(
+            Strings.Settings_LanguageCard_StatusCurrent, name);
+    }
+
+    /// <summary>
+    /// Save button on the Language card. Reads the ComboBox selection, raises
+    /// <see cref="UiLanguageSaved"/> (App persists + restarts). If the user
+    /// picked the same language that's already active, no-op — avoids a
+    /// pointless restart.
+    /// </summary>
+    private void OnSaveLanguageClick(object? sender, RoutedEventArgs e)
+    {
+        int index = LanguageComboBox.SelectedIndex;
+        if (index < 0 || index >= AppLanguage.Supported.Count)
+        {
+            return;
+        }
+        AppLanguage selected = AppLanguage.Supported[index];
+        if (selected.Code == _currentUiLanguage.Code)
+        {
+            // Nothing to do — spare the user a pointless restart.
+            UpdateLanguageStatus(selected);
+            return;
+        }
+        _currentUiLanguage = selected;
+        if (LanguageStatusText is not null)
+        {
+            LanguageStatusText.Text = Strings.Settings_LanguageCard_StatusSaved;
+        }
+        UiLanguageSaved?.Invoke(selected);
     }
 
     public void SetOceanEyesTriggerSettings(

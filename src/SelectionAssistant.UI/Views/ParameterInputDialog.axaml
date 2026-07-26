@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.ParameterInputDialog"
-        Title="BYH · 输入参数"
+        Title="{x:Static i18n:Strings.ParamDialog_Title}"
         Width="320"
         SizeToContent="WidthAndHeight"
         CanResize="False"
@@ -18,7 +19,7 @@
     <StackPanel Spacing="12">
 
       <TextBlock x:Name="PromptLabel"
-                 Text="请输入参数"
+                 Text="{x:Static i18n:Strings.ParamDialog_DefaultPrompt}"
                  FontSize="13"
                  TextWrapping="Wrap" />
 
@@ -30,12 +31,12 @@
         <Button Grid.Column="0"
                 x:Name="ConfirmButton"
                 Classes="Primary"
-                Content="确定"
+                Content="{x:Static i18n:Strings.Common_Confirm}"
                 HorizontalAlignment="Stretch"
                 Click="OnConfirmClick" />
         <Button Grid.Column="1"
                 Classes="Ghost"
-                Content="取消"
+                Content="{x:Static i18n:Strings.Common_Cancel}"
                 HorizontalAlignment="Stretch"
                 Click="OnCancelClick" />
       </Grid>

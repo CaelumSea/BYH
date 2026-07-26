@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using SelectionAssistant.Core.I18n;
 
 namespace SelectionAssistant.UI.Views;
 
@@ -50,11 +51,11 @@ public partial class PromptWindow : Window
     {
         _capturedText = string.IsNullOrWhiteSpace(selectedText) ? null : selectedText;
         string preview = _capturedText is null
-            ? "未取到选中文本。"
+            ? Strings.Prompt_NoSelection
             : (_capturedText.Length <= 80
                 ? _capturedText
                 : _capturedText[..80] + "…");
-        SourcePreview.Text = "选中文字：" + preview;
+        SourcePreview.Text = Strings.Prompt_SelectionPrefix + preview;
         PromptInput.Text = string.Empty;
         RunButton.IsEnabled = false;
 
