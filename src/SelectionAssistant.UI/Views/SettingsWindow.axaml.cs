@@ -33,6 +33,15 @@ public partial class SettingsWindow : Window
         ClipboardHistory,
     }
 
+    private enum PhonePage
+    {
+        Overview,
+        Translation,
+        Vision,
+        Clipboard,
+        Launcher,
+    }
+
     private bool _allowClose;
 
     private readonly AvaloniaList<ProviderOption> _providerOptions = [];
@@ -86,6 +95,7 @@ public partial class SettingsWindow : Window
         PropertyChanged += OnWindowPropertyChanged;
 
         ShowSettingsPage(SettingsPage.General);
+        ShowPhonePage(PhonePage.Overview);
         ApplyResponsiveShellWidths();
     }
 
@@ -125,15 +135,6 @@ public partial class SettingsWindow : Window
         SetNavigationState(LauncherNavButton, page == SettingsPage.Launcher);
         SetNavigationState(ClipboardHistoryNavButton, page == SettingsPage.ClipboardHistory);
 
-        // The phone summary card is a compact secondary navigator. Keep its
-        // state in lockstep with the full navigation rail so mouse, keyboard,
-        // and automation users receive the same selected-page feedback.
-        SetNavigationState(PhoneGeneralButton, page == SettingsPage.General);
-        SetNavigationState(PhoneProviderButton, page == SettingsPage.Provider);
-        SetNavigationState(PhoneVisionButton, page == SettingsPage.Vision);
-        SetNavigationState(PhoneClipboardButton, page == SettingsPage.ClipboardHistory);
-        SetNavigationState(PhoneLauncherButton, page == SettingsPage.Launcher);
-
         (PageTitleText.Text, PageSubtitleText.Text) = page switch
         {
             SettingsPage.General =>
@@ -152,6 +153,21 @@ public partial class SettingsWindow : Window
         };
 
         SettingsContentScroll.Offset = default;
+    }
+
+    private void ShowPhonePage(PhonePage page)
+    {
+        PhoneOverviewView.IsVisible = page == PhonePage.Overview;
+        PhoneTranslationView.IsVisible = page == PhonePage.Translation;
+        PhoneVisionView.IsVisible = page == PhonePage.Vision;
+        PhoneClipboardView.IsVisible = page == PhonePage.Clipboard;
+        PhoneLauncherView.IsVisible = page == PhonePage.Launcher;
+
+        SetNavigationState(PhoneGeneralButton, page == PhonePage.Overview);
+        SetNavigationState(PhoneProviderButton, page == PhonePage.Translation);
+        SetNavigationState(PhoneVisionButton, page == PhonePage.Vision);
+        SetNavigationState(PhoneClipboardButton, page == PhonePage.Clipboard);
+        SetNavigationState(PhoneLauncherButton, page == PhonePage.Launcher);
     }
 
     private static void SetNavigationState(Button button, bool isActive)
@@ -180,6 +196,21 @@ public partial class SettingsWindow : Window
 
     private void OnShowClipboardHistoryClick(object? sender, RoutedEventArgs e) =>
         ShowSettingsPage(SettingsPage.ClipboardHistory);
+
+    private void OnShowPhoneOverviewClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Overview);
+
+    private void OnShowPhoneTranslationClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Translation);
+
+    private void OnShowPhoneVisionClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Vision);
+
+    private void OnShowPhoneClipboardClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Clipboard);
+
+    private void OnShowPhoneLauncherClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Launcher);
 
     // ── Events wired to the runtime in App.axaml.cs ──
 
@@ -370,6 +401,9 @@ public partial class SettingsWindow : Window
             SpotlightShortcutKeyComboBox.SelectedItem = SpotlightTriggerSettings.Default.Key;
         }
         SpotlightShortcutStatusText.Text = statusMessage ?? $"Current: {settings.ToDisplayText()}";
+        PhoneLauncherHotkeyText.Text = settings.KeyboardShortcutEnabled
+            ? settings.ToDisplayText()
+            : "Disabled";
         SetFeedbackTone(SpotlightShortcutStatusText, isError);
     }
 
@@ -400,6 +434,9 @@ public partial class SettingsWindow : Window
         SummaryClipboardText.Text = settings.KeyboardShortcutEnabled
             ? settings.ToDisplayText()
             : "Disabled";
+        PhoneClipboardHotkeyText.Text = settings.KeyboardShortcutEnabled
+            ? settings.ToDisplayText()
+            : "Disabled";
         SetFeedbackTone(ClipboardHistoryShortcutStatusText, isError);
     }
 
@@ -420,6 +457,8 @@ public partial class SettingsWindow : Window
         ClipboardHistoryCaptureImagesToggle.IsChecked = settings.CaptureImagesEnabled;
         ClipboardHistoryMaxImageEntriesInput.Text = settings.MaxImageEntries.ToString();
         ClipboardHistoryExcludeAppsInput.Text = string.Join(", ", settings.ExcludeProcessNames);
+        PhoneClipboardStatusText.Text = settings.Enabled ? "History active" : "History paused";
+        PhoneClipboardRetentionText.Text = $"{settings.MaxEntries} text · {settings.MaxImageEntries} images";
     }
 
     /// <summary>R54: sets the feature-settings status line (save result).</summary>
@@ -507,8 +546,16 @@ public partial class SettingsWindow : Window
     /// Pushes the current launcher entries into the settings card rows.
     /// Called by App whenever entries change (load, add, save, delete, move).
     /// </summary>
-    public void SetLauncherEntries(IReadOnlyList<LauncherEntry> entries) =>
+    public void SetLauncherEntries(IReadOnlyList<LauncherEntry> entries)
+    {
         RefreshLauncherRows(entries);
+        PhoneLauncherCountText.Text = entries.Count == 1
+            ? "1 saved destination"
+            : $"{entries.Count} saved destinations";
+        PhoneLauncherPreviewText.Text = entries.Count == 0
+            ? "No apps or websites saved yet"
+            : string.Join(" · ", entries.Take(3).Select(entry => entry.Name));
+    }
 
     /// <summary>
     /// Sets the launcher scan status line under the Launcher title. Used by App
@@ -654,6 +701,11 @@ public partial class SettingsWindow : Window
         SummaryProviderText.Text = activeProvider is null
             ? "No provider selected"
             : $"{activeProvider.Name}\n{activeProvider.DefaultModel}";
+        PhoneProviderNameText.Text = activeProvider?.Name ?? "No provider selected";
+        PhoneProviderModelText.Text = activeProvider?.DefaultModel ?? "Choose one in Translation";
+        PhoneProviderCountText.Text = providers.Count == 1
+            ? "1 configured provider"
+            : $"{providers.Count} configured providers";
 
         // Rebuild ComboBox options. Keep the label short: just the provider
         // display name (e.g. "DeepSeek"). The model id is visible in the edit
@@ -758,6 +810,12 @@ public partial class SettingsWindow : Window
         SummaryVisionText.Text = settings.Enabled
             ? $"{visionProviderName}\n{settings.Model}"
             : "Disabled";
+        PhoneVisionStatusText.Text = settings.Enabled ? "Vision ready" : "Vision disabled";
+        PhoneVisionProviderText.Text = visionProviderName;
+        PhoneVisionModelText.Text = settings.Model;
+        PhoneVisionAssistText.Text = settings.UiaPrefillEnabled
+            ? "UIA assist on"
+            : "OCR only";
     }
 
     private void OnSaveVisionClick(object? sender, RoutedEventArgs e)

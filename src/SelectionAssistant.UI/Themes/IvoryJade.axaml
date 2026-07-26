@@ -424,6 +424,60 @@
     <Setter Property="Padding" Value="3" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, 0 3 10 0 #104A2B19" />
   </Style>
+  <Style Selector="Border.PhoneSummaryIcon">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="BorderBrush" Value="#40D9C28A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="0 2 6 0 #109F5E30" />
+  </Style>
+  <Style Selector="Border.PhoneSummaryIcon.Accent">
+    <Setter Property="Background" Value="{DynamicResource ByhAccentSoftBrush}" />
+  </Style>
+  <Style Selector="Border.PhoneSummaryIcon.Warning">
+    <Setter Property="Background" Value="{DynamicResource ByhWarningSoftBrush}" />
+  </Style>
+  <Style Selector="Border.PhoneSummaryIcon.Success">
+    <Setter Property="Background" Value="{DynamicResource ByhSuccessSoftBrush}" />
+  </Style>
+  <Style Selector="Border.PhoneFeatureEmblem">
+    <Setter Property="Width" Value="42" />
+    <Setter Property="Height" Value="42" />
+    <Setter Property="CornerRadius" Value="21" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="BorderBrush" Value="#52D9C28A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #D8FFFFFF, 0 4 12 0 #149F5E30" />
+  </Style>
+  <Style Selector="Border.PhoneFeatureEmblem.Accent">
+    <Setter Property="Background" Value="{DynamicResource ByhAccentSoftBrush}" />
+  </Style>
+  <Style Selector="Border.PhoneFeatureEmblem.Warning">
+    <Setter Property="Background" Value="{DynamicResource ByhWarningSoftBrush}" />
+  </Style>
+  <Style Selector="Border.PhoneFeatureEmblem.Success">
+    <Setter Property="Background" Value="{DynamicResource ByhSuccessSoftBrush}" />
+  </Style>
+  <Style Selector="Border.PhoneFeatureEmblem Path.MiniIcon">
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Height" Value="22" />
+  </Style>
+  <Style Selector="Border.PhoneSummaryDivider">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource ByhHairlineBrush}" />
+  </Style>
+  <Style Selector="TextBlock.PhoneSummaryValue">
+    <Setter Property="FontSize" Value="9" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="TextBlock.PhoneStatusPill">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhPrimaryBrush}" />
+  </Style>
   <Style Selector="Border.PhoneDockItem">
     <Setter Property="Width" Value="26" />
     <Setter Property="Height" Value="26" />

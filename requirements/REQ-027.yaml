@@ -2,7 +2,7 @@ id: REQ-027
 title: BYH 皮肤自定义与运行时切换系统
 status: dispatched
 created: '2026-07-26T09:24:17'
-updated: '2026-07-26T15:08:24'
+updated: '2026-07-26T16:11:16'
 score_kind: aesthetic
 aesthetic_template: ''
 acceptance_criteria:
@@ -100,7 +100,7 @@ tasks:
   status: done
 - id: TASK-034
   title: 将手机底栏改为手机内部摘要导航
-  status: pending
+  status: done
 - id: TASK-035
   title: 重构中央双窗格并实现设置搜索
   status: pending
