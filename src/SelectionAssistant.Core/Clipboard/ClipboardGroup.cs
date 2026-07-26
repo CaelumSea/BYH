@@ -5,7 +5,10 @@ namespace SelectionAssistant.Core.Clipboard;
 /// <see cref="ClipboardClassifier.Classify"/> at capture time and displayed as
 /// a badge in the history window. Order matters: it mirrors the classification
 /// priority — <see cref="Sensitive"/> first (never leak a password into another
-/// group), <see cref="Text"/> last (catch-all).
+/// group), <see cref="Text"/> last (catch-all). The numeric values are spaced
+/// (5 is intentionally absent) so persisted integers from older files that
+/// used the now-removed Contact category fail <c>Enum.IsDefined</c> and
+/// safely fall back to <see cref="Text"/> on load.
 /// </summary>
 public enum ClipboardGroup
 {
@@ -25,9 +28,6 @@ public enum ClipboardGroup
 
     /// <summary>sudo/apt/brew/git/chmod/chown/cd/ls/mkdir/rm/cp/mv …</summary>
     Shell = 4,
-
-    /// <summary>Email addresses or 11-digit phone numbers.</summary>
-    Contact = 5,
 
     /// <summary>Pure numbers / currency (digits, separators, sign only).</summary>
     Number = 6,

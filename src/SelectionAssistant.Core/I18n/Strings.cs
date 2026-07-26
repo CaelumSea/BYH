@@ -378,7 +378,6 @@ public static partial class Strings
     public static string Clip_Group_Json => Get(nameof(Clip_Group_Json));
     public static string Clip_Group_Code => Get(nameof(Clip_Group_Code));
     public static string Clip_Group_Command => Get(nameof(Clip_Group_Command));
-    public static string Clip_Group_Contact => Get(nameof(Clip_Group_Contact));
     public static string Clip_Group_Number => Get(nameof(Clip_Group_Number));
     // Category header counts
     public static string Clip_CategoryCount => Get(nameof(Clip_CategoryCount));

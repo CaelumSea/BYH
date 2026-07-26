@@ -305,7 +305,6 @@ internal static partial class Strings_zh_CN
         ["Clip_Group_Json"] = "JSON",
         ["Clip_Group_Code"] = "代码",
         ["Clip_Group_Command"] = "命令",
-        ["Clip_Group_Contact"] = "联系人",
         ["Clip_Group_Number"] = "数字",
         // Category header
         ["Clip_CategoryCount"] = "{0} · {1} 项",

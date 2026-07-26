@@ -11,8 +11,22 @@ namespace SelectionAssistant.Core.Clipboard;
 /// state, no I/O — fully unit-testable. Priority order follows the
 /// <see cref="ClipboardGroup"/> enum: Sensitive wins over everything (a token
 /// like <c>api_key=...</c> must never be filed as Text/Code), then Link, Json,
-/// Code, Shell, Contact, Number, Text.
+/// Code, Shell, Number, Text.
 /// </summary>
+/// <remarks>
+/// <para><b>Why Code/Shell use structured patterns, not bare keywords.</b>
+/// Earlier versions matched a single keyword like <c>class</c>, <c>public</c>,
+/// <c>return</c>, <c>git</c>, or <c>cd</c> anywhere in the text. Those are all
+/// common English words, so noun-heavy prose — image-generation prompts being
+/// the canonical victim ("a private garden, students return from class") — was
+/// misclassified as Code or Shell. The patterns now require a code-shaped
+/// follower: a PascalCase identifier (<c>class Foo</c>), an assignment
+/// (<c>let x =</c>), a modifier chain (<c>public static</c>), a shell flag
+/// (<c>git commit -m</c>), or a path/quote. The trade-off is that lone
+/// snippets like <c>return value;</c> no longer auto-classify as Code — but
+/// such fragments are rare in clipboard traffic, and the structured form
+/// catches every realistic copy of source.</para>
+/// </remarks>
 public static partial class ClipboardClassifier
 {
     /// <summary>api_key / secret / token / password / passwd / private_key /
@@ -30,24 +44,39 @@ public static partial class ClipboardClassifier
         matchTimeoutMilliseconds: 200)]
     private static partial Regex LinkPattern { get; }
 
+    // Structured code detection. A single keyword like `class` or `public` is
+    // also a common English word, so each alternative requires a code-shaped
+    // follower to count: PascalCase identifier, paren, terminator, assignment,
+    // or modifier chain. Case-sensitive (code is; prose tends to lowercase).
     [GeneratedRegex(
-        @"\b(?:function|class|interface|import|namespace|def\s|public\s|private\s|protected\s|return\s|var\s|let\s|const\s|using\s|package\s)\b",
+        // class/interface/namespace Foo (PascalCase identifier after keyword)
+        @"\b(?:class|interface|namespace)\s+[A-Z]\w*" +
+        // function foo( / def foo(  (identifier + open paren)
+        @"|\b(?:function|def)\s+\w+\s*\(" +
+        // import os; / package main; / using System;  (dotted name + separator,
+        // or `import x from` / `import x as` for ES modules)
+        @"|\b(?:import|package|using)\s+[\w.]+(?:\s*[;.(]|\s+from|\s+as)" +
+        // var x = / let x = / const x =  (declaration + assignment)
+        @"|\b(?:var|let|const)\s+\w+\s*[=:]" +
+        // public/private/protected followed by a modifier chain
+        //   (public static, private void, public class, protected override…)
+        @"|\b(?:public|private|protected)\s+(?:static|readonly|abstract|sealed|virtual|override|async|void|class|interface|partial|internal)",
         RegexOptions.CultureInvariant,
         matchTimeoutMilliseconds: 200)]
     private static partial Regex CodePattern { get; }
 
+    // Shell/command detection. Bare command words (git, cd, ls, mv, echo…) are
+    // also common English words (git workflow, cd changer, mv award, echo
+    // chamber), so a lookahead scans the rest of the line for a shell-shaped
+    // signal: a flag (-x / --xxx / chmod's +x), a quote, a path separator
+    // (/ \ . $), or shell punctuation (| > < ; &). The lookahead is non-greedy
+    // and won't cross a newline, so a command on one line can't be validated
+    // by signals on the next.
     [GeneratedRegex(
-        @"(?:^|\s)(?:sudo|apt|brew|git|chmod|chown|cd|ls|mkdir|rmdir|rm|cp|mv|echo|curl|wget|pip|npm|dotnet|cargo)\s",
+        @"(?:^|\n|\s)(?:sudo|apt|brew|git|chmod|chown|cd|ls|mkdir|rmdir|rm|cp|mv|echo|curl|wget|pip|npm|dotnet|cargo)(?=\s+.*?(?:[-+]{1,2}[\w.]|[""'/\\$]|\.[\/\\]|[|><;&]))",
         RegexOptions.CultureInvariant,
         matchTimeoutMilliseconds: 200)]
     private static partial Regex ShellPattern { get; }
-
-    // Email: local@domain. Phone: optional + then exactly 11 digits.
-    [GeneratedRegex(
-        @"^[^@\s]+@[^@\s]+\.[^@\s]+$|^\+?\d{11}$",
-        RegexOptions.CultureInvariant,
-        matchTimeoutMilliseconds: 200)]
-    private static partial Regex ContactPattern { get; }
 
     // Pure number/currency: sign, digits, thousand/decimal separators, currency symbols.
     [GeneratedRegex(
@@ -107,13 +136,7 @@ public static partial class ClipboardClassifier
             return ClipboardGroup.Shell;
         }
 
-        // Priority 5: contact (email / phone).
-        if (SafeMatch(ContactPattern, trimmed))
-        {
-            return ClipboardGroup.Contact;
-        }
-
-        // Priority 6: pure number / currency.
+        // Priority 5: pure number / currency.
         if (SafeMatch(NumberPattern, trimmed))
         {
             return ClipboardGroup.Number;

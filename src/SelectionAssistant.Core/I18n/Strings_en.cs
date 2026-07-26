@@ -305,7 +305,6 @@ internal static partial class Strings_en
         ["Clip_Group_Json"] = "JSON",
         ["Clip_Group_Code"] = "Code",
         ["Clip_Group_Command"] = "Command",
-        ["Clip_Group_Contact"] = "Contact",
         ["Clip_Group_Number"] = "Number",
         // Category header
         ["Clip_CategoryCount"] = "{0} · {1} items",

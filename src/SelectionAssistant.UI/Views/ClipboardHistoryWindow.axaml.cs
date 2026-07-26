@@ -88,7 +88,7 @@ public partial class ClipboardHistoryWindow : Window
     private enum ClipboardTab
     {
         All,
-        Link, Json, Code, Shell, Contact, Number, Sensitive,
+        Link, Json, Code, Shell, Number, Sensitive,
         Image, // R54 v2: image entries (auto-classified, like the group tabs)
         Pinned, Favorite,
         // Sentinel: a custom-tag tab is active (see _activeCustomTagName).
@@ -592,7 +592,6 @@ public partial class ClipboardHistoryWindow : Window
         ClipboardGroup.Json => Strings.Clip_Group_Json,
         ClipboardGroup.Code => Strings.Clip_Group_Code,
         ClipboardGroup.Shell => Strings.Clip_Group_Command,
-        ClipboardGroup.Contact => Strings.Clip_Group_Contact,
         ClipboardGroup.Number => Strings.Clip_Group_Number,
         _ => string.Empty, // Text → no badge
     };
@@ -2852,8 +2851,8 @@ public partial class ClipboardHistoryWindow : Window
             AddGroupTarget("🔒 Sensitive", ClipboardGroup.Sensitive);
             // Note: JSON is folded into the Code tab at the filter layer, but as
             // an override target it's redundant (Code and JSON render the same
-            // tab) — so we expose only Code here. Contact/Number have no tab and
-            // are intentionally not exposed as override targets.
+            // tab) — so we expose only Code here. Number has no tab and is
+            // intentionally not exposed as an override target.
 
             moveTo.Items.Add(new Separator());
 
