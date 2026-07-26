@@ -1870,8 +1870,8 @@ public partial class App : Application
     /// <summary>
     /// Overrides the theme's font-size tokens when the active UI language is
     /// Chinese. CJK glyphs read smaller than Latin at the same pt size (denser
-    /// strokes, smaller glyph aspect), so every token is bumped by +1pt. The
-    /// Latin baseline values live in <c>IvoryJade.axaml</c>'s
+    /// strokes, smaller glyph aspect), so the small-text tokens are bumped up.
+    /// The Latin baseline values live in <c>IvoryJade.axaml</c>'s
     /// <c>Styles.Resources</c>; writing them into
     /// <see cref="Application.Resources"/> here wins over the theme because
     /// Avalonia resolves application resources above theme resources. English
@@ -1879,10 +1879,21 @@ public partial class App : Application
     /// apply and the UI is identical to before this hook existed.
     /// </summary>
     /// <remarks>
+    /// <b>Non-linear scaling.</b> The original +1pt-across-the-board approach
+    /// made already-comfortable text (buttons, inputs, headings) larger while
+    /// tiny captions stayed tiny — the opposite of what CJK needs. The user
+    /// feedback ("已经够大的更大了，小的没变") confirmed this. So now only the
+    /// small text scales, and by more than 1pt; button-sized text and above
+    /// stay at the Latin baseline (already large enough). The breakpoints
+    /// below were tuned against the actual token usage: Micro/Caption/BodySmall
+    /// are captions/hints/metadata, Body is primary body labels, BodyLarge is
+    /// inputs/option buttons/row names, Subheading+ are titles.
+    /// <para>
     /// Must run BEFORE any window is constructed so the first measure pass
     /// sees the Chinese sizes. Switching languages is restart-after-toggle
     /// (see <see cref="OnUiLanguageSaved"/>), so this method is called exactly
     /// once per process lifetime at startup.
+    /// </para>
     /// </remarks>
     private static void ApplyLanguageFontTokens(AppLanguage language)
     {
@@ -1895,14 +1906,19 @@ public partial class App : Application
             return;
         }
         var resources = Application.Current.Resources;
-        resources["ByhFontSizeMicro"] = 8.0;
-        resources["ByhFontSizeCaption"] = 10.0;
-        resources["ByhFontSizeBodySmall"] = 11.0;
-        resources["ByhFontSizeBody"] = 12.0;
-        resources["ByhFontSizeBodyLarge"] = 14.0;
-        resources["ByhFontSizeSubheading"] = 16.0;
-        resources["ByhFontSizeHeading"] = 19.0;
-        resources["ByhFontSizeDisplay"] = 26.0;
+        // Non-linear: small text scales up significantly (captions and hints
+        // are where Chinese reads worst — denser strokes at tiny sizes), body
+        // labels bump modestly, and button-sized text upward stays at the
+        // Latin baseline (the user confirmed buttons/inputs were already big
+        // enough and shouldn't grow further).
+        resources["ByhFontSizeMicro"] = 9.0;       // 7 → 9  (+2, badge micro-labels)
+        resources["ByhFontSizeCaption"] = 11.0;    // 9 → 11 (+2, captions/kickers/hints — the "small annotations" the user flagged)
+        resources["ByhFontSizeBodySmall"] = 12.0;  // 10 → 12 (+2, metadata / setting-card sub-hints)
+        resources["ByhFontSizeBody"] = 12.0;       // 11 → 12 (+1, primary body labels — modest bump)
+        resources["ByhFontSizeBodyLarge"] = 13.0;  // 13 → 13 (+0, option buttons / inputs / row names — already large enough)
+        resources["ByhFontSizeSubheading"] = 15.0; // 15 → 15 (+0, card titles)
+        resources["ByhFontSizeHeading"] = 18.0;    // 18 → 18 (+0, dialog/page headings)
+        resources["ByhFontSizeDisplay"] = 25.0;    // 25 → 25 (+0, hero / page title)
     }
 
     /// <summary>
