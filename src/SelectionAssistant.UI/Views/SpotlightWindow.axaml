@@ -3,7 +3,7 @@
         xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
         xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.SpotlightWindow"
-        Title="BYH · Launcher"
+        Title="{x:Static i18n:Strings.Spotlight_WindowTitle}"
         Width="560"
         Height="480"
         CanResize="False"

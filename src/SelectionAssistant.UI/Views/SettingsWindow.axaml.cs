@@ -494,8 +494,8 @@ public partial class SettingsWindow : Window
         {
             bool isBuiltIn = PromptActionIds.IsBuiltIn(t.Id);
             string fallback = t.Id == PromptActionIds.Translate
-                ? "(uses provider default)"
-                : "(not set)";
+                ? Strings.Settings_ProviderPromptDefault
+                : Strings.Settings_ProviderPromptNotSet;
             string preview = string.IsNullOrWhiteSpace(t.Prompt) ? fallback : Truncate(t.Prompt, 60);
 
             string actionId = t.Id;  // capture for closure
@@ -517,9 +517,9 @@ public partial class SettingsWindow : Window
 
     private static string GetSettingsActionName(PromptTemplate template) => template.Id switch
     {
-        PromptActionIds.Translate => "Translate",
-        PromptActionIds.Summarize => "Summarize",
-        PromptActionIds.Explain => "Explain",
+        PromptActionIds.Translate => Strings.Settings_ActionName_Translate,
+        PromptActionIds.Summarize => Strings.Settings_ActionName_Summarize,
+        PromptActionIds.Explain => Strings.Settings_ActionName_Explain,
         _ => template.Name,
     };
 
@@ -1048,7 +1048,7 @@ public partial class SettingsWindow : Window
         PromptShortcutInput.Text = settings.PromptKey;
         CopyShortcutInput.Text = settings.CopyKey;
         ToolbarShortcutsStatusText.Text = statusMessage
-            ?? $"Current: Prompt {DisplayKey(settings.PromptKey)} · Copy {DisplayKey(settings.CopyKey)}";
+            ?? string.Format(Strings.Settings_ToolbarStatusCurrent, DisplayKey(settings.PromptKey), DisplayKey(settings.CopyKey));
         SetFeedbackTone(ToolbarShortcutsStatusText, isError);
     }
 
@@ -1086,7 +1086,7 @@ public partial class SettingsWindow : Window
     }
 
     /// <summary>Display helper: null key shows as "Unbound" so the status line is readable.</summary>
-    private static string DisplayKey(string? key) => string.IsNullOrEmpty(key) ? "Unbound" : key;
+    private static string DisplayKey(string? key) => string.IsNullOrEmpty(key) ? Strings.Settings_Unbound : key;
 
     private async Task LoadSelectedProviderIntoForm()
     {

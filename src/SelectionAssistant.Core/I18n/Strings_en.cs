@@ -36,6 +36,7 @@ internal static partial class Strings_en
 
         // ResultWindow
         ["Result_Title"] = "Translation",
+        ["Result_WindowTitle"] = "BYH · Translation",
         ["Result_DefaultLanguagePair"] = "English → Simplified Chinese",
         ["Result_DefaultProvider"] = "Test provider",
         ["Result_SourceLabel"] = "Source",
@@ -53,6 +54,7 @@ internal static partial class Strings_en
 
         // SpotlightWindow
         ["Spotlight_Title"] = "BYH · Launcher",
+        ["Spotlight_WindowTitle"] = "BYH · Launcher",
         ["Spotlight_SearchPlaceholder"] = "Search…",
         ["Spotlight_CategoryLauncher"] = "Launcher",
         ["Spotlight_FooterSettings"] = "⚙ Settings",
@@ -115,6 +117,9 @@ internal static partial class Strings_en
         ["Common_Status_Saved"] = "Saved.",
         ["Common_Toggle_On"] = "On",
         ["Common_Toggle_Off"] = "Off",
+        ["Common_TimeJustNow"] = "just now",
+        ["Common_TimeMinutesAgo"] = "{0}m ago",
+        ["Common_TimeDaysAgo"] = "{0}d ago",
 
         // SettingsWindow — chrome / nav
         ["Settings_Title"] = "BYH · Settings",
@@ -189,6 +194,11 @@ internal static partial class Strings_en
         // SettingsWindow — Functions section
         ["Settings_Actions_Title"] = "Actions & Prompts",
         ["Settings_AddAction"] = "＋ Add Action",
+        ["Settings_ActionName_Translate"] = "Translate",
+        ["Settings_ActionName_Summarize"] = "Summarize",
+        ["Settings_ActionName_Explain"] = "Explain",
+        ["Settings_ProviderPromptDefault"] = "(uses provider default)",
+        ["Settings_ProviderPromptNotSet"] = "(not set)",
 
         // SettingsWindow — Vision section
         ["Settings_Vision_Title"] = "Vision Recognition",
@@ -274,6 +284,7 @@ internal static partial class Strings_en
         ["Settings_Status_MouseChordOn"] = "Mouse chord on",
         ["Settings_Status_MouseChordOff"] = "Mouse chord off",
         ["Settings_Status_ToolbarShortcuts"] = "Saved: Prompt {0} · Copy {1}",
+        ["Settings_ToolbarStatusCurrent"] = "Current: Prompt {0} · Copy {1}",
         ["Settings_Unbound"] = "Unbound",
         ["Settings_Launcher_NoNewApps"] = "No new importable apps found.",
         ["Settings_Launcher_Imported"] = "Imported {0} app(s).",
@@ -314,6 +325,13 @@ internal static partial class Strings_en
         ["Clip_Group_Code"] = "Code",
         ["Clip_Group_Command"] = "Command",
         ["Clip_Group_Number"] = "Number",
+        // Move-to submenu labels (emoji prefix matches the nav-tab visuals;
+        // the badge variants above are plain text without emoji)
+        ["Clip_Group_Auto"] = "Auto",
+        ["Clip_Group_LinkMenu"] = "🔗 Link",
+        ["Clip_Group_CodeMenu"] = "💻 Code",
+        ["Clip_Group_CommandMenu"] = "⚙️ Command",
+        ["Clip_Group_SensitiveMenu"] = "🔒 Sensitive",
         // Category header
         ["Clip_CategoryCount"] = "{0} · {1} items",
         ["Clip_CategoryHeader_Links"] = "Links",
@@ -347,6 +365,9 @@ internal static partial class Strings_en
         ["Clip_Row_Favorite"] = "❤ Favorite",
         ["Clip_Row_Unfavorite"] = "Unfavorite",
         ["Clip_Row_ViewFull"] = "View full…",
+        // Tag nav tooltip + image popup header (parameterized, code-behind)
+        ["Clip_TagNavTooltip"] = "{0}  (click to select · drag to reorder · right-click to manage)",
+        ["Clip_ImagePopupHeader"] = "Image · {0}  ·  scroll to zoom · drag to pan · double-click or Esc to close",
         ["Clip_Row_AddTag"] = "Add tag…",
         ["Clip_Row_RemoveTag"] = "Remove tag",
         ["Clip_Row_ViewImage"] = "View image…",

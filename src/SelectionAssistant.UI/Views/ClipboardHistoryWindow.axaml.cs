@@ -600,10 +600,10 @@ public partial class ClipboardHistoryWindow : Window
     {
         DateTimeOffset now = DateTimeOffset.Now;
         TimeSpan age = now - capturedAt.ToLocalTime();
-        if (age.TotalMinutes < 1) return "just now";
-        if (age.TotalHours < 1) return $"{(int)age.TotalMinutes}m ago";
+        if (age.TotalMinutes < 1) return Strings.Common_TimeJustNow;
+        if (age.TotalHours < 1) return string.Format(Strings.Common_TimeMinutesAgo, (int)age.TotalMinutes);
         if (age.TotalDays < 1) return capturedAt.ToLocalTime().ToString("HH:mm");
-        if (age.TotalDays < 7) return $"{(int)age.TotalDays}d ago";
+        if (age.TotalDays < 7) return string.Format(Strings.Common_TimeDaysAgo, (int)age.TotalDays);
         return capturedAt.ToLocalTime().ToString("MM-dd");
     }
 
@@ -852,7 +852,7 @@ public partial class ClipboardHistoryWindow : Window
         {
             row.Classes.Add("Active");
         }
-        ToolTip.SetTip(row, tagName + "  (click to select · drag to reorder · right-click to manage)");
+        ToolTip.SetTip(row, string.Format(Strings.Clip_TagNavTooltip, tagName));
 
         // Right-click → manage custom tag (rename / set icon / delete).
         var menu = new ContextMenu();
@@ -2420,7 +2420,7 @@ public partial class ClipboardHistoryWindow : Window
 
         var header = new TextBlock
         {
-            Text = $"Image · {row.TimeLabel}  ·  scroll to zoom · drag to pan · double-click or Esc to close",
+            Text = string.Format(Strings.Clip_ImagePopupHeader, row.TimeLabel),
             FontSize = GetFontSize("ByhFontSizeBodySmall"),
             Classes = { "Muted" },
             Margin = new Thickness(2, 0, 0, 8),
@@ -2782,7 +2782,7 @@ public partial class ClipboardHistoryWindow : Window
         // and the popup is opt-in via this menu item only.
         if (!row.IsImage && !string.IsNullOrEmpty(row.Text) && row.Text.Length > 300)
         {
-            var viewFull = new MenuItem { Header = "View full…", Tag = row };
+            var viewFull = new MenuItem { Header = Strings.Clip_Row_ViewFull, Tag = row };
             viewFull.Click += (_, _) =>
             {
                 bool reveal = _revealed.Contains(row.Id);
@@ -2844,11 +2844,11 @@ public partial class ClipboardHistoryWindow : Window
                 item.Click += (_, _) => GroupOverrideRequested?.Invoke(row.Id, target);
                 moveTo.Items.Add(item);
             }
-            AddGroupTarget("Auto", null);
-            AddGroupTarget("🔗 Link", ClipboardGroup.Link);
-            AddGroupTarget("💻 Code", ClipboardGroup.Code);
-            AddGroupTarget("⚙️ Command", ClipboardGroup.Shell);
-            AddGroupTarget("🔒 Sensitive", ClipboardGroup.Sensitive);
+            AddGroupTarget(Strings.Clip_Group_Auto, null);
+            AddGroupTarget(Strings.Clip_Group_LinkMenu, ClipboardGroup.Link);
+            AddGroupTarget(Strings.Clip_Group_CodeMenu, ClipboardGroup.Code);
+            AddGroupTarget(Strings.Clip_Group_CommandMenu, ClipboardGroup.Shell);
+            AddGroupTarget(Strings.Clip_Group_SensitiveMenu, ClipboardGroup.Sensitive);
             // Note: JSON is folded into the Code tab at the filter layer, but as
             // an override target it's redundant (Code and JSON render the same
             // tab) — so we expose only Code here. Number has no tab and is

@@ -103,6 +103,7 @@ public static partial class Strings
 
     // ResultWindow
     public static string Result_Title => Get(nameof(Result_Title));
+    public static string Result_WindowTitle => Get(nameof(Result_WindowTitle));
     public static string Result_DefaultLanguagePair => Get(nameof(Result_DefaultLanguagePair));
     public static string Result_DefaultProvider => Get(nameof(Result_DefaultProvider));
     public static string Result_SourceLabel => Get(nameof(Result_SourceLabel));
@@ -120,6 +121,7 @@ public static partial class Strings
 
     // SpotlightWindow
     public static string Spotlight_Title => Get(nameof(Spotlight_Title));
+    public static string Spotlight_WindowTitle => Get(nameof(Spotlight_WindowTitle));
     public static string Spotlight_SearchPlaceholder => Get(nameof(Spotlight_SearchPlaceholder));
     public static string Spotlight_CategoryLauncher => Get(nameof(Spotlight_CategoryLauncher));
     public static string Spotlight_FooterSettings => Get(nameof(Spotlight_FooterSettings));
@@ -188,6 +190,10 @@ public static partial class Strings
     public static string Common_Status_Saved => Get(nameof(Common_Status_Saved));
     public static string Common_Toggle_On => Get(nameof(Common_Toggle_On));
     public static string Common_Toggle_Off => Get(nameof(Common_Toggle_Off));
+    // Relative-time labels (ClipboardHistoryWindow row age, image popup header)
+    public static string Common_TimeJustNow => Get(nameof(Common_TimeJustNow));
+    public static string Common_TimeMinutesAgo => Get(nameof(Common_TimeMinutesAgo));
+    public static string Common_TimeDaysAgo => Get(nameof(Common_TimeDaysAgo));
 
     // SettingsWindow — window chrome / nav rail
     public static string Settings_Title => Get(nameof(Settings_Title));
@@ -262,6 +268,12 @@ public static partial class Strings
     // SettingsWindow — Functions section
     public static string Settings_Actions_Title => Get(nameof(Settings_Actions_Title));
     public static string Settings_AddAction => Get(nameof(Settings_AddAction));
+    // Built-in action display names + prompt-preview fallbacks (code-behind)
+    public static string Settings_ActionName_Translate => Get(nameof(Settings_ActionName_Translate));
+    public static string Settings_ActionName_Summarize => Get(nameof(Settings_ActionName_Summarize));
+    public static string Settings_ActionName_Explain => Get(nameof(Settings_ActionName_Explain));
+    public static string Settings_ProviderPromptDefault => Get(nameof(Settings_ProviderPromptDefault));
+    public static string Settings_ProviderPromptNotSet => Get(nameof(Settings_ProviderPromptNotSet));
 
     // SettingsWindow — Vision section
     public static string Settings_Vision_Title => Get(nameof(Settings_Vision_Title));
@@ -347,6 +359,7 @@ public static partial class Strings
     public static string Settings_Status_MouseChordOn => Get(nameof(Settings_Status_MouseChordOn));
     public static string Settings_Status_MouseChordOff => Get(nameof(Settings_Status_MouseChordOff));
     public static string Settings_Status_ToolbarShortcuts => Get(nameof(Settings_Status_ToolbarShortcuts));
+    public static string Settings_ToolbarStatusCurrent => Get(nameof(Settings_ToolbarStatusCurrent));
     public static string Settings_Unbound => Get(nameof(Settings_Unbound));
     public static string Settings_Launcher_NoNewApps => Get(nameof(Settings_Launcher_NoNewApps));
     public static string Settings_Launcher_Imported => Get(nameof(Settings_Launcher_Imported));
@@ -387,6 +400,13 @@ public static partial class Strings
     public static string Clip_Group_Code => Get(nameof(Clip_Group_Code));
     public static string Clip_Group_Command => Get(nameof(Clip_Group_Command));
     public static string Clip_Group_Number => Get(nameof(Clip_Group_Number));
+    // Move-to submenu labels (badge variants above lack the emoji prefix; the
+    // submenu shows the emoji to match the nav-tab visuals)
+    public static string Clip_Group_Auto => Get(nameof(Clip_Group_Auto));
+    public static string Clip_Group_LinkMenu => Get(nameof(Clip_Group_LinkMenu));
+    public static string Clip_Group_CodeMenu => Get(nameof(Clip_Group_CodeMenu));
+    public static string Clip_Group_CommandMenu => Get(nameof(Clip_Group_CommandMenu));
+    public static string Clip_Group_SensitiveMenu => Get(nameof(Clip_Group_SensitiveMenu));
     // Category header counts
     public static string Clip_CategoryCount => Get(nameof(Clip_CategoryCount));
     public static string Clip_CategoryHeader_Links => Get(nameof(Clip_CategoryHeader_Links));
@@ -420,6 +440,9 @@ public static partial class Strings
     public static string Clip_Row_Favorite => Get(nameof(Clip_Row_Favorite));
     public static string Clip_Row_Unfavorite => Get(nameof(Clip_Row_Unfavorite));
     public static string Clip_Row_ViewFull => Get(nameof(Clip_Row_ViewFull));
+    // Tag navigation tooltip and image popup header (parameterized, code-behind)
+    public static string Clip_TagNavTooltip => Get(nameof(Clip_TagNavTooltip));
+    public static string Clip_ImagePopupHeader => Get(nameof(Clip_ImagePopupHeader));
     public static string Clip_Row_AddTag => Get(nameof(Clip_Row_AddTag));
     public static string Clip_Row_RemoveTag => Get(nameof(Clip_Row_RemoveTag));
     public static string Clip_Row_ViewImage => Get(nameof(Clip_Row_ViewImage));

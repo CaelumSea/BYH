@@ -36,6 +36,7 @@ internal static partial class Strings_zh_CN
 
         // ResultWindow
         ["Result_Title"] = "翻译",  // Audit L2: was untranslated "Translation"
+        ["Result_WindowTitle"] = "BYH · 翻译",
         ["Result_DefaultLanguagePair"] = "English → 简体中文",
         ["Result_DefaultProvider"] = "测试提供器",
         ["Result_SourceLabel"] = "原文",
@@ -53,6 +54,7 @@ internal static partial class Strings_zh_CN
 
         // SpotlightWindow
         ["Spotlight_Title"] = "BYH · Launcher",
+        ["Spotlight_WindowTitle"] = "BYH · 启动器",
         ["Spotlight_SearchPlaceholder"] = "搜索…",  // Audit L2: was untranslated "Search…"
         ["Spotlight_CategoryLauncher"] = "启动器",
         ["Spotlight_FooterSettings"] = "⚙ 设置",
@@ -115,6 +117,9 @@ internal static partial class Strings_zh_CN
         ["Common_Status_Saved"] = "已保存。",
         ["Common_Toggle_On"] = "开",
         ["Common_Toggle_Off"] = "关",
+        ["Common_TimeJustNow"] = "刚刚",
+        ["Common_TimeMinutesAgo"] = "{0}分钟前",
+        ["Common_TimeDaysAgo"] = "{0}天前",
 
         // SettingsWindow — chrome / nav
         ["Settings_Title"] = "BYH · 设置",
@@ -189,6 +194,11 @@ internal static partial class Strings_zh_CN
         // SettingsWindow — Functions section
         ["Settings_Actions_Title"] = "动作与提示词",
         ["Settings_AddAction"] = "＋ 添加动作",
+        ["Settings_ActionName_Translate"] = "翻译",
+        ["Settings_ActionName_Summarize"] = "总结",
+        ["Settings_ActionName_Explain"] = "解释",
+        ["Settings_ProviderPromptDefault"] = "(使用 provider 默认值)",
+        ["Settings_ProviderPromptNotSet"] = "(未设置)",
 
         // SettingsWindow — Vision section
         ["Settings_Vision_Title"] = "视觉识别",
@@ -274,6 +284,7 @@ internal static partial class Strings_zh_CN
         ["Settings_Status_MouseChordOn"] = "鼠标组合键开",
         ["Settings_Status_MouseChordOff"] = "鼠标组合键关",
         ["Settings_Status_ToolbarShortcuts"] = "已保存：提示 {0} · 复制 {1}",
+        ["Settings_ToolbarStatusCurrent"] = "当前：Prompt {0} · Copy {1}",
         ["Settings_Unbound"] = "未绑定",
         ["Settings_Launcher_NoNewApps"] = "没有发现新的可导入应用。",
         ["Settings_Launcher_Imported"] = "已导入 {0} 个应用。",
@@ -314,6 +325,13 @@ internal static partial class Strings_zh_CN
         ["Clip_Group_Code"] = "代码",
         ["Clip_Group_Command"] = "命令",
         ["Clip_Group_Number"] = "数字",
+        // Move-to submenu labels (emoji prefix matches the nav-tab visuals;
+        // the badge variants above are plain text without emoji)
+        ["Clip_Group_Auto"] = "自动",
+        ["Clip_Group_LinkMenu"] = "🔗 链接",
+        ["Clip_Group_CodeMenu"] = "💻 代码",
+        ["Clip_Group_CommandMenu"] = "⚙️ 命令",
+        ["Clip_Group_SensitiveMenu"] = "🔒 敏感",
         // Category header
         ["Clip_CategoryCount"] = "{0} · {1} 项",
         ["Clip_CategoryHeader_Links"] = "链接",
@@ -347,6 +365,9 @@ internal static partial class Strings_zh_CN
         ["Clip_Row_Favorite"] = "❤ 收藏",
         ["Clip_Row_Unfavorite"] = "取消收藏",
         ["Clip_Row_ViewFull"] = "查看全文…",
+        // Tag nav tooltip + image popup header (parameterized, code-behind)
+        ["Clip_TagNavTooltip"] = "{0}  (点击选择 · 拖拽排序 · 右键管理)",
+        ["Clip_ImagePopupHeader"] = "图片 · {0}  ·  滚轮缩放 · 拖拽平移 · 双击或 Esc 关闭",
         ["Clip_Row_AddTag"] = "添加标签…",
         ["Clip_Row_RemoveTag"] = "移除标签",
         ["Clip_Row_ViewImage"] = "查看图片…",
