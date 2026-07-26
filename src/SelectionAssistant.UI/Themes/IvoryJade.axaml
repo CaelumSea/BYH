@@ -416,6 +416,25 @@
   <Style Selector="Border.MacroClip.PhoneClip">
     <Setter Property="CornerRadius" Value="29" />
   </Style>
+  <!-- Settings search uses the same close double rim as the content surface,
+       but a shallower radius keeps it reading as a compact utility capsule. -->
+  <Style Selector="Border.MetallicFrame.SearchFrame">
+    <Setter Property="CornerRadius" Value="20" />
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F6FFFFFF, inset 0 0 0 1 #FFFFFFFF, inset 0 0 0 2 #52EAD8B8, 0 3 9 0 #0B4A2B19, 0 12 28 0 #0C4A2B19" />
+  </Style>
+  <Style Selector="Border.MacroClip.SearchClip">
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="#FCFFFDF8" />
+  </Style>
+  <Style Selector="Border.SearchResultsPopover">
+    <Setter Property="Background" Value="#FFFFFDF9" />
+    <Setter Property="BorderBrush" Value="#90E8C89A" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="16" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F4FFFFFF, inset 0 0 0 1 #9AFFFDF8, 0 8 24 0 #174A2B19, 0 22 48 0 #124A2B19" />
+  </Style>
   <Style Selector="Border.PhoneDock">
     <Setter Property="Background" Value="#E6FFF7EE" />
     <Setter Property="BorderBrush" Value="#72D5A86A" />
@@ -880,6 +899,64 @@
   <Style Selector="TextBox.SpotlightSearch:focus /template/ ContentPresenter">
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="TextBox.SettingsSearch">
+    <Style.Resources>
+      <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+    </Style.Resources>
+    <Setter Property="MinHeight" Value="28" />
+    <Setter Property="Padding" Value="2,3" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="TextBox.SettingsSearch:focus">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.SearchClear">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="Button.SearchClear:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhAccentBrush}" />
+  </Style>
+  <Style Selector="Button.SearchResult">
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Padding" Value="11,8" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.SearchResult:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderSubtleBrush}" />
+  </Style>
+  <Style Selector="Button.SearchResult:focus">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSelectedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhFocusBrush}" />
+    <Setter Property="BorderThickness" Value="2" />
+  </Style>
+  <Style Selector="TextBlock.SearchResultStatus">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
+    <Setter Property="FontSize" Value="9" />
+    <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
   <Style Selector="ComboBox">

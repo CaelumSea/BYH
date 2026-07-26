@@ -187,11 +187,72 @@
     </Border>
 
 
-    <!-- Main work pane: the selected settings category remains independently scrollable. -->
-    <Border Grid.Column="2"
-            Grid.Row="0"
-            Classes="MetallicFrame Thin">
-      <Border Classes="MacroClip">
+    <!-- Main work pane: a compact search capsule floats above an independent
+         settings surface, matching the two-pane hierarchy of the reference. -->
+    <Grid Grid.Column="2"
+          Grid.Row="0"
+          RowDefinitions="Auto,*"
+          RowSpacing="10">
+      <Border Grid.Row="0"
+              Classes="MetallicFrame Thin SearchFrame">
+        <Border Classes="MacroClip SearchClip">
+          <Grid ColumnDefinitions="Auto,*,Auto"
+                ColumnSpacing="10"
+                Margin="14,8">
+            <Path Width="15"
+                  Height="15"
+                  Stretch="Uniform"
+                  Stroke="{DynamicResource ByhAccentBrush}"
+                  StrokeThickness="1.5"
+                  VerticalAlignment="Center"
+                  Data="M10.5,10.5 L15,15 M12,7 A5,5 0 1 1 2,7 A5,5 0 1 1 12,7" />
+            <TextBox x:Name="SettingsSearchInput"
+                     Grid.Column="1"
+                     Classes="SettingsSearch"
+                     PlaceholderText="Search settings, features, or shortcuts…"
+                     AutomationProperties.AutomationId="BYH.Settings.Search.Input"
+                     TextChanged="OnSettingsSearchTextChanged"
+                     KeyDown="OnSettingsSearchKeyDown" />
+            <Button x:Name="ClearSettingsSearchButton"
+                    Grid.Column="2"
+                    Classes="SearchClear"
+                    Content="×"
+                    ToolTip.Tip="Clear search"
+                    IsVisible="False"
+                    Click="OnClearSettingsSearchClick"
+                    AutomationProperties.AutomationId="BYH.Settings.Search.Clear" />
+
+            <Popup x:Name="SettingsSearchPopup"
+                   PlacementTarget="{Binding #SettingsSearchInput}"
+                   Placement="BottomEdgeAlignedLeft"
+                   IsLightDismissEnabled="True">
+              <Border Classes="SearchResultsPopover"
+                      Width="520"
+                      MaxHeight="286"
+                      Margin="0,8,0,0"
+                      Padding="8">
+                <StackPanel Spacing="5">
+                  <TextBlock x:Name="SettingsSearchStatusText"
+                             Classes="SearchResultStatus"
+                             Margin="8,4"
+                             AutomationProperties.AutomationId="BYH.Settings.Search.Status" />
+                  <ScrollViewer MaxHeight="236"
+                                VerticalScrollBarVisibility="Auto"
+                                HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel x:Name="SettingsSearchResultsPanel"
+                                Spacing="4"
+                                AutomationProperties.AutomationId="BYH.Settings.Search.Results" />
+                  </ScrollViewer>
+                </StackPanel>
+              </Border>
+            </Popup>
+          </Grid>
+        </Border>
+      </Border>
+
+      <Border Grid.Row="1"
+              Classes="MetallicFrame Thin">
+        <Border Classes="MacroClip">
         <Grid RowDefinitions="Auto,*">
       <!-- The single SurfacePanel background is intentionally plain so the
            reference's clean, continuous card surface is not broken by texture. -->
@@ -649,7 +710,8 @@
                              FontSize="15"
                              FontWeight="SemiBold" />
                 </StackPanel>
-                <Button Grid.Column="1"
+                <Button x:Name="AddFunctionButton"
+                        Grid.Column="1"
                         Content="＋ Add Action"
                         Classes="Primary"
                         Click="OnAddFunctionClick" />
@@ -822,7 +884,8 @@
                         Content="🔍 扫描已安装应用"
                         Classes="Ghost"
                         Click="OnScanInstalledAppsClick" />
-                <Button Grid.Column="2"
+                <Button x:Name="AddLauncherButton"
+                        Grid.Column="2"
                         Content="＋ Add Launcher"
                         Classes="Primary"
                         Click="OnAddLauncherClick" />
@@ -1068,8 +1131,9 @@
       </ScrollViewer>
 
         </Grid>
+        </Border>
       </Border>
-    </Border>
+    </Grid>
 
     <!-- Reference-style theme specimen: four calm editorial sections on one
          continuous square sheet. The rail remains decorative and read-only. -->
