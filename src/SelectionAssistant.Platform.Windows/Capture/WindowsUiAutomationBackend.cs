@@ -152,9 +152,20 @@ public sealed unsafe class WindowsUiAutomationBackend : IUiAutomationBackend, ID
         }
 
         int initializeResult = CoInitializeEx(0, CoinitMultithreaded);
-        if (initializeResult >= 0)
+        // Audit H5: only S_OK (0) means "we initialized COM on this thread"
+        // and must pair with a matching CoUninitialize. S_FALSE (1) means the
+        // thread was already initialized (by us or another component) — calling
+        // CoUninitialize on S_FALSE would decrement a reference count we don't
+        // own, eventually unbalancing COM and breaking other consumers on this
+        // thread. So we record _comInitialized ONLY on S_OK. Negative results
+        // (RPC_E_CHANGED_MODE etc.) remain a hard failure as before.
+        if (initializeResult == 0) // S_OK
         {
             _comInitialized = true;
+        }
+        else if (initializeResult == 1) // S_FALSE — already initialized; we don't own the uninit
+        {
+            _comInitialized = false;
         }
         else
         {

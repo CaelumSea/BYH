@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using SelectionAssistant.Platform.Abstractions;
 
@@ -142,7 +143,7 @@ public sealed class LowLevelMouseHook : IMouseHook
         }
     }
 
-    private nint HookCallback(int code, nint wParam, nint lParam)
+    private unsafe nint HookCallback(int code, nint wParam, nint lParam)
     {
         try
         {
@@ -165,7 +166,12 @@ public sealed class LowLevelMouseHook : IMouseHook
 
                 if (messageType is { } resolved)
                 {
-                    MsllHookStruct nativeEvent = Marshal.PtrToStructure<MsllHookStruct>(lParam);
+                    // Audit H3: Unsafe.Read<T> (direct pointer deref) instead
+                    // of Marshal.PtrToStructure<T>. The mouse hook callback
+                    // runs on every mouse-move system-wide; zero-alloc AOT-
+                    // trim-safe intrinsic vs the marshaler's per-call alloc +
+                    // runtime-type check.
+                    MsllHookStruct nativeEvent = Unsafe.Read<MsllHookStruct>((void*)lParam);
                     var eventData = new MouseEventData(
                         nativeEvent.Point.X,
                         nativeEvent.Point.Y,

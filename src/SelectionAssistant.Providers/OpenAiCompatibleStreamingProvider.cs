@@ -139,10 +139,19 @@ public sealed class OpenAiCompatibleStreamingProvider
 
         // With ResponseHeadersRead, the response must stay alive while the body
         // stream is consumed. Dispose both when enumeration ends.
+        //
+        // Audit H7: thread timeout.Token (the linked CTS that fires after
+        // _options.Timeout) — NOT the bare cancellationToken — into the SSE
+        // consumer. Previously SendAsync/ReadAsStreamAsync honored the timeout
+        // but the streaming foreach used only the outer cancel, so a server
+        // that sent response headers then stalled could hang indefinitely
+        // (until socket death or outer cancel) instead of triggering the
+        // user-facing "翻译服务响应超时" path. The linked token cancels on
+        // EITHER user cancel OR timeout — exactly what we want.
         try
         {
             await foreach (var delta in OpenAiChatStream
-                .EnumerateDeltasAsync(bodyStream, cancellationToken)
+                .EnumerateDeltasAsync(bodyStream, timeout.Token)
                 .ConfigureAwait(false))
             {
                 yield return delta;

@@ -43,7 +43,15 @@ public static class OceanEyesTriggerStore
     /// <c>LoadIfExists(path) / Save(settings, path)</c> shape shared with the
     /// other settings stores.
     /// </summary>
-    private static string? LegacyMigrationPathField;
+    /// <remarks>
+    /// Audit H9: marked <see langword="volatile"/> because <see cref="SetLegacyMigrationPath"/>
+    /// is called from the UI thread during app startup while a concurrent
+    /// first-load on the OCR worker thread can call <see cref="TryGetLegacyPath"/>.
+    /// The value is set once at startup and never changed; volatile is the
+    /// cheap correct barrier that prevents a torn/stale read on weakly-ordered
+    /// hardware. (On x86/x64 this is essentially free; ARM64 benefits.)
+    /// </remarks>
+    private static volatile string? LegacyMigrationPathField;
 
     /// <summary>Sets the legacy quick-tools.json path for one-time migration reads.</summary>
     public static void SetLegacyMigrationPath(string? legacyPath) => LegacyMigrationPathField = legacyPath;

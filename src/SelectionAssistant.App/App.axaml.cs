@@ -2078,6 +2078,16 @@ public partial class App : Application
         _clipboardHistoryHotKey = null;
         _clipboardHistoryService?.Dispose();
         _clipboardHistoryService = null;
+        // Audit H8: dispose the runtime HERE, not only in the desktop.Exit
+        // handler. TryShutdown should fire Exit (which routes to
+        // DisposeApplicationResources), but on forced shutdown / modal-blocked
+        // shutdown / OS power-off the Exit event may not fire — the runtime
+        // owns providers, hooks, and the clipboard listener, which would leak
+        // (or worse, keep running) in those paths. Disposing here is safe
+        // because DisposeApplicationResources is now idempotent (it re-checks
+        // _runtime != null).
+        _runtime?.Dispose();
+        _runtime = null;
         _trayIcon?.Dispose();
         _trayIcon = null;
         _desktop?.TryShutdown();
@@ -2085,6 +2095,11 @@ public partial class App : Application
 
     private void DisposeApplicationResources()
     {
+        // Audit H8: idempotent residual cleanup. RequestExit is the primary
+        // disposer now; this handler (wired to desktop.Exit) only catches
+        // anything RequestExit missed (e.g. if RequestExit threw before
+        // reaching _runtime?.Dispose()). The null check makes a double-dispose
+        // from both paths a no-op instead of an ObjectDisposedException.
         _runtime?.Dispose();
         _runtime = null;
         _oceanEyesHotKey?.Dispose();

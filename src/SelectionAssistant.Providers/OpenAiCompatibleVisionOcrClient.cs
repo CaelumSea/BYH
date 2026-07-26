@@ -152,8 +152,11 @@ public sealed partial class OpenAiCompatibleVisionOcrClient : IVisionOcrClient, 
         var sb = new StringBuilder();
         try
         {
+            // Audit H7: thread timeout.Token into the SSE consumer (mirrors the
+            // streaming provider fix) so a stalled OCR stream after headers
+            // actually trips the user-facing timeout instead of hanging.
             await foreach (var delta in OpenAiChatStream
-                .EnumerateDeltasAsync(bodyStream, cancellationToken)
+                .EnumerateDeltasAsync(bodyStream, timeout.Token)
                 .ConfigureAwait(false))
             {
                 sb.Append(delta.Content);

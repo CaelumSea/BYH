@@ -108,6 +108,7 @@ public sealed class TranslationSessionManager : IDisposable, IAsyncDisposable
         CancellationTokenSource current = new();
         long generation;
         Task running;
+        ITranslationProvider provider;
 
         lock (_gate)
         {
@@ -116,7 +117,18 @@ public sealed class TranslationSessionManager : IDisposable, IAsyncDisposable
             _currentCancellation = current;
             _lastRequest = request;
             generation = ++_generation;
-            running = RunAsync(request, generation, current);
+            // Audit H2: snapshot the provider INSIDE the lock. RunAsync is
+            // async, so the lock is released at its first await (Task.Yield
+            // below); a concurrent ReplaceProvider could then swap _provider
+            // while RunAsync still dereferences it (torn read / NRE /
+            // ObjectDisposedException if the old provider is disposed by the
+            // caller). Capturing into a local here means RunAsync uses one
+            // stable provider instance for the whole request lifetime. The
+            // generation bump in ReplaceProvider still invalidates any view
+            // writes from a superseded session — this snapshot only removes
+            // the read-during-write race on the field itself.
+            provider = _provider;
+            running = RunAsync(request, generation, current, provider);
             _runningTask = running;
         }
 
@@ -127,7 +139,8 @@ public sealed class TranslationSessionManager : IDisposable, IAsyncDisposable
     private async Task RunAsync(
         TranslationRequest request,
         long generation,
-        CancellationTokenSource cancellation)
+        CancellationTokenSource cancellation,
+        ITranslationProvider provider)
     {
         // Prevent a provider/dispatcher that completes synchronously from running
         // the finally block while StartRequestAsync still owns _gate.
@@ -138,13 +151,13 @@ public sealed class TranslationSessionManager : IDisposable, IAsyncDisposable
             await InvokeIfCurrentAsync(
                 generation,
                 token,
-                () => _view.ShowLoading(request, _provider.DisplayName)).ConfigureAwait(false);
+                () => _view.ShowLoading(request, provider.DisplayName)).ConfigureAwait(false);
 
             // Branch: streaming providers emit incremental deltas; one-shot
             // providers return a complete result. Each delta and the final
             // assembly are generation-guarded so a superseded session never
             // writes stale chunks to the view.
-            if (_provider is IStreamingTranslationProvider streaming)
+            if (provider is IStreamingTranslationProvider streaming)
             {
                 var assembled = new StringBuilder();
                 await foreach (TranslationDelta delta in streaming
@@ -172,7 +185,7 @@ public sealed class TranslationSessionManager : IDisposable, IAsyncDisposable
                     assembled.ToString(),
                     request.SourceLanguage,
                     request.TargetLanguage,
-                    _provider.DisplayName);
+                    provider.DisplayName);
                 await InvokeIfCurrentAsync(
                     generation,
                     token,
@@ -180,7 +193,7 @@ public sealed class TranslationSessionManager : IDisposable, IAsyncDisposable
             }
             else
             {
-                TranslationResult result = await _provider
+                TranslationResult result = await provider
                     .TranslateAsync(request, token)
                     .ConfigureAwait(false);
 

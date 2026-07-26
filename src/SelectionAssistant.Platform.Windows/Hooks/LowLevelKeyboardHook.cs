@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace SelectionAssistant.Platform.Windows.Hooks;
@@ -181,7 +182,7 @@ public sealed class LowLevelKeyboardHook : IDisposable
         }
     }
 
-    private nint HookCallback(int code, nint wParam, nint lParam)
+    private unsafe nint HookCallback(int code, nint wParam, nint lParam)
     {
         // Default behaviour: pass the key to the next hook / focused window.
         // Returning a non-zero value from HC_ACTION swallows the key.
@@ -193,7 +194,12 @@ public sealed class LowLevelKeyboardHook : IDisposable
             int message = unchecked((int)wParam);
             if (message == WmKeyDown || message == WmSysKeyDown)
             {
-                KbdllHookStruct nativeEvent = Marshal.PtrToStructure<KbdllHookStruct>(lParam);
+                // Audit H3: read the hook struct via Unsafe.Read<T> (a direct
+                // pointer dereference) instead of Marshal.PtrToStructure<T>.
+                // The hook callback runs on EVERY keypress system-wide; the
+                // marshaler variant allocates + does runtime-type checks per
+                // call. Unsafe.Read<T> is a zero-alloc AOT-trim-safe intrinsic.
+                KbdllHookStruct nativeEvent = Unsafe.Read<KbdllHookStruct>((void*)lParam);
                 try
                 {
                     if (RaiseKeyPressedSafely((int)nativeEvent.VkCode))

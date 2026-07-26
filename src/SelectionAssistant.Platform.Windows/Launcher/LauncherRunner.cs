@@ -216,6 +216,17 @@ public static class LauncherRunner
             int err = Marshal.GetLastWin32Error();
             return $"[Win32 {err}] 启动失败：{GetWin32ErrorMessage(err)}";
         }
+
+        // Audit H1: SEE_MASK_NOCLOSEPROCESS asks the shell to populate
+        // hProcess with a handle to the newly launched process. The OS
+        // grants us this handle (kernel object, reference count bumped);
+        // we never wait on it, so we MUST release our reference or it
+        // leaks on every launcher invocation. (We don't own the process
+        // lifetime — the user does — we only own the handle.)
+        if (info.hProcess != IntPtr.Zero)
+        {
+            CloseHandle(info.hProcess);
+        }
         return null;
     }
 
@@ -331,4 +342,8 @@ public static class LauncherRunner
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool ShellExecuteEx(ref SHELLEXECUTEINFO lpExecInfo);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(IntPtr hObject);
 }

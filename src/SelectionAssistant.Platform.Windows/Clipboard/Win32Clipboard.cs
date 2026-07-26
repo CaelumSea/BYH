@@ -172,6 +172,25 @@ public sealed unsafe class Win32Clipboard : IClipboardAccess, IDisposable
                 return false;
             }
 
+            // Audit H10: pre-flight check. EmptyClipboard() wipes the current
+            // clipboard contents AND transfers ownership to us; if we then fail
+            // every SetClipboardData, the prior contents are gone with nothing
+            // replacing them (data loss). The dominant cause of SetClipboardData
+            // failure is an invalid (zero) handle — typically because
+            // AllocateGlobal returned NULL under memory pressure. Verify every
+            // allocation has a live handle BEFORE clearing. (SetClipboardData can
+            // still fail post-clear for other reasons — AV interference, another
+            // app grabbing the clipboard between our EmptyClipboard and our
+            // SetClipboardData — but those races are inherent to the Win32
+            // clipboard design and far rarer than a zero-handle allocation.)
+            foreach (OwnedClipboardMemory allocation in allocations)
+            {
+                if (allocation.Handle == IntPtr.Zero)
+                {
+                    return false;
+                }
+            }
+
             return TryWithOpenClipboard(
                 () =>
                 {
