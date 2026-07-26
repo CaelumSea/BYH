@@ -1,9 +1,9 @@
 id: TASK-033
 requirement: REQ-027
 title: 修正手机卡与底部总览的纵向比例
-status: in_progress
+status: done
 created: '2026-07-26T10:30:20'
-updated: '2026-07-26T10:54:11'
+updated: '2026-07-26T11:51:42'
 satisfies:
 - AC-10
 - AC-7

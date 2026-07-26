@@ -1,13 +1,46 @@
 id: TASK-037
 requirement: REQ-027
 title: 实现全屏标题栏自动隐藏与触顶显示
-status: pending
+status: done
 created: '2026-07-26T10:53:04'
-updated: '2026-07-26T10:53:04'
+updated: '2026-07-26T12:16:38'
 satisfies:
 - AC-15
 - AC-8
 - AC-7
 description: 明确原生双箭头全屏行为，在全屏状态提供可恢复的顶部热区与标题栏显隐控制，保留窗口按钮、Esc/退出全屏、高 DPI 和键盘可达性。
-handoff: ''
-execution_log: []
+handoff: Avalonia 12 声明 FullscreenPopover 会在触顶时出现，但 BYH 当前 Windows 装饰主题的实测 UIA 树中没有生成该弹层，因此不能只依赖框架默认行为。现保留普通状态的
+  原生标题栏；进入 FullScreen 后移除 36px 客户区占位，启用 18px 顶部感应区和 BYH 自绘浮出控制栏。控制栏离开 650ms 后收起，提供最小化、还原和关闭；Esc
+  优先退出 自动隐藏模式，不再直接隐藏设置窗口。QA 图位于 artifacts/qa/REQ-027-fullscreen-titlebar/fullscreen-titlebar-revealed-nativeaot.png。
+execution_log:
+- step: 1
+  action: 核对 Avalonia 12 本地 API 文档与当前设置窗口装饰结构
+  result: 确认双箭头是框架 FullScreenButton；框架声明全屏时由 FullscreenPopover 负责触顶显示。
+  timestamp: '2026-07-26T12:04:00+08:00'
+- step: 2
+  action: 修正全屏客户区占位与 Esc 行为
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml.cs
+  result: 全屏时标题栏行由 36px 收为 0；Esc 恢复进入全屏前的普通或最大化状态。
+  timestamp: '2026-07-26T12:07:00+08:00'
+- step: 3
+  action: 用 UI Automation 验证框架 FullscreenPopover
+  result: 指针离开和触及屏幕顶部时，原生标题栏按钮都未出现在 UIA 树中，确认默认弹层在当前主题下不可靠。
+  timestamp: '2026-07-26T12:09:00+08:00'
+- step: 4
+  action: 增加顶部感应区与 BYH 全屏浮出控制栏
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  result: 18px 顶部区域可揭示最小化、还原、关闭按钮；离开 650ms 后自动收起。
+  timestamp: '2026-07-26T12:12:00+08:00'
+- step: 5
+  action: 验证自动隐藏、触顶显示、再次收起与还原
+  result: UIA 依次确认 away=不可见、top-zone=可见、auto-hidden-again=不可见；还原后原生标题栏重新出现。
+  timestamp: '2026-07-26T12:14:00+08:00'
+- step: 6
+  action: 完成构建、测试、NativeAOT 发布与视觉截图
+  command: dotnet build SelectionAssistant.slnx -c Debug; dotnet test SelectionAssistant.slnx
+    -c Debug --no-build; dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj
+    -c Release -r win-x64 /p:PublishAot=true
+  artifact: artifacts/qa/REQ-027-fullscreen-titlebar/fullscreen-titlebar-revealed-nativeaot.png
+  result: Debug 构建 0 warning/0 error；574 项测试全部通过；NativeAOT 发布成功；截图确认标题栏与 Ivory Jade
+    主体连续。
+  timestamp: '2026-07-26T12:16:00+08:00'

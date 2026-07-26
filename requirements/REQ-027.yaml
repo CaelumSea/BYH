@@ -2,7 +2,7 @@ id: REQ-027
 title: BYH 皮肤自定义与运行时切换系统
 status: dispatched
 created: '2026-07-26T09:24:17'
-updated: '2026-07-26T10:54:11'
+updated: '2026-07-26T12:16:38'
 score_kind: aesthetic
 aesthetic_template: ''
 acceptance_criteria:
@@ -92,7 +92,7 @@ tasks:
   status: pending
 - id: TASK-033
   title: 修正手机卡与底部总览的纵向比例
-  status: in_progress
+  status: done
 - id: TASK-034
   title: 将手机底栏改为手机内部摘要导航
   status: pending
@@ -104,7 +104,7 @@ tasks:
   status: pending
 - id: TASK-037
   title: 实现全屏标题栏自动隐藏与触顶显示
-  status: pending
+  status: done
 aesthetic_score:
   scored_at: ''
   scored_by: ''

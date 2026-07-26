@@ -14,8 +14,32 @@
         Background="{DynamicResource ByhBackgroundBrush}"
         WindowStartupLocation="CenterScreen"
         AutomationProperties.AutomationId="BYH.Settings.Window"
-        KeyDown="OnWindowKeyDown">
-  <Grid RowDefinitions="36,*">
+        KeyDown="OnWindowKeyDown"
+        PointerMoved="OnWindowPointerMoved">
+  <Window.Styles>
+    <Style Selector="Button.FullscreenCaption">
+      <Setter Property="Width" Value="46" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+      <Setter Property="FontSize" Value="15" />
+    </Style>
+    <Style Selector="Button.FullscreenCaption:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+    </Style>
+    <Style Selector="Button.FullscreenCaption.Close:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ByhErrorSoftBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ByhErrorBrush}" />
+    </Style>
+  </Window.Styles>
+  <Grid x:Name="RootLayout">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="36" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
     <!--
       Keep Windows in charge of the caption buttons and resize chrome, but let
       the themed client surface flow behind them. The marked strip preserves
@@ -1560,5 +1584,58 @@
       </Border>
     </Border>
     </Grid>
+
+    <!-- Avalonia's platform fullscreen popover is not exposed reliably by
+         every Windows decoration theme. Keep a six-pixel, transparent sensor
+         over the top edge and reveal an in-client fallback caption only while
+         fullscreen auto-hide mode is active. -->
+    <Border x:Name="FullscreenRevealZone"
+            Grid.RowSpan="2"
+            Height="18"
+            VerticalAlignment="Top"
+            Background="Transparent"
+            IsVisible="False"
+            ZIndex="100"
+            PointerEntered="OnFullscreenRevealZonePointerEntered" />
+
+    <Border x:Name="FullscreenTitleBar"
+            Grid.RowSpan="2"
+            Height="36"
+            VerticalAlignment="Top"
+            Background="{DynamicResource ByhBackgroundBrush}"
+            BorderBrush="{DynamicResource ByhHairlineBrush}"
+            BorderThickness="0,0,0,1"
+            BoxShadow="0 7 18 0 #1A4A2B19"
+            IsVisible="False"
+            ZIndex="101"
+            PointerEntered="OnFullscreenTitleBarPointerEntered"
+            PointerExited="OnFullscreenTitleBarPointerExited">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Margin="14,0,0,0"
+                   Text="BYH · Settings"
+                   FontSize="12"
+                   Foreground="{DynamicResource ByhTextSecondaryBrush}"
+                   VerticalAlignment="Center" />
+        <StackPanel Grid.Column="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+          <Button Classes="FullscreenCaption"
+                  Content="—"
+                  AutomationProperties.Name="Minimize"
+                  AutomationProperties.AutomationId="BYH.Settings.Fullscreen.Minimize"
+                  Click="OnFullscreenMinimizeClick" />
+          <Button Classes="FullscreenCaption"
+                  Content="□"
+                  AutomationProperties.Name="Restore"
+                  AutomationProperties.AutomationId="BYH.Settings.Fullscreen.Restore"
+                  Click="OnFullscreenRestoreClick" />
+          <Button Classes="FullscreenCaption Close"
+                  Content="×"
+                  AutomationProperties.Name="Close"
+                  AutomationProperties.AutomationId="BYH.Settings.Fullscreen.Close"
+                  Click="OnFullscreenCloseClick" />
+        </StackPanel>
+      </Grid>
+    </Border>
   </Grid>
 </Window>

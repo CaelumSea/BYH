@@ -1,7 +1,9 @@
 using Avalonia.Collections;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.Input;
@@ -32,6 +34,8 @@ public partial class SettingsWindow : Window
     }
 
     private bool _allowClose;
+    private WindowState _lastNonFullScreenWindowState = WindowState.Normal;
+    private readonly DispatcherTimer _fullscreenTitleBarHideTimer;
 
     private readonly AvaloniaList<ProviderOption> _providerOptions = [];
     private readonly ObservableCollection<PromptFunctionRow> _functionRows = [];
@@ -59,6 +63,19 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+        _fullscreenTitleBarHideTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(650),
+        };
+        _fullscreenTitleBarHideTimer.Tick += (_, _) =>
+        {
+            _fullscreenTitleBarHideTimer.Stop();
+            if (WindowState == WindowState.FullScreen)
+            {
+                FullscreenTitleBar.IsVisible = false;
+                FullscreenRevealZone.IsVisible = true;
+            }
+        };
         ProviderComboBox.ItemsSource = _providerOptions;
         VisionProviderComboBox.ItemsSource = _visionProviderOptions;
         ShortcutKeyComboBox.ItemsSource = OceanEyesTriggerSettings.SupportedKeys;
@@ -81,9 +98,11 @@ public partial class SettingsWindow : Window
             Hide();
         };
         SizeChanged += (_, _) => ApplyResponsiveShellWidths();
+        PropertyChanged += OnWindowPropertyChanged;
 
         ShowSettingsPage(SettingsPage.General);
         ApplyResponsiveShellWidths();
+        ApplyTitleBarMode();
     }
 
     // ── Settings information architecture ──
@@ -94,6 +113,102 @@ public partial class SettingsWindow : Window
         ShellGrid.ColumnDefinitions[0].Width = new GridLength(expanded ? 230 : 190);
         ShellGrid.ColumnDefinitions[1].Width = new GridLength(expanded ? 210 : 170);
         ShellGrid.ColumnDefinitions[3].Width = new GridLength(expanded ? 310 : 270);
+    }
+
+    private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.Property != WindowStateProperty)
+        {
+            return;
+        }
+
+        if (WindowState is not (WindowState.FullScreen or WindowState.Minimized))
+        {
+            _lastNonFullScreenWindowState = WindowState;
+        }
+
+        ApplyResponsiveShellWidths();
+        ApplyTitleBarMode();
+    }
+
+    private void ApplyTitleBarMode()
+    {
+        // Avalonia's drawn decorations turn the title bar into a
+        // FullscreenPopover while WindowState is FullScreen: it stays hidden
+        // until the pointer reaches the top edge. Remove our client-side
+        // title-row reservation as well, so the shell uses the recovered
+        // vertical space instead of leaving a blank 36 px strip.
+        RootLayout.RowDefinitions[0].Height =
+            WindowState == WindowState.FullScreen
+                ? new GridLength(0)
+                : new GridLength(36);
+
+        bool autoHidden = WindowState == WindowState.FullScreen;
+        FullscreenTitleBar.IsVisible = false;
+        FullscreenRevealZone.IsVisible = autoHidden;
+        if (!autoHidden)
+        {
+            _fullscreenTitleBarHideTimer.Stop();
+        }
+    }
+
+    private void OnFullscreenRevealZonePointerEntered(object? sender, PointerEventArgs eventArgs)
+        => RevealFullscreenTitleBar();
+
+    private void OnWindowPointerMoved(object? sender, PointerEventArgs eventArgs)
+    {
+        if (WindowState == WindowState.FullScreen &&
+            eventArgs.GetPosition(this).Y <= 18)
+        {
+            RevealFullscreenTitleBar();
+        }
+    }
+
+    private void RevealFullscreenTitleBar()
+    {
+        if (WindowState != WindowState.FullScreen)
+        {
+            return;
+        }
+
+        _fullscreenTitleBarHideTimer.Stop();
+        FullscreenRevealZone.IsVisible = false;
+        FullscreenTitleBar.IsVisible = true;
+    }
+
+    private void OnFullscreenTitleBarPointerEntered(object? sender, PointerEventArgs eventArgs) =>
+        _fullscreenTitleBarHideTimer.Stop();
+
+    private void OnFullscreenTitleBarPointerExited(object? sender, PointerEventArgs eventArgs)
+    {
+        if (WindowState == WindowState.FullScreen)
+        {
+            _fullscreenTitleBarHideTimer.Stop();
+            _fullscreenTitleBarHideTimer.Start();
+        }
+    }
+
+    private void OnFullscreenMinimizeClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        FullscreenTitleBar.IsVisible = false;
+        ExitFullscreenAutoHideMode();
+        Dispatcher.UIThread.Post(() => WindowState = WindowState.Minimized);
+    }
+
+    private void OnFullscreenRestoreClick(object? sender, RoutedEventArgs eventArgs) =>
+        ExitFullscreenAutoHideMode();
+
+    private void OnFullscreenCloseClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        ExitFullscreenAutoHideMode();
+        Hide();
+    }
+
+    private void ExitFullscreenAutoHideMode()
+    {
+        WindowState = _lastNonFullScreenWindowState == WindowState.Minimized
+            ? WindowState.Normal
+            : _lastNonFullScreenWindowState;
     }
 
     private void ShowSettingsPage(SettingsPage page)
@@ -1240,6 +1355,12 @@ public partial class SettingsWindow : Window
         if (eventArgs.Key == Key.Escape)
         {
             eventArgs.Handled = true;
+            if (WindowState == WindowState.FullScreen)
+            {
+                ExitFullscreenAutoHideMode();
+                return;
+            }
+
             Hide();
         }
     }
