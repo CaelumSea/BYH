@@ -30,7 +30,7 @@
             WindowDecorationProperties.ElementRole="TitleBar" />
 
     <Grid Grid.Row="1"
-          ColumnDefinitions="190,170,3.2*,1.25*"
+          ColumnDefinitions="190,170,3*,1.3*"
           RowDefinitions="2.15*,1*"
           ColumnSpacing="12"
           RowSpacing="12"
@@ -1192,7 +1192,6 @@
     <Border Grid.Column="3"
              Grid.Row="0"
              Classes="MetallicFrame Thin PhoneFrame"
-            MinWidth="300"
             Margin="0,14,0,12"
             VerticalAlignment="Stretch"
             Background="{DynamicResource ByhPanelIvoryBrush}">

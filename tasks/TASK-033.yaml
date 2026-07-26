@@ -43,3 +43,11 @@ execution_log:
   action: 重新完成构建、测试和 NativeAOT 发布
   result: Debug 构建 0 warning/0 error；574 项测试全部通过；支线最新版已打开等待同屏最大化验收。
   timestamp: '2026-07-26T11:12:00+08:00'
+- step: 7
+  action: 修复默认尺寸下手机卡最小宽度溢出
+  result: 移除卡片级 MinWidth=300，将列比例调整为 3*:1.3*；默认尺寸恢复 12px 列间距，全屏时手机列仍可随宽度扩展。
+  timestamp: '2026-07-26T11:25:00+08:00'
+- step: 8
+  action: 重新验证 AXAML、Debug 构建与 NativeAOT 发布
+  result: AXAML 解析通过；Debug 构建 0 warning/0 error；NativeAOT 发布通过并打开最新版。
+  timestamp: '2026-07-26T11:28:00+08:00'
