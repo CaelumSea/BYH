@@ -915,16 +915,18 @@
 
               <!-- R54 window-size card: Spotlight is CanResize=False, so this is
                    the only way the user controls its size. Saved by the same
-                   OnSaveSpotlightTriggerClick button below. -->
+                   OnSaveSpotlightTriggerClick button below. Two stacked rows
+                   (Width / Height) mirror the MaxEntries/MaxImages pattern in
+                   the Clipboard card — side-by-side labels collided in this
+                   narrow card and were unreadable. -->
               <Border Classes="InnerCard" Padding="14">
                 <StackPanel Spacing="10">
                   <TextBlock Text="{x:Static i18n:Strings.Settings_Spotlight_WindowSize_Title}"
                              Classes="Secondary"
                              FontSize="{DynamicResource ByhFontSizeBody}"
                              FontWeight="SemiBold" />
-                  <Grid ColumnDefinitions="*,82,16,*,82" ColumnSpacing="10">
-                    <TextBlock Grid.Column="0"
-                               Text="{x:Static i18n:Strings.Common_Width}"
+                  <Grid ColumnDefinitions="*,82" ColumnSpacing="10">
+                    <TextBlock Text="{x:Static i18n:Strings.Common_Width}"
                                Classes="Secondary"
                                FontSize="{DynamicResource ByhFontSizeBody}"
                                VerticalAlignment="Center" />
@@ -932,12 +934,13 @@
                              x:Name="SpotlightWindowWidthInput"
                              Text="560"
                              FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
-                    <TextBlock Grid.Column="3"
-                               Text="{x:Static i18n:Strings.Common_Height}"
+                  </Grid>
+                  <Grid ColumnDefinitions="*,82" ColumnSpacing="10">
+                    <TextBlock Text="{x:Static i18n:Strings.Common_Height}"
                                Classes="Secondary"
                                FontSize="{DynamicResource ByhFontSizeBody}"
                                VerticalAlignment="Center" />
-                    <TextBox Grid.Column="4"
+                    <TextBox Grid.Column="1"
                              x:Name="SpotlightWindowHeightInput"
                              Text="480"
                              FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
@@ -1076,14 +1079,20 @@
                                Text="50"
                                FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
                     </Grid>
-                    <!-- R54 window-size row: default open size of the
+                    <!-- R54 window-size: default open size of the
                          ClipboardHistoryWindow. The window is CanResize=True,
                          so this is the launch default; in-session manual
                          resizes persist across Show/Hide only. Saved by the
-                         same OnSaveClipboardHistorySettingsClick button. -->
-                    <Grid ColumnDefinitions="*,82,16,*,82" ColumnSpacing="10">
-                      <TextBlock Grid.Column="0"
-                                 Text="{x:Static i18n:Strings.Settings_Clipboard_WindowSize_Title}"
+                         same OnSaveClipboardHistorySettingsClick button.
+                         Two stacked rows (Width / Height) mirror MaxEntries /
+                         MaxImages above — side-by-side labels collided in
+                         this narrow card and were unreadable. -->
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Clipboard_WindowSize_Title}"
+                               Classes="Secondary"
+                               FontSize="{DynamicResource ByhFontSizeBody}"
+                               FontWeight="SemiBold" />
+                    <Grid ColumnDefinitions="*,82" ColumnSpacing="10">
+                      <TextBlock Text="{x:Static i18n:Strings.Common_Width}"
                                  Classes="Secondary"
                                  FontSize="{DynamicResource ByhFontSizeBody}"
                                  VerticalAlignment="Center" />
@@ -1091,12 +1100,13 @@
                                x:Name="ClipboardHistoryWindowWidthInput"
                                Text="800"
                                FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
-                      <TextBlock Grid.Column="3"
-                                 Text="{x:Static i18n:Strings.Common_Height}"
+                    </Grid>
+                    <Grid ColumnDefinitions="*,82" ColumnSpacing="10">
+                      <TextBlock Text="{x:Static i18n:Strings.Common_Height}"
                                  Classes="Secondary"
                                  FontSize="{DynamicResource ByhFontSizeBody}"
                                  VerticalAlignment="Center" />
-                      <TextBox Grid.Column="4"
+                      <TextBox Grid.Column="1"
                                x:Name="ClipboardHistoryWindowHeightInput"
                                Text="620"
                                FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
