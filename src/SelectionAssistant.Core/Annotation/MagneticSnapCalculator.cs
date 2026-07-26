@@ -100,20 +100,20 @@ public static class MagneticSnapCalculator
             // X axis: screen left
             CheckX(moving.Left, wa.Left, threshold,
                    ref bestDx, ref bestAbsDx, ref bestXHint,
-                   0, SnapAxis.X, SnapTarget.ScreenLeft);
+                   SnapAxis.X, SnapTarget.ScreenLeft);
             // X axis: screen right
             CheckX(moving.Right, wa.Right, threshold,
                    ref bestDx, ref bestAbsDx, ref bestXHint,
-                   wa.Right - moving.Width, SnapAxis.X, SnapTarget.ScreenRight);
+                   SnapAxis.X, SnapTarget.ScreenRight);
 
             // Y axis: screen top
             CheckY(moving.Top, wa.Top, threshold,
                    ref bestDy, ref bestAbsDy, ref bestYHint,
-                   0, SnapAxis.Y, SnapTarget.ScreenTop);
+                   SnapAxis.Y, SnapTarget.ScreenTop);
             // Y axis: screen bottom
             CheckY(moving.Bottom, wa.Bottom, threshold,
                    ref bestDy, ref bestAbsDy, ref bestYHint,
-                   wa.Bottom - moving.Height, SnapAxis.Y, SnapTarget.ScreenBottom);
+                   SnapAxis.Y, SnapTarget.ScreenBottom);
         }
 
         // --- Check against other pinned window edges ---
@@ -122,20 +122,20 @@ public static class MagneticSnapCalculator
             // X axis: other's left edge vs moving's right edge
             CheckX(moving.Right, other.Left, threshold,
                    ref bestDx, ref bestAbsDx, ref bestXHint,
-                   other.Left - moving.Width, SnapAxis.X, SnapTarget.WindowLeft);
+                   SnapAxis.X, SnapTarget.WindowLeft);
             // X axis: other's right edge vs moving's left edge
             CheckX(moving.Left, other.Right, threshold,
                    ref bestDx, ref bestAbsDx, ref bestXHint,
-                   other.Right, SnapAxis.X, SnapTarget.WindowRight);
+                   SnapAxis.X, SnapTarget.WindowRight);
 
             // Y axis: other's top edge vs moving's bottom edge
             CheckY(moving.Bottom, other.Top, threshold,
                    ref bestDy, ref bestAbsDy, ref bestYHint,
-                   other.Top - moving.Height, SnapAxis.Y, SnapTarget.WindowTop);
+                   SnapAxis.Y, SnapTarget.WindowTop);
             // Y axis: other's bottom edge vs moving's top edge
             CheckY(moving.Top, other.Bottom, threshold,
                    ref bestDy, ref bestAbsDy, ref bestYHint,
-                   other.Bottom, SnapAxis.Y, SnapTarget.WindowBottom);
+                   SnapAxis.Y, SnapTarget.WindowBottom);
         }
 
         int snappedX = moving.Left + bestDx;
@@ -148,10 +148,17 @@ public static class MagneticSnapCalculator
         return ((snappedX, snappedY), hints);
     }
 
+    // Audit M14: removed the unused `snappedLeft`/`snappedTop` parameters.
+    // They were passed at every call site but never read — the final snapped
+    // position is recomputed at the call site as `moving.Left + bestDx` /
+    // `moving.Top + bestDy` (which equals the target edge minus the chosen
+    // delta, i.e. exactly what snappedLeft/snappedTop were trying to be). Dead
+    // params are a footgun: a future change to the snap formula would silently
+    // break by not updating the recomputation.
     private static void CheckX(
         int movingEdge, int targetEdge, double threshold,
         ref int bestDx, ref int bestAbsDx, ref SnapHint? bestHint,
-        int snappedLeft, SnapAxis axis, SnapTarget target)
+        SnapAxis axis, SnapTarget target)
     {
         int delta = targetEdge - movingEdge;
         int absDelta = Math.Abs(delta);
@@ -166,7 +173,7 @@ public static class MagneticSnapCalculator
     private static void CheckY(
         int movingEdge, int targetEdge, double threshold,
         ref int bestDy, ref int bestAbsDy, ref SnapHint? bestHint,
-        int snappedTop, SnapAxis axis, SnapTarget target)
+        SnapAxis axis, SnapTarget target)
     {
         int delta = targetEdge - movingEdge;
         int absDelta = Math.Abs(delta);

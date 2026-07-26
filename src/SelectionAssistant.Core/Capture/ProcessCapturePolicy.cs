@@ -20,6 +20,17 @@ public sealed record ProcessCapturePolicy(
         ClipboardStabilizationMs: 0,   // 0 = 用全局默认(50ms)
         ManualFallbackEnabled: true);
 
+    /// <summary>
+    /// Returns a copy with <see cref="ClipboardStabilizationMs"/> clamped to the
+    /// valid range. Mirrors the Normalize convention used by the other settings
+    /// records (clamp, then Validate as a hard assertion). A deserialized value
+    /// outside [0, 5000] is silently clamped instead of throwing. Audit M7.
+    /// </summary>
+    public ProcessCapturePolicy Normalize() => this with
+    {
+        ClipboardStabilizationMs = Math.Clamp(ClipboardStabilizationMs, 0, 5_000),
+    };
+
     public ProcessCapturePolicy Validate()
     {
         if (ClipboardStabilizationMs is < 0 or > 5_000)

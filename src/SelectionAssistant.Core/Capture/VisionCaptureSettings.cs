@@ -63,4 +63,35 @@ public sealed record VisionCaptureSettings
     public bool DisableThinking { get; init; } = true;
 
     public static VisionCaptureSettings Default { get; } = new();
+
+    /// <summary>
+    /// Returns a copy with null/whitespace string fields restored to their
+    /// defaults. Mirrors the Normalize convention used by every other settings
+    /// record (SpotlightTriggerSettings, ClipboardHistorySettings, …).
+    /// A deserialized null ProviderId/Model would otherwise NPE downstream in
+    /// the runtime's provider lookup. Audit M6.
+    /// </summary>
+    public VisionCaptureSettings Normalize() => this with
+    {
+        ProviderId = string.IsNullOrWhiteSpace(ProviderId) ? Default.ProviderId : ProviderId.Trim(),
+        Model = string.IsNullOrWhiteSpace(Model) ? Default.Model : Model.Trim(),
+        OcrPrompt = string.IsNullOrWhiteSpace(OcrPrompt) ? Default.OcrPrompt : OcrPrompt.Trim(),
+    };
+
+    /// <summary>
+    /// Asserts the post-Normalize invariants. Throws ArgumentException on the
+    /// first invalid field. Call after Normalize for defense-in-depth (the
+    /// runtime trusts the result). Audit M6.
+    /// </summary>
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(ProviderId))
+        {
+            throw new ArgumentException("Vision ProviderId must not be empty.", nameof(ProviderId));
+        }
+        if (string.IsNullOrWhiteSpace(Model))
+        {
+            throw new ArgumentException("Vision Model must not be empty.", nameof(Model));
+        }
+    }
 }

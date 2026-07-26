@@ -60,8 +60,19 @@ public partial class ResultWindow : Window
                 return; // within the post-Show grace period — ignore stray deactivation
             }
             _autoCloseArmed = false;
+            _armTimer.Stop(); // Audit M13: cancel any pending arm tick on handoff
             Hide();
             CloseRequested?.Invoke();
+        };
+
+        // Audit M13: single shared timer, armed once. Tick fires the 400ms grace
+        // expiry, sets the armed flag, and self-stops. Re-armament via
+        // ShowAndActivate Stop()s the timer first so a rapid re-show inside the
+        // grace window restarts the clock cleanly.
+        _armTimer.Tick += (_, _) =>
+        {
+            _armTimer.Stop();
+            _autoCloseArmed = true;
         };
     }
 
@@ -73,6 +84,15 @@ public partial class ResultWindow : Window
     // caught. Volatile: written on the UI thread (timer callback), read in the
     // Deactivated handler (also UI thread, but volatile documents intent).
     private volatile bool _autoCloseArmed;
+
+    // Audit M13: the arm timer is stored as a field (was new'd per
+    // ShowAndActivate call). A rapid re-show inside the 400ms grace window
+    // would otherwise start a second timer; both would set _autoCloseArmed =
+    // true, and neither was stopped on Hide()/Closing — so a pending tick
+    // could fire after the window was hidden, leaving _autoCloseArmed true
+    // for the next show (which would then auto-close on the first stray
+    // Deactivated). Reusing one timer + Stop-on-Closing fixes both.
+    private readonly DispatcherTimer _armTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
 
     public event Action? RetryRequested;
 
@@ -286,13 +306,10 @@ public partial class ResultWindow : Window
         // transition (the previously-focused window momentarily reclaims focus).
         // 400ms is long enough to cover the handoff, short enough that a genuine
         // "user clicked away" right after is still caught.
-        var armTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
-        armTimer.Tick += (_, _) =>
-        {
-            armTimer.Stop();
-            _autoCloseArmed = true;
-        };
-        armTimer.Start();
+        // Audit M13: reuse the shared _armTimer (Stop cancels a pending tick if
+        // ShowAndActivate is called again inside the grace window).
+        _armTimer.Stop();
+        _armTimer.Start();
     }
 
     private static string FormatLanguage(string language) => language switch
