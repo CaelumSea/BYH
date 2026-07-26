@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-24T10:28:17'
-secretary_focus: REQ-026
+updated: '2026-07-26T09:24:17'
+secretary_focus: REQ-027
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -100,8 +100,12 @@ requirements:
   title: 设置页滚动范围与底部内容完整性修复
   status: done
   progress: 1/1
-phase: executing
-next_step: execute
+- id: REQ-027
+  title: BYH 皮肤自定义与运行时切换系统
+  status: drafting
+  progress: 0/0
+phase: drafting
+next_step: add-ac
 plan_confirmed_via: quick-user
 plan_confirmed_at: '2026-07-24T10:00:33'
 mode: quick
