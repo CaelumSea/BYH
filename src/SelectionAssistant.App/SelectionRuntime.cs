@@ -418,6 +418,7 @@ internal sealed class SelectionRuntime : IDisposable
         int regionX, int regionY, int regionW, int regionH)
     {
         ArgumentNullException.ThrowIfNull(png);
+        _logger.Info("Usage", "module=OceanEyes feature=RegionCapture");
 
         // Cache the PNG + rect first so Enter (save) and EnsureOceanEyesOcrAsync
         // (lazy OCR on first action key) can use them without re-capturing.
@@ -2446,6 +2447,10 @@ internal sealed class SelectionRuntime : IDisposable
 
         // No prompt needed: launch immediately.
         string? err = LauncherRunner.Start(entry, expanded.ExpandedArguments);
+        if (err is null)
+        {
+            _logger.Info("Usage", "module=Launcher feature=OpenEntry");
+        }
         _pendingLaunch = null;
         return Task.FromResult(new LauncherLaunchResult(
             Success: err is null, ErrorMessage: err, Prompts: Array.Empty<string>(), NeedsPrompt: false));
@@ -2470,6 +2475,10 @@ internal sealed class SelectionRuntime : IDisposable
         }
         string finalArgs = ParameterReplace.ApplyPromptValues(pending.ExpandedArgs, answers);
         string? err = LauncherRunner.Start(entry, finalArgs);
+        if (err is null)
+        {
+            _logger.Info("Usage", "module=Launcher feature=OpenEntry");
+        }
         _pendingLaunch = null;
         return Task.FromResult(err);
     }
@@ -2494,6 +2503,7 @@ internal sealed class SelectionRuntime : IDisposable
         {
             return;
         }
+        _logger.Info("Usage", $"module=Actions feature={actionId}");
 
         // All actions: use the template prompt. Translate with an empty prompt
         // → null SystemPrompt → provider built-in translation template.

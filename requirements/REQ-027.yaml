@@ -2,7 +2,7 @@ id: REQ-027
 title: BYH 皮肤自定义与运行时切换系统
 status: dispatched
 created: '2026-07-26T09:24:17'
-updated: '2026-07-26T17:22:07'
+updated: '2026-07-26T18:23:14'
 score_kind: aesthetic
 aesthetic_template: ''
 acceptance_criteria:
@@ -64,9 +64,10 @@ acceptance_criteria:
   satisfied_by:
   - TASK-034
 - id: AC-12
-  text: 中央工作区重构为上下两个独立圆角窗格：顶部为紧凑设置搜索栏，底部为主要内容区；边框、间距和阴影延续 Ivory Jade 参考图的轻盈层次。
+  text: 中央工作区采用参考图同构的上下组合框：顶部为 2:1 几何胶囊搜索栏，底部为大圆角主内容区；两者零间距贴合并只共享一根细横线，两侧轮廓与圆弧相切，不出现底托、第三条线或断边。
   satisfied_by:
   - TASK-035
+  - TASK-036
   - TASK-039
   - TASK-040
 - id: AC-13
@@ -110,7 +111,7 @@ tasks:
   status: done
 - id: TASK-036
   title: 实现中央 Dashboard 与真实使用概览
-  status: pending
+  status: done
 - id: TASK-037
   title: 恢复独立系统标题栏并保留响应式布局
   status: done

@@ -1629,8 +1629,61 @@ public partial class App : Application
         _settingsWindow.SetLauncherEntries(launcherEntries);
         _spotlightWindow?.SetLauncherEntries(launcherEntries);
         _ = LoadLauncherIconsAsync(launcherEntries);
+        _settingsWindow.SetDashboardUsage(BuildDashboardUsageSummary());
 
         await Task.CompletedTask;
+    }
+
+    private DashboardUsageSummary BuildDashboardUsageSummary()
+    {
+        if (_paths is null)
+        {
+            return new DashboardUsageSummary(0, 0, 0, 0);
+        }
+
+        int oceanEyes = 0;
+        int actions = 0;
+        int launcher = 0;
+
+        try
+        {
+            if (File.Exists(_paths.LogFile))
+            {
+                foreach (string line in File.ReadLines(_paths.LogFile))
+                {
+                    if (line.Contains("[Usage] module=OceanEyes ", StringComparison.Ordinal))
+                    {
+                        oceanEyes++;
+                    }
+                    else if (line.Contains("[Usage] module=Actions ", StringComparison.Ordinal))
+                    {
+                        actions++;
+                    }
+                    else if (line.Contains("[Usage] module=Launcher ", StringComparison.Ordinal))
+                    {
+                        launcher++;
+                    }
+                    else if (line.Contains("[OceanEyes] Saved screenshot:", StringComparison.Ordinal))
+                    {
+                        // Preserve a useful count for installations created
+                        // before explicit privacy-safe usage events existed.
+                        oceanEyes++;
+                    }
+                }
+            }
+        }
+        catch (IOException)
+        {
+            // The logger may append while Settings reads. A transient sharing
+            // issue produces an honest empty/partial dashboard, never a crash.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Diagnostics are optional; configuration UI remains available.
+        }
+
+        int clipboard = _clipboardHistoryService?.Snapshot.Count ?? 0;
+        return new DashboardUsageSummary(oceanEyes, actions, launcher, clipboard);
     }
 
     /// <summary>

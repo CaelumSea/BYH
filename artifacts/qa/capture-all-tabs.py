@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Capture BYH Settings window across all six navigation tabs.
+"""Capture BYH Settings window across all seven navigation tabs.
 
 Navigation uses stable Avalonia Automation IDs through Windows UI Automation.
 Measured coordinates remain as a compatibility fallback for machines where
@@ -49,12 +49,13 @@ except Exception:
 # They are used only as a fallback and were measured at 175% DPI, including
 # the title bar.
 NAV_BUTTONS = [
-    ("general", "BYH.Settings.Nav.General", 455, 305),
-    ("provider", "BYH.Settings.Nav.Translation", 455, 370),
-    ("actions", "BYH.Settings.Nav.Actions", 455, 438),
-    ("vision", "BYH.Settings.Nav.Vision", 455, 505),
-    ("launcher", "BYH.Settings.Nav.Launcher", 455, 573),
-    ("clipboard", "BYH.Settings.Nav.Clipboard", 455, 641),
+    ("dashboard", "BYH.Settings.Nav.Dashboard", 455, 305),
+    ("general", "BYH.Settings.Nav.General", 455, 370),
+    ("provider", "BYH.Settings.Nav.Translation", 455, 438),
+    ("actions", "BYH.Settings.Nav.Actions", 455, 505),
+    ("vision", "BYH.Settings.Nav.Vision", 455, 573),
+    ("launcher", "BYH.Settings.Nav.Launcher", 455, 641),
+    ("clipboard", "BYH.Settings.Nav.Clipboard", 455, 709),
 ]
 
 # Keep every capture on the same monitor and at the same origin. BYH may be

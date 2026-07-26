@@ -1,12 +1,39 @@
 id: TASK-036
 requirement: REQ-027
 title: 实现中央 Dashboard 与真实使用概览
-status: pending
+status: done
 created: '2026-07-26T10:30:23'
-updated: '2026-07-26T10:30:23'
+updated: '2026-07-26T18:23:14'
 satisfies:
 - AC-14
+- AC-12
 - AC-7
-description: 新增 Dashboard 默认页，展示模块、功能、Provider/Model、服务状态和本地使用频率；只使用真实本地数据并提供空状态。
-handoff: ''
-execution_log: []
+description: 新增 Dashboard 默认页，展示模块、功能、Provider/Model、服务状态和本地使用频率；只使用真实本地数据并提供空状态。同时按参考图将搜索胶囊与主内容框零间距贴合为单线接缝。
+handoff: 'Dashboard 现为设置页默认页，位于 General 之前；数据来自当前运行配置、剪贴板历史快照与脱敏 BYH.log 聚合，零活动时显示真实空状态。
+
+  中央搜索胶囊固定 56 DIP 高、28 DIP 半径，并与 MainWorkspaceFrame 负 1 DIP 重叠形成单一接缝；不要重新加入 PaneUnderlay
+  或 RowSpacing。
+
+  capture-all-tabs.py 已扩展为七页 UIA 导航。后续主题令牌任务需保留 DashboardMetricCard、DashboardPanel、DashboardUsageBar
+  等语义样式类。
+
+
+  [自检修复] 首轮截图发现统计卡在最小宽度下文案拥挤，已缩短标签、收紧卡片并补齐参考图顶部用户区；NativeAOT 最终截图确认单线接缝、圆弧、Dashboard
+  和七页导航完整。'
+execution_log:
+- step: 1
+  action: 阅读参考图和当前中央窗格实现，确认旧 PaneUnderlay/4 DIP 间距与用户要求冲突。
+  timestamp: '2026-07-26T17:31:00'
+- step: 2
+  action: 将搜索窗重构为 56x28 几何胶囊，并与主内容框零间距、负 1 DIP 重叠为单线接缝。
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  timestamp: '2026-07-26T17:45:00'
+- step: 3
+  action: 新增 Dashboard 导航和默认页，展示真实模块、功能频率、Provider/Model 与本地服务状态；增加隐私安全 Usage 日志事件。
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml.cs
+  timestamp: '2026-07-26T18:02:00'
+- step: 4
+  action: 完成 Debug 构建、578 项测试、NativeAOT 发布、七页 UIA 截图与搜索回归。
+  command: dotnet test SelectionAssistant.slnx -c Debug --no-restore
+  result: Core 449 + Providers 35 + Windows Integration 94，全部通过。
+  timestamp: '2026-07-26T18:18:00'

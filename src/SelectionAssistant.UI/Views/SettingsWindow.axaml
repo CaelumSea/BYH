@@ -82,8 +82,20 @@
 
         <StackPanel Grid.Row="1" Spacing="3" VerticalAlignment="Top">
 
-          <Button x:Name="GeneralNavButton"
+          <Button x:Name="DashboardNavButton"
                   Classes="SettingsNav Active"
+                  Padding="12,8"
+                  AutomationProperties.AutomationId="BYH.Settings.Nav.Dashboard"
+                  Click="OnShowDashboardClick">
+            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
+              <Path Classes="NavIcon"
+                    Data="M4,4 L10,4 L10,10 L4,10 Z M14,4 L20,4 L20,10 L14,10 Z M4,14 L10,14 L10,20 L4,20 Z M14,14 L20,14 L20,20 L14,20 Z" />
+              <TextBlock Grid.Column="1" Text="Dashboard" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
+          <Button x:Name="GeneralNavButton"
+                  Classes="SettingsNav"
                   Padding="12,8"
                   AutomationProperties.AutomationId="BYH.Settings.Nav.General"
                   Click="OnShowGeneralClick">
@@ -187,24 +199,18 @@
     </Border>
 
 
-    <!-- Main work pane: a compact search capsule floats above an independent
-         settings surface, matching the two-pane hierarchy of the reference. -->
+    <!-- Main work pane: the search capsule and content shell touch on one
+         shared hairline, matching the exact stacked geometry of the reference. -->
     <Grid Grid.Column="2"
           Grid.Row="0"
-          RowDefinitions="Auto,*"
-          RowSpacing="4">
-      <!-- One continuous sheet sits behind both independent shells. The
-           foreground frames hide almost all of it; only a quiet ivory sliver
-           in the centre gap and hairline side joins remain visible. -->
-      <Border Grid.RowSpan="2"
-              Classes="PaneUnderlay"
-              Margin="2"
-              IsHitTestVisible="False" />
+          RowDefinitions="56,*"
+          RowSpacing="0">
 
       <Border Grid.Row="0"
-              Classes="MetallicFrame Thin SearchFrame">
+              Classes="MetallicFrame Thin SearchFrame"
+              Height="56">
         <Border Classes="MacroClip SearchClip">
-          <Grid ColumnDefinitions="Auto,*,Auto"
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto"
                 ColumnSpacing="10"
                 Margin="14,8">
             <Path Width="15"
@@ -229,6 +235,47 @@
                     IsVisible="False"
                     Click="OnClearSettingsSearchClick"
                     AutomationProperties.AutomationId="BYH.Settings.Search.Clear" />
+            <Button Grid.Column="3"
+                    Classes="SearchUtility"
+                    ToolTip.Tip="Local notifications"
+                    AutomationProperties.Name="Local notifications">
+              <Path Width="15"
+                    Height="15"
+                    Stretch="Uniform"
+                    Stroke="{DynamicResource ByhAccentBrush}"
+                    StrokeThickness="1.4"
+                    Data="M6,17 L18,17 M8,17 C8,20 16,20 16,17 M7,15 L8,13 L8,9 C8,4 16,4 16,9 L16,13 L17,15 Z" />
+            </Button>
+            <StackPanel Grid.Column="4"
+                        Orientation="Horizontal"
+                        Spacing="7"
+                        VerticalAlignment="Center"
+                        Margin="2,0,2,0">
+              <Border Width="32"
+                      Height="32"
+                      CornerRadius="16"
+                      Background="{DynamicResource ByhGemGlowBrush}"
+                      Padding="2"
+                      ClipToBounds="True">
+                <Image Source="avares://BYH/Assets/app-icon.png"
+                       Stretch="Uniform" />
+              </Border>
+              <TextBlock x:Name="SearchGreetingUserNameText"
+                         Text="there"
+                         Classes="Accent"
+                         FontSize="9"
+                         FontWeight="SemiBold"
+                         MaxWidth="74"
+                         TextTrimming="CharacterEllipsis"
+                         VerticalAlignment="Center" />
+              <Path Width="8"
+                    Height="5"
+                    Stretch="Uniform"
+                    Stroke="{DynamicResource ByhAccentBrush}"
+                    StrokeThickness="1.3"
+                    Data="M1,1 L4,4 L7,1"
+                    VerticalAlignment="Center" />
+            </StackPanel>
 
             <Popup x:Name="SettingsSearchPopup"
                    PlacementTarget="{Binding #SettingsSearchInput}"
@@ -259,11 +306,17 @@
       </Border>
 
       <Border Grid.Row="1"
-              Classes="MetallicFrame Thin">
+              Classes="MetallicFrame Thin MainWorkspaceFrame"
+              Margin="0,-1,0,0">
         <Border Classes="MacroClip">
         <Grid RowDefinitions="Auto,*">
-      <!-- The single SurfacePanel background is intentionally plain so the
-           reference's clean, continuous card surface is not broken by texture. -->
+      <Image Grid.RowSpan="2"
+             Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
+             Stretch="UniformToFill"
+             Opacity="0.09"
+             IsHitTestVisible="False" />
+      <!-- Foreground content stays quiet while the shared pearl ornament
+           remains a very faint, non-interactive atmosphere layer. -->
       <Grid Grid.Row="0"
             ColumnDefinitions="*,Auto"
             RowDefinitions="Auto,Auto"
@@ -339,6 +392,170 @@
              padding, which left most pages ending directly under the rounded
              clip even though their offset had technically reached 100%. -->
         <Grid Margin="0,0,0,24">
+
+        <!-- Dashboard -->
+        <StackPanel x:Name="DashboardSection"
+                    Spacing="11"
+                    Margin="24,12,24,0"
+                    AutomationProperties.AutomationId="BYH.Settings.Dashboard">
+          <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
+            <Border Grid.Column="0" Classes="DashboardMetricCard">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Border Classes="DashboardMetricIcon Success">
+                  <Path Classes="MiniIcon"
+                        Stroke="{DynamicResource ByhPrimaryBrush}"
+                        Data="M4,4 L10,4 L10,10 L4,10 Z M14,4 L20,4 L20,10 L14,10 Z M4,14 L10,14 L10,20 L4,20 Z M14,14 L20,14 L20,20 L14,20 Z" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Text="MODULES" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardActiveModulesText" Text="Loading…" Classes="DashboardMetricValue" />
+                  <TextBlock Text="active locally" Classes="Secondary" FontSize="7" />
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border Grid.Column="1" Classes="DashboardMetricCard">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Border Classes="DashboardMetricIcon Warning">
+                  <Path Classes="MiniIcon"
+                        Stroke="{DynamicResource ByhWarningBrush}"
+                        Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,7 L12,12 L16,14" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Text="EVENTS" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardTotalEventsText" Text="Loading…" Classes="DashboardMetricValue" />
+                  <TextBlock Text="privacy-safe" Classes="Secondary" FontSize="7" />
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border Grid.Column="2" Classes="DashboardMetricCard">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Border Classes="DashboardMetricIcon Accent">
+                  <Path Classes="MiniIcon"
+                        Stroke="{DynamicResource ByhAccentBrush}"
+                        Data="M3,7 L21,7 L21,17 L3,17 Z M7,10.5 L9,10.5 M11,10.5 L13,10.5 M15,10.5 L17,10.5 M7,14 L17,14" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Text="TOP FEATURE" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardTopFeatureText" Text="No activity yet" Classes="DashboardMetricName" />
+                  <TextBlock x:Name="DashboardTopFeatureCountText" Text="No local history" Classes="Secondary" FontSize="7" />
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border Grid.Column="3" Classes="DashboardMetricCard">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Border Classes="DashboardMetricIcon Success">
+                  <Path Classes="MiniIcon"
+                        Stroke="{DynamicResource ByhPrimaryBrush}"
+                        Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Text="MODELS" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardModelRouteCountText" Text="Loading…" Classes="DashboardMetricValue" />
+                  <TextBlock Text="text + vision" Classes="Secondary" FontSize="7" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </Grid>
+
+          <Grid ColumnDefinitions="1.45*,1*" ColumnSpacing="12">
+            <Border Grid.Column="0" Classes="DashboardPanel">
+              <Grid RowDefinitions="Auto,*,Auto">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="Feature frequency" Classes="CardTitle" FontSize="13" FontWeight="SemiBold" />
+                    <TextBlock Text="Real events found in BYH's local redacted log" Classes="Secondary" FontSize="8" />
+                  </StackPanel>
+                  <Border Grid.Column="1" Classes="HeroPill" Padding="8,4">
+                    <TextBlock Text="LOCAL ONLY" Classes="Accent" FontSize="7" FontWeight="SemiBold" />
+                  </Border>
+                </Grid>
+                <StackPanel Grid.Row="1" Spacing="9" Margin="0,12,0,8">
+                  <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
+                    <TextBlock Text="Ocean Eyes" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="DashboardOceanEyesBar" Grid.Column="1" Classes="DashboardUsageBar" Minimum="0" Maximum="1" />
+                    <TextBlock x:Name="DashboardOceanEyesCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
+                  </Grid>
+                  <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
+                    <TextBlock Text="Actions" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="DashboardActionsBar" Grid.Column="1" Classes="DashboardUsageBar Accent" Minimum="0" Maximum="1" />
+                    <TextBlock x:Name="DashboardActionsCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
+                  </Grid>
+                  <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
+                    <TextBlock Text="Launcher" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="DashboardLauncherBar" Grid.Column="1" Classes="DashboardUsageBar Gold" Minimum="0" Maximum="1" />
+                    <TextBlock x:Name="DashboardLauncherCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
+                  </Grid>
+                  <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
+                    <TextBlock Text="Clipboard" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="DashboardClipboardBar" Grid.Column="1" Classes="DashboardUsageBar Soft" Minimum="0" Maximum="1" />
+                    <TextBlock x:Name="DashboardClipboardCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
+                  </Grid>
+                </StackPanel>
+                <TextBlock x:Name="DashboardUsageEmptyText"
+                           Grid.Row="2"
+                           Text="No activity yet — counts appear after you use BYH."
+                           Classes="Muted"
+                           FontSize="8"
+                           IsVisible="False" />
+              </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Classes="DashboardPanel">
+              <StackPanel Spacing="12">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="Model preference" Classes="CardTitle" FontSize="13" FontWeight="SemiBold" />
+                  <TextBlock Text="Current routes, never inferred or fabricated" Classes="Secondary" FontSize="8" />
+                </StackPanel>
+                <Border Classes="DashboardModelCard">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <Border Classes="DashboardMetricIcon Accent">
+                      <Path Classes="MiniIcon" Stroke="{DynamicResource ByhAccentBrush}"
+                            Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M3,12 L21,12 M12,3 C15,7 15,17 12,21 C9,17 9,7 12,3" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Text="TEXT · ACTIVE" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardTextProviderText" Text="Not configured" FontSize="11" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardTextModelText" Text="No model selected" Classes="Secondary" FontSize="8" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
+                <Border Classes="DashboardModelCard">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <Border Classes="DashboardMetricIcon Success">
+                      <Path Classes="MiniIcon" Stroke="{DynamicResource ByhPrimaryBrush}"
+                            Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Text="VISION · ACTIVE" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardVisionProviderText" Text="Not configured" FontSize="11" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardVisionModelText" Text="No model selected" Classes="Secondary" FontSize="8" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <Border Classes="DashboardPanel" Padding="16,12">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+              <Border Width="9" Height="9" CornerRadius="4.5"
+                      Background="{DynamicResource ByhSuccessBrush}"
+                      VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock Text="Local services ready" FontSize="10" FontWeight="SemiBold" />
+                <TextBlock x:Name="DashboardModuleSummaryText"
+                           Text="Reading current configuration…"
+                           Classes="Secondary"
+                           FontSize="8"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+              <Button Grid.Column="2"
+                      Content="Open General"
+                      Classes="Ghost"
+                      Click="OnShowGeneralClick" />
+            </Grid>
+          </Border>
+        </StackPanel>
 
         <!-- General -->
         <StackPanel x:Name="GeneralSection" Spacing="0">
