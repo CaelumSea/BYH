@@ -1,17 +1,22 @@
 id: TASK-037
 requirement: REQ-027
-title: 实现全屏标题栏自动隐藏与触顶显示
-status: done
+title: 实现标题栏按钮自动隐藏与悬停显示
+status: in_progress
 created: '2026-07-26T10:53:04'
-updated: '2026-07-26T12:16:38'
+updated: '2026-07-26T12:23:40'
 satisfies:
 - AC-15
 - AC-8
 - AC-7
-description: 明确原生双箭头全屏行为，在全屏状态提供可恢复的顶部热区与标题栏显隐控制，保留窗口按钮、Esc/退出全屏、高 DPI 和键盘可达性。
-handoff: Avalonia 12 声明 FullscreenPopover 会在触顶时出现，但 BYH 当前 Windows 装饰主题的实测 UIA 树中没有生成该弹层，因此不能只依赖框架默认行为。现保留普通状态的
-  原生标题栏；进入 FullScreen 后移除 36px 客户区占位，启用 18px 顶部感应区和 BYH 自绘浮出控制栏。控制栏离开 650ms 后收起，提供最小化、还原和关闭；Esc
-  优先退出 自动隐藏模式，不再直接隐藏设置窗口。QA 图位于 artifacts/qa/REQ-027-fullscreen-titlebar/fullscreen-titlebar-revealed-nativeaot.png。
+description: 将双箭头改为窗口按钮自动隐藏开关，不进入真正全屏；标题栏本体与窗口尺寸始终保留，仅右上角三个窗口按钮按悬停显隐，并保留拖动、双击最大化、Snap
+  Layout、高 DPI 与键盘可达性。
+handoff: >-
+  用户验收后明确：自动隐藏对象仅是右上角三个窗口按钮，不是标题栏。最终实现使用
+  BorderOnly + 36px BYH 标题栏；双箭头只切换按钮显隐布尔值，不进入 FullScreen，
+  因此窗口矩形、标题和主体布局完全不变。按钮区域固定保留 138px，隐藏时仍可接收悬停，
+  进入后显示、离开 650ms 后收起。标题栏拖动与双击最大化保留；三个按钮及模式开关均可
+  键盘聚焦。不要恢复 FullscreenPopover 方案。QA 图位于
+  artifacts/qa/REQ-027-caption-autohide/。
 execution_log:
 - step: 1
   action: 核对 Avalonia 12 本地 API 文档与当前设置窗口装饰结构
@@ -44,3 +49,31 @@ execution_log:
   result: Debug 构建 0 warning/0 error；574 项测试全部通过；NativeAOT 发布成功；截图确认标题栏与 Ivory Jade
     主体连续。
   timestamp: '2026-07-26T12:16:00+08:00'
+- step: 7
+  type: flag-back
+  action: 根据用户视觉验收纠正需求语义
+  result: 旧实现错误隐藏了整条标题栏并进入真正全屏；正确行为是标题栏始终存在，只隐藏三个窗口按钮。
+  timestamp: '2026-07-26T12:22:00+08:00'
+- step: 8
+  action: 用自绘连续标题栏替换框架 FullScreenButton
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  result: WindowDecorations 改为 BorderOnly；36px 标题栏始终保留，双箭头变为按钮自动隐藏模式开关。
+  timestamp: '2026-07-26T12:29:00+08:00'
+- step: 9
+  action: 实现固定按钮热区与 650ms 自动收起
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml.cs
+  result: 三个按钮隐藏时不占用 UIA 树但保留 138px 热区；悬停显示，离开后自动隐藏，模式关闭后常驻。
+  timestamp: '2026-07-26T12:31:00+08:00'
+- step: 10
+  action: 用 UI Automation 验证修正后的状态机
+  result: mode-on 按钮不可见且 WindowUnchanged=true；hover-zone 可见；left-zone 再次不可见；mode-off 常驻。
+  timestamp: '2026-07-26T12:34:00+08:00'
+- step: 11
+  action: 修复自定义最大化按钮与 Avalonia 非客户区角色冲突
+  result: 移除会把物理点击错误解释为最小化的 MaximizeButton 角色；物理鼠标连续验证 Normal→Maximized→Normal，标题栏双击同样通过。
+  timestamp: '2026-07-26T12:42:00+08:00'
+- step: 12
+  action: 完成修正版视觉 QA
+  artifact: artifacts/qa/REQ-027-caption-autohide/controls-hidden.png
+  result: 标题栏、标题与整体高度始终一致；仅右上角三个按钮按模式与悬停显隐。
+  timestamp: '2026-07-26T12:44:00+08:00'

@@ -2,7 +2,7 @@ id: REQ-027
 title: BYH 皮肤自定义与运行时切换系统
 status: dispatched
 created: '2026-07-26T09:24:17'
-updated: '2026-07-26T12:16:38'
+updated: '2026-07-26T12:23:40'
 score_kind: aesthetic
 aesthetic_template: ''
 acceptance_criteria:
@@ -74,7 +74,8 @@ acceptance_criteria:
   satisfied_by:
   - TASK-036
 - id: AC-15
-  text: 进入全屏时标题栏自动收起以保留沉浸空间，鼠标触及屏幕顶部后可靠显示窗口标题与控制按钮；退出全屏、键盘操作、拖动和高 DPI 行为可恢复且不锁死窗口。
+  text: 双箭头切换窗口按钮自动隐藏模式，不进入真正全屏：标题栏背景、窗口标题、窗口尺寸与主体布局始终保持不变；仅最小化、最大化/还原、关闭按钮平时隐藏，鼠标进入右上角原按钮区域后可靠显示，离开后自动收起，并保留拖动、双击最大化、Snap
+    Layout、键盘操作与高 DPI 行为。
   satisfied_by:
   - TASK-037
 tasks:
@@ -103,8 +104,8 @@ tasks:
   title: 实现中央 Dashboard 与真实使用概览
   status: pending
 - id: TASK-037
-  title: 实现全屏标题栏自动隐藏与触顶显示
-  status: done
+  title: 实现标题栏按钮自动隐藏与悬停显示
+  status: in_progress
 aesthetic_score:
   scored_at: ''
   scored_by: ''
@@ -112,5 +113,5 @@ aesthetic_score:
   total: null
 aesthetic_notes: []
 aligned_via: ask-user
-aligned_at: '2026-07-26T10:54:05'
-aligned_evidence: 用户：全屏后中央窗口太大、手机太窄、底栏太矮；标题栏可自动隐藏并在鼠标放上去时显示。
+aligned_at: '2026-07-26T12:22:50'
+aligned_evidence: 用户：标题栏还是留着，平时只隐藏那几个按钮。

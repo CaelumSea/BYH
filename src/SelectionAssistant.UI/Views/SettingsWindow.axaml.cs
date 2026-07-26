@@ -34,8 +34,8 @@ public partial class SettingsWindow : Window
     }
 
     private bool _allowClose;
-    private WindowState _lastNonFullScreenWindowState = WindowState.Normal;
-    private readonly DispatcherTimer _fullscreenTitleBarHideTimer;
+    private bool _captionButtonsAutoHideEnabled;
+    private readonly DispatcherTimer _captionButtonHideTimer;
 
     private readonly AvaloniaList<ProviderOption> _providerOptions = [];
     private readonly ObservableCollection<PromptFunctionRow> _functionRows = [];
@@ -63,17 +63,16 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
-        _fullscreenTitleBarHideTimer = new DispatcherTimer
+        _captionButtonHideTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(650),
         };
-        _fullscreenTitleBarHideTimer.Tick += (_, _) =>
+        _captionButtonHideTimer.Tick += (_, _) =>
         {
-            _fullscreenTitleBarHideTimer.Stop();
-            if (WindowState == WindowState.FullScreen)
+            _captionButtonHideTimer.Stop();
+            if (_captionButtonsAutoHideEnabled)
             {
-                FullscreenTitleBar.IsVisible = false;
-                FullscreenRevealZone.IsVisible = true;
+                SetCaptionButtonsVisible(false);
             }
         };
         ProviderComboBox.ItemsSource = _providerOptions;
@@ -102,14 +101,14 @@ public partial class SettingsWindow : Window
 
         ShowSettingsPage(SettingsPage.General);
         ApplyResponsiveShellWidths();
-        ApplyTitleBarMode();
+        UpdateCaptionButtonState();
     }
 
     // ── Settings information architecture ──
 
     private void ApplyResponsiveShellWidths()
     {
-        bool expanded = WindowState is WindowState.Maximized or WindowState.FullScreen;
+        bool expanded = WindowState == WindowState.Maximized;
         ShellGrid.ColumnDefinitions[0].Width = new GridLength(expanded ? 230 : 190);
         ShellGrid.ColumnDefinitions[1].Width = new GridLength(expanded ? 210 : 170);
         ShellGrid.ColumnDefinitions[3].Width = new GridLength(expanded ? 310 : 270);
@@ -122,94 +121,66 @@ public partial class SettingsWindow : Window
             return;
         }
 
-        if (WindowState is not (WindowState.FullScreen or WindowState.Minimized))
-        {
-            _lastNonFullScreenWindowState = WindowState;
-        }
-
         ApplyResponsiveShellWidths();
-        ApplyTitleBarMode();
+        CaptionMaximizeButton.Content =
+            WindowState == WindowState.Maximized ? "❐" : "□";
     }
 
-    private void ApplyTitleBarMode()
+    private void OnCaptionAutoHideClick(object? sender, RoutedEventArgs eventArgs)
     {
-        // Avalonia's drawn decorations turn the title bar into a
-        // FullscreenPopover while WindowState is FullScreen: it stays hidden
-        // until the pointer reaches the top edge. Remove our client-side
-        // title-row reservation as well, so the shell uses the recovered
-        // vertical space instead of leaving a blank 36 px strip.
-        RootLayout.RowDefinitions[0].Height =
-            WindowState == WindowState.FullScreen
-                ? new GridLength(0)
-                : new GridLength(36);
+        _captionButtonsAutoHideEnabled = !_captionButtonsAutoHideEnabled;
+        UpdateCaptionButtonState();
+    }
 
-        bool autoHidden = WindowState == WindowState.FullScreen;
-        FullscreenTitleBar.IsVisible = false;
-        FullscreenRevealZone.IsVisible = autoHidden;
-        if (!autoHidden)
+    private void UpdateCaptionButtonState()
+    {
+        CaptionAutoHideButton.Classes.Remove("Active");
+        if (_captionButtonsAutoHideEnabled)
         {
-            _fullscreenTitleBarHideTimer.Stop();
+            CaptionAutoHideButton.Classes.Add("Active");
         }
+
+        SetCaptionButtonsVisible(!_captionButtonsAutoHideEnabled);
     }
 
-    private void OnFullscreenRevealZonePointerEntered(object? sender, PointerEventArgs eventArgs)
-        => RevealFullscreenTitleBar();
-
-    private void OnWindowPointerMoved(object? sender, PointerEventArgs eventArgs)
+    private void SetCaptionButtonsVisible(bool visible)
     {
-        if (WindowState == WindowState.FullScreen &&
-            eventArgs.GetPosition(this).Y <= 18)
-        {
-            RevealFullscreenTitleBar();
-        }
+        CaptionButtons.IsVisible = visible;
     }
 
-    private void RevealFullscreenTitleBar()
+    private void OnCaptionButtonRevealZonePointerEntered(
+        object? sender,
+        PointerEventArgs eventArgs)
     {
-        if (WindowState != WindowState.FullScreen)
+        if (!_captionButtonsAutoHideEnabled)
         {
             return;
         }
 
-        _fullscreenTitleBarHideTimer.Stop();
-        FullscreenRevealZone.IsVisible = false;
-        FullscreenTitleBar.IsVisible = true;
+        _captionButtonHideTimer.Stop();
+        SetCaptionButtonsVisible(true);
     }
 
-    private void OnFullscreenTitleBarPointerEntered(object? sender, PointerEventArgs eventArgs) =>
-        _fullscreenTitleBarHideTimer.Stop();
-
-    private void OnFullscreenTitleBarPointerExited(object? sender, PointerEventArgs eventArgs)
+    private void OnCaptionButtonRevealZonePointerExited(
+        object? sender,
+        PointerEventArgs eventArgs)
     {
-        if (WindowState == WindowState.FullScreen)
+        if (_captionButtonsAutoHideEnabled)
         {
-            _fullscreenTitleBarHideTimer.Stop();
-            _fullscreenTitleBarHideTimer.Start();
+            _captionButtonHideTimer.Stop();
+            _captionButtonHideTimer.Start();
         }
     }
 
-    private void OnFullscreenMinimizeClick(object? sender, RoutedEventArgs eventArgs)
-    {
-        FullscreenTitleBar.IsVisible = false;
-        ExitFullscreenAutoHideMode();
-        Dispatcher.UIThread.Post(() => WindowState = WindowState.Minimized);
-    }
+    private void OnCaptionMinimizeClick(object? sender, RoutedEventArgs eventArgs) =>
+        WindowState = WindowState.Minimized;
 
-    private void OnFullscreenRestoreClick(object? sender, RoutedEventArgs eventArgs) =>
-        ExitFullscreenAutoHideMode();
-
-    private void OnFullscreenCloseClick(object? sender, RoutedEventArgs eventArgs)
-    {
-        ExitFullscreenAutoHideMode();
-        Hide();
-    }
-
-    private void ExitFullscreenAutoHideMode()
-    {
-        WindowState = _lastNonFullScreenWindowState == WindowState.Minimized
+    private void OnCaptionMaximizeClick(object? sender, RoutedEventArgs eventArgs) =>
+        WindowState = WindowState == WindowState.Maximized
             ? WindowState.Normal
-            : _lastNonFullScreenWindowState;
-    }
+            : WindowState.Maximized;
+
+    private void OnCaptionCloseClick(object? sender, RoutedEventArgs eventArgs) => Close();
 
     private void ShowSettingsPage(SettingsPage page)
     {
@@ -1355,12 +1326,6 @@ public partial class SettingsWindow : Window
         if (eventArgs.Key == Key.Escape)
         {
             eventArgs.Handled = true;
-            if (WindowState == WindowState.FullScreen)
-            {
-                ExitFullscreenAutoHideMode();
-                return;
-            }
-
             Hide();
         }
     }

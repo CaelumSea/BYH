@@ -10,14 +10,13 @@
         CanResize="True"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaTitleBarHeightHint="36"
-        WindowDecorations="Full"
+        WindowDecorations="BorderOnly"
         Background="{DynamicResource ByhBackgroundBrush}"
         WindowStartupLocation="CenterScreen"
         AutomationProperties.AutomationId="BYH.Settings.Window"
-        KeyDown="OnWindowKeyDown"
-        PointerMoved="OnWindowPointerMoved">
+        KeyDown="OnWindowKeyDown">
   <Window.Styles>
-    <Style Selector="Button.FullscreenCaption">
+    <Style Selector="Button.CaptionControl">
       <Setter Property="Width" Value="46" />
       <Setter Property="Height" Value="36" />
       <Setter Property="Padding" Value="0" />
@@ -27,12 +26,30 @@
       <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
       <Setter Property="FontSize" Value="15" />
     </Style>
-    <Style Selector="Button.FullscreenCaption:pointerover">
+    <Style Selector="Button.CaptionControl:pointerover">
       <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
     </Style>
-    <Style Selector="Button.FullscreenCaption.Close:pointerover">
+    <Style Selector="Button.CaptionControl.Close:pointerover">
       <Setter Property="Background" Value="{DynamicResource ByhErrorSoftBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource ByhErrorBrush}" />
+    </Style>
+    <Style Selector="Button.CaptionMode">
+      <Setter Property="Width" Value="42" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style Selector="Button.CaptionMode:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.CaptionMode.Active">
+      <Setter Property="Background" Value="{DynamicResource ByhPrimarySoftBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ByhPrimaryBrush}" />
     </Style>
   </Window.Styles>
   <Grid x:Name="RootLayout">
@@ -40,18 +57,62 @@
       <RowDefinition Height="36" />
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
-    <!--
-      Keep Windows in charge of the caption buttons and resize chrome, but let
-      the themed client surface flow behind them. The marked strip preserves
-      native dragging and double-click-to-maximize while avoiding a detached
-      operating-system title bar above the Ivory Jade composition.
-    -->
-    <!-- WindowDecorations=Full already paints the app icon/title and caption
-         controls. This layer contributes only the themed material and drag
-         region; adding a second title here would overlap the native one. -->
     <Border Grid.Row="0"
             Background="{DynamicResource ByhBackgroundBrush}"
-            WindowDecorationProperties.ElementRole="TitleBar" />
+            BorderBrush="{DynamicResource ByhHairlineBrush}"
+            BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto">
+        <Border Grid.Column="0"
+                Background="Transparent"
+                WindowDecorationProperties.ElementRole="TitleBar">
+          <TextBlock Margin="14,0,0,0"
+                     Text="BYH · Settings"
+                     FontSize="12"
+                     Foreground="{DynamicResource ByhTextSecondaryBrush}"
+                     VerticalAlignment="Center"
+                     IsHitTestVisible="False" />
+        </Border>
+
+        <StackPanel Grid.Column="1"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+          <Button x:Name="CaptionAutoHideButton"
+                  Classes="CaptionMode"
+                  Content="↗"
+                  ToolTip.Tip="Auto-hide window controls"
+                  AutomationProperties.Name="Toggle auto-hide window controls"
+                  AutomationProperties.AutomationId="BYH.Settings.Caption.AutoHide"
+                  Click="OnCaptionAutoHideClick" />
+
+          <Border x:Name="CaptionButtonRevealZone"
+                  Width="138"
+                  Height="36"
+                  Background="Transparent"
+                  PointerEntered="OnCaptionButtonRevealZonePointerEntered"
+                  PointerExited="OnCaptionButtonRevealZonePointerExited">
+            <StackPanel x:Name="CaptionButtons"
+                        Orientation="Horizontal">
+              <Button Classes="CaptionControl"
+                      Content="—"
+                      AutomationProperties.Name="Minimize"
+                      AutomationProperties.AutomationId="BYH.Settings.Caption.Minimize"
+                      Click="OnCaptionMinimizeClick" />
+              <Button x:Name="CaptionMaximizeButton"
+                      Classes="CaptionControl"
+                      Content="□"
+                      AutomationProperties.Name="Maximize or restore"
+                      AutomationProperties.AutomationId="BYH.Settings.Caption.Maximize"
+                      Click="OnCaptionMaximizeClick" />
+              <Button Classes="CaptionControl Close"
+                      Content="×"
+                      AutomationProperties.Name="Close"
+                      AutomationProperties.AutomationId="BYH.Settings.Caption.Close"
+                      Click="OnCaptionCloseClick" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+    </Border>
 
     <Grid x:Name="ShellGrid"
           Grid.Row="1"
@@ -1585,57 +1646,5 @@
     </Border>
     </Grid>
 
-    <!-- Avalonia's platform fullscreen popover is not exposed reliably by
-         every Windows decoration theme. Keep a six-pixel, transparent sensor
-         over the top edge and reveal an in-client fallback caption only while
-         fullscreen auto-hide mode is active. -->
-    <Border x:Name="FullscreenRevealZone"
-            Grid.RowSpan="2"
-            Height="18"
-            VerticalAlignment="Top"
-            Background="Transparent"
-            IsVisible="False"
-            ZIndex="100"
-            PointerEntered="OnFullscreenRevealZonePointerEntered" />
-
-    <Border x:Name="FullscreenTitleBar"
-            Grid.RowSpan="2"
-            Height="36"
-            VerticalAlignment="Top"
-            Background="{DynamicResource ByhBackgroundBrush}"
-            BorderBrush="{DynamicResource ByhHairlineBrush}"
-            BorderThickness="0,0,0,1"
-            BoxShadow="0 7 18 0 #1A4A2B19"
-            IsVisible="False"
-            ZIndex="101"
-            PointerEntered="OnFullscreenTitleBarPointerEntered"
-            PointerExited="OnFullscreenTitleBarPointerExited">
-      <Grid ColumnDefinitions="*,Auto">
-        <TextBlock Margin="14,0,0,0"
-                   Text="BYH · Settings"
-                   FontSize="12"
-                   Foreground="{DynamicResource ByhTextSecondaryBrush}"
-                   VerticalAlignment="Center" />
-        <StackPanel Grid.Column="1"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right">
-          <Button Classes="FullscreenCaption"
-                  Content="—"
-                  AutomationProperties.Name="Minimize"
-                  AutomationProperties.AutomationId="BYH.Settings.Fullscreen.Minimize"
-                  Click="OnFullscreenMinimizeClick" />
-          <Button Classes="FullscreenCaption"
-                  Content="□"
-                  AutomationProperties.Name="Restore"
-                  AutomationProperties.AutomationId="BYH.Settings.Fullscreen.Restore"
-                  Click="OnFullscreenRestoreClick" />
-          <Button Classes="FullscreenCaption Close"
-                  Content="×"
-                  AutomationProperties.Name="Close"
-                  AutomationProperties.AutomationId="BYH.Settings.Fullscreen.Close"
-                  Click="OnFullscreenCloseClick" />
-        </StackPanel>
-      </Grid>
-    </Border>
   </Grid>
 </Window>
