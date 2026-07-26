@@ -20,11 +20,11 @@
 
       <TextBlock x:Name="PromptLabel"
                  Text="{x:Static i18n:Strings.ParamDialog_DefaultPrompt}"
-                 FontSize="13"
+                 FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                  TextWrapping="Wrap" />
 
       <TextBox x:Name="ValueInput"
-               FontSize="13"
+               FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                KeyDown="OnValueInputKeyDown" />
 
       <Grid ColumnDefinitions="*,*" ColumnSpacing="8">

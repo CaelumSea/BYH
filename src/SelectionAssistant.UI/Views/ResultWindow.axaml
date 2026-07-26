@@ -15,11 +15,11 @@
         <StackPanel>
           <TextBlock Text="{x:Static i18n:Strings.Result_Title}"
                      Classes="DisplayTitle"
-                     FontSize="20" />
+                     FontSize="{DynamicResource ByhFontSizeHeading}" />
           <TextBlock x:Name="LanguagePairText"
                      Text="{x:Static i18n:Strings.Result_DefaultLanguagePair}"
                      Classes="Secondary"
-                     FontSize="12"
+                     FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                      Margin="0,3,0,0" />
         </StackPanel>
         <Border Grid.Column="1"
@@ -29,7 +29,7 @@
           <TextBlock x:Name="ProviderText"
                      Text="{x:Static i18n:Strings.Result_DefaultProvider}"
                      Classes="Accent"
-                     FontSize="11" />
+                     FontSize="{DynamicResource ByhFontSizeBody}" />
         </Border>
       </Grid>
 
@@ -39,7 +39,7 @@
         <StackPanel Spacing="6">
           <TextBlock Text="{x:Static i18n:Strings.Result_SourceLabel}"
                      Classes="Muted"
-                     FontSize="11" />
+                     FontSize="{DynamicResource ByhFontSizeBody}" />
           <TextBox x:Name="SourceTextBox"
                    IsReadOnly="True"
                    AcceptsReturn="True"
@@ -76,14 +76,14 @@
                  BorderThickness="0"
                  Padding="0"
                  Foreground="{DynamicResource ByhTextPrimaryBrush}"
-                 FontSize="15" />
+                 FontSize="{DynamicResource ByhFontSizeSubheading}" />
       </Border>
 
       <Grid Grid.Row="4" ColumnDefinitions="*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
         <TextBlock x:Name="PrivacyText"
                    Text="{x:Static i18n:Strings.Result_PrivacyTestMode}"
                    Classes="Muted"
-                   FontSize="10"
+                   FontSize="{DynamicResource ByhFontSizeBodySmall}"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis" />
         <Button x:Name="CopySourceButton"

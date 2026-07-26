@@ -110,6 +110,17 @@ public partial class App : Application
                 // Unknown culture code — leave the framework defaults in place;
                 // AppLanguage.Current is still correct so Strings resolves right.
             }
+            // CJK glyphs read roughly 1pt smaller than Latin at the same size
+            // (denser strokes, smaller glyph aspect), so when the active UI
+            // language is Chinese, bump every font-size token by +1pt. The
+            // tokens live in IvoryJade.axaml's Styles.Resources with Latin
+            // baseline values; writing them into Application.Current.Resources
+            // here overrides those baselines for the whole app (Avalonia
+            // resolves app-level resources above theme-level). Must run before
+            // any window is constructed so the first measure pass uses the
+            // Chinese sizes. English/other languages get no overrides — the
+            // theme defaults apply and the UI is byte-identical to before.
+            ApplyLanguageFontTokens(_uiLanguage);
 
             // R40: tell the trigger store where the legacy quick-tools.json lives
             // so a first launch can transparently migrate pre-R40 bindings. The
@@ -1854,6 +1865,44 @@ public partial class App : Application
             FileName = path,
             UseShellExecute = true,
         });
+    }
+
+    /// <summary>
+    /// Overrides the theme's font-size tokens when the active UI language is
+    /// Chinese. CJK glyphs read smaller than Latin at the same pt size (denser
+    /// strokes, smaller glyph aspect), so every token is bumped by +1pt. The
+    /// Latin baseline values live in <c>IvoryJade.axaml</c>'s
+    /// <c>Styles.Resources</c>; writing them into
+    /// <see cref="Application.Resources"/> here wins over the theme because
+    /// Avalonia resolves application resources above theme resources. English
+    /// and other non-Chinese languages get no overrides — the theme defaults
+    /// apply and the UI is identical to before this hook existed.
+    /// </summary>
+    /// <remarks>
+    /// Must run BEFORE any window is constructed so the first measure pass
+    /// sees the Chinese sizes. Switching languages is restart-after-toggle
+    /// (see <see cref="OnUiLanguageSaved"/>), so this method is called exactly
+    /// once per process lifetime at startup.
+    /// </remarks>
+    private static void ApplyLanguageFontTokens(AppLanguage language)
+    {
+        if (Application.Current is null)
+        {
+            return;
+        }
+        if (!language.IsChinese)
+        {
+            return;
+        }
+        var resources = Application.Current.Resources;
+        resources["ByhFontSizeMicro"] = 8.0;
+        resources["ByhFontSizeCaption"] = 10.0;
+        resources["ByhFontSizeBodySmall"] = 11.0;
+        resources["ByhFontSizeBody"] = 12.0;
+        resources["ByhFontSizeBodyLarge"] = 14.0;
+        resources["ByhFontSizeSubheading"] = 16.0;
+        resources["ByhFontSizeHeading"] = 19.0;
+        resources["ByhFontSizeDisplay"] = 26.0;
     }
 
     /// <summary>

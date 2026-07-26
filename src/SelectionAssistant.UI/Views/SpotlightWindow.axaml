@@ -31,7 +31,7 @@
       <Grid Grid.Row="0" ColumnDefinitions="28,*,Auto" ColumnSpacing="8">
         <TextBlock Grid.Column="0"
                    Text="⚡"
-                   FontSize="16"
+                   FontSize="{DynamicResource ByhFontSizeSubheading}"
                    VerticalAlignment="Center"
                    HorizontalAlignment="Center" />
         <Border Grid.Column="1"
@@ -41,7 +41,7 @@
           <TextBox x:Name="SearchInput"
                    Classes="SpotlightSearch"
                    PlaceholderText="Search…"
-                   FontSize="15"
+                   FontSize="{DynamicResource ByhFontSizeSubheading}"
                    FontWeight="SemiBold"
                    Padding="0,1"
                    VerticalAlignment="Center"
@@ -56,7 +56,7 @@
       <TextBlock Grid.Row="1"
                  Classes="Kicker"
                  Text="{x:Static i18n:Strings.Spotlight_CategoryLauncher}"
-                 FontSize="10" />
+                 FontSize="{DynamicResource ByhFontSizeBodySmall}" />
 
       <!-- Filtered results list -->
       <Border Grid.Row="2"
@@ -93,16 +93,16 @@
                     <StackPanel Grid.Column="1" Spacing="1">
                       <TextBlock Text="{Binding Name}"
                                  Classes="SpotlightRowName"
-                                 FontSize="13"
+                                 FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                                  FontWeight="SemiBold" />
                       <TextBlock Text="{Binding Target}"
                                  Classes="Muted SpotlightRowTarget"
-                                 FontSize="10"
+                                 FontSize="{DynamicResource ByhFontSizeBodySmall}"
                                  TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                     <TextBlock Grid.Column="2"
                                Classes="Muted"
-                               FontSize="10"
+                               FontSize="{DynamicResource ByhFontSizeBodySmall}"
                                VerticalAlignment="Center"
                                Text="{Binding Kind}" />
                   </Grid>
@@ -122,23 +122,23 @@
                 Classes="Ghost"
                 Click="OnSettingsClick"
                 Padding="6,2"
-                FontSize="11"
+                FontSize="{DynamicResource ByhFontSizeBody}"
                 Content="{x:Static i18n:Strings.Spotlight_FooterSettings}" />
         <StackPanel Grid.Column="2"
                     Orientation="Horizontal"
                     Spacing="6"
                     VerticalAlignment="Center">
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Spotlight_FooterSelect}" />
+            <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Spotlight_FooterSelect}" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Spotlight_FooterLaunch}" />
+            <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Spotlight_FooterLaunch}" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Spotlight_FooterEdit}" />
+            <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Spotlight_FooterEdit}" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Spotlight_FooterClose}" />
+            <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Spotlight_FooterClose}" />
           </Border>
         </StackPanel>
       </Grid>

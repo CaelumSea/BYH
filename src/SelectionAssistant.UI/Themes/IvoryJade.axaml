@@ -246,6 +246,30 @@
            millimetres above the surface. -->
       <BoxShadows x:Key="ByhShadowDiffused">0 6 18 0 #144A2B19, 0 20 50 0 #184A2B19</BoxShadows>
       <FontFamily x:Key="ByhDisplayFontFamily">Georgia</FontFamily>
+
+      <!-- Body font family with a CJK fallback. Latin glyphs use Inter
+           (still the default via .WithInterFont()), and any CJK glyph Inter
+           lacks falls through to "Microsoft YaHei UI" (Windows' standard CJK
+           UI font, sharper and slightly larger than the OS's generic
+           fallback) then "Segoe UI" then the system sans-serif. At runtime
+           App.ApplyLanguageFontTokens can swap the size tokens below to +1pt
+           when AppLanguage.IsChinese, so Chinese renders at a comfortable
+           reading size without changing the English baseline. -->
+      <FontFamily x:Key="ByhFontFamily">Inter, "Microsoft YaHei UI", "Segoe UI", sans-serif</FontFamily>
+
+      <!-- Font-size tokens. Every inline FontSize= in the views binds to one
+           of these via {DynamicResource ByhFontSizeXxx}, so a single resource
+           swap at startup scales the whole UI. Latin baseline values are the
+           original literal sizes (so English looks identical to before);
+           Chinese gets +1pt applied in App.ApplyLanguageFontTokens. -->
+      <x:Double x:Key="ByhFontSizeMicro">7</x:Double>        <!-- badge micro-labels -->
+      <x:Double x:Key="ByhFontSizeCaption">9</x:Double>      <!-- captions, kickers, hints -->
+      <x:Double x:Key="ByhFontSizeBodySmall">10</x:Double>   <!-- small body, metadata -->
+      <x:Double x:Key="ByhFontSizeBody">11</x:Double>        <!-- primary body / labels -->
+      <x:Double x:Key="ByhFontSizeBodyLarge">13</x:Double>   <!-- inputs, row names -->
+      <x:Double x:Key="ByhFontSizeSubheading">15</x:Double>  <!-- card titles -->
+      <x:Double x:Key="ByhFontSizeHeading">18</x:Double>     <!-- dialog/page headings -->
+      <x:Double x:Key="ByhFontSizeDisplay">25</x:Double>     <!-- hero / page title -->
     </ResourceDictionary>
   </Styles.Resources>
 
@@ -253,6 +277,11 @@
   <Style Selector="Window">
     <Setter Property="Background" Value="{DynamicResource ByhBackgroundBrush}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
+    <!-- Cascade the body font (with CJK fallback) to every child control.
+         No view sets FontFamily inline, so this one setter reaches the whole
+         UI. Display titles still override via .DisplayTitle/.CardTitle which
+         bind ByhDisplayFontFamily (Georgia). -->
+    <Setter Property="FontFamily" Value="{DynamicResource ByhFontFamily}" />
   </Style>
   <Style Selector="TextBlock.Secondary">
     <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
@@ -277,7 +306,7 @@
   </Style>
   <Style Selector="TextBlock.Kicker">
     <Setter Property="Foreground" Value="{DynamicResource ByhAccentBrush}" />
-    <Setter Property="FontSize" Value="9" />
+    <Setter Property="FontSize" Value="{DynamicResource ByhFontSizeCaption}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="LetterSpacing" Value="1.4" />
   </Style>
@@ -559,11 +588,11 @@
        hierarchy and a shared rule rather than nested cards. -->
   <Style Selector="TextBlock.RailSectionTitle">
     <Setter Property="FontFamily" Value="Georgia" />
-    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontSize" Value="{DynamicResource ByhFontSizeBodyLarge}" />
     <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
   </Style>
   <Style Selector="TextBlock.RailBody">
-    <Setter Property="FontSize" Value="8.5" />
+    <Setter Property="FontSize" Value="{DynamicResource ByhFontSizeCaption}" />
     <Setter Property="LineHeight" Value="13" />
     <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
   </Style>

@@ -28,7 +28,7 @@
                 Grid.Column="0"
                 Content="{x:Static i18n:Strings.Toolbar_Translate}"
                 Padding="8,3"
-                FontSize="11"
+                FontSize="{DynamicResource ByhFontSizeBody}"
                 IsEnabled="False"
                 Click="OnTranslateClick" />
         <Button x:Name="ExplainButton"
@@ -36,7 +36,7 @@
                 Grid.Column="1"
                 Content="{x:Static i18n:Strings.Toolbar_Explain}"
                 Padding="8,3"
-                FontSize="11"
+                FontSize="{DynamicResource ByhFontSizeBody}"
                 IsEnabled="False"
                 Click="OnExplainClick" />
         <Button x:Name="SummarizeButton"
@@ -44,7 +44,7 @@
                 Grid.Column="2"
                 Content="{x:Static i18n:Strings.Toolbar_Summarize}"
                 Padding="8,3"
-                FontSize="11"
+                FontSize="{DynamicResource ByhFontSizeBody}"
                 IsEnabled="False"
                 Click="OnSummarizeClick" />
         <Button x:Name="PromptButton"
@@ -52,7 +52,7 @@
                 Grid.Column="3"
                 Content="{x:Static i18n:Strings.Toolbar_Prompt}"
                 Padding="8,3"
-                FontSize="11"
+                FontSize="{DynamicResource ByhFontSizeBody}"
                 IsEnabled="False"
                 Click="OnPromptClick"
                 ToolTip.Tip="{x:Static i18n:Strings.Toolbar_PromptTooltip}" />
@@ -61,7 +61,7 @@
                 Grid.Column="4"
                 Content="{x:Static i18n:Strings.Toolbar_Copy}"
                 Padding="8,3"
-                FontSize="11"
+                FontSize="{DynamicResource ByhFontSizeBody}"
                 IsEnabled="False"
                 Click="OnCopyClick"
                 ToolTip.Tip="{x:Static i18n:Strings.Toolbar_CopyTooltip}" />
@@ -80,7 +80,7 @@
           <TextBlock x:Name="StatusText"
                      Classes="Secondary"
                      Text="{x:Static i18n:Strings.Toolbar_StatusWaiting}"
-                     FontSize="12"
+                     FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                      TextTrimming="CharacterEllipsis"
                      VerticalAlignment="Center"
                      HorizontalAlignment="Left"
@@ -107,7 +107,7 @@
                 Grid.Column="6"
                 Content="▼"
                 Padding="6,3"
-                FontSize="10"
+                FontSize="{DynamicResource ByhFontSizeBodySmall}"
                 IsVisible="False"
                 Click="OnMoreClick" />
       </Grid>
@@ -122,7 +122,7 @@
             <Button Content="{Binding Name}"
                     Classes="Ghost"
                     Padding="5,2"
-                    FontSize="11"
+                    FontSize="{DynamicResource ByhFontSizeBody}"
                     Margin="0,1"
                     Command="{Binding RunCommand}" />
           </DataTemplate>

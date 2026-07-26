@@ -17,11 +17,11 @@
       <StackPanel Grid.Row="0" Spacing="4">
         <TextBlock Text="{x:Static i18n:Strings.Prompt_Heading}"
                    Classes="DisplayTitle"
-                   FontSize="18" />
+                   FontSize="{DynamicResource ByhFontSizeHeading}" />
         <TextBlock x:Name="SourcePreview"
                    Text="{x:Static i18n:Strings.Prompt_DefaultPreview}"
                    Classes="Secondary"
-                   FontSize="11"
+                   FontSize="{DynamicResource ByhFontSizeBody}"
                    TextWrapping="Wrap" />
       </StackPanel>
 
@@ -30,12 +30,12 @@
                PlaceholderText="{x:Static i18n:Strings.Prompt_Placeholder}"
                AcceptsReturn="True"
                TextWrapping="Wrap"
-               FontSize="13" />
+               FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
 
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
         <TextBlock Text="{x:Static i18n:Strings.Prompt_FooterHint}"
                    Classes="Muted"
-                   FontSize="10"
+                   FontSize="{DynamicResource ByhFontSizeBodySmall}"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis" />
         <Button Grid.Column="1"

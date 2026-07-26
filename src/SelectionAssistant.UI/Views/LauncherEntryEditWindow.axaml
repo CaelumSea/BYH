@@ -18,17 +18,17 @@
         <TextBlock x:Name="TitleText"
                    Text="{x:Static i18n:Strings.LauncherEdit_Heading}"
                    Classes="DisplayTitle"
-                   FontSize="18" />
+                   FontSize="{DynamicResource ByhFontSizeHeading}" />
         <TextBlock x:Name="SubtitleText"
                    Text="{x:Static i18n:Strings.LauncherEdit_Subtitle}"
                    Classes="Secondary"
-                   FontSize="11"
+                   FontSize="{DynamicResource ByhFontSizeBody}"
                    TextWrapping="Wrap" />
       </StackPanel>
 
       <!-- Type selection -->
       <StackPanel Grid.Row="1" Spacing="4">
-        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_Kind}" Classes="Muted" FontSize="11" />
+        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_Kind}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBody}" />
         <StackPanel Orientation="Horizontal" Spacing="16">
           <RadioButton x:Name="LocalAppRadio"
                        Content="{x:Static i18n:Strings.LauncherEdit_KindLocal}"
@@ -44,19 +44,19 @@
 
       <!-- Name -->
       <StackPanel Grid.Row="2" Spacing="4">
-        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_Name}" Classes="Muted" FontSize="11" />
+        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_Name}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBody}" />
         <TextBox x:Name="NameInput"
                  PlaceholderText="{x:Static i18n:Strings.LauncherEdit_NamePlaceholder}"
-                 FontSize="13" />
+                 FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
       </StackPanel>
 
       <!-- Target -->
       <StackPanel Grid.Row="3" Spacing="4">
-        <TextBlock x:Name="TargetLabel" Text="{x:Static i18n:Strings.LauncherEdit_Target}" Classes="Muted" FontSize="11" />
+        <TextBlock x:Name="TargetLabel" Text="{x:Static i18n:Strings.LauncherEdit_Target}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBody}" />
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
           <TextBox x:Name="TargetInput"
                    PlaceholderText="{x:Static i18n:Strings.LauncherEdit_TargetPlaceholder}"
-                   FontSize="13" />
+                   FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
           <Button Grid.Column="1"
                   x:Name="BrowseTargetButton"
                   Content="{x:Static i18n:Strings.Common_Browse}"
@@ -66,19 +66,19 @@
 
       <!-- Arguments -->
       <StackPanel Grid.Row="4" Spacing="4">
-        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_Args}" Classes="Muted" FontSize="11" />
+        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_Args}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBody}" />
         <TextBox x:Name="ArgumentsInput"
                  PlaceholderText="{x:Static i18n:Strings.LauncherEdit_ArgsPlaceholder}"
-                 FontSize="13" />
+                 FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
       </StackPanel>
 
       <!-- Working directory (local app only) -->
       <StackPanel Grid.Row="5" x:Name="WorkingDirectoryPanel" Spacing="4" IsVisible="False">
-        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_WorkDir}" Classes="Muted" FontSize="11" />
+        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_WorkDir}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBody}" />
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
           <TextBox x:Name="WorkingDirectoryInput"
                    PlaceholderText="{x:Static i18n:Strings.LauncherEdit_WorkDirPlaceholder}"
-                   FontSize="13" />
+                   FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
           <Button Grid.Column="1"
                   Content="{x:Static i18n:Strings.Common_Browse}"
                   Click="OnBrowseWorkDirClick" />
@@ -87,7 +87,7 @@
 
       <!-- Icon preview -->
       <StackPanel Grid.Row="6" x:Name="IconPreviewPanel" Spacing="4" IsVisible="False">
-        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_IconPreview}" Classes="Muted" FontSize="11" />
+        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_IconPreview}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBody}" />
         <Border Width="24" Height="24" CornerRadius="4" ClipToBounds="True">
           <Image x:Name="IconPreview" Width="24" Height="24" />
         </Border>
@@ -97,7 +97,7 @@
       <Grid Grid.Row="7" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
         <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_ArgsHint}"
                    Classes="Muted"
-                   FontSize="9"
+                   FontSize="{DynamicResource ByhFontSizeCaption}"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis" />
         <Button Grid.Column="1"

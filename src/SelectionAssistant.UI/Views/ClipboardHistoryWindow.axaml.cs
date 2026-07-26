@@ -197,9 +197,15 @@ public partial class ClipboardHistoryWindow : Window
                 Hide();
             }
         };
-    }
+	    }
 
-    /// <summary>R100 动画3: 给 popup 的 card Border 加弹动入场(参考贴图 R56 的
+	    /// <summary>Resolves the current theme font-size token. Centralized so the
+	    /// ~30 dynamically-built controls in this file pick up the language-aware
+	    /// sizes (Chinese +1pt) without each repeating the resource lookup.</summary>
+	    private static double GetFontSize(string tokenKey) =>
+	        Application.Current?.Resources[tokenKey] is double d ? d : 11;
+
+	    /// <summary>R100 动画3: 给 popup 的 card Border 加弹动入场(参考贴图 R56 的
     /// scale pop)。scale 从 0.85 弹到 1.0(BackEaseOut 带轻微过冲), 配 Opacity
     /// 0→1 较快淡入让 scale 弹动主体不被透明度拖累。在 popup.Open() 之前调用。
     /// 参数对齐 PinnedScreenshotWindow: PopStartScale=0.85 / PopDuration=350ms /
@@ -667,13 +673,13 @@ public partial class ClipboardHistoryWindow : Window
         var iconBlock = new TextBlock
         {
             Text = emoji,
-            FontSize = 12,
+            FontSize = GetFontSize("ByhFontSizeBodyLarge"),
             VerticalAlignment = VerticalAlignment.Center,
         };
         var nameBlock = new TextBlock
         {
             Text = name,
-            FontSize = 10,
+            FontSize = GetFontSize("ByhFontSizeBodySmall"),
             FontWeight = FontWeight.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
@@ -787,7 +793,7 @@ public partial class ClipboardHistoryWindow : Window
         return new TextBlock
         {
             Text = iconValue,
-            FontSize = 12,
+            FontSize = GetFontSize("ByhFontSizeBodyLarge"),
             VerticalAlignment = VerticalAlignment.Center,
         };
     }
@@ -813,7 +819,7 @@ public partial class ClipboardHistoryWindow : Window
         {
             Classes = { "TagLabel" },
             Text = tagName,
-            FontSize = 10,
+            FontSize = GetFontSize("ByhFontSizeBodySmall"),
             FontWeight = FontWeight.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
@@ -822,7 +828,7 @@ public partial class ClipboardHistoryWindow : Window
         {
             Classes = { "TagLabel" },
             Text = "#",
-            FontSize = 11,
+            FontSize = GetFontSize("ByhFontSizeBody"),
             FontWeight = FontWeight.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
             Foreground = (IBrush?)Application.Current?.FindResource("ByhTextSecondaryBrush"),
@@ -1147,7 +1153,7 @@ public partial class ClipboardHistoryWindow : Window
             }
             else
             {
-                content = new TextBlock { Text = display, FontSize = 16 };
+                content = new TextBlock { Text = display, FontSize = GetFontSize("ByhFontSizeSubheading") };
             }
             var cell = new Button
             {
@@ -1189,14 +1195,14 @@ public partial class ClipboardHistoryWindow : Window
         userHeaderRow.Children.Add(new TextBlock
         {
             Text = Strings.Clip_IconPicker_MyIcons,
-            FontSize = 9,
+            FontSize = GetFontSize("ByhFontSizeCaption"),
             FontWeight = FontWeight.SemiBold,
             Foreground = secondary,
         });
         var importButton = new Button
         {
             Content = Strings.Clip_IconPicker_Import,
-            FontSize = 9,
+            FontSize = GetFontSize("ByhFontSizeCaption"),
             Padding = new Thickness(6, 2),
             HorizontalContentAlignment = HorizontalAlignment.Center,
         };
@@ -1210,7 +1216,7 @@ public partial class ClipboardHistoryWindow : Window
             userPanel.Children.Add(new TextBlock
             {
                 Text = Strings.Clip_IconPicker_ImportHint,
-                FontSize = 9,
+                FontSize = GetFontSize("ByhFontSizeCaption"),
                 Foreground = secondary,
                 Margin = new Thickness(0, 0, 0, 4),
                 TextWrapping = TextWrapping.Wrap,
@@ -1254,7 +1260,7 @@ public partial class ClipboardHistoryWindow : Window
                 var groupHeader = new TextBlock
                 {
                     Text = icon.Group,
-                    FontSize = 9,
+                    FontSize = GetFontSize("ByhFontSizeCaption"),
                     FontWeight = FontWeight.SemiBold,
                     Margin = new Thickness(0, 4, 0, 2),
                     Foreground = secondary,
@@ -1270,7 +1276,7 @@ public partial class ClipboardHistoryWindow : Window
         var emojiHeader = new TextBlock
         {
             Text = Strings.Clip_IconPicker_Emoji,
-            FontSize = 9,
+            FontSize = GetFontSize("ByhFontSizeCaption"),
             FontWeight = FontWeight.SemiBold,
             Margin = new Thickness(0, 8, 0, 2),
             Foreground = secondary,
@@ -1284,7 +1290,7 @@ public partial class ClipboardHistoryWindow : Window
         var noneButton = new Button
         {
             Content = Strings.Clip_IconPicker_None,
-            FontSize = 12,
+            FontSize = GetFontSize("ByhFontSizeBodyLarge"),
             Padding = new Thickness(8, 4),
             HorizontalContentAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(0, 0, 0, 6),
@@ -1317,7 +1323,7 @@ public partial class ClipboardHistoryWindow : Window
                 new TextBlock
                 {
                     Text = string.Format(Strings.Clip_IconPicker_ChooseFor, tagName),
-                    FontSize = 11,
+                    FontSize = GetFontSize("ByhFontSizeBody"),
                     FontWeight = FontWeight.SemiBold,
                     Margin = new Thickness(0, 0, 0, 6),
                     Classes = { "Muted" },
@@ -1409,7 +1415,7 @@ public partial class ClipboardHistoryWindow : Window
             Content = new TextBlock
             {
                 Text = Strings.Clip_NewTab,
-                FontSize = 10,
+                FontSize = GetFontSize("ByhFontSizeBodySmall"),
                 FontWeight = FontWeight.SemiBold,
                 Foreground = accent,
                 VerticalAlignment = VerticalAlignment.Center,
@@ -1443,7 +1449,7 @@ public partial class ClipboardHistoryWindow : Window
         var title = new TextBlock
         {
             Text = mode == TagInputMode.Rename ? string.Format(Strings.Clip_RenameTo, currentName) : Strings.Clip_NewTag,
-            FontSize = 11,
+            FontSize = GetFontSize("ByhFontSizeBody"),
             FontWeight = FontWeight.SemiBold,
             Margin = new Thickness(0, 0, 0, 6),
             Classes = { "Kicker" },
@@ -1452,7 +1458,7 @@ public partial class ClipboardHistoryWindow : Window
         var input = new TextBox
         {
             Text = mode == TagInputMode.Rename ? currentName : string.Empty,
-            FontSize = 14,
+            FontSize = GetFontSize("ByhFontSizeSubheading"),
             FontWeight = FontWeight.SemiBold,
             Padding = new Thickness(6, 4),
             PlaceholderText = Strings.Clip_TagNamePlaceholder,
@@ -1460,7 +1466,7 @@ public partial class ClipboardHistoryWindow : Window
 
         var error = new TextBlock
         {
-            FontSize = 9,
+            FontSize = GetFontSize("ByhFontSizeCaption"),
             Foreground = Brushes.IndianRed,
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
@@ -1470,14 +1476,14 @@ public partial class ClipboardHistoryWindow : Window
         {
             Content = Strings.Common_Confirm,
             Classes = { "Primary" },
-            FontSize = 11,
+            FontSize = GetFontSize("ByhFontSizeBody"),
             Padding = new Thickness(14, 5),
             IsEnabled = !string.IsNullOrWhiteSpace(input.Text),
         };
         var cancelBtn = new Button
         {
             Content = Strings.Common_Cancel,
-            FontSize = 11,
+            FontSize = GetFontSize("ByhFontSizeBody"),
             Padding = new Thickness(14, 5),
         };
 
@@ -1545,7 +1551,7 @@ public partial class ClipboardHistoryWindow : Window
         var iconRowLabel = new TextBlock
         {
             Text = Strings.Clip_IconOptional,
-            FontSize = 9,
+            FontSize = GetFontSize("ByhFontSizeCaption"),
             Margin = new Thickness(0, 2, 0, 0),
             Classes = { "Muted" },
         };
@@ -1594,7 +1600,7 @@ public partial class ClipboardHistoryWindow : Window
                     Stroke = accent ?? Brushes.Goldenrod,
                     Data = StreamGeometry.Parse(li.PathData),
                 }
-                : new TextBlock { Text = "?", FontSize = 12 };
+                : new TextBlock { Text = "?", FontSize = GetFontSize("ByhFontSizeBodyLarge") };
             var cell = new Button
             {
                 Content = content,
@@ -1625,7 +1631,7 @@ public partial class ClipboardHistoryWindow : Window
         var noneCell = new Button
         {
             Content = "✕",
-            FontSize = 11,
+            FontSize = GetFontSize("ByhFontSizeBody"),
             Padding = new Thickness(1),
             Margin = new Thickness(1),
             BorderBrush = Brushes.Transparent,
@@ -2114,7 +2120,7 @@ public partial class ClipboardHistoryWindow : Window
                         ? string.Format(Strings.Clip_ClearNone_Kept, wouldKeep)
                         : Strings.Clip_ClearNone_Empty,
                     TextWrapping = TextWrapping.Wrap,
-                    FontSize = 13,
+                    FontSize = GetFontSize("ByhFontSizeBodyLarge"),
                 },
             };
             var nonePopup = new Popup
@@ -2135,14 +2141,14 @@ public partial class ClipboardHistoryWindow : Window
         {
             Text = string.Format(Strings.Clip_ClearConfirm, wouldDelete, wouldKeep),
             TextWrapping = TextWrapping.Wrap,
-            FontSize = 13,
+            FontSize = GetFontSize("ByhFontSizeBodyLarge"),
             Margin = new Thickness(0, 0, 0, 10),
         };
 
         var confirmBtn = new Button
         {
             Content = string.Format(Strings.Clip_ClearConfirmButton, wouldDelete),
-            FontSize = 13,
+            FontSize = GetFontSize("ByhFontSizeBodyLarge"),
             Padding = new Thickness(16, 6),
             HorizontalContentAlignment = HorizontalAlignment.Center,
         };
@@ -2155,7 +2161,7 @@ public partial class ClipboardHistoryWindow : Window
         var cancelBtn = new Button
         {
             Content = Strings.Common_Cancel,
-            FontSize = 13,
+            FontSize = GetFontSize("ByhFontSizeBodyLarge"),
             Padding = new Thickness(16, 6),
             HorizontalContentAlignment = HorizontalAlignment.Center,
         };
@@ -2214,7 +2220,7 @@ public partial class ClipboardHistoryWindow : Window
         var label = new TextBlock
         {
             Text = Strings.Clip_AddTag,
-            FontSize = 11,
+            FontSize = GetFontSize("ByhFontSizeBody"),
             FontWeight = FontWeight.SemiBold,
             Margin = new Thickness(0, 0, 0, 6),
             Classes = { "Muted" },
@@ -2225,7 +2231,7 @@ public partial class ClipboardHistoryWindow : Window
         // opens on focus, showing all known tags when the box is empty.
         var input = new AutoCompleteBox
         {
-            FontSize = 14,
+            FontSize = GetFontSize("ByhFontSizeSubheading"),
             MinWidth = 220,
             PlaceholderText = Strings.Clip_TagNamePlaceholder,
             FilterMode = AutoCompleteFilterMode.StartsWith,
@@ -2311,7 +2317,7 @@ public partial class ClipboardHistoryWindow : Window
         var header = new TextBlock
         {
             Text = row.GroupLabel.Length > 0 ? $"{row.GroupLabel} · {row.TimeLabel}" : row.TimeLabel,
-            FontSize = 11,
+            FontSize = GetFontSize("ByhFontSizeBody"),
             FontWeight = FontWeight.SemiBold,
             Margin = new Thickness(0, 0, 0, 8),
             Classes = { "Muted" },
@@ -2320,7 +2326,7 @@ public partial class ClipboardHistoryWindow : Window
         var body = new TextBox
         {
             Text = text,
-            FontSize = 16,
+            FontSize = GetFontSize("ByhFontSizeSubheading"),
             LineHeight = 24,
             IsReadOnly = true,
             AcceptsReturn = true,
@@ -2334,7 +2340,7 @@ public partial class ClipboardHistoryWindow : Window
         var closeBtn = new Button
         {
             Content = Strings.Common_Close,
-            FontSize = 13,
+            FontSize = GetFontSize("ByhFontSizeBodyLarge"),
             Padding = new Thickness(18, 7),
             HorizontalContentAlignment = HorizontalAlignment.Center,
         };
@@ -2416,7 +2422,7 @@ public partial class ClipboardHistoryWindow : Window
         var header = new TextBlock
         {
             Text = $"Image · {row.TimeLabel}  ·  scroll to zoom · drag to pan · double-click or Esc to close",
-            FontSize = 10,
+            FontSize = GetFontSize("ByhFontSizeBodySmall"),
             Classes = { "Muted" },
             Margin = new Thickness(2, 0, 0, 8),
             TextWrapping = TextWrapping.Wrap,

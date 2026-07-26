@@ -25,12 +25,12 @@
       <!-- Top bar: title + count + hint -->
       <Border Grid.Row="0" Padding="16,12" Background="#22FFFFFF">
         <StackPanel Orientation="Horizontal" Spacing="12">
-          <TextBlock Text="{x:Static i18n:Strings.Gallery_Heading}" FontWeight="SemiBold" FontSize="16"
+          <TextBlock Text="{x:Static i18n:Strings.Gallery_Heading}" FontWeight="SemiBold" FontSize="{DynamicResource ByhFontSizeSubheading}"
                      VerticalAlignment="Center"/>
           <TextBlock x:Name="CountText" Classes="Secondary"
-                     FontSize="12" VerticalAlignment="Center"/>
+                     FontSize="{DynamicResource ByhFontSizeBodyLarge}" VerticalAlignment="Center"/>
           <TextBlock Classes="Secondary"
-                     FontSize="12"
+                     FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                      Text="{x:Static i18n:Strings.Gallery_Hint}"
                      VerticalAlignment="Center"/>
         </StackPanel>
@@ -78,7 +78,7 @@
                          Stretch="UniformToFill"/>
                   <TextBlock Text="{Binding DisplayName}"
                              Margin="8,4"
-                             FontSize="11"
+                             FontSize="{DynamicResource ByhFontSizeBody}"
                              TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
               </Border>
@@ -93,9 +93,9 @@
               Background="Transparent">
         <StackPanel HorizontalAlignment="Center" Spacing="8">
           <TextBlock Text="📭" FontSize="48" HorizontalAlignment="Center"/>
-          <TextBlock Text="{x:Static i18n:Strings.Gallery_EmptyTitle}" FontSize="14" HorizontalAlignment="Center"
+          <TextBlock Text="{x:Static i18n:Strings.Gallery_EmptyTitle}" FontSize="{DynamicResource ByhFontSizeSubheading}" HorizontalAlignment="Center"
                      Classes="Secondary"/>
-          <TextBlock x:Name="EmptyStatePath" FontSize="11"
+          <TextBlock x:Name="EmptyStatePath" FontSize="{DynamicResource ByhFontSizeBody}"
                      Classes="Secondary" HorizontalAlignment="Center"/>
         </StackPanel>
       </Border>
@@ -116,12 +116,12 @@
             <TextBlock x:Name="PreviewTitle"
                        Grid.Column="0"
                        Foreground="White"
-                       FontSize="13"
+                       FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                        TextTrimming="CharacterEllipsis"
                        VerticalAlignment="Center"/>
             <TextBlock Grid.Column="1"
                        Foreground="#CCFFFFFF"
-                       FontSize="12"
+                       FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                        Text="{x:Static i18n:Strings.Gallery_PreviewCloseHint}"
                        VerticalAlignment="Center"/>
           </Grid>

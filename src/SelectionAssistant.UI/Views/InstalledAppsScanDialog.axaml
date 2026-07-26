@@ -25,11 +25,11 @@
       <StackPanel Grid.Row="0" Spacing="2">
         <TextBlock Text="{x:Static i18n:Strings.ScanDialog_Heading}"
                    Classes="CardTitle"
-                   FontSize="15"
+                   FontSize="{DynamicResource ByhFontSizeSubheading}"
                    FontWeight="SemiBold" />
         <TextBlock Text="{x:Static i18n:Strings.ScanDialog_Subtitle}"
                    Classes="Secondary"
-                   FontSize="10"
+                   FontSize="{DynamicResource ByhFontSizeBodySmall}"
                    TextWrapping="Wrap" />
       </StackPanel>
 
@@ -38,7 +38,7 @@
       <TextBox Grid.Row="1"
                x:Name="SearchInput"
                PlaceholderText="{x:Static i18n:Strings.ScanDialog_SearchPlaceholder}"
-               FontSize="12"
+               FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                TextChanged="OnSearchTextChanged" />
 
       <!-- Select-all row -->
@@ -51,7 +51,7 @@
                    VerticalAlignment="Center"
                    HorizontalAlignment="Right"
                    Classes="Muted"
-                   FontSize="11" />
+                   FontSize="{DynamicResource ByhFontSizeBody}" />
       </Grid>
 
       <!-- List -->
@@ -66,11 +66,11 @@
                        VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                   <TextBlock Text="{Binding Name}"
-                             FontSize="12"
+                             FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                              FontWeight="SemiBold"
                              TextTrimming="CharacterEllipsis" />
                   <TextBlock Text="{Binding Path}"
-                             FontSize="10"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}"
                              Classes="Muted"
                              TextTrimming="CharacterEllipsis"
                              Opacity="0.6" />

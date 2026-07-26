@@ -18,39 +18,39 @@
         <TextBlock x:Name="TitleText"
                    Text="{x:Static i18n:Strings.PromptEdit_Heading}"
                    Classes="DisplayTitle"
-                   FontSize="18" />
+                   FontSize="{DynamicResource ByhFontSizeHeading}" />
         <TextBlock x:Name="SubtitleText"
                    Text="{x:Static i18n:Strings.PromptEdit_Subtitle}"
                    Classes="Secondary"
-                   FontSize="11"
+                   FontSize="{DynamicResource ByhFontSizeBody}"
                    TextWrapping="Wrap" />
       </StackPanel>
 
       <StackPanel Grid.Row="1" x:Name="NamePanel" Spacing="4" IsVisible="False">
         <TextBlock Text="{x:Static i18n:Strings.PromptEdit_Name}"
                    Classes="Muted"
-                   FontSize="11" />
+                   FontSize="{DynamicResource ByhFontSizeBody}" />
         <TextBox x:Name="NameInput"
                  PlaceholderText="{x:Static i18n:Strings.PromptEdit_NamePlaceholder}"
-                 FontSize="13" />
+                 FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
       </StackPanel>
 
       <TextBlock Grid.Row="2"
                  x:Name="DefaultHintText"
                  Classes="Muted"
-                 FontSize="10"
+                 FontSize="{DynamicResource ByhFontSizeBodySmall}"
                  TextWrapping="Wrap" />
 
       <TextBox Grid.Row="3"
                x:Name="PromptInput"
                AcceptsReturn="True"
                TextWrapping="Wrap"
-               FontSize="13" />
+               FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
 
       <CheckBox Grid.Row="4"
                 x:Name="ThinkingCheckBox"
                 Content="{x:Static i18n:Strings.PromptEdit_AllowThinking}"
-                FontSize="11"
+                FontSize="{DynamicResource ByhFontSizeBody}"
                 IsChecked="False" />
 
       <!-- R34: per-template toolbar shortcut. Single character; fires while the
@@ -58,16 +58,16 @@
       <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
         <TextBlock Text="{x:Static i18n:Strings.PromptEdit_ShortcutLabel}"
                    Classes="Muted"
-                   FontSize="11"
+                   FontSize="{DynamicResource ByhFontSizeBody}"
                    VerticalAlignment="Center" />
         <TextBox x:Name="ShortcutInput"
                  MaxLength="1"
                  Width="40"
-                 FontSize="13"
+                 FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                  PlaceholderText="{x:Static i18n:Strings.Common_Placeholder_None}" />
         <TextBlock Text="{x:Static i18n:Strings.PromptEdit_ShortcutHint}"
                    Classes="Secondary"
-                   FontSize="10"
+                   FontSize="{DynamicResource ByhFontSizeBodySmall}"
                    VerticalAlignment="Center"
                    TextWrapping="Wrap" />
       </StackPanel>
