@@ -421,7 +421,7 @@
   <Style Selector="Border.MetallicFrame.SearchFrame">
     <Setter Property="CornerRadius" Value="20" />
     <Setter Property="Padding" Value="3" />
-    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F6FFFFFF, inset 0 0 0 1 #FFFFFFFF, inset 0 0 0 2 #52EAD8B8, 0 2 7 0 #094A2B19, 0 8 20 0 #094A2B19" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F6FFFFFF, inset 0 0 0 1 #FFFFFFFF, inset 0 0 0 2 #52EAD8B8" />
   </Style>
   <Style Selector="Border.MacroClip.SearchClip">
     <Setter Property="CornerRadius" Value="16" />
@@ -435,12 +435,12 @@
     <Setter Property="CornerRadius" Value="16" />
     <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F4FFFFFF, inset 0 0 0 1 #9AFFFDF8, 0 8 24 0 #174A2B19, 0 22 48 0 #124A2B19" />
   </Style>
-  <Style Selector="Border.PaneBridge">
-    <Setter Property="Background" Value="#E8FFFDF8" />
-    <Setter Property="BorderBrush" Value="#38EAD8B8" />
+  <Style Selector="Border.PaneUnderlay">
+    <Setter Property="Background" Value="#B8FFFDF8" />
+    <Setter Property="BorderBrush" Value="#24EAD8B8" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="7" />
-    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #B8FFFFFF, 0 3 9 0 #084A2B19" />
+    <Setter Property="CornerRadius" Value="23" />
+    <Setter Property="BoxShadow" Value="0 5 16 0 #064A2B19" />
   </Style>
   <Style Selector="Border.PhoneDock">
     <Setter Property="Background" Value="#E6FFF7EE" />

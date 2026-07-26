@@ -192,15 +192,13 @@
     <Grid Grid.Column="2"
           Grid.Row="0"
           RowDefinitions="Auto,*"
-          RowSpacing="2">
-      <!-- A nearly hidden underlay bridges the two shells. Only its thin
-           porcelain-gold seam remains visible in the two-DIP gap, making the
-           search capsule feel gently stacked on the content tray. -->
-      <Border Grid.Row="1"
-              Classes="PaneBridge"
-              Height="14"
-              Margin="14,-8,14,0"
-              VerticalAlignment="Top"
+          RowSpacing="4">
+      <!-- One continuous sheet sits behind both independent shells. The
+           foreground frames hide almost all of it; only a quiet ivory sliver
+           in the centre gap and hairline side joins remain visible. -->
+      <Border Grid.RowSpan="2"
+              Classes="PaneUnderlay"
+              Margin="2"
               IsHitTestVisible="False" />
 
       <Border Grid.Row="0"
