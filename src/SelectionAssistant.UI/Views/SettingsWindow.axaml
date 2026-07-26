@@ -30,11 +30,18 @@
             WindowDecorationProperties.ElementRole="TitleBar" />
 
     <Grid Grid.Row="1"
-          ColumnDefinitions="190,170,3*,1.3*"
           RowDefinitions="2.15*,1*"
           ColumnSpacing="12"
           RowSpacing="12"
           Margin="12,0,12,12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="190" />
+        <ColumnDefinition Width="170" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="0.36*"
+                          MinWidth="270"
+                          MaxWidth="330" />
+      </Grid.ColumnDefinitions>
 
     <!-- R54 atmosphere: a large warm radial glow behind the floating panels,
          echoing the soft bokeh light pools in the Foamie reference. -->
