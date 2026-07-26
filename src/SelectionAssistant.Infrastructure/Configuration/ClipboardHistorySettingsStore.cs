@@ -46,6 +46,8 @@ public static class ClipboardHistorySettingsStore
                 MaxEntries = ReadInt(root, "maxEntries", defaults.MaxEntries),
                 ExcludeProcessNames = ReadStringArray(root, "excludeProcessNames", defaults.ExcludeProcessNames),
                 MaskSensitiveEnabled = ReadBoolean(root, "maskSensitiveEnabled", defaults.MaskSensitiveEnabled),
+                WindowWidth = ReadInt(root, "windowWidth", defaults.WindowWidth),
+                WindowHeight = ReadInt(root, "windowHeight", defaults.WindowHeight),
             }.Normalize();
             settings.Validate();
             return settings;
@@ -90,6 +92,8 @@ public static class ClipboardHistorySettingsStore
                 }
                 writer.WriteEndArray();
                 writer.WriteBoolean("maskSensitiveEnabled", settings.MaskSensitiveEnabled);
+                writer.WriteNumber("windowWidth", settings.WindowWidth);
+                writer.WriteNumber("windowHeight", settings.WindowHeight);
                 writer.WriteEndObject();
                 writer.Flush();
             }

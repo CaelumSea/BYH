@@ -98,4 +98,49 @@ public sealed class SpotlightTriggerSettingsTests
 
         Assert.Equal("Ctrl+Alt+Shift+Win+A", settings.ToDisplayText());
     }
+
+    // ── R54 window size ──
+
+    [Fact]
+    public void Default_HasLegacyXamlWindowSize()
+    {
+        SpotlightTriggerSettings settings = SpotlightTriggerSettings.Default;
+
+        Assert.Equal(560, settings.WindowWidth);
+        Assert.Equal(480, settings.WindowHeight);
+        settings.Validate();
+    }
+
+    [Fact]
+    public void Normalize_ClampsWindowWidthToFloor()
+    {
+        SpotlightTriggerSettings settings = SpotlightTriggerSettings.Default with
+        {
+            WindowWidth = SpotlightTriggerSettings.MinWindowWidth - 50,
+        };
+
+        Assert.Equal(SpotlightTriggerSettings.MinWindowWidth, settings.Normalize().WindowWidth);
+    }
+
+    [Fact]
+    public void Normalize_ClampsWindowHeightToCeiling()
+    {
+        SpotlightTriggerSettings settings = SpotlightTriggerSettings.Default with
+        {
+            WindowHeight = SpotlightTriggerSettings.MaxWindowHeight + 500,
+        };
+
+        Assert.Equal(SpotlightTriggerSettings.MaxWindowHeight, settings.Normalize().WindowHeight);
+    }
+
+    [Fact]
+    public void Validate_WidthBelowRange_Throws()
+    {
+        SpotlightTriggerSettings settings = SpotlightTriggerSettings.Default with
+        {
+            WindowWidth = 10,
+        };
+
+        Assert.Throws<ArgumentOutOfRangeException>(settings.Validate);
+    }
 }

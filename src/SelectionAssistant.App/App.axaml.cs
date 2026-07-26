@@ -219,6 +219,16 @@ public partial class App : Application
             _promptWindow = promptWindow;
             _spotlightWindow = spotlightWindow;
             _clipboardHistoryWindow = clipboardHistoryWindow;
+            // R54: apply the user-configured default window sizes. The windows
+            // are constructed once and reused via Show/Hide, so setting
+            // Width/Height here covers every subsequent open this session.
+            // (Manual resizes of ClipboardHistoryWindow persist across Show/Hide
+            // because the instance is reused; on the next app launch this code
+            // re-applies the saved default.)
+            spotlightWindow.Width = _spotlightTriggerSettings.WindowWidth;
+            spotlightWindow.Height = _spotlightTriggerSettings.WindowHeight;
+            clipboardHistoryWindow.Width = _clipboardHistorySettings.WindowWidth;
+            clipboardHistoryWindow.Height = _clipboardHistorySettings.WindowHeight;
             settingsWindow.Configure(_paths.CapturePolicyFile);
             settingsWindow.SetOceanEyesTriggerSettings(
                 _oceanEyesTrigger,
@@ -1006,6 +1016,14 @@ public partial class App : Application
         previous?.Dispose();
 
         _spotlightTriggerSettings = requested;
+        // R54: apply the new window size to the live window immediately so the
+        // user sees it take effect on the next open (Spotlight is CanResize=False,
+        // so this is the only path that ever changes its geometry).
+        if (_spotlightWindow is not null)
+        {
+            _spotlightWindow.Width = requested.WindowWidth;
+            _spotlightWindow.Height = requested.WindowHeight;
+        }
         _settingsWindow?.SetSpotlightTriggerSettings(
             requested,
             requested.KeyboardShortcutEnabled
@@ -1236,6 +1254,15 @@ public partial class App : Application
 
         _clipboardHistorySettings = requested;
         _clipboardHistoryService?.UpdateSettings(requested);
+        // R54: apply the new default window size. ClipboardHistoryWindow is
+        // CanResize=True, so this sets the default for the next open; an
+        // in-session manual resize of the current instance is overwritten
+        // here (matching "saved size = next-launch default" semantics).
+        if (_clipboardHistoryWindow is not null)
+        {
+            _clipboardHistoryWindow.Width = requested.WindowWidth;
+            _clipboardHistoryWindow.Height = requested.WindowHeight;
+        }
         _settingsWindow?.SetClipboardHistorySettings(requested);
         _settingsWindow?.SetClipboardHistorySettingsStatus(Strings.Common_Status_Saved, isError: false);
     }

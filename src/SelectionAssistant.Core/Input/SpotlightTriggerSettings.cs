@@ -14,6 +14,14 @@ public sealed record SpotlightTriggerSettings
         GlobalHotKeyModifiers.Shift |
         GlobalHotKeyModifiers.Windows;
 
+    /// <summary>Inclusive window-size bounds for <see cref="WindowWidth"/> /
+    /// <see cref="WindowHeight"/>. Match the AXAML <c>MinWidth/MinHeight</c>
+    /// floors where reasonable; upper bounds keep the panel usable on screen.</summary>
+    public const int MinWindowWidth = 480;
+    public const int MaxWindowWidth = 1600;
+    public const int MinWindowHeight = 360;
+    public const int MaxWindowHeight = 1200;
+
     public bool KeyboardShortcutEnabled { get; init; } = true;
 
     public GlobalHotKeyModifiers Modifiers { get; init; } =
@@ -21,6 +29,17 @@ public sealed record SpotlightTriggerSettings
 
     /// <summary>Main key (A-Z, 0-9, F1-F12, Space). Default Space.</summary>
     public string Key { get; init; } = "Space";
+
+    /// <summary>Initial <c>SpotlightWindow</c> width in device-independent
+    /// pixels, applied at construction and re-applied when settings are saved.
+    /// The window is <c>CanResize="False"</c>, so this is the only way the
+    /// user controls its size. Default 560 (the historical XAML literal).
+    /// Range [480, 1600].</summary>
+    public int WindowWidth { get; init; } = 560;
+
+    /// <summary>Initial <c>SpotlightWindow</c> height in DIP. Default 480.
+    /// Range [360, 1200]. See <see cref="WindowWidth"/>.</summary>
+    public int WindowHeight { get; init; } = 480;
 
     public static SpotlightTriggerSettings Default { get; } = new();
 
@@ -30,6 +49,8 @@ public sealed record SpotlightTriggerSettings
     public SpotlightTriggerSettings Normalize() => this with
     {
         Key = NormalizeKey(Key),
+        WindowWidth = Math.Clamp(WindowWidth, MinWindowWidth, MaxWindowWidth),
+        WindowHeight = Math.Clamp(WindowHeight, MinWindowHeight, MaxWindowHeight),
     };
 
     public void Validate()
@@ -48,6 +69,15 @@ public sealed record SpotlightTriggerSettings
         if (!OceanEyesTriggerSettings.SupportedKeys.Contains(normalizedKey, StringComparer.Ordinal))
         {
             throw new ArgumentException("The primary hotkey key is invalid.", nameof(Key));
+        }
+
+        if (WindowWidth is < MinWindowWidth or > MaxWindowWidth)
+        {
+            throw new ArgumentOutOfRangeException(nameof(WindowWidth), "WindowWidth must be between MinWindowWidth and MaxWindowWidth.");
+        }
+        if (WindowHeight is < MinWindowHeight or > MaxWindowHeight)
+        {
+            throw new ArgumentOutOfRangeException(nameof(WindowHeight), "WindowHeight must be between MinWindowHeight and MaxWindowHeight.");
         }
     }
 

@@ -178,6 +178,8 @@ public static partial class Strings
     public static string Common_SelectAll => Get(nameof(Common_SelectAll));
     public static string Common_Edit => Get(nameof(Common_Edit));
     public static string Common_Browse => Get(nameof(Common_Browse));
+    public static string Common_Width => Get(nameof(Common_Width));
+    public static string Common_Height => Get(nameof(Common_Height));
     public static string Common_Placeholder_None => Get(nameof(Common_Placeholder_None));
     public static string Common_Status_Saved => Get(nameof(Common_Status_Saved));
     public static string Common_Toggle_On => Get(nameof(Common_Toggle_On));
@@ -277,6 +279,7 @@ public static partial class Strings
     public static string Settings_ScanInstalledApps => Get(nameof(Settings_ScanInstalledApps));
     public static string Settings_AddLauncher => Get(nameof(Settings_AddLauncher));
     public static string Settings_Spotlight_Title => Get(nameof(Settings_Spotlight_Title));
+    public static string Settings_Spotlight_WindowSize_Title => Get(nameof(Settings_Spotlight_WindowSize_Title));
 
     // SettingsWindow — Clipboard section
     public static string Settings_Clipboard_Title => Get(nameof(Settings_Clipboard_Title));
@@ -296,6 +299,7 @@ public static partial class Strings
     public static string Settings_Clipboard_ImagesOff => Get(nameof(Settings_Clipboard_ImagesOff));
     public static string Settings_Clipboard_MaxImages => Get(nameof(Settings_Clipboard_MaxImages));
     public static string Settings_Clipboard_Excluded => Get(nameof(Settings_Clipboard_Excluded));
+    public static string Settings_Clipboard_WindowSize_Title => Get(nameof(Settings_Clipboard_WindowSize_Title));
 
     // SettingsWindow — Phone summary / system overview / window controls
     public static string Settings_Phone_Kicker => Get(nameof(Settings_Phone_Kicker));

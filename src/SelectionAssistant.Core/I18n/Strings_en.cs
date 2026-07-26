@@ -105,6 +105,8 @@ internal static partial class Strings_en
         ["Common_SelectAll"] = "Select all",
         ["Common_Edit"] = "Edit",
         ["Common_Browse"] = "Browse…",
+        ["Common_Width"] = "Width",
+        ["Common_Height"] = "Height",
         ["Common_Placeholder_None"] = "None",
         ["Common_Status_Saved"] = "Saved.",
         ["Common_Toggle_On"] = "On",
@@ -204,6 +206,7 @@ internal static partial class Strings_en
         ["Settings_ScanInstalledApps"] = "🔍 Scan installed apps",
         ["Settings_AddLauncher"] = "＋ Add Launcher",
         ["Settings_Spotlight_Title"] = "Spotlight Hotkey",
+        ["Settings_Spotlight_WindowSize_Title"] = "Window Size",
 
         // SettingsWindow — Clipboard section
         ["Settings_Clipboard_Title"] = "Clipboard History",
@@ -223,6 +226,7 @@ internal static partial class Strings_en
         ["Settings_Clipboard_ImagesOff"] = "Text only",
         ["Settings_Clipboard_MaxImages"] = "Max image entries",
         ["Settings_Clipboard_Excluded"] = "Excluded applications",
+        ["Settings_Clipboard_WindowSize_Title"] = "Default Window Size",
 
         // SettingsWindow — phone summary / overview / window controls
         ["Settings_Phone_Kicker"] = "GOOD MORNING",

@@ -48,4 +48,49 @@ public sealed class ClipboardHistorySettingsTests
         ClipboardHistorySettings settings = ClipboardHistorySettings.Default with { MaxEntries = 0 };
         Assert.Throws<ArgumentOutOfRangeException>(settings.Validate);
     }
+
+    // ── R54 window size ──
+
+    [Fact]
+    public void Default_HasLegacyXamlWindowSize()
+    {
+        ClipboardHistorySettings settings = ClipboardHistorySettings.Default;
+
+        Assert.Equal(800, settings.WindowWidth);
+        Assert.Equal(620, settings.WindowHeight);
+        settings.Validate();
+    }
+
+    [Fact]
+    public void Normalize_ClampsWindowWidthToFloor()
+    {
+        ClipboardHistorySettings settings = ClipboardHistorySettings.Default with
+        {
+            WindowWidth = ClipboardHistorySettings.MinWindowWidth - 100,
+        };
+
+        Assert.Equal(ClipboardHistorySettings.MinWindowWidth, settings.Normalize().WindowWidth);
+    }
+
+    [Fact]
+    public void Normalize_ClampsWindowHeightToCeiling()
+    {
+        ClipboardHistorySettings settings = ClipboardHistorySettings.Default with
+        {
+            WindowHeight = ClipboardHistorySettings.MaxWindowHeight + 1000,
+        };
+
+        Assert.Equal(ClipboardHistorySettings.MaxWindowHeight, settings.Normalize().WindowHeight);
+    }
+
+    [Fact]
+    public void Validate_HeightOutOfRange_Throws()
+    {
+        ClipboardHistorySettings settings = ClipboardHistorySettings.Default with
+        {
+            WindowHeight = 10,
+        };
+
+        Assert.Throws<ArgumentOutOfRangeException>(settings.Validate);
+    }
 }

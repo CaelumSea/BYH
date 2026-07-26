@@ -32,6 +32,8 @@ public sealed class SpotlightTriggerStoreTests
                     GlobalHotKeyModifiers.Shift |
                     GlobalHotKeyModifiers.Windows,
                 Key = "f12",
+                WindowWidth = 720,
+                WindowHeight = 540,
             };
 
             SpotlightTriggerStore.Save(original, path);
@@ -40,6 +42,32 @@ public sealed class SpotlightTriggerStoreTests
             Assert.True(loaded.KeyboardShortcutEnabled);
             Assert.Equal(original.Modifiers, loaded.Modifiers);
             Assert.Equal("F12", loaded.Key);
+            Assert.Equal(720, loaded.WindowWidth);
+            Assert.Equal(540, loaded.WindowHeight);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Load_LegacyFileWithoutWindowSize_UsesDefaults()
+    {
+        // Schema v1 files written before the window-size fields existed lack
+        // windowWidth/windowHeight. They must read back the Default size, not
+        // throw, not fall back to zero.
+        string path = TempPath();
+        try
+        {
+            File.WriteAllText(path,
+                "{ \"schemaVersion\": 1, \"keyboardShortcutEnabled\": true, " +
+                "\"modifiers\": [\"Control\", \"Alt\"], \"key\": \"Space\" }");
+
+            SpotlightTriggerSettings loaded = SpotlightTriggerStore.LoadIfExists(path);
+
+            Assert.Equal(SpotlightTriggerSettings.Default.WindowWidth, loaded.WindowWidth);
+            Assert.Equal(SpotlightTriggerSettings.Default.WindowHeight, loaded.WindowHeight);
         }
         finally
         {

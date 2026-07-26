@@ -403,6 +403,9 @@ public partial class SettingsWindow : Window
         {
             SpotlightShortcutKeyComboBox.SelectedItem = SpotlightTriggerSettings.Default.Key;
         }
+        // R54 window size — pushed alongside the hotkey card (saved together).
+        SpotlightWindowWidthInput.Text = settings.WindowWidth.ToString();
+        SpotlightWindowHeightInput.Text = settings.WindowHeight.ToString();
         SpotlightShortcutStatusText.Text = statusMessage ?? string.Format(Strings.Settings_Status_CurrentPrefix, settings.ToDisplayText());
         SetFeedbackTone(SpotlightShortcutStatusText, isError);
     }
@@ -453,6 +456,9 @@ public partial class SettingsWindow : Window
         // R54 v2: image capture master switch + separate (smaller) image cap.
         ClipboardHistoryCaptureImagesToggle.IsChecked = settings.CaptureImagesEnabled;
         ClipboardHistoryMaxImageEntriesInput.Text = settings.MaxImageEntries.ToString();
+        // R54 window size — pushed alongside the other behavior fields.
+        ClipboardHistoryWindowWidthInput.Text = settings.WindowWidth.ToString();
+        ClipboardHistoryWindowHeightInput.Text = settings.WindowHeight.ToString();
         ClipboardHistoryExcludeAppsInput.Text = string.Join(", ", settings.ExcludeProcessNames);
     }
 
@@ -898,12 +904,24 @@ public partial class SettingsWindow : Window
         if (SpotlightShiftModifierCheckBox.IsChecked == true) modifiers |= GlobalHotKeyModifiers.Shift;
         if (SpotlightWinModifierCheckBox.IsChecked == true) modifiers |= GlobalHotKeyModifiers.Windows;
 
+        // R54 window size — falls back to the default if the user clears the
+        // box or types non-numeric text. Normalize below clamps it to the
+        // [Min, Max] range and Validate raises if somehow out of range.
+        int windowWidth = int.TryParse(SpotlightWindowWidthInput.Text, out int wParsed)
+            ? wParsed
+            : SpotlightTriggerSettings.Default.WindowWidth;
+        int windowHeight = int.TryParse(SpotlightWindowHeightInput.Text, out int hParsed)
+            ? hParsed
+            : SpotlightTriggerSettings.Default.WindowHeight;
+
         var settings = new SpotlightTriggerSettings
         {
             KeyboardShortcutEnabled = SpotlightKeyboardShortcutToggle.IsChecked == true,
             Modifiers = modifiers,
             Key = SpotlightShortcutKeyComboBox.SelectedItem as string
                 ?? SpotlightTriggerSettings.Default.Key,
+            WindowWidth = windowWidth,
+            WindowHeight = windowHeight,
         }.Normalize();
 
         try
@@ -970,6 +988,14 @@ public partial class SettingsWindow : Window
             ? imgParsed
             : ClipboardHistorySettings.Default.MaxImageEntries;
 
+        // R54 window size — same fallback semantics as maxEntries/maxImageEntries.
+        int windowWidth = int.TryParse(ClipboardHistoryWindowWidthInput.Text, out int wParsed)
+            ? wParsed
+            : ClipboardHistorySettings.Default.WindowWidth;
+        int windowHeight = int.TryParse(ClipboardHistoryWindowHeightInput.Text, out int hParsed)
+            ? hParsed
+            : ClipboardHistorySettings.Default.WindowHeight;
+
         var exclude = (ClipboardHistoryExcludeAppsInput.Text ?? string.Empty)
             .Split(',', '\n', ';')
             .Select(s => s.Trim())
@@ -985,6 +1011,8 @@ public partial class SettingsWindow : Window
             CaptureImagesEnabled = ClipboardHistoryCaptureImagesToggle.IsChecked == true,
             MaxImageEntries = maxImageEntries,
             ExcludeProcessNames = exclude,
+            WindowWidth = windowWidth,
+            WindowHeight = windowHeight,
         }.Normalize();
 
         try

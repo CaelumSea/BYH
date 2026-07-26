@@ -45,6 +45,8 @@ public static class SpotlightTriggerStore
                     root, "keyboardShortcutEnabled", defaults.KeyboardShortcutEnabled),
                 Modifiers = ReadModifiers(root, defaults.Modifiers),
                 Key = ReadString(root, "key", defaults.Key),
+                WindowWidth = ReadInt32(root, "windowWidth", defaults.WindowWidth),
+                WindowHeight = ReadInt32(root, "windowHeight", defaults.WindowHeight),
             }.Normalize();
             settings.Validate();
             return settings;
@@ -87,6 +89,8 @@ public static class SpotlightTriggerStore
                 WriteModifier(writer, settings.Modifiers, GlobalHotKeyModifiers.Windows, "Windows");
                 writer.WriteEndArray();
                 writer.WriteString("key", settings.Key);
+                writer.WriteNumber("windowWidth", settings.WindowWidth);
+                writer.WriteNumber("windowHeight", settings.WindowHeight);
                 writer.WriteEndObject();
                 writer.Flush();
             }
@@ -149,6 +153,14 @@ public static class SpotlightTriggerStore
             JsonValueKind.False => false,
             _ => throw new ProviderConfigurationException($"{name} 必须是布尔值。"),
         };
+    }
+
+    private static int ReadInt32(JsonElement root, string name, int defaultValue)
+    {
+        if (!root.TryGetProperty(name, out JsonElement value)) return defaultValue;
+        return value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out int n)
+            ? n
+            : throw new ProviderConfigurationException($"{name} 必须是整数。");
     }
 
     private static string ReadString(JsonElement root, string name, string defaultValue)

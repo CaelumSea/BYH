@@ -57,12 +57,36 @@ public sealed record ClipboardHistorySettings
     /// kept as a setting so v2 can let the user disable the mask.</summary>
     public bool MaskSensitiveEnabled { get; init; } = true;
 
+    /// <summary>Initial <c>ClipboardHistoryWindow</c> width in DIP, applied at
+    /// construction and re-applied when settings are saved. The window is
+    /// user-resizable at runtime (<c>CanResize="True"</c>); this value is the
+    /// default each app launch starts from (in-session manual resizes persist
+    /// across Show/Hide only, not across restarts). Default 800 (the
+    /// historical XAML literal). Range [580, 4096] — floor matches the AXAML
+    /// <c>MinWidth</c>.</summary>
+    public int WindowWidth { get; init; } = 800;
+
+    /// <summary>Initial <c>ClipboardHistoryWindow</c> height in DIP. Default
+    /// 620. Range [420, 3072] — floor matches the AXAML <c>MinHeight</c>.
+    /// See <see cref="WindowWidth"/>.</summary>
+    public int WindowHeight { get; init; } = 620;
+
+    /// <summary>Inclusive window-size bounds. Floors mirror the AXAML
+    /// <c>MinWidth/MinHeight</c> so a custom size never underflows the layout;
+    /// ceilings are generous caps.</summary>
+    public const int MinWindowWidth = 580;
+    public const int MaxWindowWidth = 4096;
+    public const int MinWindowHeight = 420;
+    public const int MaxWindowHeight = 3072;
+
     public static ClipboardHistorySettings Default { get; } = new();
 
     public ClipboardHistorySettings Normalize() => this with
     {
         MaxEntries = Math.Clamp(MaxEntries, 10, 5000),
         MaxImageEntries = Math.Clamp(MaxImageEntries, 5, 500),
+        WindowWidth = Math.Clamp(WindowWidth, MinWindowWidth, MaxWindowWidth),
+        WindowHeight = Math.Clamp(WindowHeight, MinWindowHeight, MaxWindowHeight),
         ExcludeProcessNames = ExcludeProcessNames
             .Where(s => !string.IsNullOrWhiteSpace(s))
             .Select(s => s.Trim())
@@ -79,6 +103,14 @@ public sealed record ClipboardHistorySettings
         if (MaxImageEntries is < 5 or > 500)
         {
             throw new ArgumentOutOfRangeException(nameof(MaxImageEntries), "MaxImageEntries must be between 5 and 500.");
+        }
+        if (WindowWidth is < MinWindowWidth or > MaxWindowWidth)
+        {
+            throw new ArgumentOutOfRangeException(nameof(WindowWidth), "WindowWidth must be between MinWindowWidth and MaxWindowWidth.");
+        }
+        if (WindowHeight is < MinWindowHeight or > MaxWindowHeight)
+        {
+            throw new ArgumentOutOfRangeException(nameof(WindowHeight), "WindowHeight must be between MinWindowHeight and MaxWindowHeight.");
         }
     }
 }

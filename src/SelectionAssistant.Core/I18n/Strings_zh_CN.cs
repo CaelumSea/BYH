@@ -105,6 +105,8 @@ internal static partial class Strings_zh_CN
         ["Common_SelectAll"] = "全选",
         ["Common_Edit"] = "编辑",
         ["Common_Browse"] = "浏览…",
+        ["Common_Width"] = "宽度",
+        ["Common_Height"] = "高度",
         ["Common_Placeholder_None"] = "无",
         ["Common_Status_Saved"] = "已保存。",
         ["Common_Toggle_On"] = "开",
@@ -204,6 +206,7 @@ internal static partial class Strings_zh_CN
         ["Settings_ScanInstalledApps"] = "🔍 扫描已安装应用",
         ["Settings_AddLauncher"] = "＋ 添加启动项",
         ["Settings_Spotlight_Title"] = "Spotlight 快捷键",
+        ["Settings_Spotlight_WindowSize_Title"] = "窗口尺寸",
 
         // SettingsWindow — Clipboard section
         ["Settings_Clipboard_Title"] = "剪贴板历史",
@@ -223,6 +226,7 @@ internal static partial class Strings_zh_CN
         ["Settings_Clipboard_ImagesOff"] = "仅文本",
         ["Settings_Clipboard_MaxImages"] = "最大图片条数",
         ["Settings_Clipboard_Excluded"] = "排除的应用",
+        ["Settings_Clipboard_WindowSize_Title"] = "默认窗口尺寸",
 
         // SettingsWindow — phone summary / overview / window controls
         ["Settings_Phone_Kicker"] = "早安",
