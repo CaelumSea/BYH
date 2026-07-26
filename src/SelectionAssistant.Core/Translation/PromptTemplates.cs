@@ -57,6 +57,13 @@ public static class PromptActionIds
 public sealed class PromptTemplateSet
 {
     private readonly List<PromptTemplate> _templates;
+    // Audit M5: this set is a shared singleton (all providers read it; the
+    // settings UI + toolbar shortcut dispatch write it). List<T> throws
+    // InvalidOperationException("Collection was modified") on concurrent
+    // read-while-write. A settings save happening at the same instant as a
+    // toolbar keypress would crash the hook callback. The list is tiny (3-10
+    // entries), so a single lock around every read/write is cheap and correct.
+    private readonly object _gate = new();
 
     public PromptTemplateSet()
     {
@@ -94,7 +101,13 @@ public sealed class PromptTemplateSet
     }
 
     /// <summary>The ordered list of all templates (built-in first, then custom).</summary>
-    public IReadOnlyList<PromptTemplate> Templates => _templates;
+    public IReadOnlyList<PromptTemplate> Templates
+    {
+        get
+        {
+            lock (_gate) { return _templates; } // Audit M5: snapshot under lock; callers iterate read-only
+        }
+    }
 
     // ── Convenience accessors for the three built-in actions ──
     // Kept for backward compatibility with existing callers / tests.
@@ -103,8 +116,13 @@ public sealed class PromptTemplateSet
     public PromptTemplate Explain => Find(PromptActionIds.Explain)!;
 
     /// <summary>Returns the template for an action id, or null if not present.</summary>
-    public PromptTemplate? Find(string actionId) =>
-        _templates.FirstOrDefault(t => t.Id == actionId);
+    public PromptTemplate? Find(string actionId)
+    {
+        lock (_gate) // Audit M5
+        {
+            return _templates.FirstOrDefault(t => t.Id == actionId);
+        }
+    }
 
     /// <summary>
     /// Returns the template bound to a single-character toolbar shortcut (e.g.
@@ -118,9 +136,12 @@ public sealed class PromptTemplateSet
         {
             return null;
         }
-        return _templates.FirstOrDefault(t =>
-            !string.IsNullOrEmpty(t.Shortcut) &&
-            string.Equals(t.Shortcut, key, StringComparison.OrdinalIgnoreCase));
+        lock (_gate) // Audit M5 — hot path (every toolbar keypress), but list is tiny
+        {
+            return _templates.FirstOrDefault(t =>
+                !string.IsNullOrEmpty(t.Shortcut) &&
+                string.Equals(t.Shortcut, key, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
     /// <summary>
@@ -130,14 +151,17 @@ public sealed class PromptTemplateSet
     /// </summary>
     public bool TrySet(string actionId, string prompt)
     {
-        PromptTemplate? existing = Find(actionId);
-        if (existing is null)
+        lock (_gate) // Audit M5
         {
-            return false;
+            PromptTemplate? existing = _templates.FirstOrDefault(t => t.Id == actionId);
+            if (existing is null)
+            {
+                return false;
+            }
+            int index = _templates.IndexOf(existing);
+            _templates[index] = existing with { Prompt = prompt };
+            return true;
         }
-        int index = _templates.IndexOf(existing);
-        _templates[index] = existing with { Prompt = prompt };
-        return true;
     }
 
     /// <summary>
@@ -147,14 +171,17 @@ public sealed class PromptTemplateSet
     /// </summary>
     public bool TrySet(string actionId, string prompt, bool thinkingEnabled)
     {
-        PromptTemplate? existing = Find(actionId);
-        if (existing is null)
+        lock (_gate) // Audit M5
         {
-            return false;
+            PromptTemplate? existing = _templates.FirstOrDefault(t => t.Id == actionId);
+            if (existing is null)
+            {
+                return false;
+            }
+            int index = _templates.IndexOf(existing);
+            _templates[index] = existing with { Prompt = prompt, ThinkingEnabled = thinkingEnabled };
+            return true;
         }
-        int index = _templates.IndexOf(existing);
-        _templates[index] = existing with { Prompt = prompt, ThinkingEnabled = thinkingEnabled };
-        return true;
     }
 
     /// <summary>
@@ -166,20 +193,23 @@ public sealed class PromptTemplateSet
     /// </summary>
     public bool TrySet(string actionId, string prompt, bool thinkingEnabled, string? shortcut)
     {
-        PromptTemplate? existing = Find(actionId);
-        if (existing is null)
+        lock (_gate) // Audit M5
         {
-            return false;
+            PromptTemplate? existing = _templates.FirstOrDefault(t => t.Id == actionId);
+            if (existing is null)
+            {
+                return false;
+            }
+            string? normalized = string.IsNullOrWhiteSpace(shortcut) ? null : shortcut.Trim().ToUpperInvariant();
+            int index = _templates.IndexOf(existing);
+            _templates[index] = existing with
+            {
+                Prompt = prompt,
+                ThinkingEnabled = thinkingEnabled,
+                Shortcut = normalized,
+            };
+            return true;
         }
-        string? normalized = string.IsNullOrWhiteSpace(shortcut) ? null : shortcut.Trim().ToUpperInvariant();
-        int index = _templates.IndexOf(existing);
-        _templates[index] = existing with
-        {
-            Prompt = prompt,
-            ThinkingEnabled = thinkingEnabled,
-            Shortcut = normalized,
-        };
-        return true;
     }
 
     /// <summary>
@@ -189,16 +219,19 @@ public sealed class PromptTemplateSet
     /// </summary>
     public bool Add(PromptTemplate template)
     {
-        if (!PromptActionIds.IsCustom(template.Id))
+        lock (_gate) // Audit M5
         {
-            return false;
+            if (!PromptActionIds.IsCustom(template.Id))
+            {
+                return false;
+            }
+            if (_templates.FirstOrDefault(t => t.Id == template.Id) is not null)
+            {
+                return false;
+            }
+            _templates.Add(template);
+            return true;
         }
-        if (Find(template.Id) is not null)
-        {
-            return false;
-        }
-        _templates.Add(template);
-        return true;
     }
 
     /// <summary>
@@ -208,20 +241,26 @@ public sealed class PromptTemplateSet
     /// </summary>
     public bool Remove(string actionId)
     {
-        if (PromptActionIds.IsBuiltIn(actionId))
+        lock (_gate) // Audit M5
         {
-            return false;
+            if (PromptActionIds.IsBuiltIn(actionId))
+            {
+                return false;
+            }
+            PromptTemplate? existing = _templates.FirstOrDefault(t => t.Id == actionId);
+            if (existing is null)
+            {
+                return false;
+            }
+            return _templates.Remove(existing);
         }
-        PromptTemplate? existing = Find(actionId);
-        if (existing is null)
-        {
-            return false;
-        }
-        return _templates.Remove(existing);
     }
 
     /// <summary>Snapshot list, in display order (built-in first, then custom).</summary>
-    public IReadOnlyList<PromptTemplate> AsList() => _templates;
+    public IReadOnlyList<PromptTemplate> AsList()
+    {
+        lock (_gate) { return _templates; } // Audit M5
+    }
 
     /// <summary>
     /// Creates a deep copy — a new set with the same templates in the same order.
@@ -231,6 +270,8 @@ public sealed class PromptTemplateSet
     {
         // Ensure the three built-ins are always present; merge any custom ones after.
         var builtIns = new PromptTemplateSet();
+        // No lock needed: the private ctor just stored our new list, and we are
+        // the sole holder of `result` until we hand it off to the new set.
         var result = new List<PromptTemplate>(builtIns._templates);
         foreach (PromptTemplate t in templates)
         {

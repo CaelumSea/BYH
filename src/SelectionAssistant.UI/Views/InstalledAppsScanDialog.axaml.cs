@@ -88,6 +88,12 @@ public partial class InstalledAppsScanDialog : Window
 {
     private readonly List<ScanAppRow> _allRows = [];
     private readonly TaskCompletionSource<List<DetectedApp>> _tcs = new();
+    // Audit M12: cancels the background icon-load loop when the dialog closes.
+    // Without this, closing the dialog mid-scan left the Task.Run running,
+    // calling iconExtractor for every remaining row and marshalling each
+    // bitmap to the UI thread via Dispatcher.UIThread.InvokeAsync — wasted
+    // CPU + the InvokeAsync targets a closing window.
+    private readonly CancellationTokenSource _iconCts = new();
 
     /// <summary>
     /// Shows the scan dialog as a non-modal window and returns the list of
@@ -150,10 +156,19 @@ public partial class InstalledAppsScanDialog : Window
 
     private void StartIconLoading(Func<string, byte[]?> iconExtractor)
     {
+        // Audit M12: observe _iconCts.Token so OnClosed can short-circuit the
+        // remaining icon extractions. The iconExtractor itself is synchronous
+        // (Win32 SHGetFileInfo), so cancellation is checked between rows, not
+        // mid-extraction — fast enough for a UI cancellation path.
+        CancellationToken token = _iconCts.Token;
         Task.Run(async () =>
         {
             foreach (var row in _allRows)
             {
+                if (token.IsCancellationRequested)
+                {
+                    return;
+                }
                 try
                 {
                     var pngBytes = iconExtractor(row.Path);
@@ -161,6 +176,11 @@ public partial class InstalledAppsScanDialog : Window
                     {
                         using var ms = new MemoryStream(pngBytes);
                         var bitmap = new Bitmap(ms);
+                        if (token.IsCancellationRequested)
+                        {
+                            bitmap.Dispose();
+                            return;
+                        }
                         await Dispatcher.UIThread.InvokeAsync(() =>
                         {
                             row.Icon = bitmap;
@@ -172,7 +192,7 @@ public partial class InstalledAppsScanDialog : Window
                     // Silently skip icons that fail to load.
                 }
             }
-        });
+        }, token);
     }
 
     private void OnSearchTextChanged(object? sender, TextChangedEventArgs e)
@@ -291,6 +311,10 @@ public partial class InstalledAppsScanDialog : Window
     /// </summary>
     protected override void OnClosed(EventArgs e)
     {
+        // Audit M12: cancel the background icon-load loop so it doesn't keep
+        // extracting icons + marshalling bitmaps for rows nobody will see.
+        try { _iconCts.Cancel(); } catch (ObjectDisposedException) { }
+        try { _iconCts.Dispose(); } catch { }
         _tcs.TrySetResult([]);
         base.OnClosed(e);
     }
