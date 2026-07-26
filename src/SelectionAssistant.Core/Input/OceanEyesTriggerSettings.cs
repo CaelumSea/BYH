@@ -50,7 +50,11 @@ public sealed record OceanEyesTriggerSettings
 
     public static OceanEyesTriggerSettings Default { get; } = new();
 
-    public static IReadOnlyList<string> SupportedKeys => Keys;
+    // Audit L6: wrap in Array.AsReadOnly so a caller can't downcast back to
+    // string[] and mutate the shared static. The set is process-global and
+    // sourced from every trigger settings class + the SettingsWindow combobox,
+    // so a mutation would corrupt hotkey validation everywhere.
+    public static IReadOnlyList<string> SupportedKeys => Array.AsReadOnly(Keys);
 
     public OceanEyesTriggerSettings Normalize() => this with
     {

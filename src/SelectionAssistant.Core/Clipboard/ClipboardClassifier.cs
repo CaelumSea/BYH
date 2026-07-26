@@ -31,8 +31,16 @@ public static partial class ClipboardClassifier
 {
     /// <summary>api_key / secret / token / password / passwd / private_key /
     /// Bearer / AWS access-key id (AKIA + 16 base32). Case-insensitive.</summary>
+    /// <remarks>
+    /// Audit L7: the Bearer alternative was written <c>bearer\s+\S</c>, which
+    /// reads like a token-shape check but actually matches exactly one
+    /// non-space char after "bearer " — a presence check, not a validation.
+    /// Rewrote as <c>bearer\b</c>: same <see cref="Regex.IsMatch(string)"/>
+    /// semantics (a "bearer" word-boundary hit flags the entry), clearer
+    /// intent, and removes the false implication that we validate the token.
+    /// </remarks>
     [GeneratedRegex(
-        @"(?:api[_-]?key|secret|token|password|passwd|private[_-]?key|bearer\s+\S)|" +
+        @"(?:api[_-]?key|secret|token|password|passwd|private[_-]?key|bearer\b)|" +
         @"AKIA[0-9A-Z]{16}",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
         matchTimeoutMilliseconds: 200)]

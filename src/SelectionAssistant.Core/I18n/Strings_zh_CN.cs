@@ -35,7 +35,7 @@ internal static partial class Strings_zh_CN
         ["Toolbar_CopyTooltip"] = "复制（快捷键 C）",
 
         // ResultWindow
-        ["Result_Title"] = "Translation",
+        ["Result_Title"] = "翻译",  // Audit L2: was untranslated "Translation"
         ["Result_DefaultLanguagePair"] = "English → 简体中文",
         ["Result_DefaultProvider"] = "测试提供器",
         ["Result_SourceLabel"] = "原文",
@@ -53,7 +53,7 @@ internal static partial class Strings_zh_CN
 
         // SpotlightWindow
         ["Spotlight_Title"] = "BYH · Launcher",
-        ["Spotlight_SearchPlaceholder"] = "Search…",
+        ["Spotlight_SearchPlaceholder"] = "搜索…",  // Audit L2: was untranslated "Search…"
         ["Spotlight_CategoryLauncher"] = "启动器",
         ["Spotlight_FooterSettings"] = "⚙ 设置",
         ["Spotlight_FooterSelect"] = "↑↓ 选择",
