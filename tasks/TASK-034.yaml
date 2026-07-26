@@ -1,0 +1,12 @@
+id: TASK-034
+requirement: REQ-027
+title: 将手机底栏改为手机内部摘要导航
+status: pending
+created: '2026-07-26T10:30:21'
+updated: '2026-07-26T10:30:21'
+satisfies:
+- AC-11
+- AC-7
+description: 解除手机按钮与中央设置页的绑定，设计并实现五个手机内部摘要视图、独立选中态、键盘操作与 UIA 验证。
+handoff: ''
+execution_log: []

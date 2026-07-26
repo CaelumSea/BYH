@@ -1,0 +1,36 @@
+id: TASK-033
+requirement: REQ-027
+title: 修正手机卡与底部总览的纵向比例
+status: done
+created: '2026-07-26T10:30:20'
+updated: '2026-07-26T10:44:17'
+satisfies:
+- AC-10
+- AC-7
+description: 移除手机卡固定高度上限，使其仅比中央上部窗格略矮；提高底部 System Overview 高度并验证常用窗口尺寸、滚动与内容完整性。
+handoff: 手机卡的固定 MaxHeight=520 是大窗口中比例失衡的直接原因。现改为随上方网格伸展， 用 Margin=0,14,0,12 保持仅比中央主窗略矮；底部行由
+  220 提升到 250，默认窗口高度 由 800 提升到 840、最小高度由 680 提升到 720。下一任务 TASK-034 只修改手机内部导航， 不要重新绑定中央设置页。视觉验收图位于
+  artifacts/qa/REQ-027-proportion-pass-1/。
+execution_log:
+- step: 1
+  action: 定位手机卡与底栏的尺寸约束
+  result: 发现 PhoneFrame 使用 MaxHeight=520，根网格底栏固定为 220。
+  timestamp: '2026-07-26T10:35:00+08:00'
+- step: 2
+  action: 调整默认窗口、手机卡和底栏纵向比例
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  result: 移除手机高度上限，保留 26px 上下缩进；底栏增高到 250。
+  timestamp: '2026-07-26T10:36:00+08:00'
+- step: 3
+  action: 验证 AXAML、Debug 构建与自动化测试
+  command: dotnet build SelectionAssistant.slnx -c Debug && dotnet test SelectionAssistant.slnx
+    -c Debug --no-build
+  result: AXAML 解析通过；构建 0 warning/0 error；574 项测试全部通过。
+  timestamp: '2026-07-26T10:39:00+08:00'
+- step: 4
+  action: 发布 NativeAOT 并用 UIA 截取六个页面
+  command: dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj
+    -c Release -r win-x64 /p:PublishAot=true
+  artifact: artifacts/qa/REQ-027-proportion-pass-1/v25-unified-tabs-general-default-nativeaot.png
+  result: NativeAOT 发布通过；手机卡只比中央上窗略矮，System Overview 获得更充足高度。
+  timestamp: '2026-07-26T10:42:00+08:00'

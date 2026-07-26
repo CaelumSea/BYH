@@ -1,0 +1,12 @@
+id: TASK-036
+requirement: REQ-027
+title: 实现中央 Dashboard 与真实使用概览
+status: pending
+created: '2026-07-26T10:30:23'
+updated: '2026-07-26T10:30:23'
+satisfies:
+- AC-14
+- AC-7
+description: 新增 Dashboard 默认页，展示模块、功能、Provider/Model、服务状态和本地使用频率；只使用真实本地数据并提供空状态。
+handoff: ''
+execution_log: []

@@ -2,7 +2,7 @@ id: REQ-027
 title: BYH 皮肤自定义与运行时切换系统
 status: dispatched
 created: '2026-07-26T09:24:17'
-updated: '2026-07-26T10:02:49'
+updated: '2026-07-26T10:44:17'
 score_kind: aesthetic
 aesthetic_template: ''
 acceptance_criteria:
@@ -38,14 +38,38 @@ acceptance_criteria:
   - TASK-030
   - TASK-031
   - TASK-032
+  - TASK-033
+  - TASK-034
+  - TASK-035
+  - TASK-036
 - id: AC-8
   text: 设置窗口内容延伸至系统标题栏，顶部背景与主体连续；保留原生最小化、最大化、关闭、拖动、双击最大化、Snap Layout 与高 DPI 行为。
   satisfied_by:
   - TASK-029
 - id: AC-9
-  text: 右侧手机摘要卡的五个底部图标是可聚焦、可点击的真实按钮，分别导航至 General、Translation、Vision、Clipboard 与 Launcher，并与左侧导航同步选中态。
+  text: 右侧手机摘要卡的五个底部图标是可聚焦、可点击的真实按钮，并具有明确的悬停、按下、焦点与选中反馈。
   satisfied_by:
   - TASK-029
+- id: AC-10
+  text: 右侧手机摘要卡在常用窗口尺寸下仅比中央主内容窗格略矮，并随窗口高度自适应；底部 System Overview 获得更充足高度，整体上下比例协调且不裁切内容。
+  satisfied_by:
+  - TASK-033
+- id: AC-11
+  text: 手机底部五个按钮只切换手机卡内部的独立摘要视图，不再切换中央设置页；手机视图具有独立选中态、键盘焦点与可验证的内容变化。
+  satisfied_by:
+  - TASK-034
+- id: AC-12
+  text: 中央工作区重构为上下两个独立圆角窗格：顶部为紧凑设置搜索栏，底部为主要内容区；边框、间距和阴影延续 Ivory Jade 参考图的轻盈层次。
+  satisfied_by:
+  - TASK-035
+- id: AC-13
+  text: 设置搜索可按标题、关键词和功能定位设置项，结果可点击/键盘访问并导航到对应页面及控件；无结果与清空状态明确。
+  satisfied_by:
+  - TASK-035
+- id: AC-14
+  text: 中央内容区新增 Dashboard 默认页，展示已启用模块、常用功能、当前 Provider/Model、服务状态和本地使用频率；无历史数据时提供真实空状态，不伪造统计。
+  satisfied_by:
+  - TASK-036
 tasks:
 - id: TASK-029
   title: 一体化设置标题栏与手机卡交互导航
@@ -59,6 +83,18 @@ tasks:
 - id: TASK-032
   title: 实现皮肤选择、即时试用与受限自定义编辑器
   status: pending
+- id: TASK-033
+  title: 修正手机卡与底部总览的纵向比例
+  status: done
+- id: TASK-034
+  title: 将手机底栏改为手机内部摘要导航
+  status: pending
+- id: TASK-035
+  title: 重构中央双窗格并实现设置搜索
+  status: pending
+- id: TASK-036
+  title: 实现中央 Dashboard 与真实使用概览
+  status: pending
 aesthetic_score:
   scored_at: ''
   scored_by: ''
@@ -66,5 +102,5 @@ aesthetic_score:
   total: null
 aesthetic_notes: []
 aligned_via: ask-user
-aligned_at: '2026-07-26T09:42:34'
-aligned_evidence: 用户：我想添加一个皮肤自定义和切换的功能；随后要求先基于现有主题优化一体化标题栏和手机卡按钮。
+aligned_at: '2026-07-26T10:31:31'
+aligned_evidence: 用户：任务可能比较多，你先记下来，一个一个做；手机卡只需比主窗稍矮、底栏加高、手机按钮控制手机内部，并新增中央搜索双窗格和 Dashboard。
