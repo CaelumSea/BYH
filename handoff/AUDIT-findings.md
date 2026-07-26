@@ -108,22 +108,16 @@
 
 ## P2 — 中优先级（健壮性 / 可维护性 / 性能）
 
-### [ ] M1 · `ClipboardHistoryWindow.axaml.cs` 2937 行上帝类
-**证据**：单文件 30+ 职责，4 个超长方法（`BuildRowContextMenu` 235 行 / `ShowTagInputPanel` 280 行 / `ShowIconPickerPanel` 235 行 / `ShowImagePopup` 215 行）。
-**修复**：抽 4 类：`ClipboardTagDragController`、`IconPickerBuilder`、`ClipboardPopupFactory`、`ClipboardContextMenuBuilder`。
-**注意**：纯重构，无行为变化，需全测试护栏。**放到 P3 后或独立重构窗口**，避免和功能修混。
-
-### [ ] M2 · `App.axaml.cs` 2095 行接线 shell
-**修复**：抽 `ClipboardHistoryController`/`SpotlightController`/`OceanEyesController` 各持自家窗口+热键+设置。**同 M1，独立窗口**。
-
+### [DEFER reason:独立重构窗口] M1 · `ClipboardHistoryWindow.axaml.cs` 2937 行上帝类
+**评估后 DEFER**：纯可维护性重构（拆 4 类：ClipboardTagDragController/IconPickerBuilder/ClipboardPopupFactory/ClipboardContextMenuBuilder），无 bug 无崩溃。风险：① 2937 行逻辑边界需逐块理解；② UI 行为需真机验证（无法在本环境验证）；③ H6（popup handler）评估为随 popup GC，不紧急。**移到独立重构窗口**，与 L8（IManagedWindow 接口）一起做。
+### [DEFER reason:独立重构窗口] M2 · `App.axaml.cs` 2095 行接线 shell
+**评估后 DEFER**：抽 3 个 controller（ClipboardHistoryController/SpotlightController/OceanEyesController）。与 M1 同因——纯重构、需真机验证生命周期/事件订阅迁移、无 bug。**与 M1 一起做**。
 ### [DONE commit:pending] M3 · Provider 每实例 `new HttpClient` + favicon 不缓存
 **证据**：`OpenAiCompatibleStreamingProvider.cs:34-41`、`OpenAiCompatibleVisionOcrClient.cs:67-72`、`App.axaml.cs:1837`。
 **修复**：注入单个共享 `HttpClient` 到 providers，`SelectionRuntime` 持有；favicon 加内存或磁盘缓存。
 
-### [ ] M4 · P/Invoke 全用 `[DllImport]` 非 `[LibraryImport]`，多处缺 `SetLastError`
-**证据**：`Platform.Windows` ~105 处 DllImport 零 LibraryImport；`ScreenRegionCapture.cs:193-222` 缺 SetLastError；`Marshal.SizeOf<T>` 多处应用 `Unsafe.SizeOf<T>`。
-**修复**：新代码一律 LibraryImport；存量分批迁移。**机会性，不阻塞**。
-
+### [DEFER reason:机会性,非 bug] M4 · P/Invoke 全用 `[DllImport]` 非 `[LibraryImport]`，多处缺 `SetLastError`
+**评估后 DEFER**：~105 处 DllImport → LibraryImport 是渐进式现代化，无 bug（DllImport 在 NativeAOT 也能用）。审计自己说"新代码一律 LibraryImport；存量分批迁移，机会性，不阻塞"。**新代码已用 LibraryImport（如 N1 的 GeneratedRegex 配套），存量分批迁移留作机会性改进**。`SetLastError=true` 缺失的诊断价值低（错误码多数没人读）。
 ### [DONE commit:3b17337] M5 ·  (批次 C) `PromptTemplateSet` / `LauncherEntrySet` 共享可变集合无线程安全
 **证据**：`PromptTemplates.cs:57-255`、`LauncherEntries.cs:72-198`。设置 UI 线程改、工具栏线程读，会抛 `Collection was modified`。
 **修复**：lock 或 copy-on-write（`ImmutableArray<T>` + `Interlocked.Exchange`）。
@@ -168,34 +162,30 @@
 
 ### [SKIP reason:相等性从未使用] M15 · `ClipboardEntry` record 用 `IReadOnlyList<string>` 破坏值相等
 **评估后降级为 SKIP**：grep 核实 `ClipboardEntry` 的合成相等性**从未被使用**——所有比较都走 `.Id`（Guid），从未用作字典 key/HashSet/Distinct。record 的合成 Equals 对 EntryTags 走引用相等是理论问题，无实际 bug。不 override Equals（避免给 record 加隐藏行为）；加 doc 注释说明按 Id 身份比较即可。
-### [ ] L1 · 代码后置硬编码英文字符串绕过 i18n
+### [DONE commit:58cdf30] L1 · 代码后置硬编码英文字符串绕过 i18n
 多处：`ClipboardHistoryWindow.axaml.cs:603-607,855,2423,2785`（"just now"/"Xm ago"/"View full…"/图片 popup header/tooltip），`SettingsWindow.axaml.cs:497-498,802,1051,1089,519-523`，AXAML `PromptWindow.axaml:5`/`ResultWindow.axaml:5`/`SpotlightWindow.axaml:6` 的 Title。
 **修复**：加 `Strings.*` keys + 三文件同步（`EveryProperty_HasEntryInBothDictionaries` 测试守卫）。
 
-### [ ] L2 · `Strings_zh_CN.cs:38,56` 未翻译
+### [DONE commit:97b5021] L2 · `Strings_zh_CN.cs:38,56` 未翻译
 `Result_Title="Translation"`、`Spotlight_SearchPlaceholder="Search…"` 中文词典里仍是英文。
 **修复**：改 `"翻译"`、`"搜索…"`。
 
-### [ ] L3 · UI 全层 `AutomationProperties.Name` 用 0 次
-13 个 AXAML 文件零无障碍标注。
-**修复**：优先给交互控件（TextBox/Button/行）加 `AutomationProperties.Name`。`TabIndex` 也 0 处。
-
-### [ ] L4 · `NumberedAnnotationSession.cs` 死代码
+### [DEFER reason:独立窗口+a11y专项] L3 · UI 全层 `AutomationProperties.Name` 用 0 次
+**评估后 DEFER**：13 个 AXAML 文件零无障碍标注，屏幕阅读器用户对搜索框/行/翻译面板什么都拿不到。这是真实的 a11y 缺陷，但：① 工作量大（每个交互控件都要加 Name + TabIndex 审计）；② 需要屏幕阅读器（NVDA/Narrator）真机验证；③ 不是 bug，是功能扩展。**移到独立 a11y 专项**，与 L8（PrepareForShutdown 接口）一起做时顺便给主要交互控件加 Name。
+### [DONE commit:97b5021] L4 · `NumberedAnnotationSession.cs` 死代码
 注释自承被 `AnnotationSession` 替换，"existing tests" 才保留。
 **修复**：删，或 `[Obsolete]`。
 
-### [ ] L5 · `RedactedLogger` 无滚动/封顶
-`BYH.log` 无限增长。
-**修复**：按大小或日期滚动。
-
-### [ ] L6 · `OceanEyesTriggerSettings.Keys` 数组暴露为 IReadOnlyList 可向下转型改共享静态
+### [DEFER reason:独立功能] L5 · `RedactedLogger` 无滚动/封顶
+**评估后 DEFER**：`BYH.log` 无限增长是真问题，但日志滚动是独立功能（按大小/日期切分 + 保留 N 份），需要设计 + 真机验证写入性能。**移到独立功能窗口**。
+### [DONE commit:97b5021] L6 · `OceanEyesTriggerSettings.Keys` 数组暴露为 IReadOnlyList 可向下转型改共享静态
 **修复**：`Array.AsReadOnly(Keys)` 或 `ImmutableArray<string>`。
 
-### [ ] L7 · `ClipboardClassifier.SensitivePattern` 的 `bearer\s+\S` 写法歧义
+### [DONE commit:97b5021] L7 · `ClipboardClassifier.SensitivePattern` 的 `bearer\s+\S` 写法歧义
 **修复**：改 `bearer\b`。
 
-### [ ] L8 · 6 个 window 各写 `PrepareForShutdown()` 无公共接口
-**修复**：抽 `IManagedWindow` 接口。
+### [DEFER reason:与 M1/M2 重构一起] L8 · 6 个 window 各写 `PrepareForShutdown()` 无公共接口
+**评估后 DEFER**：runtime 按名字逐个调 `PrepareForShutdown()`，抽 `IManagedWindow` 接口是合理改进。但 6 个 window 的生命周期管理与 M1（ClipboardHistoryWindow 拆分）+ M2（App.axaml.cs 拆分）耦合——**与 M1/M2 重构一起做**，那时窗口管理会整体重写。
 
 ---
 
@@ -218,3 +208,11 @@
 - [DONE bc56662] N3 — ProviderProfileEntry 加 Validate() + OnSaveProviderClick 调用
 - [DONE 1a4800f] N4 — 截图删除加确认 popup + i18n（防误按不可恢复）
 - [DONE 6dbe940] P1 batch — H1 hProcess / H2 provider 锁快照 / H3 hook Unsafe.Read / H5 CoUninit 平衡 / H7 流式 timeout / H8 runtime dispose / H9 volatile / H10 clipboard 预检
+- [DONE e623616] P2-A — M6 VisionCapture Validate / M7 ProcessCapture Normalize / M13 ResultWindow Timer 复用 / M14 MagneticSnap 死参
+- [DONE 8f00fa5] P2-B — M9 ScreenshotGallery i18n / M11 翻译路由日韩（+11 测试）
+- [DONE 3b17337] P2-C — M5 PromptTemplateSet 加锁 / M12 InstalledApps CancellationToken
+- [SKIP] P2-D — M10 静默 catch（best-effort 设计,非 bug）
+- [DONE 60f3c03] P2-E — M3 favicon 共享 HttpClient + 内存缓存（M8/M15 评估 SKIP）
+- [DONE 97b5021] P3-快修 — L2 zh_CN 未译 / L4 NumberedAnnotationSession 死代码（+11 死测试）/ L6 SupportedKeys AsReadOnly / L7 SensitivePattern bearer
+- [DONE 58cdf30] P3-i18n — L1 21 处硬编码英文字符串 → i18n（+18 新 key,复用 2 个已有）
+- [DEFER] M1/M2 god-class 拆分 / M4 LibraryImport 迁移 / L3 无障碍标注 / L5 日志滚动 / L8 IManagedWindow 接口 — 移到独立重构/功能窗口
