@@ -1,8 +1,8 @@
 id: REQ-027
 title: BYH 皮肤自定义与运行时切换系统
-status: dispatched
+status: confirmed
 created: '2026-07-26T09:24:17'
-updated: '2026-07-26T19:43:38'
+updated: '2026-07-27T07:02:32'
 score_kind: aesthetic
 aesthetic_template: ''
 acceptance_criteria:
@@ -49,6 +49,7 @@ acceptance_criteria:
   - TASK-040
   - TASK-042
   - TASK-043
+  - TASK-044
 - id: AC-8
   text: 设置窗口恢复独立的系统标题栏，使用 Windows 原生最小化、最大化、关闭、拖动、双击最大化、Snap Layout 与高 DPI 行为；主题主体从标题栏下方开始。
   satisfied_by:
@@ -60,26 +61,18 @@ acceptance_criteria:
   - TASK-029
 - id: AC-10
   text: 右侧手机摘要卡在默认、最大化与全屏尺寸下仅比中央主内容窗格略矮，宽度随可用空间适度增长；中央窗格不独占横向余量。底部 System Overview
-    使用响应式高度并随全屏空间同步增高，整体比例协调且不裁切内容。
+    使用响应式高度并随全屏空间同步增高；上下两排大面板之间及窗口底边留出协调的宏观间距，整体比例协调且不裁切内容。
   satisfied_by:
   - TASK-033
+  - TASK-044
 - id: AC-11
   text: 手机底部五个按钮只切换手机卡内部的独立摘要视图，不再切换中央设置页；手机视图具有独立选中态、键盘焦点与可验证的内容变化。
   satisfied_by:
   - TASK-034
 - id: AC-12
-  text: 中央工作区采用参考图同构的上下组合框：顶部为 2:1 几何胶囊搜索栏，底部为大圆角主内容区；两者零间距贴合并只共享一根细横线，两侧轮廓与圆弧相切，不出现底托、第三条线或断边。
+  text: 中央工作区恢复为单一、连续的大圆角主窗，直接承载 Dashboard 与各设置页；不保留冗余搜索条、接缝连接线、搜索浮层或第三层外框，并恢复与其他主题大面板一致的香槟金立体边框。
   satisfied_by:
-  - TASK-035
-  - TASK-036
-  - TASK-039
-  - TASK-040
-  - TASK-041
-  - TASK-043
-- id: AC-13
-  text: 设置搜索可按标题、关键词和功能定位设置项，结果可点击/键盘访问并导航到对应页面及控件；无结果与清空状态明确。
-  satisfied_by:
-  - TASK-035
+  - TASK-044
 - id: AC-14
   text: 中央内容区新增 Dashboard 默认页，展示已启用模块、常用功能、当前 Provider/Model、服务状态和本地使用频率；无历史数据时提供真实空状态，不伪造统计。
   satisfied_by:
@@ -139,6 +132,9 @@ tasks:
 - id: TASK-043
   title: 限定浅边框仅用于中央组合窗
   status: done
+- id: TASK-044
+  title: 移除设置搜索并恢复单一中央主窗
+  status: done
 aesthetic_score:
   scored_at: ''
   scored_by: ''
@@ -146,5 +142,5 @@ aesthetic_score:
   total: null
 aesthetic_notes: []
 aligned_via: ask-user
-aligned_at: '2026-07-26T14:51:00'
-aligned_evidence: 用户：接下来改右上角的good morning为Hi! xxx用户名可以自定义
+aligned_at: '2026-07-27T07:00:58'
+aligned_evidence: 用户确认：无搜索单窗，并恢复中央主窗金边框

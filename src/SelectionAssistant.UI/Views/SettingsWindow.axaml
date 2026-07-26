@@ -15,8 +15,8 @@
   <Grid x:Name="ShellGrid"
           RowDefinitions="2.15*,1*"
           ColumnSpacing="12"
-          RowSpacing="12"
-          Margin="12">
+          RowSpacing="24"
+          Margin="12,12,12,20">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="190" />
         <ColumnDefinition Width="170" />
@@ -199,132 +199,11 @@
     </Border>
 
 
-    <!-- Main work pane: the search capsule and content shell touch on one
-         shared hairline, matching the exact stacked geometry of the reference. -->
-    <Grid Grid.Column="2"
-          Grid.Row="0"
-          RowDefinitions="56,*"
-          RowSpacing="0">
-
-      <!-- A pair of quiet vertical backplate strokes joins the two tangent
-           points (search-cap midpoint to workspace-corner midpoint). The
-           rounded frames sit above them, so only the reference-style bridge
-           between the arcs remains visible. -->
-      <Border Grid.RowSpan="2"
-              Classes="WorkspaceSeamConnector"
-              HorizontalAlignment="Left"
-              VerticalAlignment="Top"
-              Margin="0,28,0,0"
-              IsHitTestVisible="False" />
-      <Border Grid.RowSpan="2"
-              Classes="WorkspaceSeamConnector"
-              HorizontalAlignment="Right"
-              VerticalAlignment="Top"
-              Margin="0,28,0,0"
-              IsHitTestVisible="False" />
-
-      <Border Grid.Row="0"
-              Classes="MetallicFrame Thin SearchFrame"
-              Height="56">
-        <Border Classes="MacroClip SearchClip">
-          <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto"
-                ColumnSpacing="10"
-                Margin="14,8">
-            <Path Width="15"
-                  Height="15"
-                  Stretch="Uniform"
-                  Stroke="{DynamicResource ByhAccentBrush}"
-                  StrokeThickness="1.5"
-                  VerticalAlignment="Center"
-                  Data="M10.5,10.5 L15,15 M12,7 A5,5 0 1 1 2,7 A5,5 0 1 1 12,7" />
-            <TextBox x:Name="SettingsSearchInput"
-                     Grid.Column="1"
-                     Classes="SettingsSearch"
-                     PlaceholderText="Search settings, features, or shortcuts…"
-                     AutomationProperties.AutomationId="BYH.Settings.Search.Input"
-                     TextChanged="OnSettingsSearchTextChanged"
-                     KeyDown="OnSettingsSearchKeyDown" />
-            <Button x:Name="ClearSettingsSearchButton"
-                    Grid.Column="2"
-                    Classes="SearchClear"
-                    Content="×"
-                    ToolTip.Tip="Clear search"
-                    IsVisible="False"
-                    Click="OnClearSettingsSearchClick"
-                    AutomationProperties.AutomationId="BYH.Settings.Search.Clear" />
-            <Button Grid.Column="3"
-                    Classes="SearchUtility"
-                    ToolTip.Tip="Local notifications"
-                    AutomationProperties.Name="Local notifications">
-              <Path Width="15"
-                    Height="15"
-                    Stretch="Uniform"
-                    Stroke="{DynamicResource ByhAccentBrush}"
-                    StrokeThickness="1.4"
-                    Data="M6,17 L18,17 M8,17 C8,20 16,20 16,17 M7,15 L8,13 L8,9 C8,4 16,4 16,9 L16,13 L17,15 Z" />
-            </Button>
-            <StackPanel Grid.Column="4"
-                        Orientation="Horizontal"
-                        Spacing="7"
-                        VerticalAlignment="Center"
-                        Margin="2,0,2,0">
-              <Border Width="32"
-                      Height="32"
-                      CornerRadius="16"
-                      Background="{DynamicResource ByhGemGlowBrush}"
-                      Padding="2"
-                      ClipToBounds="True">
-                <Image Source="avares://BYH/Assets/app-icon.png"
-                       Stretch="Uniform" />
-              </Border>
-              <TextBlock x:Name="SearchGreetingUserNameText"
-                         Text="there"
-                         Classes="Accent"
-                         FontSize="9"
-                         FontWeight="SemiBold"
-                         MaxWidth="74"
-                         TextTrimming="CharacterEllipsis"
-                         VerticalAlignment="Center" />
-              <Path Width="8"
-                    Height="5"
-                    Stretch="Uniform"
-                    Stroke="{DynamicResource ByhAccentBrush}"
-                    StrokeThickness="1.3"
-                    Data="M1,1 L4,4 L7,1"
-                    VerticalAlignment="Center" />
-            </StackPanel>
-
-            <Popup x:Name="SettingsSearchPopup"
-                   PlacementTarget="{Binding #SettingsSearchInput}"
-                   Placement="BottomEdgeAlignedLeft"
-                   IsLightDismissEnabled="True">
-              <Border Classes="SearchResultsPopover"
-                      Width="520"
-                      MaxHeight="286"
-                      Margin="0,8,0,0"
-                      Padding="8">
-                <StackPanel Spacing="5">
-                  <TextBlock x:Name="SettingsSearchStatusText"
-                             Classes="SearchResultStatus"
-                             Margin="8,4"
-                             AutomationProperties.AutomationId="BYH.Settings.Search.Status" />
-                  <ScrollViewer MaxHeight="236"
-                                VerticalScrollBarVisibility="Auto"
-                                HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel x:Name="SettingsSearchResultsPanel"
-                                Spacing="4"
-                                AutomationProperties.AutomationId="BYH.Settings.Search.Results" />
-                  </ScrollViewer>
-                </StackPanel>
-              </Border>
-            </Popup>
-          </Grid>
-        </Border>
-      </Border>
-
-      <Border Grid.Row="1"
-              Classes="MetallicFrame Thin MainWorkspaceFrame"
-              Margin="0,-1,0,0">
+    <!-- Main work pane: the selected dashboard or settings category remains
+         independently scrollable inside one calm, continuous surface. -->
+    <Border Grid.Column="2"
+            Grid.Row="0"
+            Classes="MetallicFrame Thin MainWorkspaceFrame">
         <Border Classes="MacroClip">
         <Grid RowDefinitions="Auto,*">
       <Image Grid.RowSpan="2"
@@ -339,7 +218,7 @@
             RowDefinitions="Auto,Auto"
             ColumnSpacing="24"
             RowSpacing="12"
-            Margin="28,16,26,12">
+            Margin="28,22,26,12">
           <StackPanel Spacing="3">
             <TextBlock Text="WELCOME BACK" Classes="Kicker" />
             <StackPanel Orientation="Horizontal" Spacing="9">
@@ -1375,7 +1254,6 @@
         </Grid>
         </Border>
       </Border>
-    </Grid>
 
     <!-- Reference-style theme specimen: four calm editorial sections on one
          continuous square sheet. The rail remains decorative and read-only. -->

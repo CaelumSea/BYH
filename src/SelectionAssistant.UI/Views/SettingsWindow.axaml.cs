@@ -53,16 +53,7 @@ public partial class SettingsWindow : Window
         Launcher,
     }
 
-    private sealed record SettingsSearchEntry(
-        string Title,
-        string Description,
-        string Keywords,
-        SettingsPage Page,
-        Control Target);
-
     private bool _allowClose;
-    private bool _settingsSearchReady;
-    private readonly List<SettingsSearchEntry> _settingsSearchIndex = [];
     private readonly HashSet<string> _activeDashboardModules = new(StringComparer.Ordinal);
 
     private readonly AvaloniaList<ProviderOption> _providerOptions = [];
@@ -117,8 +108,6 @@ public partial class SettingsWindow : Window
 
         ShowSettingsPage(SettingsPage.Dashboard);
         ShowPhonePage(PhonePage.Overview);
-        BuildSettingsSearchIndex();
-        _settingsSearchReady = true;
         ApplyResponsiveShellWidths();
     }
 
@@ -241,181 +230,6 @@ public partial class SettingsWindow : Window
 
     private void OnShowPhoneLauncherClick(object? sender, RoutedEventArgs e) =>
         ShowPhonePage(PhonePage.Launcher);
-
-    // ── Searchable settings index ──
-
-    private void BuildSettingsSearchIndex()
-    {
-        _settingsSearchIndex.AddRange(
-        [
-            new("Personal greeting", "Choose the name shown in the phone summary.", "profile display name username hi welcome", SettingsPage.General, ProfileDisplayNameInput),
-            new("Ocean Eyes hotkey", "Change the global keyboard shortcut for instant capture.", "trigger shortcut ctrl alt q keyboard capture translate", SettingsPage.General, ShortcutKeyComboBox),
-            new("Legacy mouse chord", "Enable or disable the left-and-right mouse trigger.", "mouse right click context menu chord", SettingsPage.General, MouseChordToggle),
-            new("Toolbar shortcuts", "Assign keys for Prompt and Copy actions.", "prompt copy action key quick tools", SettingsPage.General, PromptShortcutInput),
-            new("Ocean Eyes capture", "Configure screenshot saving, clipboard, and UIA assist.", "screenshot save path clipboard uia selection capture", SettingsPage.General, OceanEyesSavePathTextBox),
-            new("Provider profiles", "Add, edit, and activate translation providers.", "translation provider api endpoint base url profile deepseek", SettingsPage.Provider, ProviderComboBox),
-            new("Translation model", "Select the model used by the active provider.", "model chat completions deepseek qwen", SettingsPage.Provider, ModelInput),
-            new("API key", "Update the encrypted key for a translation provider.", "secret credential token encrypted provider", SettingsPage.Provider, ApiKeyInput),
-            new("Actions & prompts", "Edit built-in actions or add a custom prompt.", "function explain summarize translate custom shortcut thinking", SettingsPage.Functions, AddFunctionButton),
-            new("Vision recognition", "Turn OCR-based screenshot recognition on or off.", "vision ocr image screenshot enabled", SettingsPage.Vision, VisionEnabledToggle),
-            new("Vision OCR model", "Choose the provider and model used for OCR.", "vision provider qwen model image recognition", SettingsPage.Vision, VisionModelComboBox),
-            new("UI Automation prefill", "Use Windows UI Automation as optional OCR context.", "uia accessibility prefill experimental assist", SettingsPage.Vision, VisionUiaPrefillToggle),
-            new("Launcher entries", "Add applications and web destinations.", "launcher app website url shortcut spotlight destination", SettingsPage.Launcher, AddLauncherButton),
-            new("Spotlight hotkey", "Change the global launcher-search shortcut.", "launcher search ctrl alt space keyboard shortcut", SettingsPage.Launcher, SpotlightShortcutKeyComboBox),
-            new("Clipboard history", "Enable or pause local clipboard history.", "clipboard recording history local privacy", SettingsPage.ClipboardHistory, ClipboardHistoryEnabledToggle),
-            new("Clipboard hotkey", "Change the shortcut that opens clipboard history.", "clipboard ctrl alt v keyboard shortcut", SettingsPage.ClipboardHistory, ClipboardHistoryShortcutKeyComboBox),
-            new("Clipboard privacy", "Mask sensitive content and exclude applications.", "clipboard sensitive mask password excluded apps privacy", SettingsPage.ClipboardHistory, ClipboardHistoryMaskSensitiveToggle),
-            new("Clipboard retention", "Set text and image history limits.", "clipboard max entries images storage retention limit", SettingsPage.ClipboardHistory, ClipboardHistoryMaxEntriesInput),
-        ]);
-    }
-
-    private void OnSettingsSearchTextChanged(object? sender, TextChangedEventArgs e)
-    {
-        if (!_settingsSearchReady)
-        {
-            return;
-        }
-
-        RefreshSettingsSearchResults(SettingsSearchInput.Text);
-    }
-
-    private void RefreshSettingsSearchResults(string? rawQuery)
-    {
-        string query = rawQuery?.Trim() ?? string.Empty;
-        ClearSettingsSearchButton.IsVisible = query.Length > 0;
-        SettingsSearchResultsPanel.Children.Clear();
-
-        if (query.Length == 0)
-        {
-            SettingsSearchStatusText.Text = "Type to find a setting.";
-            SettingsSearchPopup.IsOpen = false;
-            return;
-        }
-
-        string[] terms = query.Split(
-            ' ',
-            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-        List<SettingsSearchEntry> matches = _settingsSearchIndex
-            .Where(entry =>
-            {
-                string haystack = $"{entry.Title} {entry.Description} {entry.Keywords} {entry.Page}";
-                return terms.All(term => haystack.Contains(term, StringComparison.OrdinalIgnoreCase));
-            })
-            .OrderBy(entry => SearchRank(entry, query))
-            .ThenBy(entry => entry.Title, StringComparer.OrdinalIgnoreCase)
-            .Take(7)
-            .ToList();
-
-        SettingsSearchPopup.IsOpen = true;
-        if (matches.Count == 0)
-        {
-            SettingsSearchStatusText.Text = $"No settings found for “{query}”.";
-            return;
-        }
-
-        SettingsSearchStatusText.Text =
-            matches.Count == 1 ? "1 matching setting" : $"{matches.Count} matching settings";
-
-        foreach (SettingsSearchEntry entry in matches)
-        {
-            var title = new TextBlock
-            {
-                Text = entry.Title,
-                FontSize = 11,
-                FontWeight = Avalonia.Media.FontWeight.SemiBold,
-            };
-            var description = new TextBlock
-            {
-                Text = entry.Description,
-                FontSize = 9,
-                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            };
-            description.Classes.Add("Muted");
-
-            var content = new StackPanel { Spacing = 2 };
-            content.Children.Add(title);
-            content.Children.Add(description);
-
-            var button = new Button
-            {
-                Content = content,
-                Tag = entry,
-            };
-            button.Classes.Add("SearchResult");
-            Avalonia.Automation.AutomationProperties.SetAutomationId(
-                button,
-                $"BYH.Settings.Search.Result.{entry.Page}.{entry.Title.Replace(" ", string.Empty)}");
-            Avalonia.Automation.AutomationProperties.SetName(button, entry.Title);
-            button.Click += OnSettingsSearchResultClick;
-            SettingsSearchResultsPanel.Children.Add(button);
-        }
-    }
-
-    private static int SearchRank(SettingsSearchEntry entry, string query)
-    {
-        if (entry.Title.StartsWith(query, StringComparison.OrdinalIgnoreCase))
-        {
-            return 0;
-        }
-
-        return entry.Title.Contains(query, StringComparison.OrdinalIgnoreCase) ? 1 : 2;
-    }
-
-    private void OnSettingsSearchResultClick(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Button { Tag: SettingsSearchEntry entry })
-        {
-            NavigateToSearchEntry(entry);
-        }
-    }
-
-    private void NavigateToSearchEntry(SettingsSearchEntry entry)
-    {
-        SettingsSearchPopup.IsOpen = false;
-        ShowSettingsPage(entry.Page);
-
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            entry.Target.BringIntoView();
-            entry.Target.Focus();
-        }, Avalonia.Threading.DispatcherPriority.Loaded);
-    }
-
-    private void OnSettingsSearchKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (e.Key == Key.Escape)
-        {
-            ClearSettingsSearch();
-            e.Handled = true;
-            return;
-        }
-
-        Button? firstResult = SettingsSearchResultsPanel.Children
-            .OfType<Button>()
-            .FirstOrDefault();
-
-        if (e.Key == Key.Down && firstResult is not null)
-        {
-            firstResult.Focus();
-            e.Handled = true;
-        }
-        else if (e.Key == Key.Enter && firstResult?.Tag is SettingsSearchEntry entry)
-        {
-            NavigateToSearchEntry(entry);
-            e.Handled = true;
-        }
-    }
-
-    private void OnClearSettingsSearchClick(object? sender, RoutedEventArgs e) =>
-        ClearSettingsSearch();
-
-    private void ClearSettingsSearch()
-    {
-        SettingsSearchInput.Text = string.Empty;
-        SettingsSearchPopup.IsOpen = false;
-        SettingsSearchInput.Focus();
-    }
 
     // ── Events wired to the runtime in App.axaml.cs ──
 
@@ -591,7 +405,6 @@ public partial class SettingsWindow : Window
         settings = settings.Normalize();
         ProfileDisplayNameInput.Text = settings.DisplayName;
         GreetingUserNameText.Text = settings.DisplayName;
-        SearchGreetingUserNameText.Text = settings.DisplayName;
         ProfileStatusText.Text = statusMessage ?? "Greeting: Hi! " + settings.DisplayName;
         SetFeedbackTone(ProfileStatusText, isError);
     }

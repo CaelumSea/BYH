@@ -5,8 +5,6 @@ status: done
 created: '2026-07-26T10:30:22'
 updated: '2026-07-26T16:41:27'
 satisfies:
-- AC-12
-- AC-13
 - AC-7
 description: 把中央区域拆成顶部紧凑搜索框与下方主内容圆角窗格，建立设置索引、结果导航、焦点定位、无结果与清空状态。
 handoff: '中央工作区已拆成两个独立 MetallicFrame：顶部紧凑搜索窗、下方主设置内容窗。
