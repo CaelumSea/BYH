@@ -54,6 +54,15 @@ public sealed unsafe class WindowsUiAutomationBackend : IUiAutomationBackend, ID
     // same thread that created it.
     private Thread? _boundsThread;
     private readonly BlockingCollection<Action> _boundsQueue = new();
+    // Audit H4: guards EnsureInitialized's check-then-act on _automation. In
+    // practice all COM access is already serialized onto the dedicated MTA
+    // worker (_boundsThread for GetElementBoundsAt, the BYH.UIAutomation worker
+    // for ReadSelection), so concurrent first-calls are not expected — but
+    // locking here is cheap defense against a future caller that bypasses the
+    // workers. Locking the init path has no deadlock risk (no other lock is
+    // held while calling EnsureInitialized, and the body only does COM init +
+    // vtable reads — no callbacks into our code).
+    private readonly object _initGate = new();
 
     public WindowsUiAutomationBackend()
     {
@@ -146,10 +155,22 @@ public sealed unsafe class WindowsUiAutomationBackend : IUiAutomationBackend, ID
 
     private bool EnsureInitialized()
     {
+        // Fast path: already initialized. Reads are atomic on x86/x64 for
+        // nint, so this unlocked check is safe as a quick bypass. The slow
+        // path takes the lock and re-checks.
         if (_automation != 0)
         {
             return true;
         }
+
+        lock (_initGate)
+        {
+            // Re-check inside the lock — another thread may have completed
+            // init while we waited.
+            if (_automation != 0)
+            {
+                return true;
+            }
 
         int initializeResult = CoInitializeEx(0, CoinitMultithreaded);
         // Audit H5: only S_OK (0) means "we initialized COM on this thread"
@@ -203,6 +224,7 @@ public sealed unsafe class WindowsUiAutomationBackend : IUiAutomationBackend, ID
         }
 
         return true;
+        }  // end lock (_initGate)
     }
 
     private nint GetFocusedElement()
