@@ -2,8 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:sys="clr-namespace:System;assembly=System.Runtime"
         xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.ClipboardHistoryWindow"
-        Title="BYH · Clipboard"
+        Title="{x:Static i18n:Strings.Clip_Title}"
         Width="800"
         Height="620"
         MinWidth="580"
@@ -54,7 +55,7 @@
                     BorderBrush="{DynamicResource ByhHairlineBrush}"
                     BorderThickness="0,0,0,1">
               <TextBlock Classes="Kicker"
-                         Text="TABS"
+                         Text="{x:Static i18n:Strings.Clip_TabsKicker}"
                          HorizontalAlignment="Center"
                          FontSize="10" />
             </Border>
@@ -78,7 +79,7 @@
                 <Path Classes="NavIcon"
                       Width="13" Height="13"
                       Data="M12,8 a4,4 0 1 1 0,8 a4,4 0 1 1 0,-8 M12,2 v2 M12,20 v2 M2,12 h2 M20,12 h2 M4.9,4.9 l1.4,1.4 M17.7,17.7 l1.4,1.4 M4.9,19.1 l1.4,-1.4 M17.7,6.3 l1.4,-1.4" />
-                <TextBlock Grid.Column="1" Text="Settings" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{x:Static i18n:Strings.Clip_FooterSettings}" FontSize="10.5" FontWeight="SemiBold" VerticalAlignment="Center" />
               </Grid>
             </Button>
           </Grid>
@@ -107,7 +108,7 @@
                   Padding="8,3">
             <TextBox x:Name="SearchInput"
                      Classes="SpotlightSearch"
-                     PlaceholderText="Search clipboard history…"
+                     PlaceholderText="{x:Static i18n:Strings.Clip_SearchPlaceholder}"
                      FontSize="15"
                      FontWeight="SemiBold"
                      Padding="0,1"
@@ -123,7 +124,7 @@
         <TextBlock x:Name="CategoryHeader"
                    Grid.Row="1"
                    Classes="Kicker"
-                   Text="Clipboard History"
+                   Text="{x:Static i18n:Strings.Clip_CategoryDefault}"
                    FontSize="10" />
 
         <!-- Filtered results list. ContextMenu is attached dynamically per row
@@ -176,10 +177,10 @@
                             <TextBlock Classes="SpotlightRowName"
                                        FontSize="13"
                                        FontWeight="SemiBold"
-                                       Text="Image" />
+                                       Text="{x:Static i18n:Strings.Clip_ImageLabel}" />
                             <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
                               <Border Classes="Badge" Padding="5,1">
-                                <TextBlock Classes="Muted" FontSize="9" Text="Image" />
+                                <TextBlock Classes="Muted" FontSize="9" Text="{x:Static i18n:Strings.Clip_ImageLabel}" />
                               </Border>
                               <!-- R54 v2: inline entry-tag badges (see text row). -->
                               <ItemsControl ItemsSource="{Binding EntryTags}">
@@ -259,7 +260,7 @@
                                first so it's the most visible marker; neutral gray
                                reads as "historical". Hidden for live rows. -->
                           <Border Classes="ArchiveBadge" Padding="5,1" IsVisible="{Binding IsArchived}">
-                            <TextBlock Classes="Muted" FontSize="9" Text="Archived" />
+                            <TextBlock Classes="Muted" FontSize="9" Text="{x:Static i18n:Strings.Clip_ArchivedBadge}" />
                           </Border>
                           <Border Classes="Badge" Padding="5,1" IsVisible="{Binding GroupLabel, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                             <TextBlock Classes="Muted" FontSize="9" Text="{Binding GroupLabel}" />
@@ -335,16 +336,16 @@
                     HorizontalAlignment="Right"
                     VerticalAlignment="Center">
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="↑↓ Select" />
+            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Clip_FooterSelect}" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="Dbl-click Paste" />
+            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Clip_FooterPaste}" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="Right-click Menu" />
+            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Clip_FooterMenu}" />
           </Border>
           <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="10" Text="Esc Close" />
+            <TextBlock FontSize="10" Text="{x:Static i18n:Strings.Clip_FooterClose}" />
           </Border>
         </StackPanel>
       </Grid>

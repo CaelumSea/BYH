@@ -166,4 +166,354 @@ public static partial class Strings
     public static string Settings_LanguageCard_StatusSaved => Get(nameof(Settings_LanguageCard_StatusSaved));
     public static string Settings_LanguageName_English => Get(nameof(Settings_LanguageName_English));
     public static string Settings_LanguageName_Chinese => Get(nameof(Settings_LanguageName_Chinese));
+
+    // ── Second i18n pass: full app coverage ───────────────────────────────
+
+    // Common — shared across many views (added in second pass).
+    // NOTE: Common_Confirm / Common_Cancel / Common_Save / Common_Close /
+    // Common_Delete / Common_Retry / Common_Run / Common_Copy already exist
+    // from the first pass; only the NEW Common_* keys are declared here.
+    public static string Common_Cut => Get(nameof(Common_Cut));
+    public static string Common_Paste => Get(nameof(Common_Paste));
+    public static string Common_SelectAll => Get(nameof(Common_SelectAll));
+    public static string Common_Edit => Get(nameof(Common_Edit));
+    public static string Common_Browse => Get(nameof(Common_Browse));
+    public static string Common_Placeholder_None => Get(nameof(Common_Placeholder_None));
+    public static string Common_Status_Saved => Get(nameof(Common_Status_Saved));
+    public static string Common_Toggle_On => Get(nameof(Common_Toggle_On));
+    public static string Common_Toggle_Off => Get(nameof(Common_Toggle_Off));
+
+    // SettingsWindow — window chrome / nav rail
+    public static string Settings_Title => Get(nameof(Settings_Title));
+    public static string Settings_Nav_General => Get(nameof(Settings_Nav_General));
+    public static string Settings_Nav_Provider => Get(nameof(Settings_Nav_Provider));
+    public static string Settings_Nav_Functions => Get(nameof(Settings_Nav_Functions));
+    public static string Settings_Nav_Vision => Get(nameof(Settings_Nav_Vision));
+    public static string Settings_Nav_Launcher => Get(nameof(Settings_Nav_Launcher));
+    public static string Settings_Nav_Clipboard => Get(nameof(Settings_Nav_Clipboard));
+
+    // SettingsWindow — page headers / subtitles (set from code-behind)
+    public static string Settings_Header_Kicker => Get(nameof(Settings_Header_Kicker));
+    public static string Settings_PageTitle_General => Get(nameof(Settings_PageTitle_General));
+    public static string Settings_PageTitle_Provider => Get(nameof(Settings_PageTitle_Provider));
+    public static string Settings_PageTitle_Functions => Get(nameof(Settings_PageTitle_Functions));
+    public static string Settings_PageTitle_Vision => Get(nameof(Settings_PageTitle_Vision));
+    public static string Settings_PageTitle_Launcher => Get(nameof(Settings_PageTitle_Launcher));
+    public static string Settings_PageTitle_Clipboard => Get(nameof(Settings_PageTitle_Clipboard));
+    public static string Settings_PageSubtitle_General => Get(nameof(Settings_PageSubtitle_General));
+    public static string Settings_PageSubtitle_Provider => Get(nameof(Settings_PageSubtitle_Provider));
+    public static string Settings_PageSubtitle_Functions => Get(nameof(Settings_PageSubtitle_Functions));
+    public static string Settings_PageSubtitle_Vision => Get(nameof(Settings_PageSubtitle_Vision));
+    public static string Settings_PageSubtitle_Launcher => Get(nameof(Settings_PageSubtitle_Launcher));
+    public static string Settings_PageSubtitle_Clipboard => Get(nameof(Settings_PageSubtitle_Clipboard));
+
+    // SettingsWindow — Ocean Eyes Trigger card
+    public static string Settings_OceanEyesTrigger_Title => Get(nameof(Settings_OceanEyesTrigger_Title));
+    public static string Settings_OceanEyesTrigger_Hint => Get(nameof(Settings_OceanEyesTrigger_Hint));
+    public static string Settings_Hotkey => Get(nameof(Settings_Hotkey));
+    public static string Settings_Mod_Ctrl => Get(nameof(Settings_Mod_Ctrl));
+    public static string Settings_Mod_Alt => Get(nameof(Settings_Mod_Alt));
+    public static string Settings_Mod_Shift => Get(nameof(Settings_Mod_Shift));
+    public static string Settings_Mod_Win => Get(nameof(Settings_Mod_Win));
+    public static string Settings_SaveHotkey => Get(nameof(Settings_SaveHotkey));
+    public static string Settings_MouseChord_Title => Get(nameof(Settings_MouseChord_Title));
+    public static string Settings_MouseChord_Hint => Get(nameof(Settings_MouseChord_Hint));
+
+    // SettingsWindow — Toolbar Shortcuts card
+    public static string Settings_ToolbarShortcuts_Title => Get(nameof(Settings_ToolbarShortcuts_Title));
+    public static string Settings_ToolbarShortcut_Prompt => Get(nameof(Settings_ToolbarShortcut_Prompt));
+    public static string Settings_ToolbarShortcut_Prompt_Hint => Get(nameof(Settings_ToolbarShortcut_Prompt_Hint));
+    public static string Settings_ToolbarShortcut_Copy => Get(nameof(Settings_ToolbarShortcut_Copy));
+    public static string Settings_ToolbarShortcut_Copy_Hint => Get(nameof(Settings_ToolbarShortcut_Copy_Hint));
+    public static string Settings_SaveShortcuts => Get(nameof(Settings_SaveShortcuts));
+
+    // SettingsWindow — Ocean Eyes Capture card
+    public static string Settings_OceanEyesCapture_Title => Get(nameof(Settings_OceanEyesCapture_Title));
+    public static string Settings_SaveLocation => Get(nameof(Settings_SaveLocation));
+    public static string Settings_OceanEyesSavePath_Placeholder => Get(nameof(Settings_OceanEyesSavePath_Placeholder));
+    public static string Settings_AutoSave => Get(nameof(Settings_AutoSave));
+    public static string Settings_ClipboardToggle => Get(nameof(Settings_ClipboardToggle));
+    public static string Settings_UiaSnap => Get(nameof(Settings_UiaSnap));
+    public static string Settings_SaveCapture => Get(nameof(Settings_SaveCapture));
+
+    // SettingsWindow — Provider section
+    public static string Settings_ProviderProfiles_Title => Get(nameof(Settings_ProviderProfiles_Title));
+    public static string Settings_AddProvider => Get(nameof(Settings_AddProvider));
+    public static string Settings_Editing => Get(nameof(Settings_Editing));
+    public static string Settings_Provider_Name => Get(nameof(Settings_Provider_Name));
+    public static string Settings_Provider_Model => Get(nameof(Settings_Provider_Model));
+    public static string Settings_Provider_BaseUrl => Get(nameof(Settings_Provider_BaseUrl));
+    public static string Settings_Provider_ChatPath => Get(nameof(Settings_Provider_ChatPath));
+    public static string Settings_Provider_SystemPrompt => Get(nameof(Settings_Provider_SystemPrompt));
+    public static string Settings_Provider_ApiKey => Get(nameof(Settings_Provider_ApiKey));
+    public static string Settings_Provider_ApiKey_Hint => Get(nameof(Settings_Provider_ApiKey_Hint));
+    public static string Settings_Show => Get(nameof(Settings_Show));
+    public static string Settings_SaveKey => Get(nameof(Settings_SaveKey));
+    public static string Settings_Provider_Timeout => Get(nameof(Settings_Provider_Timeout));
+    public static string Settings_SetActive => Get(nameof(Settings_SetActive));
+    public static string Settings_SaveProfile => Get(nameof(Settings_SaveProfile));
+
+    // SettingsWindow — Functions section
+    public static string Settings_Actions_Title => Get(nameof(Settings_Actions_Title));
+    public static string Settings_AddAction => Get(nameof(Settings_AddAction));
+
+    // SettingsWindow — Vision section
+    public static string Settings_Vision_Title => Get(nameof(Settings_Vision_Title));
+    public static string Settings_Vision_OcrModel => Get(nameof(Settings_Vision_OcrModel));
+    public static string Settings_Vision_Provider => Get(nameof(Settings_Vision_Provider));
+    public static string Settings_Vision_Model => Get(nameof(Settings_Vision_Model));
+    public static string Settings_Vision_Prompt => Get(nameof(Settings_Vision_Prompt));
+    public static string Settings_Vision_Prompt_Placeholder => Get(nameof(Settings_Vision_Prompt_Placeholder));
+    public static string Settings_Vision_Strategy => Get(nameof(Settings_Vision_Strategy));
+    public static string Settings_Vision_UiaPrefill => Get(nameof(Settings_Vision_UiaPrefill));
+    public static string Settings_Vision_DisableThinking => Get(nameof(Settings_Vision_DisableThinking));
+    public static string Settings_Vision_DisableThinking_Hint => Get(nameof(Settings_Vision_DisableThinking_Hint));
+    public static string Settings_Vision_Thinking_Disabled => Get(nameof(Settings_Vision_Thinking_Disabled));
+    public static string Settings_Vision_Thinking_Allowed => Get(nameof(Settings_Vision_Thinking_Allowed));
+    public static string Settings_SaveVision => Get(nameof(Settings_SaveVision));
+
+    // SettingsWindow — Launcher section
+    public static string Settings_Launcher_Title => Get(nameof(Settings_Launcher_Title));
+    public static string Settings_ScanInstalledApps => Get(nameof(Settings_ScanInstalledApps));
+    public static string Settings_AddLauncher => Get(nameof(Settings_AddLauncher));
+    public static string Settings_Spotlight_Title => Get(nameof(Settings_Spotlight_Title));
+
+    // SettingsWindow — Clipboard section
+    public static string Settings_Clipboard_Title => Get(nameof(Settings_Clipboard_Title));
+    public static string Settings_Clipboard_Subtitle => Get(nameof(Settings_Clipboard_Subtitle));
+    public static string Settings_Clipboard_On => Get(nameof(Settings_Clipboard_On));
+    public static string Settings_Clipboard_Off => Get(nameof(Settings_Clipboard_Off));
+    public static string Settings_Clipboard_GlobalHotkey => Get(nameof(Settings_Clipboard_GlobalHotkey));
+    public static string Settings_Clipboard_BehaviorTitle => Get(nameof(Settings_Clipboard_BehaviorTitle));
+    public static string Settings_SaveSettings => Get(nameof(Settings_SaveSettings));
+    public static string Settings_ClearHistory => Get(nameof(Settings_ClearHistory));
+    public static string Settings_Clipboard_AutoPasteOn => Get(nameof(Settings_Clipboard_AutoPasteOn));
+    public static string Settings_Clipboard_AutoPasteOff => Get(nameof(Settings_Clipboard_AutoPasteOff));
+    public static string Settings_Clipboard_MaskOn => Get(nameof(Settings_Clipboard_MaskOn));
+    public static string Settings_Clipboard_MaskOff => Get(nameof(Settings_Clipboard_MaskOff));
+    public static string Settings_Clipboard_MaxEntries => Get(nameof(Settings_Clipboard_MaxEntries));
+    public static string Settings_Clipboard_ImagesOn => Get(nameof(Settings_Clipboard_ImagesOn));
+    public static string Settings_Clipboard_ImagesOff => Get(nameof(Settings_Clipboard_ImagesOff));
+    public static string Settings_Clipboard_MaxImages => Get(nameof(Settings_Clipboard_MaxImages));
+    public static string Settings_Clipboard_Excluded => Get(nameof(Settings_Clipboard_Excluded));
+
+    // SettingsWindow — Phone summary / system overview / window controls
+    public static string Settings_Phone_Kicker => Get(nameof(Settings_Phone_Kicker));
+    public static string Settings_Phone_Tagline => Get(nameof(Settings_Phone_Tagline));
+    public static string Settings_Phone_CurrentSetup => Get(nameof(Settings_Phone_CurrentSetup));
+    public static string Settings_Phone_ProviderLabel => Get(nameof(Settings_Phone_ProviderLabel));
+    public static string Settings_Phone_OceanEyesLabel => Get(nameof(Settings_Phone_OceanEyesLabel));
+    public static string Settings_Phone_VisionLabel => Get(nameof(Settings_Phone_VisionLabel));
+    public static string Settings_Phone_ClipboardLabel => Get(nameof(Settings_Phone_ClipboardLabel));
+    public static string Settings_Loading => Get(nameof(Settings_Loading));
+    public static string Settings_Overview_Title => Get(nameof(Settings_Overview_Title));
+    public static string Settings_Overview_Runtime => Get(nameof(Settings_Overview_Runtime));
+    public static string Settings_Overview_CaptureActive => Get(nameof(Settings_Overview_CaptureActive));
+    public static string Settings_Overview_Theme => Get(nameof(Settings_Overview_Theme));
+    public static string Settings_Overview_ThemeValue => Get(nameof(Settings_Overview_ThemeValue));
+    public static string Settings_Overview_Diagnostics => Get(nameof(Settings_Overview_Diagnostics));
+    public static string Settings_OpenConfigFolder => Get(nameof(Settings_OpenConfigFolder));
+    public static string Settings_OpenLogFolder => Get(nameof(Settings_OpenLogFolder));
+    public static string Settings_WindowControls_Title => Get(nameof(Settings_WindowControls_Title));
+    public static string Settings_WindowControls_Hint => Get(nameof(Settings_WindowControls_Hint));
+    public static string Settings_Hide => Get(nameof(Settings_Hide));
+    public static string Settings_Exit => Get(nameof(Settings_Exit));
+
+    // SettingsWindow.axaml.cs — status messages & dynamic strings
+    public static string Settings_Status_CurrentPrefix => Get(nameof(Settings_Status_CurrentPrefix));
+    public static string Settings_Status_LocationPrefix => Get(nameof(Settings_Status_LocationPrefix));
+    public static string Settings_Status_NoProvider => Get(nameof(Settings_Status_NoProvider));
+    public static string Settings_Status_Disabled => Get(nameof(Settings_Status_Disabled));
+    public static string Settings_Picker_SaveFolder => Get(nameof(Settings_Picker_SaveFolder));
+    public static string Settings_Key_Saved => Get(nameof(Settings_Key_Saved));
+    public static string Settings_Key_NotSet => Get(nameof(Settings_Key_NotSet));
+    public static string Settings_Key_NotRequired => Get(nameof(Settings_Key_NotRequired));
+    public static string Settings_Key_Custom => Get(nameof(Settings_Key_Custom));
+    public static string Settings_Key_NotRequired_Long => Get(nameof(Settings_Key_NotRequired_Long));
+    public static string Settings_Key_EnterFirst => Get(nameof(Settings_Key_EnterFirst));
+    public static string Settings_Status_HotkeyDisabled => Get(nameof(Settings_Status_HotkeyDisabled));
+    public static string Settings_Status_SpotlightDisabled => Get(nameof(Settings_Status_SpotlightDisabled));
+    public static string Settings_Status_ClipboardDisabled => Get(nameof(Settings_Status_ClipboardDisabled));
+    public static string Settings_Status_Registered => Get(nameof(Settings_Status_Registered));
+    public static string Settings_Status_Saved => Get(nameof(Settings_Status_Saved));
+    public static string Settings_Status_MouseChordOn => Get(nameof(Settings_Status_MouseChordOn));
+    public static string Settings_Status_MouseChordOff => Get(nameof(Settings_Status_MouseChordOff));
+    public static string Settings_Status_ToolbarShortcuts => Get(nameof(Settings_Status_ToolbarShortcuts));
+    public static string Settings_Unbound => Get(nameof(Settings_Unbound));
+    public static string Settings_Launcher_NoNewApps => Get(nameof(Settings_Launcher_NoNewApps));
+    public static string Settings_Launcher_Imported => Get(nameof(Settings_Launcher_Imported));
+    public static string Settings_Launcher_NoneImported => Get(nameof(Settings_Launcher_NoneImported));
+
+    // App.axaml.cs — tray menu
+    public static string Tray_OpenSettings => Get(nameof(Tray_OpenSettings));
+    public static string Tray_OpenConfig => Get(nameof(Tray_OpenConfig));
+    public static string Tray_OpenGallery => Get(nameof(Tray_OpenGallery));
+    public static string Tray_Restart => Get(nameof(Tray_Restart));
+    public static string Tray_Exit => Get(nameof(Tray_Exit));
+
+    // ClipboardHistoryWindow — axaml + code-behind
+    public static string Clip_Title => Get(nameof(Clip_Title));
+    public static string Clip_TabsKicker => Get(nameof(Clip_TabsKicker));
+    public static string Clip_FooterSettings => Get(nameof(Clip_FooterSettings));
+    public static string Clip_SearchPlaceholder => Get(nameof(Clip_SearchPlaceholder));
+    public static string Clip_CategoryDefault => Get(nameof(Clip_CategoryDefault));
+    public static string Clip_ImageLabel => Get(nameof(Clip_ImageLabel));
+    public static string Clip_ArchivedBadge => Get(nameof(Clip_ArchivedBadge));
+    public static string Clip_FooterSelect => Get(nameof(Clip_FooterSelect));
+    public static string Clip_FooterPaste => Get(nameof(Clip_FooterPaste));
+    public static string Clip_FooterMenu => Get(nameof(Clip_FooterMenu));
+    public static string Clip_FooterClose => Get(nameof(Clip_FooterClose));
+    // Nav tab labels (built-in)
+    public static string Clip_Tab_All => Get(nameof(Clip_Tab_All));
+    public static string Clip_Tab_Links => Get(nameof(Clip_Tab_Links));
+    public static string Clip_Tab_Code => Get(nameof(Clip_Tab_Code));
+    public static string Clip_Tab_Commands => Get(nameof(Clip_Tab_Commands));
+    public static string Clip_Tab_Sensitive => Get(nameof(Clip_Tab_Sensitive));
+    public static string Clip_Tab_Images => Get(nameof(Clip_Tab_Images));
+    public static string Clip_Tab_Favorites => Get(nameof(Clip_Tab_Favorites));
+    public static string Clip_NewTab => Get(nameof(Clip_NewTab));
+    // Group badges
+    public static string Clip_Group_Sensitive => Get(nameof(Clip_Group_Sensitive));
+    public static string Clip_Group_Link => Get(nameof(Clip_Group_Link));
+    public static string Clip_Group_Json => Get(nameof(Clip_Group_Json));
+    public static string Clip_Group_Code => Get(nameof(Clip_Group_Code));
+    public static string Clip_Group_Command => Get(nameof(Clip_Group_Command));
+    public static string Clip_Group_Contact => Get(nameof(Clip_Group_Contact));
+    public static string Clip_Group_Number => Get(nameof(Clip_Group_Number));
+    // Category header counts
+    public static string Clip_CategoryCount => Get(nameof(Clip_CategoryCount));
+    public static string Clip_CategoryHeader_Links => Get(nameof(Clip_CategoryHeader_Links));
+    public static string Clip_CategoryHeader_Code => Get(nameof(Clip_CategoryHeader_Code));
+    public static string Clip_CategoryHeader_Commands => Get(nameof(Clip_CategoryHeader_Commands));
+    public static string Clip_CategoryHeader_Sensitive => Get(nameof(Clip_CategoryHeader_Sensitive));
+    public static string Clip_CategoryHeader_Images => Get(nameof(Clip_CategoryHeader_Images));
+    public static string Clip_CategoryHeader_Favorites => Get(nameof(Clip_CategoryHeader_Favorites));
+    // Icon picker
+    public static string Clip_IconPicker_MyIcons => Get(nameof(Clip_IconPicker_MyIcons));
+    public static string Clip_IconPicker_Import => Get(nameof(Clip_IconPicker_Import));
+    public static string Clip_IconPicker_ImportHint => Get(nameof(Clip_IconPicker_ImportHint));
+    public static string Clip_IconPicker_Emoji => Get(nameof(Clip_IconPicker_Emoji));
+    public static string Clip_IconPicker_None => Get(nameof(Clip_IconPicker_None));
+    public static string Clip_IconPicker_ChooseFor => Get(nameof(Clip_IconPicker_ChooseFor));
+    public static string Clip_IconPicker_ImportTitle => Get(nameof(Clip_IconPicker_ImportTitle));
+    public static string Clip_IconPicker_Delete => Get(nameof(Clip_IconPicker_Delete));
+    // Tag management
+    public static string Clip_RenameTo => Get(nameof(Clip_RenameTo));
+    public static string Clip_NewTag => Get(nameof(Clip_NewTag));
+    public static string Clip_TagNamePlaceholder => Get(nameof(Clip_TagNamePlaceholder));
+    public static string Clip_Error_NameEmpty => Get(nameof(Clip_Error_NameEmpty));
+    public static string Clip_Error_NameExists => Get(nameof(Clip_Error_NameExists));
+    public static string Clip_IconOptional => Get(nameof(Clip_IconOptional));
+    public static string Clip_AddTag => Get(nameof(Clip_AddTag));
+    // Row context menu
+    public static string Clip_Row_CopyPaste => Get(nameof(Clip_Row_CopyPaste));
+    public static string Clip_Row_CopyKeepOpen => Get(nameof(Clip_Row_CopyKeepOpen));
+    public static string Clip_Row_Pin => Get(nameof(Clip_Row_Pin));
+    public static string Clip_Row_Unpin => Get(nameof(Clip_Row_Unpin));
+    public static string Clip_Row_Favorite => Get(nameof(Clip_Row_Favorite));
+    public static string Clip_Row_Unfavorite => Get(nameof(Clip_Row_Unfavorite));
+    public static string Clip_Row_ViewFull => Get(nameof(Clip_Row_ViewFull));
+    public static string Clip_Row_AddTag => Get(nameof(Clip_Row_AddTag));
+    public static string Clip_Row_RemoveTag => Get(nameof(Clip_Row_RemoveTag));
+    public static string Clip_Row_ViewImage => Get(nameof(Clip_Row_ViewImage));
+    public static string Clip_Row_MoveTo => Get(nameof(Clip_Row_MoveTo));
+    public static string Clip_Row_NoTabsHint => Get(nameof(Clip_Row_NoTabsHint));
+    public static string Clip_Row_NewTabForEntry => Get(nameof(Clip_Row_NewTabForEntry));
+    public static string Clip_Row_HidePlain => Get(nameof(Clip_Row_HidePlain));
+    public static string Clip_Row_RevealPlain => Get(nameof(Clip_Row_RevealPlain));
+    public static string Clip_Row_ClearOlder => Get(nameof(Clip_Row_ClearOlder));
+    public static string Clip_Tag_Rename => Get(nameof(Clip_Tag_Rename));
+    public static string Clip_Tag_SetIcon => Get(nameof(Clip_Tag_SetIcon));
+    public static string Clip_Tag_ClearIcon => Get(nameof(Clip_Tag_ClearIcon));
+    public static string Clip_Tag_Delete => Get(nameof(Clip_Tag_Delete));
+    // Clear older dialog
+    public static string Clip_ClearNone_Kept => Get(nameof(Clip_ClearNone_Kept));
+    public static string Clip_ClearNone_Empty => Get(nameof(Clip_ClearNone_Empty));
+    public static string Clip_ClearConfirm => Get(nameof(Clip_ClearConfirm));
+    public static string Clip_ClearConfirmButton => Get(nameof(Clip_ClearConfirmButton));
+
+    // LauncherEntryEditWindow
+    public static string LauncherEdit_Title => Get(nameof(LauncherEdit_Title));
+    public static string LauncherEdit_TitleNew => Get(nameof(LauncherEdit_TitleNew));
+    public static string LauncherEdit_Heading => Get(nameof(LauncherEdit_Heading));
+    public static string LauncherEdit_HeadingNew => Get(nameof(LauncherEdit_HeadingNew));
+    public static string LauncherEdit_HeadingEditName => Get(nameof(LauncherEdit_HeadingEditName));
+    public static string LauncherEdit_Subtitle => Get(nameof(LauncherEdit_Subtitle));
+    public static string LauncherEdit_SubtitleNew => Get(nameof(LauncherEdit_SubtitleNew));
+    public static string LauncherEdit_SubtitleEdit => Get(nameof(LauncherEdit_SubtitleEdit));
+    public static string LauncherEdit_Kind => Get(nameof(LauncherEdit_Kind));
+    public static string LauncherEdit_KindLocal => Get(nameof(LauncherEdit_KindLocal));
+    public static string LauncherEdit_KindWeb => Get(nameof(LauncherEdit_KindWeb));
+    public static string LauncherEdit_Name => Get(nameof(LauncherEdit_Name));
+    public static string LauncherEdit_NamePlaceholder => Get(nameof(LauncherEdit_NamePlaceholder));
+    public static string LauncherEdit_Target => Get(nameof(LauncherEdit_Target));
+    public static string LauncherEdit_TargetPlaceholder => Get(nameof(LauncherEdit_TargetPlaceholder));
+    public static string LauncherEdit_TargetPlaceholder_Exe => Get(nameof(LauncherEdit_TargetPlaceholder_Exe));
+    public static string LauncherEdit_TargetPlaceholder_Web => Get(nameof(LauncherEdit_TargetPlaceholder_Web));
+    public static string LauncherEdit_Args => Get(nameof(LauncherEdit_Args));
+    public static string LauncherEdit_ArgsPlaceholder => Get(nameof(LauncherEdit_ArgsPlaceholder));
+    public static string LauncherEdit_ArgsHint => Get(nameof(LauncherEdit_ArgsHint));
+    public static string LauncherEdit_WorkDir => Get(nameof(LauncherEdit_WorkDir));
+    public static string LauncherEdit_WorkDirPlaceholder => Get(nameof(LauncherEdit_WorkDirPlaceholder));
+    public static string LauncherEdit_IconPreview => Get(nameof(LauncherEdit_IconPreview));
+    public static string LauncherEdit_Picker_Exe => Get(nameof(LauncherEdit_Picker_Exe));
+    public static string LauncherEdit_Picker_ExeFilter => Get(nameof(LauncherEdit_Picker_ExeFilter));
+    public static string LauncherEdit_Picker_AllFilter => Get(nameof(LauncherEdit_Picker_AllFilter));
+    public static string LauncherEdit_Picker_WorkDir => Get(nameof(LauncherEdit_Picker_WorkDir));
+
+    // PromptTemplateEditWindow
+    public static string PromptEdit_Title => Get(nameof(PromptEdit_Title));
+    public static string PromptEdit_TitleNew => Get(nameof(PromptEdit_TitleNew));
+    public static string PromptEdit_TitleEdit => Get(nameof(PromptEdit_TitleEdit));
+    public static string PromptEdit_Heading => Get(nameof(PromptEdit_Heading));
+    public static string PromptEdit_HeadingNew => Get(nameof(PromptEdit_HeadingNew));
+    public static string PromptEdit_HeadingEditName => Get(nameof(PromptEdit_HeadingEditName));
+    public static string PromptEdit_Subtitle => Get(nameof(PromptEdit_Subtitle));
+    public static string PromptEdit_SubtitleNew => Get(nameof(PromptEdit_SubtitleNew));
+    public static string PromptEdit_SubtitleEdit => Get(nameof(PromptEdit_SubtitleEdit));
+    public static string PromptEdit_Name => Get(nameof(PromptEdit_Name));
+    public static string PromptEdit_NamePlaceholder => Get(nameof(PromptEdit_NamePlaceholder));
+    public static string PromptEdit_AllowThinking => Get(nameof(PromptEdit_AllowThinking));
+    public static string PromptEdit_ShortcutLabel => Get(nameof(PromptEdit_ShortcutLabel));
+    public static string PromptEdit_ShortcutHint => Get(nameof(PromptEdit_ShortcutHint));
+    public static string PromptEdit_Reset => Get(nameof(PromptEdit_Reset));
+    public static string PromptEdit_DefaultHint_Translate => Get(nameof(PromptEdit_DefaultHint_Translate));
+    public static string PromptEdit_DefaultHint => Get(nameof(PromptEdit_DefaultHint));
+
+    // PinnedScreenshotWindow
+    public static string Pinned_Title => Get(nameof(Pinned_Title));
+    public static string Pinned_CopyImage => Get(nameof(Pinned_CopyImage));
+    public static string Pinned_CloseAll => Get(nameof(Pinned_CloseAll));
+
+    // RegionSelectOverlay
+    public static string Region_Title => Get(nameof(Region_Title));
+    public static string Region_HintPrimary => Get(nameof(Region_HintPrimary));
+    public static string Region_HintSecondary => Get(nameof(Region_HintSecondary));
+
+    // SelectionRuntime — toolbar diagnostic status
+    public static string Runtime_Status_Unrecognized => Get(nameof(Runtime_Status_Unrecognized));
+    public static string Runtime_Status_CopiedColor => Get(nameof(Runtime_Status_CopiedColor));
+    public static string Runtime_Status_AnnotateIntro => Get(nameof(Runtime_Status_AnnotateIntro));
+    public static string Runtime_Status_AnnotateExited => Get(nameof(Runtime_Status_AnnotateExited));
+    public static string Runtime_Status_PinnedCopied => Get(nameof(Runtime_Status_PinnedCopied));
+    public static string Runtime_Status_AnnotateCurrent => Get(nameof(Runtime_Status_AnnotateCurrent));
+    public static string Runtime_Status_OcrFailed => Get(nameof(Runtime_Status_OcrFailed));
+    public static string Runtime_Status_MouseHookFailed => Get(nameof(Runtime_Status_MouseHookFailed));
+    public static string Runtime_Tool_Number => Get(nameof(Runtime_Tool_Number));
+    public static string Runtime_Tool_Rectangle => Get(nameof(Runtime_Tool_Rectangle));
+    public static string Runtime_Tool_Ellipse => Get(nameof(Runtime_Tool_Ellipse));
+    public static string Runtime_Tool_Arrow => Get(nameof(Runtime_Tool_Arrow));
+    public static string Runtime_Tool_Pen => Get(nameof(Runtime_Tool_Pen));
+    public static string Runtime_Tool_Highlight => Get(nameof(Runtime_Tool_Highlight));
+    public static string Runtime_Tool_Unknown => Get(nameof(Runtime_Tool_Unknown));
+    public static string Runtime_Annotation_ToolHint => Get(nameof(Runtime_Annotation_ToolHint));
+
+    // InstalledAppsScanDialog
+    public static string ScanDialog_Title => Get(nameof(ScanDialog_Title));
+    public static string ScanDialog_Heading => Get(nameof(ScanDialog_Heading));
+    public static string ScanDialog_Subtitle => Get(nameof(ScanDialog_Subtitle));
+    public static string ScanDialog_SearchPlaceholder => Get(nameof(ScanDialog_SearchPlaceholder));
+    public static string ScanDialog_SelectAll => Get(nameof(ScanDialog_SelectAll));
+    public static string ScanDialog_Import => Get(nameof(ScanDialog_Import));
+    public static string ScanDialog_Count => Get(nameof(ScanDialog_Count));
 }

@@ -106,17 +106,17 @@ public partial class SettingsWindow : Window
         (PageTitleText.Text, PageSubtitleText.Text) = page switch
         {
             SettingsPage.General =>
-                ("General", "Hotkeys, capture behavior, and runtime status."),
+                (Strings.Settings_PageTitle_General, Strings.Settings_PageSubtitle_General),
             SettingsPage.Provider =>
-                ("Translation", "Providers, connection settings, and encrypted API keys."),
+                (Strings.Settings_PageTitle_Provider, Strings.Settings_PageSubtitle_Provider),
             SettingsPage.Functions =>
-                ("Actions", "Commands shared by the selection toolbar and Ocean Eyes."),
+                (Strings.Settings_PageTitle_Functions, Strings.Settings_PageSubtitle_Functions),
             SettingsPage.Vision =>
-                ("Vision", "OCR model, prompt, and UI Automation strategy."),
+                (Strings.Settings_PageTitle_Vision, Strings.Settings_PageSubtitle_Vision),
             SettingsPage.Launcher =>
-                ("Launcher", "Apps and web shortcuts."),
+                (Strings.Settings_PageTitle_Launcher, Strings.Settings_PageSubtitle_Launcher),
             SettingsPage.ClipboardHistory =>
-                ("Clipboard", "Clipboard history hotkey, privacy, and retention."),
+                (Strings.Settings_PageTitle_Clipboard, Strings.Settings_PageSubtitle_Clipboard),
             _ => throw new ArgumentOutOfRangeException(nameof(page)),
         };
 
@@ -337,7 +337,7 @@ public partial class SettingsWindow : Window
             ShortcutKeyComboBox.SelectedItem = OceanEyesTriggerSettings.Default.Key;
         }
         MouseChordToggle.IsChecked = settings.MouseChordEnabled;
-        ShortcutStatusText.Text = statusMessage ?? $"Current: {settings.ToDisplayText()}";
+        ShortcutStatusText.Text = statusMessage ?? string.Format(Strings.Settings_Status_CurrentPrefix, settings.ToDisplayText());
         SummaryShortcutText.Text = settings.ToDisplayText();
         SetFeedbackTone(ShortcutStatusText, isError);
     }
@@ -371,7 +371,7 @@ public partial class SettingsWindow : Window
         OceanEyesAutoSaveToggle.IsChecked = settings.AutoSaveEnabled;
         OceanEyesClipboardToggle.IsChecked = settings.CopyToClipboardEnabled;
         OceanEyesUiaAssistToggle.IsChecked = settings.UiaAssistEnabled;
-        OceanEyesCaptureStatusText.Text = statusMessage ?? $"Location: {settings.SavePath}";
+        OceanEyesCaptureStatusText.Text = statusMessage ?? string.Format(Strings.Settings_Status_LocationPrefix, settings.SavePath);
         SetFeedbackTone(OceanEyesCaptureStatusText, isError);
     }
 
@@ -403,7 +403,7 @@ public partial class SettingsWindow : Window
         {
             SpotlightShortcutKeyComboBox.SelectedItem = SpotlightTriggerSettings.Default.Key;
         }
-        SpotlightShortcutStatusText.Text = statusMessage ?? $"Current: {settings.ToDisplayText()}";
+        SpotlightShortcutStatusText.Text = statusMessage ?? string.Format(Strings.Settings_Status_CurrentPrefix, settings.ToDisplayText());
         SetFeedbackTone(SpotlightShortcutStatusText, isError);
     }
 
@@ -430,10 +430,10 @@ public partial class SettingsWindow : Window
         {
             ClipboardHistoryShortcutKeyComboBox.SelectedItem = ClipboardHistoryTriggerSettings.Default.Key;
         }
-        ClipboardHistoryShortcutStatusText.Text = statusMessage ?? $"Current: {settings.ToDisplayText()}";
+        ClipboardHistoryShortcutStatusText.Text = statusMessage ?? string.Format(Strings.Settings_Status_CurrentPrefix, settings.ToDisplayText());
         SummaryClipboardText.Text = settings.KeyboardShortcutEnabled
             ? settings.ToDisplayText()
-            : "Disabled";
+            : Strings.Settings_Status_Disabled;
         SetFeedbackTone(ClipboardHistoryShortcutStatusText, isError);
     }
 
@@ -668,7 +668,7 @@ public partial class SettingsWindow : Window
 
         ProviderProfileEntry? activeProvider = providers.FirstOrDefault(p => p.Id == currentId);
         SummaryProviderText.Text = activeProvider is null
-            ? "No provider selected"
+            ? Strings.Settings_Status_NoProvider
             : $"{activeProvider.Name}\n{activeProvider.DefaultModel}";
 
         // Rebuild ComboBox options. Keep the label short: just the provider
@@ -773,7 +773,7 @@ public partial class SettingsWindow : Window
             ?? settings.ProviderId;
         SummaryVisionText.Text = settings.Enabled
             ? $"{visionProviderName}\n{settings.Model}"
-            : "Disabled";
+            : Strings.Settings_Status_Disabled;
     }
 
     private void OnSaveVisionClick(object? sender, RoutedEventArgs e)
@@ -870,7 +870,7 @@ public partial class SettingsWindow : Window
         var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(
             new Avalonia.Platform.Storage.FolderPickerOpenOptions
             {
-                Title = "Choose Ocean Eyes save folder",
+                Title = Strings.Settings_Picker_SaveFolder,
                 AllowMultiple = false,
             });
 
@@ -991,7 +991,7 @@ public partial class SettingsWindow : Window
         {
             settings.Validate();
             ClipboardHistorySettingsSaved?.Invoke(settings);
-            ClipboardHistorySettingsStatusText.Text = "已保存。";
+            ClipboardHistorySettingsStatusText.Text = Strings.Common_Status_Saved;
             SetFeedbackTone(ClipboardHistorySettingsStatusText, isError: false);
         }
         catch (ArgumentOutOfRangeException exception)
@@ -1070,7 +1070,7 @@ public partial class SettingsWindow : Window
             BaseUrlInput.Text = string.Empty;
             ModelInput.Text = string.Empty;
             ApiKeyInput.Text = string.Empty;
-            ApiKeyStatusText.Text = "No provider selected";
+            ApiKeyStatusText.Text = Strings.Settings_Status_NoProvider;
             SetFeedbackTone(ApiKeyStatusText, isError: true);
             return;
         }
@@ -1090,12 +1090,12 @@ public partial class SettingsWindow : Window
         if (!string.IsNullOrEmpty(entry.ApiKeyReference) && _hasKeyChecker is not null)
         {
             bool hasKey = await _hasKeyChecker(entry.ApiKeyReference);
-            ApiKeyStatusText.Text = hasKey ? "Key saved ✓" : "Key not set";
+            ApiKeyStatusText.Text = hasKey ? Strings.Settings_Key_Saved : Strings.Settings_Key_NotSet;
             SetFeedbackTone(ApiKeyStatusText, isError: !hasKey);
         }
         else
         {
-            ApiKeyStatusText.Text = "No key required";
+            ApiKeyStatusText.Text = Strings.Settings_Key_NotRequired;
             SetFeedbackTone(ApiKeyStatusText, isError: false);
         }
     }
@@ -1164,7 +1164,7 @@ public partial class SettingsWindow : Window
 
         menu.Items.Add(new Separator());
 
-        var custom = new MenuItem { Header = "Custom…" };
+        var custom = new MenuItem { Header = Strings.Settings_Key_Custom };
         custom.Click += (_, _) => AddProviderFromPresetRequested?.Invoke(ProviderPresets.CustomPresetId);
         menu.Items.Add(custom);
 
@@ -1176,7 +1176,7 @@ public partial class SettingsWindow : Window
         ProviderProfileEntry? entry = GetSelectedProvider();
         if (entry is null || string.IsNullOrEmpty(entry.ApiKeyReference))
         {
-            ApiKeyStatusText.Text = "This provider does not require a key";
+            ApiKeyStatusText.Text = Strings.Settings_Key_NotRequired_Long;
             SetFeedbackTone(ApiKeyStatusText, isError: false);
             return;
         }
@@ -1184,7 +1184,7 @@ public partial class SettingsWindow : Window
         string key = ApiKeyInput.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(key))
         {
-            ApiKeyStatusText.Text = "Enter a key first";
+            ApiKeyStatusText.Text = Strings.Settings_Key_EnterFirst;
             SetFeedbackTone(ApiKeyStatusText, isError: true);
             return;
         }

@@ -555,7 +555,7 @@ public partial class App : Application
         if (candidates.Count == 0)
         {
             // Nothing new — don't even open the dialog.
-            _settingsWindow.SetLauncherSettingsStatus("没有发现新的可导入应用。", isError: false);
+            _settingsWindow.SetLauncherSettingsStatus(Strings.Settings_Launcher_NoNewApps, isError: false);
             return;
         }
 
@@ -582,7 +582,7 @@ public partial class App : Application
         if (_settingsWindow is not null)
         {
             _settingsWindow.SetLauncherSettingsStatus(
-                added > 0 ? $"已导入 {added} 个应用。" : "没有新应用被导入。",
+                added > 0 ? string.Format(Strings.Settings_Launcher_Imported, added) : Strings.Settings_Launcher_NoneImported,
                 isError: false);
         }
     }
@@ -786,7 +786,7 @@ public partial class App : Application
         {
             _settingsWindow?.SetOceanEyesTriggerSettings(
                 _oceanEyesTrigger,
-                "Keyboard hotkey disabled.",
+                Strings.Settings_Status_HotkeyDisabled,
                 isError: false);
             return;
         }
@@ -796,7 +796,7 @@ public partial class App : Application
             _oceanEyesHotKey = CreateStartedHotKey(_oceanEyesTrigger);
             _settingsWindow?.SetOceanEyesTriggerSettings(
                 _oceanEyesTrigger,
-                $"Registered: {_oceanEyesTrigger.ToDisplayText()}",
+                string.Format(Strings.Settings_Status_Registered, _oceanEyesTrigger.ToDisplayText()),
                 isError: false);
         }
         catch (Exception exception) when (exception is GlobalHotKeyRegistrationException or TimeoutException)
@@ -853,7 +853,7 @@ public partial class App : Application
         {
             _settingsWindow?.SetSpotlightTriggerSettings(
                 _spotlightTriggerSettings,
-                "Spotlight hotkey disabled.",
+                Strings.Settings_Status_SpotlightDisabled,
                 isError: false);
             return;
         }
@@ -863,7 +863,7 @@ public partial class App : Application
             _spotlightHotKey = CreateStartedSpotlightHotKey(_spotlightTriggerSettings);
             _settingsWindow?.SetSpotlightTriggerSettings(
                 _spotlightTriggerSettings,
-                $"Registered: {_spotlightTriggerSettings.ToDisplayText()}",
+                string.Format(Strings.Settings_Status_Registered, _spotlightTriggerSettings.ToDisplayText()),
                 isError: false);
         }
         catch (Exception exception) when (exception is GlobalHotKeyRegistrationException or TimeoutException)
@@ -954,8 +954,8 @@ public partial class App : Application
         _settingsWindow?.SetSpotlightTriggerSettings(
             requested,
             requested.KeyboardShortcutEnabled
-                ? $"Registered: {requested.ToDisplayText()}"
-                : "Spotlight hotkey disabled.",
+                ? string.Format(Strings.Settings_Status_Registered, requested.ToDisplayText())
+                : Strings.Settings_Status_SpotlightDisabled,
             isError: false);
     }
 
@@ -982,7 +982,7 @@ public partial class App : Application
         {
             _settingsWindow?.SetClipboardHistoryTriggerSettings(
                 _clipboardHistoryTriggerSettings,
-                "Clipboard history hotkey disabled.",
+                Strings.Settings_Status_ClipboardDisabled,
                 isError: false);
             return;
         }
@@ -992,7 +992,7 @@ public partial class App : Application
             _clipboardHistoryHotKey = CreateStartedClipboardHistoryHotKey(_clipboardHistoryTriggerSettings);
             _settingsWindow?.SetClipboardHistoryTriggerSettings(
                 _clipboardHistoryTriggerSettings,
-                $"Registered: {_clipboardHistoryTriggerSettings.ToDisplayText()}",
+                string.Format(Strings.Settings_Status_Registered, _clipboardHistoryTriggerSettings.ToDisplayText()),
                 isError: false);
         }
         catch (Exception exception) when (exception is GlobalHotKeyRegistrationException or TimeoutException)
@@ -1151,8 +1151,8 @@ public partial class App : Application
         _settingsWindow?.SetClipboardHistoryTriggerSettings(
             requested,
             requested.KeyboardShortcutEnabled
-                ? $"Registered: {requested.ToDisplayText()}"
-                : "Clipboard history hotkey disabled.",
+                ? string.Format(Strings.Settings_Status_Registered, requested.ToDisplayText())
+                : Strings.Settings_Status_ClipboardDisabled,
             isError: false);
     }
 
@@ -1182,7 +1182,7 @@ public partial class App : Application
         _clipboardHistorySettings = requested;
         _clipboardHistoryService?.UpdateSettings(requested);
         _settingsWindow?.SetClipboardHistorySettings(requested);
-        _settingsWindow?.SetClipboardHistorySettingsStatus("已保存。", isError: false);
+        _settingsWindow?.SetClipboardHistorySettingsStatus(Strings.Common_Status_Saved, isError: false);
     }
 
     private void OnClipboardHistoryClearRequested()
@@ -1412,9 +1412,9 @@ public partial class App : Application
         _oceanEyesTrigger = requested;
         _runtime?.SetMouseChordEnabled(requested.MouseChordEnabled);
         string shortcutState = requested.KeyboardShortcutEnabled
-            ? $"Saved: {requested.ToDisplayText()}"
-            : "Keyboard hotkey disabled";
-        string chordState = requested.MouseChordEnabled ? "Mouse chord on" : "Mouse chord off";
+            ? string.Format(Strings.Settings_Status_Saved, requested.ToDisplayText())
+            : Strings.Settings_Status_HotkeyDisabled;
+        string chordState = requested.MouseChordEnabled ? Strings.Settings_Status_MouseChordOn : Strings.Settings_Status_MouseChordOff;
         _settingsWindow?.SetOceanEyesTriggerSettings(
             requested,
             $"{shortcutState} · {chordState}",
@@ -1449,12 +1449,17 @@ public partial class App : Application
 
         _oceanEyesCapture = requested;
         _runtime?.SetOceanEyesCaptureSettings(requested);
+        // Compose a localized status line. The "Saved: {path}" prefix uses the
+        // shared Settings_Status_Saved format string; the three toggle suffixes
+        // reuse the same labels shown on the card itself (Auto-save / Clipboard
+        // / UIA Snap) so the status echoes what the user just toggled. The
+        // "off" branches stay literal English for now (low-traffic diagnostic).
         _settingsWindow?.SetOceanEyesCaptureSettings(
             requested,
-            "Saved: " + requested.SavePath +
-            (requested.AutoSaveEnabled ? " · Auto-save" : " · No file") +
-            (requested.CopyToClipboardEnabled ? " · Clipboard" : " · No clipboard") +
-            (requested.UiaAssistEnabled ? " · UIA snap" : " · Free selection"),
+            string.Format(Strings.Settings_Status_Saved, requested.SavePath) +
+            (requested.AutoSaveEnabled ? " · " + Strings.Settings_AutoSave : " · No file") +
+            (requested.CopyToClipboardEnabled ? " · " + Strings.Settings_ClipboardToggle : " · No clipboard") +
+            (requested.UiaAssistEnabled ? " · " + Strings.Settings_UiaSnap : " · Free selection"),
             isError: false);
     }
 
@@ -1490,13 +1495,12 @@ public partial class App : Application
         _runtime?.SetToolbarShortcuts(requested);
         _settingsWindow?.SetToolbarShortcuts(
             requested,
-            "Saved: Prompt " + DisplayKey(requested.PromptKey) +
-            " · Copy " + DisplayKey(requested.CopyKey),
+            string.Format(Strings.Settings_Status_ToolbarShortcuts, DisplayKey(requested.PromptKey), DisplayKey(requested.CopyKey)),
             isError: false);
     }
 
-    /// <summary>Empty key = disabled, shown as "Unbound" in status lines.</summary>
-    private static string DisplayKey(string? key) => string.IsNullOrEmpty(key) ? "Unbound" : key;
+    /// <summary>Empty key = disabled, shown as the localized "Unbound" word in status lines.</summary>
+    private static string DisplayKey(string? key) => string.IsNullOrEmpty(key) ? Strings.Settings_Unbound : key;
 
     /// <summary>
     /// R40 Ocean Eyes: region confirmed in the overlay → capture PNG → show
@@ -1788,10 +1792,10 @@ public partial class App : Application
 
     private TrayIcon CreateTrayIcon()
     {
-        var openSettings = new NativeMenuItem("Open BYH Settings");
+        var openSettings = new NativeMenuItem(Strings.Tray_OpenSettings);
         openSettings.Click += (_, _) => RefreshAndShowSettings();
 
-        var openConfig = new NativeMenuItem("Open Config Folder");
+        var openConfig = new NativeMenuItem(Strings.Tray_OpenConfig);
         openConfig.Click += (_, _) =>
         {
             if (_paths is not null)
@@ -1802,13 +1806,13 @@ public partial class App : Application
 
         // R49: screenshot gallery entry. Works cold-start — does not need an
         // Ocean Eyes session. ShowGallery reads SavePath from settings.
-        var openGallery = new NativeMenuItem("Open Screenshot Gallery");
+        var openGallery = new NativeMenuItem(Strings.Tray_OpenGallery);
         openGallery.Click += (_, _) => _runtime?.ShowGallery();
 
-        var restart = new NativeMenuItem("Restart BYH");
+        var restart = new NativeMenuItem(Strings.Tray_Restart);
         restart.Click += (_, _) => RequestRestart();
 
-        var exit = new NativeMenuItem("Exit BYH");
+        var exit = new NativeMenuItem(Strings.Tray_Exit);
         exit.Click += (_, _) => RequestExit();
 
         var menu = new NativeMenu();

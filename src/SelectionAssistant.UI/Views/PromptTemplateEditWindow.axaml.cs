@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using SelectionAssistant.Core.I18n;
 
 namespace SelectionAssistant.UI.Views;
 
@@ -37,9 +38,9 @@ public partial class PromptTemplateEditWindow : Window
     public void ShowForNew()
     {
         _isNew = true;
-        Title = "BYH · 新增功能";
-        TitleText.Text = "新增功能";
-        SubtitleText.Text = "输入功能名称和提示词，保存后即可在快捷工具面板使用。";
+        Title = Strings.PromptEdit_TitleNew;
+        TitleText.Text = Strings.PromptEdit_HeadingNew;
+        SubtitleText.Text = Strings.PromptEdit_SubtitleNew;
         NamePanel.IsVisible = true;
         DefaultHintText.IsVisible = false;
         ResetButton.IsVisible = false;
@@ -71,9 +72,9 @@ public partial class PromptTemplateEditWindow : Window
         _actionId = actionId;
         _defaultPrompt = defaultPrompt;
 
-        Title = "BYH · 编辑功能";
-        TitleText.Text = $"编辑「{actionName}」";
-        SubtitleText.Text = "修改后所有 Provider 立即生效。";
+        Title = Strings.PromptEdit_TitleEdit;
+        TitleText.Text = string.Format(Strings.PromptEdit_HeadingEditName, actionName);
+        SubtitleText.Text = Strings.PromptEdit_SubtitleEdit;
         NamePanel.IsVisible = false;
         DefaultHintText.IsVisible = true;
         ResetButton.IsVisible = true;
@@ -82,8 +83,8 @@ public partial class PromptTemplateEditWindow : Window
         ShortcutInput.Text = currentShortcut ?? string.Empty;
 
         string hint = string.IsNullOrEmpty(defaultPrompt)
-            ? "内置默认：（翻译使用 provider 内置模板，留空即可）"
-            : $"内置默认：{Truncate(defaultPrompt, 100)}";
+            ? Strings.PromptEdit_DefaultHint_Translate
+            : string.Format(Strings.PromptEdit_DefaultHint, Truncate(defaultPrompt, 100));
         DefaultHintText.Text = hint;
 
         Show();

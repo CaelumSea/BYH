@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.PromptTemplateEditWindow"
-        Title="BYH · 编辑提示词"
+        Title="{x:Static i18n:Strings.PromptEdit_Title}"
         Width="520"
         Height="380"
         MinWidth="420"
@@ -15,22 +16,22 @@
 
       <StackPanel Grid.Row="0" Spacing="4">
         <TextBlock x:Name="TitleText"
-                   Text="编辑提示词"
+                   Text="{x:Static i18n:Strings.PromptEdit_Heading}"
                    Classes="DisplayTitle"
                    FontSize="18" />
         <TextBlock x:Name="SubtitleText"
-                   Text="修改后所有 Provider 立即生效。留空（仅翻译）= 用内置翻译模板。"
+                   Text="{x:Static i18n:Strings.PromptEdit_Subtitle}"
                    Classes="Secondary"
                    FontSize="11"
                    TextWrapping="Wrap" />
       </StackPanel>
 
       <StackPanel Grid.Row="1" x:Name="NamePanel" Spacing="4" IsVisible="False">
-        <TextBlock Text="功能名称"
+        <TextBlock Text="{x:Static i18n:Strings.PromptEdit_Name}"
                    Classes="Muted"
                    FontSize="11" />
         <TextBox x:Name="NameInput"
-                 PlaceholderText="例如：润色、改写、续写…"
+                 PlaceholderText="{x:Static i18n:Strings.PromptEdit_NamePlaceholder}"
                  FontSize="13" />
       </StackPanel>
 
@@ -48,14 +49,14 @@
 
       <CheckBox Grid.Row="4"
                 x:Name="ThinkingCheckBox"
-                Content="允许模型思考（思考模式会增加延迟；适合解释/总结，翻译一般关闭）"
+                Content="{x:Static i18n:Strings.PromptEdit_AllowThinking}"
                 FontSize="11"
                 IsChecked="False" />
 
       <!-- R34: per-template toolbar shortcut. Single character; fires while the
            selection toolbar is visible. Blank = no shortcut for this action. -->
       <StackPanel Grid.Row="5" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-        <TextBlock Text="工具栏快捷键："
+        <TextBlock Text="{x:Static i18n:Strings.PromptEdit_ShortcutLabel}"
                    Classes="Muted"
                    FontSize="11"
                    VerticalAlignment="Center" />
@@ -63,8 +64,8 @@
                  MaxLength="1"
                  Width="40"
                  FontSize="13"
-                 PlaceholderText="无" />
-        <TextBlock Text="（划词弹出工具栏后按此键即触发该动作；留空则不绑定）"
+                 PlaceholderText="{x:Static i18n:Strings.Common_Placeholder_None}" />
+        <TextBlock Text="{x:Static i18n:Strings.PromptEdit_ShortcutHint}"
                    Classes="Secondary"
                    FontSize="10"
                    VerticalAlignment="Center"
@@ -75,15 +76,15 @@
         <Button Grid.Column="0"
                 x:Name="ResetButton"
                 Classes="DangerQuiet"
-                Content="恢复默认"
+                Content="{x:Static i18n:Strings.PromptEdit_Reset}"
                 Click="OnResetClick" />
         <Button Grid.Column="2"
-                Content="取消"
+                Content="{x:Static i18n:Strings.Common_Cancel}"
                 Click="OnCancelClick" />
         <Button Grid.Column="3"
                 x:Name="SaveButton"
                 Classes="Primary"
-                Content="保存"
+                Content="{x:Static i18n:Strings.Common_Save}"
                 Click="OnSaveClick" />
       </Grid>
     </Grid>

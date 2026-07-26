@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.LauncherEntryEditWindow"
-        Title="BYH · 编辑启动项"
+        Title="{x:Static i18n:Strings.LauncherEdit_Title}"
         Width="520"
         Height="460"
         MinWidth="420"
@@ -15,11 +16,11 @@
 
       <StackPanel Grid.Row="0" Spacing="4">
         <TextBlock x:Name="TitleText"
-                   Text="编辑启动项"
+                   Text="{x:Static i18n:Strings.LauncherEdit_Heading}"
                    Classes="DisplayTitle"
                    FontSize="18" />
         <TextBlock x:Name="SubtitleText"
-                   Text="配置启动参数后，可在 Spotlight 搜索面板一键启动。"
+                   Text="{x:Static i18n:Strings.LauncherEdit_Subtitle}"
                    Classes="Secondary"
                    FontSize="11"
                    TextWrapping="Wrap" />
@@ -27,15 +28,15 @@
 
       <!-- Type selection -->
       <StackPanel Grid.Row="1" Spacing="4">
-        <TextBlock Text="类型" Classes="Muted" FontSize="11" />
+        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_Kind}" Classes="Muted" FontSize="11" />
         <StackPanel Orientation="Horizontal" Spacing="16">
           <RadioButton x:Name="LocalAppRadio"
-                       Content="本地软件"
+                       Content="{x:Static i18n:Strings.LauncherEdit_KindLocal}"
                        GroupName="LauncherKind"
                        IsChecked="True"
                        IsCheckedChanged="OnKindCheckedChanged" />
           <RadioButton x:Name="WebUrlRadio"
-                       Content="网页"
+                       Content="{x:Static i18n:Strings.LauncherEdit_KindWeb}"
                        GroupName="LauncherKind"
                        IsCheckedChanged="OnKindCheckedChanged" />
         </StackPanel>
@@ -43,50 +44,50 @@
 
       <!-- Name -->
       <StackPanel Grid.Row="2" Spacing="4">
-        <TextBlock Text="名称" Classes="Muted" FontSize="11" />
+        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_Name}" Classes="Muted" FontSize="11" />
         <TextBox x:Name="NameInput"
-                 PlaceholderText="例如：记事本、Google 翻译…"
+                 PlaceholderText="{x:Static i18n:Strings.LauncherEdit_NamePlaceholder}"
                  FontSize="13" />
       </StackPanel>
 
       <!-- Target -->
       <StackPanel Grid.Row="3" Spacing="4">
-        <TextBlock x:Name="TargetLabel" Text="目标" Classes="Muted" FontSize="11" />
+        <TextBlock x:Name="TargetLabel" Text="{x:Static i18n:Strings.LauncherEdit_Target}" Classes="Muted" FontSize="11" />
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
           <TextBox x:Name="TargetInput"
-                   PlaceholderText="程序路径或网页地址"
+                   PlaceholderText="{x:Static i18n:Strings.LauncherEdit_TargetPlaceholder}"
                    FontSize="13" />
           <Button Grid.Column="1"
                   x:Name="BrowseTargetButton"
-                  Content="浏览…"
+                  Content="{x:Static i18n:Strings.Common_Browse}"
                   Click="OnBrowseTargetClick" />
         </Grid>
       </StackPanel>
 
       <!-- Arguments -->
       <StackPanel Grid.Row="4" Spacing="4">
-        <TextBlock Text="参数" Classes="Muted" FontSize="11" />
+        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_Args}" Classes="Muted" FontSize="11" />
         <TextBox x:Name="ArgumentsInput"
-                 PlaceholderText="支持 {clip} {sel} {prompt:提示语}"
+                 PlaceholderText="{x:Static i18n:Strings.LauncherEdit_ArgsPlaceholder}"
                  FontSize="13" />
       </StackPanel>
 
       <!-- Working directory (local app only) -->
       <StackPanel Grid.Row="5" x:Name="WorkingDirectoryPanel" Spacing="4" IsVisible="False">
-        <TextBlock Text="工作目录" Classes="Muted" FontSize="11" />
+        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_WorkDir}" Classes="Muted" FontSize="11" />
         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
           <TextBox x:Name="WorkingDirectoryInput"
-                   PlaceholderText="留空则使用程序所在目录"
+                   PlaceholderText="{x:Static i18n:Strings.LauncherEdit_WorkDirPlaceholder}"
                    FontSize="13" />
           <Button Grid.Column="1"
-                  Content="浏览…"
+                  Content="{x:Static i18n:Strings.Common_Browse}"
                   Click="OnBrowseWorkDirClick" />
         </Grid>
       </StackPanel>
 
       <!-- Icon preview -->
       <StackPanel Grid.Row="6" x:Name="IconPreviewPanel" Spacing="4" IsVisible="False">
-        <TextBlock Text="图标预览" Classes="Muted" FontSize="11" />
+        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_IconPreview}" Classes="Muted" FontSize="11" />
         <Border Width="24" Height="24" CornerRadius="4" ClipToBounds="True">
           <Image x:Name="IconPreview" Width="24" Height="24" />
         </Border>
@@ -94,18 +95,18 @@
 
       <!-- Save / Cancel -->
       <Grid Grid.Row="7" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-        <TextBlock Text="参数中 {clip} 会替换为剪贴板内容，{sel} 替换为选中文本。"
+        <TextBlock Text="{x:Static i18n:Strings.LauncherEdit_ArgsHint}"
                    Classes="Muted"
                    FontSize="9"
                    VerticalAlignment="Center"
                    TextTrimming="CharacterEllipsis" />
         <Button Grid.Column="1"
-                Content="取消"
+                Content="{x:Static i18n:Strings.Common_Cancel}"
                 Click="OnCancelClick" />
         <Button Grid.Column="2"
                 x:Name="SaveButton"
                 Classes="Primary"
-                Content="保存"
+                Content="{x:Static i18n:Strings.Common_Save}"
                 Click="OnSaveClick" />
       </Grid>
     </Grid>

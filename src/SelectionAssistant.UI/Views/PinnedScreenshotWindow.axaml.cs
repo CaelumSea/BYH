@@ -14,6 +14,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Media.Transformation;
 using Avalonia.Threading;
 using SelectionAssistant.Core.Annotation;
+using SelectionAssistant.Core.I18n;
 
 namespace SelectionAssistant.UI.Views;
 
@@ -698,13 +699,13 @@ public partial class PinnedScreenshotWindow : Window, IDisposable
     /// </summary>
     private ContextMenu BuildContextMenu()
     {
-        var copy = new MenuItem { Header = "复制图像" };
+        var copy = new MenuItem { Header = Strings.Pinned_CopyImage };
         copy.Click += (_, _) => RequestCopy?.Invoke();
 
-        var close = new MenuItem { Header = "关闭" };
+        var close = new MenuItem { Header = Strings.Common_Close };
         close.Click += (_, _) => RequestClose?.Invoke();
 
-        var closeAll = new MenuItem { Header = "关闭所有" };
+        var closeAll = new MenuItem { Header = Strings.Pinned_CloseAll };
         closeAll.Click += (_, _) => RequestCloseAll?.Invoke();
 
         var menu = new ContextMenu();

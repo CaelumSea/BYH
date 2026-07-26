@@ -14,6 +14,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SelectionAssistant.Core.Clipboard;
+using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Infrastructure.Configuration;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -580,13 +581,13 @@ public partial class ClipboardHistoryWindow : Window
 
     private static string GroupToLabel(ClipboardGroup group) => group switch
     {
-        ClipboardGroup.Sensitive => "Sensitive",
-        ClipboardGroup.Link => "Link",
-        ClipboardGroup.Json => "JSON",
-        ClipboardGroup.Code => "Code",
-        ClipboardGroup.Shell => "Command",
-        ClipboardGroup.Contact => "Contact",
-        ClipboardGroup.Number => "Number",
+        ClipboardGroup.Sensitive => Strings.Clip_Group_Sensitive,
+        ClipboardGroup.Link => Strings.Clip_Group_Link,
+        ClipboardGroup.Json => Strings.Clip_Group_Json,
+        ClipboardGroup.Code => Strings.Clip_Group_Code,
+        ClipboardGroup.Shell => Strings.Clip_Group_Command,
+        ClipboardGroup.Contact => Strings.Clip_Group_Contact,
+        ClipboardGroup.Number => Strings.Clip_Group_Number,
         _ => string.Empty, // Text → no badge
     };
 
@@ -610,19 +611,19 @@ public partial class ClipboardHistoryWindow : Window
         // lockstep with the buttons below — each AddToNav(...) append keeps the
         // two lists parallel so the keyboard handler can index by position.
         _navOrder = [(ClipboardTab.All, null)];
-        NavButtonsPanel.Children.Add(BuildNavButton("📋 All", ClipboardTab.All, isActive: _activeTab == ClipboardTab.All));
+        NavButtonsPanel.Children.Add(BuildNavButton(Strings.Clip_Tab_All, ClipboardTab.All, isActive: _activeTab == ClipboardTab.All));
 
         // R54 v2: built-in tabs are always shown (even when no entry matches the
         // group) so the nav structure is stable. Trimmed to the categories the
         // user actually wants: JSON folded into Code, Contacts/Numbers dropped
         // (too niche), Pinned dropped (it's a sort effect, not a category —
         // pinned entries already float to the top of every list).
-        AddBuiltIn("🔗 Links", ClipboardTab.Link);
-        AddBuiltIn("💻 Code", ClipboardTab.Code);
-        AddBuiltIn("⚙️ Commands", ClipboardTab.Shell);
-        AddBuiltIn("🔒 Sensitive", ClipboardTab.Sensitive);
-        AddBuiltIn("🖼 Images", ClipboardTab.Image);
-        AddBuiltIn("❤ Favorites", ClipboardTab.Favorite);
+        AddBuiltIn(Strings.Clip_Tab_Links, ClipboardTab.Link);
+        AddBuiltIn(Strings.Clip_Tab_Code, ClipboardTab.Code);
+        AddBuiltIn(Strings.Clip_Tab_Commands, ClipboardTab.Shell);
+        AddBuiltIn(Strings.Clip_Tab_Sensitive, ClipboardTab.Sensitive);
+        AddBuiltIn(Strings.Clip_Tab_Images, ClipboardTab.Image);
+        AddBuiltIn(Strings.Clip_Tab_Favorites, ClipboardTab.Favorite);
 
         // Custom tabs — always shown so the user can assign to them even when
         // no entry is tagged yet. Right-click → rename/delete/set-icon (App
@@ -850,18 +851,18 @@ public partial class ClipboardHistoryWindow : Window
 
         // Right-click → manage custom tag (rename / set icon / delete).
         var menu = new ContextMenu();
-        var renameItem = new MenuItem { Header = "Rename…", Tag = tagName };
+        var renameItem = new MenuItem { Header = Strings.Clip_Tag_Rename, Tag = tagName };
         renameItem.Click += (_, _) => ShowTagInputPanel(TagInputMode.Rename, currentName: tagName);
-        var iconItem = new MenuItem { Header = "Set icon…", Tag = tagName };
+        var iconItem = new MenuItem { Header = Strings.Clip_Tag_SetIcon, Tag = tagName };
         iconItem.Click += (_, _) => ShowIconPickerPanel(tagName);
         var clearIconItem = new MenuItem
         {
-            Header = "Clear icon",
+            Header = Strings.Clip_Tag_ClearIcon,
             Tag = tagName,
             IsEnabled = icon is not null,
         };
         clearIconItem.Click += (_, _) => SetTagIconRequested?.Invoke(tagName, string.Empty);
-        var deleteItem = new MenuItem { Header = "Delete tag", Tag = tagName };
+        var deleteItem = new MenuItem { Header = Strings.Clip_Tag_Delete, Tag = tagName };
         deleteItem.Click += (_, _) => DeleteCustomTagRequested?.Invoke(tagName);
         menu.Items.Add(renameItem);
         menu.Items.Add(iconItem);
@@ -1187,14 +1188,14 @@ public partial class ClipboardHistoryWindow : Window
         };
         userHeaderRow.Children.Add(new TextBlock
         {
-            Text = "My Icons",
+            Text = Strings.Clip_IconPicker_MyIcons,
             FontSize = 9,
             FontWeight = FontWeight.SemiBold,
             Foreground = secondary,
         });
         var importButton = new Button
         {
-            Content = "+ Import icon pack…",
+            Content = Strings.Clip_IconPicker_Import,
             FontSize = 9,
             Padding = new Thickness(6, 2),
             HorizontalContentAlignment = HorizontalAlignment.Center,
@@ -1208,7 +1209,7 @@ public partial class ClipboardHistoryWindow : Window
         {
             userPanel.Children.Add(new TextBlock
             {
-                Text = "(click Import above to add an SVG icon pack or single icons)",
+                Text = Strings.Clip_IconPicker_ImportHint,
                 FontSize = 9,
                 Foreground = secondary,
                 Margin = new Thickness(0, 0, 0, 4),
@@ -1222,7 +1223,7 @@ public partial class ClipboardHistoryWindow : Window
                 Button cell = MakeCell(ic.Name, UserIconLibrary.StoragePrefix + ic.Name, ic.PathData);
                 // Right-click → delete this user icon from the library.
                 var cellMenu = new ContextMenu();
-                var del = new MenuItem { Header = "Delete this icon", Tag = ic.Name };
+                var del = new MenuItem { Header = Strings.Clip_IconPicker_Delete, Tag = ic.Name };
                 string capturedName = ic.Name;
                 del.Click += (_, _) =>
                 {
@@ -1268,7 +1269,7 @@ public partial class ClipboardHistoryWindow : Window
         // ── Legacy emoji row ──
         var emojiHeader = new TextBlock
         {
-            Text = "Emoji",
+            Text = Strings.Clip_IconPicker_Emoji,
             FontSize = 9,
             FontWeight = FontWeight.SemiBold,
             Margin = new Thickness(0, 8, 0, 2),
@@ -1282,7 +1283,7 @@ public partial class ClipboardHistoryWindow : Window
 
         var noneButton = new Button
         {
-            Content = "(no icon)",
+            Content = Strings.Clip_IconPicker_None,
             FontSize = 12,
             Padding = new Thickness(8, 4),
             HorizontalContentAlignment = HorizontalAlignment.Center,
@@ -1315,7 +1316,7 @@ public partial class ClipboardHistoryWindow : Window
             {
                 new TextBlock
                 {
-                    Text = "Choose an icon for \"" + tagName + "\"",
+                    Text = string.Format(Strings.Clip_IconPicker_ChooseFor, tagName),
                     FontSize = 11,
                     FontWeight = FontWeight.SemiBold,
                     Margin = new Thickness(0, 0, 0, 6),
@@ -1363,7 +1364,7 @@ public partial class ClipboardHistoryWindow : Window
         if (topLevel is null) return;
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "Import SVG icons (select an icon pack or single icons)",
+            Title = Strings.Clip_IconPicker_ImportTitle,
             AllowMultiple = true,
             FileTypeFilter =
             [
@@ -1407,7 +1408,7 @@ public partial class ClipboardHistoryWindow : Window
             Padding = new Thickness(6, 5),
             Content = new TextBlock
             {
-                Text = "+ New",
+                Text = Strings.Clip_NewTab,
                 FontSize = 10,
                 FontWeight = FontWeight.SemiBold,
                 Foreground = accent,
@@ -1441,7 +1442,7 @@ public partial class ClipboardHistoryWindow : Window
 
         var title = new TextBlock
         {
-            Text = mode == TagInputMode.Rename ? $"Rename \"{currentName}\" to" : "New tag",
+            Text = mode == TagInputMode.Rename ? string.Format(Strings.Clip_RenameTo, currentName) : Strings.Clip_NewTag,
             FontSize = 11,
             FontWeight = FontWeight.SemiBold,
             Margin = new Thickness(0, 0, 0, 6),
@@ -1454,7 +1455,7 @@ public partial class ClipboardHistoryWindow : Window
             FontSize = 14,
             FontWeight = FontWeight.SemiBold,
             Padding = new Thickness(6, 4),
-            PlaceholderText = "Tag name…",
+            PlaceholderText = Strings.Clip_TagNamePlaceholder,
         };
 
         var error = new TextBlock
@@ -1467,7 +1468,7 @@ public partial class ClipboardHistoryWindow : Window
 
         var confirmBtn = new Button
         {
-            Content = "OK",
+            Content = Strings.Common_Confirm,
             Classes = { "Primary" },
             FontSize = 11,
             Padding = new Thickness(14, 5),
@@ -1475,7 +1476,7 @@ public partial class ClipboardHistoryWindow : Window
         };
         var cancelBtn = new Button
         {
-            Content = "Cancel",
+            Content = Strings.Common_Cancel,
             FontSize = 11,
             Padding = new Thickness(14, 5),
         };
@@ -1497,18 +1498,18 @@ public partial class ClipboardHistoryWindow : Window
             string? raw = input.Text?.Trim();
             if (string.IsNullOrEmpty(raw))
             {
-                error.Text = "Name cannot be empty.";
+                error.Text = Strings.Clip_Error_NameEmpty;
                 return;
             }
             bool exists = _customTags.Contains(raw, StringComparer.Ordinal);
             if (mode == TagInputMode.Create && exists)
             {
-                error.Text = "A tag with this name already exists.";
+                error.Text = Strings.Clip_Error_NameExists;
                 return;
             }
             if (mode == TagInputMode.Rename && currentName is not null && raw != currentName && exists)
             {
-                error.Text = "A tag with this name already exists.";
+                error.Text = Strings.Clip_Error_NameExists;
                 return;
             }
 
@@ -1543,7 +1544,7 @@ public partial class ClipboardHistoryWindow : Window
         // chosen cell with a gold border.
         var iconRowLabel = new TextBlock
         {
-            Text = "Icon (optional)",
+            Text = Strings.Clip_IconOptional,
             FontSize = 9,
             Margin = new Thickness(0, 2, 0, 0),
             Classes = { "Muted" },
@@ -1824,17 +1825,17 @@ public partial class ClipboardHistoryWindow : Window
     {
         string tabName = _activeTab switch
         {
-            ClipboardTab.Link => "Links",
+            ClipboardTab.Link => Strings.Clip_CategoryHeader_Links,
             // Code tab now covers JSON too (folded together).
-            ClipboardTab.Code => "Code",
-            ClipboardTab.Shell => "Commands",
-            ClipboardTab.Sensitive => "Sensitive",
-            ClipboardTab.Image => "Images",
-            ClipboardTab.Favorite => "❤ Favorites",
+            ClipboardTab.Code => Strings.Clip_CategoryHeader_Code,
+            ClipboardTab.Shell => Strings.Clip_CategoryHeader_Commands,
+            ClipboardTab.Sensitive => Strings.Clip_CategoryHeader_Sensitive,
+            ClipboardTab.Image => Strings.Clip_CategoryHeader_Images,
+            ClipboardTab.Favorite => Strings.Clip_CategoryHeader_Favorites,
             ClipboardTab.Custom when _activeCustomTagName is not null => "# " + _activeCustomTagName,
-            _ => "Clipboard History",
+            _ => Strings.Clip_CategoryDefault,
         };
-        CategoryHeader.Text = $"{tabName} · {_filteredRows.Count} items";
+        CategoryHeader.Text = string.Format(Strings.Clip_CategoryCount, tabName, _filteredRows.Count);
     }
 
     // ── Keyboard navigation ──
@@ -2110,8 +2111,8 @@ public partial class ClipboardHistoryWindow : Window
                 Child = new TextBlock
                 {
                     Text = wouldKeep > 0
-                        ? $"No deletable entries below this one.\n({wouldKeep} tagged/pinned entries are kept.)"
-                        : "No older entries to clear.",
+                        ? string.Format(Strings.Clip_ClearNone_Kept, wouldKeep)
+                        : Strings.Clip_ClearNone_Empty,
                     TextWrapping = TextWrapping.Wrap,
                     FontSize = 13,
                 },
@@ -2132,8 +2133,7 @@ public partial class ClipboardHistoryWindow : Window
 
         var msg = new TextBlock
         {
-            Text = $"Delete {wouldDelete} older entr{(wouldDelete == 1 ? "y" : "ies")}?\n" +
-                   $"{wouldKeep} tagged/pinned entr{(wouldKeep == 1 ? "y is" : "ies are")} kept.",
+            Text = string.Format(Strings.Clip_ClearConfirm, wouldDelete, wouldKeep),
             TextWrapping = TextWrapping.Wrap,
             FontSize = 13,
             Margin = new Thickness(0, 0, 0, 10),
@@ -2141,7 +2141,7 @@ public partial class ClipboardHistoryWindow : Window
 
         var confirmBtn = new Button
         {
-            Content = $"Delete {wouldDelete}",
+            Content = string.Format(Strings.Clip_ClearConfirmButton, wouldDelete),
             FontSize = 13,
             Padding = new Thickness(16, 6),
             HorizontalContentAlignment = HorizontalAlignment.Center,
@@ -2154,7 +2154,7 @@ public partial class ClipboardHistoryWindow : Window
 
         var cancelBtn = new Button
         {
-            Content = "Cancel",
+            Content = Strings.Common_Cancel,
             FontSize = 13,
             Padding = new Thickness(16, 6),
             HorizontalContentAlignment = HorizontalAlignment.Center,
@@ -2213,7 +2213,7 @@ public partial class ClipboardHistoryWindow : Window
 
         var label = new TextBlock
         {
-            Text = "Add tag",
+            Text = Strings.Clip_AddTag,
             FontSize = 11,
             FontWeight = FontWeight.SemiBold,
             Margin = new Thickness(0, 0, 0, 6),
@@ -2227,7 +2227,7 @@ public partial class ClipboardHistoryWindow : Window
         {
             FontSize = 14,
             MinWidth = 220,
-            PlaceholderText = "tag name…",
+            PlaceholderText = Strings.Clip_TagNamePlaceholder,
             FilterMode = AutoCompleteFilterMode.StartsWith,
             MinimumPrefixLength = 0,
             ItemsSource = _knownEntryTags.OrderBy(t => t, StringComparer.Ordinal).ToArray(),
@@ -2333,7 +2333,7 @@ public partial class ClipboardHistoryWindow : Window
 
         var closeBtn = new Button
         {
-            Content = "Close",
+            Content = Strings.Common_Close,
             FontSize = 13,
             Padding = new Thickness(18, 7),
             HorizontalContentAlignment = HorizontalAlignment.Center,
@@ -2697,19 +2697,19 @@ public partial class ClipboardHistoryWindow : Window
     {
         var menu = new ContextMenu();
 
-        var copyPaste = new MenuItem { Header = "Copy & paste", Tag = row };
+        var copyPaste = new MenuItem { Header = Strings.Clip_Row_CopyPaste, Tag = row };
         copyPaste.Click += (_, _) => PasteAndHide(row);
 
-        var copyNoClose = new MenuItem { Header = "Copy (keep open)", Tag = row };
+        var copyNoClose = new MenuItem { Header = Strings.Clip_Row_CopyKeepOpen, Tag = row };
         copyNoClose.Click += (_, _) => CopyRequested?.Invoke(row.Id);
 
-        var pinItem = new MenuItem { Header = row.IsPinned ? "Unpin" : "★ Pin", Tag = row };
+        var pinItem = new MenuItem { Header = row.IsPinned ? Strings.Clip_Row_Unpin : Strings.Clip_Row_Pin, Tag = row };
         pinItem.Click += (_, _) => PinToggled?.Invoke(row.Id);
 
-        var favItem = new MenuItem { Header = row.IsFavorite ? "Unfavorite" : "❤ Favorite", Tag = row };
+        var favItem = new MenuItem { Header = row.IsFavorite ? Strings.Clip_Row_Unfavorite : Strings.Clip_Row_Favorite, Tag = row };
         favItem.Click += (_, _) => FavoriteToggled?.Invoke(row.Id);
 
-        var deleteItem = new MenuItem { Header = "Delete", Tag = row };
+        var deleteItem = new MenuItem { Header = Strings.Common_Delete, Tag = row };
         deleteItem.Click += (_, _) => DeleteRequested?.Invoke(row.Id);
 
         menu.Items.Add(copyPaste);
@@ -2726,7 +2726,7 @@ public partial class ClipboardHistoryWindow : Window
             if (!row.IsImage && row.Text.Length > 300)
             {
                 menu.Items.Add(new Separator());
-                var viewFull = new MenuItem { Header = "View full…", Tag = row };
+                var viewFull = new MenuItem { Header = Strings.Clip_Row_ViewFull, Tag = row };
                 viewFull.Click += (_, _) =>
                 {
                     // Archived rows are never in _revealed (that set is only
@@ -2753,13 +2753,13 @@ public partial class ClipboardHistoryWindow : Window
         // When the row already has tags, a "Remove tag ›" submenu lists them so
         // the user can drop one without opening the input. Text AND image rows
         // can carry entry tags (unlike "Move to…" which is text-only).
-        var addTagItem = new MenuItem { Header = "Add tag…", Tag = row };
+        var addTagItem = new MenuItem { Header = Strings.Clip_Row_AddTag, Tag = row };
         addTagItem.Click += (_, _) => ShowEntryTagInputPopup(row);
         menu.Items.Add(addTagItem);
 
         if (row.EntryTags.Count > 0)
         {
-            var removeTagMenu = new MenuItem { Header = "Remove tag" };
+            var removeTagMenu = new MenuItem { Header = Strings.Clip_Row_RemoveTag };
             foreach (string tag in row.EntryTags)
             {
                 string captured = tag; // capture for the lambda
@@ -2795,7 +2795,7 @@ public partial class ClipboardHistoryWindow : Window
         // decoded — no second disk read.)
         if (row.IsImage && row.Thumbnail is not null)
         {
-            var viewImage = new MenuItem { Header = "View image…", Tag = row };
+            var viewImage = new MenuItem { Header = Strings.Clip_Row_ViewImage, Tag = row };
             viewImage.Click += (_, _) => ShowImagePopup(row);
             menu.Items.Add(viewImage);
         }
@@ -2818,7 +2818,7 @@ public partial class ClipboardHistoryWindow : Window
         //     one flow even when tabs already exist.
         if (!row.IsImage)
         {
-            var moveTo = new MenuItem { Header = "Move to…" };
+            var moveTo = new MenuItem { Header = Strings.Clip_Row_MoveTo };
 
             // ── Section 1: categorize as (built-in group override) ──
             void AddGroupTarget(string label, ClipboardGroup? target)
@@ -2856,7 +2856,7 @@ public partial class ClipboardHistoryWindow : Window
             {
                 var createHint = new MenuItem
                 {
-                    Header = "No custom tabs yet — create one for this entry…",
+                    Header = Strings.Clip_Row_NoTabsHint,
                     Tag = row,
                     FontStyle = FontStyle.Italic,
                 };
@@ -2890,7 +2890,7 @@ public partial class ClipboardHistoryWindow : Window
                 // Always offer "New tag…" at the bottom of the list too — creates
                 // the tab AND assigns it to this entry in one step.
                 moveTo.Items.Add(new Separator());
-                var createFromRow = new MenuItem { Header = "New tab for this entry…", Tag = row };
+                var createFromRow = new MenuItem { Header = Strings.Clip_Row_NewTabForEntry, Tag = row };
                 createFromRow.Click += (_, _) => ShowTagInputPanel(TagInputMode.Create, assignOnCreateEntryId: row.Id);
                 moveTo.Items.Add(createFromRow);
             }
@@ -2905,7 +2905,7 @@ public partial class ClipboardHistoryWindow : Window
             bool isRevealed = _revealed.Contains(row.Id);
             var revealItem = new MenuItem
             {
-                Header = isRevealed ? "Hide plaintext" : "Reveal plaintext",
+                Header = isRevealed ? Strings.Clip_Row_HidePlain : Strings.Clip_Row_RevealPlain,
                 Tag = row,
             };
             revealItem.Click += (_, _) =>
@@ -2920,7 +2920,7 @@ public partial class ClipboardHistoryWindow : Window
         // shows the exact delete/keep counts first — protects against nuking
         // everything when the reference is the newest entry (where "older" =
         // almost the whole list).
-        var clearOlder = new MenuItem { Header = "Clear older entries", Tag = row };
+        var clearOlder = new MenuItem { Header = Strings.Clip_Row_ClearOlder, Tag = row };
         clearOlder.Click += (_, _) => ConfirmClearOlder(row);
         menu.Items.Add(clearOlder);
 

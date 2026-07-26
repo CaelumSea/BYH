@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Launcher;
 
 namespace SelectionAssistant.UI.Views;
@@ -40,9 +41,9 @@ public partial class LauncherEntryEditWindow : Window
     public void ShowForNew()
     {
         _isNew = true;
-        Title = "BYH · 新增启动项";
-        TitleText.Text = "新增启动项";
-        SubtitleText.Text = "配置目标和参数，保存后即可在 Spotlight 搜索面板使用。";
+        Title = Strings.LauncherEdit_TitleNew;
+        TitleText.Text = Strings.LauncherEdit_HeadingNew;
+        SubtitleText.Text = Strings.LauncherEdit_SubtitleNew;
 
         LocalAppRadio.IsChecked = true;
         NameInput.Text = string.Empty;
@@ -66,9 +67,9 @@ public partial class LauncherEntryEditWindow : Window
         _isNew = false;
         _id = id;
 
-        Title = "BYH · 编辑启动项";
-        TitleText.Text = $"编辑「{existing.Name}」";
-        SubtitleText.Text = "修改后立即生效。";
+        Title = Strings.LauncherEdit_Title;
+        TitleText.Text = string.Format(Strings.LauncherEdit_HeadingEditName, existing.Name);
+        SubtitleText.Text = Strings.LauncherEdit_SubtitleEdit;
 
         LocalAppRadio.IsChecked = existing.Kind == LauncherKind.LocalApp;
         WebUrlRadio.IsChecked = existing.Kind == LauncherKind.WebUrl;
@@ -90,8 +91,8 @@ public partial class LauncherEntryEditWindow : Window
         WorkingDirectoryPanel.IsVisible = isLocal;
         BrowseTargetButton.IsVisible = isLocal;
         TargetInput.PlaceholderText = isLocal
-            ? "程序路径（.exe）"
-            : "网页地址（https://...）";
+            ? Strings.LauncherEdit_TargetPlaceholder_Exe
+            : Strings.LauncherEdit_TargetPlaceholder_Web;
     }
 
     private async void OnBrowseTargetClick(object? sender, RoutedEventArgs e)
@@ -104,12 +105,12 @@ public partial class LauncherEntryEditWindow : Window
 
         var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "选择程序",
+            Title = Strings.LauncherEdit_Picker_Exe,
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("可执行文件") { Patterns = ["*.exe"] },
-                new FilePickerFileType("所有文件") { Patterns = ["*.*"] },
+                new FilePickerFileType(Strings.LauncherEdit_Picker_ExeFilter) { Patterns = ["*.exe"] },
+                new FilePickerFileType(Strings.LauncherEdit_Picker_AllFilter) { Patterns = ["*.*"] },
             ],
         });
 
@@ -129,7 +130,7 @@ public partial class LauncherEntryEditWindow : Window
 
         var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "选择工作目录",
+            Title = Strings.LauncherEdit_Picker_WorkDir,
             AllowMultiple = false,
         });
 

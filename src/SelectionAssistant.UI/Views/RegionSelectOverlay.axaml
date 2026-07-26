@@ -1,7 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.RegionSelectOverlay"
-        Title="BYH · 区域选择"
+        Title="{x:Static i18n:Strings.Region_Title}"
         ShowActivated="True"
         ShowInTaskbar="False"
         WindowDecorations="None"
@@ -66,9 +67,9 @@
             IsHitTestVisible="False">
       <StackPanel>
         <TextBlock Foreground="{DynamicResource ByhOverlaySecondaryTextBrush}" FontSize="13" FontWeight="SemiBold"
-                   Text="拖拽选择要识别的区域" />
+                   Text="{x:Static i18n:Strings.Region_HintPrimary}" />
         <TextBlock Foreground="{DynamicResource ByhOverlaySecondaryTextBrush}" FontSize="11"
-                   Text="单击=确认 UIA 框 · 拖动=自定义 · 右键=重画 · ESC=退出" />
+                   Text="{x:Static i18n:Strings.Region_HintSecondary}" />
       </StackPanel>
     </Border>
 

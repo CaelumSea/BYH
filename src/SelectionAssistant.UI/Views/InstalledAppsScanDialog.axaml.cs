@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Platform.Abstractions;
 
 namespace SelectionAssistant.UI.Views;
@@ -251,7 +252,7 @@ public partial class InstalledAppsScanDialog : Window
         int visibleCount = visible.Count;
         int selectedCount = visible.Count(r => r.IsSelected);
 
-        CountText.Text = $"共 {total} 个，已选 {selectedCount} 个";
+        CountText.Text = string.Format(Strings.ScanDialog_Count, total, selectedCount);
     }
 
     private void OnImportClick(object? sender, RoutedEventArgs e)

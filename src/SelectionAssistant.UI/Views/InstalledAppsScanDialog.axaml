@@ -1,8 +1,9 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.InstalledAppsScanDialog"
-        Title="BYH · 扫描已安装应用"
+        Title="{x:Static i18n:Strings.ScanDialog_Title}"
         Width="640"
         Height="560"
         MinWidth="480"
@@ -22,11 +23,11 @@
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8">
       <!-- Header -->
       <StackPanel Grid.Row="0" Spacing="2">
-        <TextBlock Text="扫描已安装应用"
+        <TextBlock Text="{x:Static i18n:Strings.ScanDialog_Heading}"
                    Classes="CardTitle"
                    FontSize="15"
                    FontWeight="SemiBold" />
-        <TextBlock Text="勾选要导入的应用，点击导入即可在 Launcher 和 Spotlight 中使用。"
+        <TextBlock Text="{x:Static i18n:Strings.ScanDialog_Subtitle}"
                    Classes="Secondary"
                    FontSize="10"
                    TextWrapping="Wrap" />
@@ -36,14 +37,14 @@
            an InnerCard wrapper here would double up into a two-layer look). -->
       <TextBox Grid.Row="1"
                x:Name="SearchInput"
-               PlaceholderText="搜索应用名称..."
+               PlaceholderText="{x:Static i18n:Strings.ScanDialog_SearchPlaceholder}"
                FontSize="12"
                TextChanged="OnSearchTextChanged" />
 
       <!-- Select-all row -->
       <Grid Grid.Row="2" ColumnDefinitions="Auto,*">
         <CheckBox x:Name="SelectAllCheckBox"
-                  Content="全选/全不选"
+                  Content="{x:Static i18n:Strings.ScanDialog_SelectAll}"
                   IsCheckedChanged="OnSelectAllChanged" />
         <TextBlock x:Name="CountText"
                    Grid.Column="1"
@@ -89,11 +90,11 @@
                   HorizontalAlignment="Right"
                   Spacing="10"
                   Margin="0,8,0,0">
-        <Button Content="取消"
+        <Button Content="{x:Static i18n:Strings.Common_Cancel}"
                 Classes="Ghost"
                 Click="OnCancelClick" />
         <Button x:Name="ImportButton"
-                Content="导入选中"
+                Content="{x:Static i18n:Strings.ScanDialog_Import}"
                 Classes="Primary"
                 Click="OnImportClick" />
       </StackPanel>

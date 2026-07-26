@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using SelectionAssistant.Core.Annotation; // NumberedBadge, NumberedBadgeGeometry, MagneticSnapCalculator, PhysicalRect
 using SelectionAssistant.Core.Capture;
+using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
 using SelectionAssistant.Core.Selection;
@@ -441,7 +442,7 @@ internal sealed class SelectionRuntime : IDisposable
             MouseDownX: regionRightX, MouseDownY: regionTopY,
             MouseDownTimestampMs: 0, MouseUpTimestampMs: 0,
             SourceRootHwnd: 0, SourceProcessId: 0));
-        _toolbarWindow.SetDiagnosticStatus("未识别 · 按 F/J/Z/R/C/G 开始");
+        _toolbarWindow.SetDiagnosticStatus(Strings.Runtime_Status_Unrecognized);
         // R42: Ocean Eyes mode — hide buttons, show signature.
         _toolbarWindow.SetOceanEyesSignatureMode();
 
@@ -794,7 +795,7 @@ internal sealed class SelectionRuntime : IDisposable
         }
         // Surface the value in the toolbar status slot so the user sees a copy
         // confirmation without a separate toast subsystem (none exists today).
-        _toolbarWindow.SetDiagnosticStatus($"已复制 {hex}");
+        _toolbarWindow.SetDiagnosticStatus(string.Format(Strings.Runtime_Status_CopiedColor, hex));
     }
 
     /// <summary>
@@ -824,7 +825,7 @@ internal sealed class SelectionRuntime : IDisposable
         Dispatcher.UIThread.Post(() =>
         {
             _toolbarWindow.SetDiagnosticStatus(
-                "标注模式 · 点击放序号 · [0]序号 [1]矩形 [2]椭圆 [3]箭头 [4]画笔 [5]高亮 · Ctrl+Z 撤销 · A/Esc 退出");
+                string.Format(Strings.Runtime_Status_AnnotateIntro, Strings.Runtime_Annotation_ToolHint));
         });
     }
 
@@ -841,7 +842,7 @@ internal sealed class SelectionRuntime : IDisposable
         Dispatcher.UIThread.Post(() =>
         {
             _annotationOverlay?.RemoveLivePreview();
-            _toolbarWindow.SetDiagnosticStatus("已退出标注模式 · Enter 保存 / Esc 退出");
+            _toolbarWindow.SetDiagnosticStatus(Strings.Runtime_Status_AnnotateExited);
         });
     }
 
@@ -1480,7 +1481,7 @@ internal sealed class SelectionRuntime : IDisposable
                 using var clipboard = new Win32Clipboard();
                 clipboard.SetPng(png);
                 _logger.Info("OceanEyes", $"Copied pinned PNG ({png.Length} bytes) to clipboard.");
-                Dispatcher.UIThread.Post(() => _toolbarWindow.SetDiagnosticStatus("已复制贴图"));
+                Dispatcher.UIThread.Post(() => _toolbarWindow.SetDiagnosticStatus(Strings.Runtime_Status_PinnedCopied));
             }
             catch (Exception exception)
             {
@@ -2672,19 +2673,19 @@ internal sealed class SelectionRuntime : IDisposable
                 _currentAnnotationTool = newTool;
                 string toolName = newTool switch
                 {
-                    AnnotationTool.Number => "序号",
-                    AnnotationTool.Rectangle => "矩形",
-                    AnnotationTool.Ellipse => "椭圆",
-                    AnnotationTool.Arrow => "箭头",
-                    AnnotationTool.Pen => "画笔",
-                    AnnotationTool.Highlight => "高亮",
-                    _ => "未知",
+                    AnnotationTool.Number => Strings.Runtime_Tool_Number,
+                    AnnotationTool.Rectangle => Strings.Runtime_Tool_Rectangle,
+                    AnnotationTool.Ellipse => Strings.Runtime_Tool_Ellipse,
+                    AnnotationTool.Arrow => Strings.Runtime_Tool_Arrow,
+                    AnnotationTool.Pen => Strings.Runtime_Tool_Pen,
+                    AnnotationTool.Highlight => Strings.Runtime_Tool_Highlight,
+                    _ => Strings.Runtime_Tool_Unknown,
                 };
                 _logger.Info("OceanEyes", $"Annotation: switched to tool {toolName} ({(int)newTool}).");
                 Dispatcher.UIThread.Post(() =>
                 {
                     _toolbarWindow.SetDiagnosticStatus(
-                        $"标注模式 · 当前工具: {toolName} · [0]序号 [1]矩形 [2]椭圆 [3]箭头 [4]画笔 [5]高亮 · Ctrl+Z 撤销 · A/Esc 退出");
+                        string.Format(Strings.Runtime_Status_AnnotateCurrent, toolName, Strings.Runtime_Annotation_ToolHint));
                 });
             }
             catch (Exception exception)
@@ -2869,7 +2870,7 @@ internal sealed class SelectionRuntime : IDisposable
                         // OCR failed — leave the toolbar in "识别失败" state.
                         // User can Esc or right-click to redraw.
                         Dispatcher.UIThread.Post(() =>
-                            _toolbarWindow.SetDiagnosticStatus("识别失败 · Esc 退出 / 右键重画"));
+                            _toolbarWindow.SetDiagnosticStatus(Strings.Runtime_Status_OcrFailed));
                         return;
                     }
                     // OCR succeeded: redispatch the original key on the UI thread
@@ -3160,7 +3161,7 @@ internal sealed class SelectionRuntime : IDisposable
         }
         catch (Exception exception)
         {
-            _toolbarWindow.SetDiagnosticStatus("鼠标钩子启动失败");
+            _toolbarWindow.SetDiagnosticStatus(Strings.Runtime_Status_MouseHookFailed);
             _logger.Error("Runtime", "Mouse hook startup failed.", exception);
         }
 

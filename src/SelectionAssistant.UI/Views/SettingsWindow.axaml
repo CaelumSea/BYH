@@ -3,7 +3,7 @@
         xmlns:views="clr-namespace:SelectionAssistant.UI.Views"
         xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
         x:Class="SelectionAssistant.UI.Views.SettingsWindow"
-        Title="BYH · Settings"
+        Title="{x:Static i18n:Strings.Settings_Title}"
         Width="1320"
         Height="800"
         MinWidth="1240"
@@ -85,7 +85,7 @@
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
                     Data="M3,10 L12,3 L21,10 M5,9 L5,20 L19,20 L19,9 M9,20 L9,14 L15,14 L15,20" />
-              <TextBlock Grid.Column="1" Text="General" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{x:Static i18n:Strings.Settings_Nav_General}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
             </Grid>
           </Button>
 
@@ -97,7 +97,7 @@
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
                     Data="M4,5 L20,5 L20,19 L4,19 Z M8,9 L16,9 M8,13 L16,13 M8,17 L13,17" />
-              <TextBlock Grid.Column="1" Text="Translation" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{x:Static i18n:Strings.Settings_Nav_Provider}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
             </Grid>
           </Button>
 
@@ -109,7 +109,7 @@
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
                     Data="M12,3 L14.7,8.3 L20.5,9.2 L16.3,13.3 L17.3,19 L12,16.3 L6.7,19 L7.7,13.3 L3.5,9.2 L9.3,8.3 Z" />
-              <TextBlock Grid.Column="1" Text="Actions" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{x:Static i18n:Strings.Settings_Nav_Functions}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
             </Grid>
           </Button>
 
@@ -121,7 +121,7 @@
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
                     Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
-              <TextBlock Grid.Column="1" Text="Vision" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{x:Static i18n:Strings.Settings_Nav_Vision}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
             </Grid>
           </Button>
 
@@ -133,7 +133,7 @@
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
                     Data="M13,2 L4,13 L11,13 L10,22 L20,10 L13,10 Z" />
-              <TextBlock Grid.Column="1" Text="Launcher" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{x:Static i18n:Strings.Settings_Nav_Launcher}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
             </Grid>
           </Button>
 
@@ -145,7 +145,7 @@
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
                     Data="M4,2 L20,2 A2,2 0 0 1 22,4 L22,16 A2,2 0 0 1 20,18 L8,18 L4,22 Z" />
-              <TextBlock Grid.Column="1" Text="Clipboard" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{x:Static i18n:Strings.Settings_Nav_Clipboard}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
             </Grid>
           </Button>
         </StackPanel>
@@ -197,10 +197,10 @@
             RowSpacing="12"
             Margin="28,16,26,12">
           <StackPanel Spacing="3">
-            <TextBlock Text="WELCOME BACK" Classes="Kicker" />
+            <TextBlock Text="{x:Static i18n:Strings.Settings_Header_Kicker}" Classes="Kicker" />
             <StackPanel Orientation="Horizontal" Spacing="9">
               <TextBlock x:Name="PageTitleText"
-                         Text="General"
+                         Text="{x:Static i18n:Strings.Settings_PageTitle_General}"
                          Classes="DisplayTitle"
                          FontSize="25" />
               <TextBlock Text="✦"
@@ -209,7 +209,7 @@
                          VerticalAlignment="Center" />
             </StackPanel>
             <TextBlock x:Name="PageSubtitleText"
-                       Text="Hotkeys, capture behavior, and runtime status."
+                       Text="{x:Static i18n:Strings.Settings_PageSubtitle_General}"
                        Classes="Secondary"
                        FontSize="10" />
           </StackPanel>
@@ -311,41 +311,41 @@
           <StackPanel Spacing="12" Margin="24,0,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
-                  <TextBlock Text="Ocean Eyes Trigger"
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_OceanEyesTrigger_Title}"
                              Classes="CardTitle"
                              FontSize="15"
                              FontWeight="SemiBold" />
-                  <TextBlock Text="F Translate · J Explain · Z Summarize · R Prompt · C Copy · Enter Save · Esc Close"
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_OceanEyesTrigger_Hint}"
                              Classes="Muted"
                              FontSize="10"
                              TextWrapping="Wrap" />
                 </StackPanel>
                 <ToggleSwitch x:Name="KeyboardShortcutToggle"
                               Grid.Column="1"
-                              OnContent="On"
-                              OffContent="Off"
+                              OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                              OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
                               IsChecked="True"
                               VerticalAlignment="Center" />
               </Grid>
 
               <Border Classes="InnerCard" Padding="12">
                 <StackPanel Spacing="8">
-                  <TextBlock Text="Hotkey"
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Hotkey}"
                              Classes="Secondary"
                              FontSize="11"
                              FontWeight="SemiBold" />
                   <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,120" ColumnSpacing="10">
-                    <CheckBox Grid.Column="0" x:Name="CtrlModifierCheckBox" Content="Ctrl" IsChecked="True" />
-                    <CheckBox Grid.Column="1" x:Name="AltModifierCheckBox" Content="Alt" IsChecked="True" />
-                    <CheckBox Grid.Column="2" x:Name="ShiftModifierCheckBox" Content="Shift" />
-                    <CheckBox Grid.Column="3" x:Name="WinModifierCheckBox" Content="Win" />
+                    <CheckBox Grid.Column="0" x:Name="CtrlModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Ctrl}" IsChecked="True" />
+                    <CheckBox Grid.Column="1" x:Name="AltModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Alt}" IsChecked="True" />
+                    <CheckBox Grid.Column="2" x:Name="ShiftModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Shift}" />
+                    <CheckBox Grid.Column="3" x:Name="WinModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Win}" />
                     <ComboBox Grid.Column="5" x:Name="ShortcutKeyComboBox" SelectedIndex="16" />
                   </Grid>
                 </StackPanel>
               </Border>
 
               <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                <Button Content="Save Hotkey"
+                <Button Content="{x:Static i18n:Strings.Settings_SaveHotkey}"
                         Classes="Primary"
                         Click="OnSaveOceanEyesTriggerClick" />
                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
@@ -360,18 +360,18 @@
                       Padding="0,12,0,0">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                   <StackPanel Spacing="3">
-                    <TextBlock Text="Legacy Mouse Chord"
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_MouseChord_Title}"
                                FontSize="11"
                                FontWeight="SemiBold" />
-                    <TextBlock Text="May conflict with application context menus."
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_MouseChord_Hint}"
                                Classes="Muted"
                                FontSize="9"
                                TextWrapping="Wrap" />
                   </StackPanel>
                   <ToggleSwitch x:Name="MouseChordToggle"
                                 Grid.Column="1"
-                                OnContent="On"
-                                OffContent="Off"
+                                OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                                OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
                                 IsChecked="False"
                                 VerticalAlignment="Center" />
                 </Grid>
@@ -383,7 +383,7 @@
           <!-- Section: Toolbar Shortcuts sits directly on the surface. -->
           <StackPanel Spacing="12" Margin="24,0,24,0">
               <StackPanel Spacing="12">
-                <TextBlock Text="Toolbar Shortcuts"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_ToolbarShortcuts_Title}"
                            Classes="CardTitle"
                            FontSize="15"
                            FontWeight="SemiBold" />
@@ -391,7 +391,7 @@
                   <Grid ColumnDefinitions="Auto,60,*" RowDefinitions="Auto,Auto"
                         RowSpacing="8" ColumnSpacing="12">
                     <TextBlock Grid.Row="0" Grid.Column="0"
-                               Text="Prompt"
+                               Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Prompt}"
                                Classes="Secondary"
                                FontSize="11"
                                VerticalAlignment="Center" />
@@ -400,15 +400,15 @@
                               MaxLength="1"
                               FontSize="13"
                               HorizontalAlignment="Stretch"
-                              PlaceholderText="None" />
+                              PlaceholderText="{x:Static i18n:Strings.Common_Placeholder_None}" />
                     <TextBlock Grid.Row="0" Grid.Column="2"
-                               Text="Open prompt window"
+                               Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Prompt_Hint}"
                                Classes="Muted"
                                FontSize="10"
                                VerticalAlignment="Center" />
 
                     <TextBlock Grid.Row="1" Grid.Column="0"
-                               Text="Copy"
+                               Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Copy}"
                                Classes="Secondary"
                                FontSize="11"
                                VerticalAlignment="Center" />
@@ -417,9 +417,9 @@
                               MaxLength="1"
                               FontSize="13"
                               HorizontalAlignment="Stretch"
-                              PlaceholderText="None" />
+                              PlaceholderText="{x:Static i18n:Strings.Common_Placeholder_None}" />
                     <TextBlock Grid.Row="1" Grid.Column="2"
-                               Text="Copy selected text"
+                               Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Copy_Hint}"
                                Classes="Muted"
                                FontSize="10"
                                VerticalAlignment="Center" />
@@ -427,7 +427,7 @@
                 </Border>
 
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                  <Button Content="Save Shortcuts"
+                  <Button Content="{x:Static i18n:Strings.Settings_SaveShortcuts}"
                           Classes="Primary"
                           Click="OnSaveToolbarShortcutsClick" />
                   <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
@@ -443,23 +443,23 @@
 
           <!-- Section: Ocean Eyes Capture sits directly on the surface. -->
           <StackPanel Spacing="12" Margin="24,0,24,0">
-                <TextBlock Text="Ocean Eyes Capture"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_OceanEyesCapture_Title}"
                            Classes="CardTitle"
                            FontSize="15"
                            FontWeight="SemiBold" />
                 <Border Classes="InnerCard" Padding="12">
                   <StackPanel Spacing="6">
-                    <TextBlock Text="Save Location"
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_SaveLocation}"
                                Classes="Secondary"
                                FontSize="11"
                                FontWeight="SemiBold" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                       <TextBox x:Name="OceanEyesSavePathTextBox"
                                Grid.Column="0"
-                               PlaceholderText="%USERPROFILE%\Pictures\Ocean Eyes"
+                               PlaceholderText="{x:Static i18n:Strings.Settings_OceanEyesSavePath_Placeholder}"
                                FontSize="11" />
                       <Button Grid.Column="1"
-                              Content="Browse…"
+                              Content="{x:Static i18n:Strings.Common_Browse}"
                               Classes="Ghost"
                               Click="OnBrowseOceanEyesSavePathClick" />
                     </Grid>
@@ -471,30 +471,30 @@
                 <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
                   <Border Classes="InnerCard" Padding="10">
                     <StackPanel Spacing="2">
-                      <TextBlock Text="Auto-save" Classes="Muted" FontSize="9" FontWeight="SemiBold" />
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_AutoSave}" Classes="Muted" FontSize="9" FontWeight="SemiBold" />
                       <ToggleSwitch x:Name="OceanEyesAutoSaveToggle"
-                                    OnContent="On"
-                                    OffContent="Off"
+                                    OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                                    OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
                                     IsChecked="True"
                                     FontSize="10" />
                     </StackPanel>
                   </Border>
                   <Border Classes="InnerCard" Padding="10">
                     <StackPanel Spacing="2">
-                      <TextBlock Text="Clipboard" Classes="Muted" FontSize="9" FontWeight="SemiBold" />
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_ClipboardToggle}" Classes="Muted" FontSize="9" FontWeight="SemiBold" />
                       <ToggleSwitch x:Name="OceanEyesClipboardToggle"
-                                    OnContent="On"
-                                    OffContent="Off"
+                                    OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                                    OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
                                     IsChecked="True"
                                     FontSize="10" />
                     </StackPanel>
                   </Border>
                   <Border Classes="InnerCard" Padding="10">
                     <StackPanel Spacing="2">
-                      <TextBlock Text="UIA Snap" Classes="Muted" FontSize="9" FontWeight="SemiBold" />
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_UiaSnap}" Classes="Muted" FontSize="9" FontWeight="SemiBold" />
                       <ToggleSwitch x:Name="OceanEyesUiaAssistToggle"
-                                    OnContent="On"
-                                    OffContent="Off"
+                                    OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                                    OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
                                     IsChecked="True"
                                     FontSize="10" />
                     </StackPanel>
@@ -502,7 +502,7 @@
                 </Grid>
 
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                  <Button Content="Save Capture Settings"
+                  <Button Content="{x:Static i18n:Strings.Settings_SaveCapture}"
                           Classes="Primary"
                           Click="OnSaveOceanEyesCaptureClick" />
                   <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
@@ -520,18 +520,18 @@
           <StackPanel x:Name="EditFormBorder" Spacing="16" Margin="24,14,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <StackPanel Spacing="4">
-                  <TextBlock Text="Provider Profiles"
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_ProviderProfiles_Title}"
                              Classes="CardTitle"
                              FontSize="15"
                              FontWeight="SemiBold" />
                 </StackPanel>
                 <Button Grid.Column="1"
-                        Content="＋ Add Provider"
+                        Content="{x:Static i18n:Strings.Settings_AddProvider}"
                         Click="OnAddProviderClick" />
               </Grid>
 
               <StackPanel Spacing="6">
-                <TextBlock Text="Editing"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Editing}"
                            Classes="Secondary"
                            FontSize="10"
                            FontWeight="SemiBold" />
@@ -558,26 +558,26 @@
               <Border Classes="InnerCard" Padding="14">
                 <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="12">
                   <StackPanel Grid.Row="0" Grid.Column="0" Spacing="6">
-                    <TextBlock Text="Name" Classes="Muted" FontSize="10" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_Name}" Classes="Muted" FontSize="10" />
                     <TextBox x:Name="NameInput" />
                   </StackPanel>
                   <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6">
-                    <TextBlock Text="Model" Classes="Muted" FontSize="10" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_Model}" Classes="Muted" FontSize="10" />
                     <TextBox x:Name="ModelInput" />
                   </StackPanel>
                   <StackPanel Grid.Row="1" Grid.Column="0" Spacing="6">
-                    <TextBlock Text="Base URL" Classes="Muted" FontSize="10" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_BaseUrl}" Classes="Muted" FontSize="10" />
                     <TextBox x:Name="BaseUrlInput" />
                   </StackPanel>
                   <StackPanel Grid.Row="1" Grid.Column="1" Spacing="6">
-                    <TextBlock Text="Chat Path" Classes="Muted" FontSize="10" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_ChatPath}" Classes="Muted" FontSize="10" />
                     <TextBox x:Name="ChatPathInput" PlaceholderText="chat/completions" />
                   </StackPanel>
                 </Grid>
               </Border>
 
               <StackPanel Spacing="6">
-                <TextBlock Text="System Prompt (blank uses the built-in translation prompt)"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_SystemPrompt}"
                            Classes="Muted"
                            FontSize="10" />
                 <Border Classes="InnerCard" Padding="12">
@@ -590,18 +590,18 @@
 
               <Border Classes="InnerCard" Padding="14">
                 <StackPanel Spacing="7">
-                  <TextBlock Text="API Key"
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_ApiKey}"
                              FontSize="11"
                              FontWeight="SemiBold" />
-                  <TextBlock Text="Encrypted with Windows DPAPI."
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_ApiKey_Hint}"
                              Classes="Muted"
                              FontSize="9" />
                   <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
                     <TextBox x:Name="ApiKeyInput"
                              PlaceholderText="sk-..."
                              PasswordChar="•" />
-                    <Button Grid.Column="1" Content="Show" Click="OnToggleVisibilityClick" />
-                    <Button Grid.Column="2" Content="Save Key" Classes="Primary" Click="OnSaveKeyClick" />
+                    <Button Grid.Column="1" Content="{x:Static i18n:Strings.Settings_Show}" Click="OnToggleVisibilityClick" />
+                    <Button Grid.Column="2" Content="{x:Static i18n:Strings.Settings_SaveKey}" Classes="Primary" Click="OnSaveKeyClick" />
                   </Grid>
                   <TextBlock x:Name="ApiKeyStatusText"
                              Classes="Muted"
@@ -612,7 +612,7 @@
 
               <Grid ColumnDefinitions="150,*" ColumnSpacing="16">
                 <StackPanel Spacing="6">
-                  <TextBlock Text="Timeout (seconds)" Classes="Muted" FontSize="10" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_Timeout}" Classes="Muted" FontSize="10" />
                   <Border Classes="InnerCard" Padding="6,4">
                     <NumericUpDown x:Name="TimeoutInput"
                                    Minimum="10"
@@ -625,11 +625,11 @@
                             HorizontalAlignment="Right"
                             VerticalAlignment="Bottom"
                             Spacing="8">
-                  <Button Content="Delete"
+                  <Button Content="{x:Static i18n:Strings.Common_Delete}"
                           Classes="DangerQuiet"
                           Click="OnDeleteProviderClick" />
-                  <Button Content="Set Active" Click="OnSetActiveClick" />
-                  <Button Content="Save Profile"
+                  <Button Content="{x:Static i18n:Strings.Settings_SetActive}" Click="OnSetActiveClick" />
+                  <Button Content="{x:Static i18n:Strings.Settings_SaveProfile}"
                           Classes="Primary"
                           Click="OnSaveProviderClick" />
                 </StackPanel>
@@ -643,13 +643,13 @@
           <StackPanel x:Name="PromptTemplatesCard" Spacing="16" Margin="24,14,24,0">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
-                  <TextBlock Text="Actions &amp; Prompts"
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Actions_Title}"
                              Classes="CardTitle"
                              FontSize="15"
                              FontWeight="SemiBold" />
                 </StackPanel>
                 <Button Grid.Column="1"
-                        Content="＋ Add Action"
+                        Content="{x:Static i18n:Strings.Settings_AddAction}"
                         Classes="Primary"
                         Click="OnAddFunctionClick" />
               </Grid>
@@ -668,13 +668,13 @@
                                    VerticalAlignment="Center"
                                    TextTrimming="CharacterEllipsis" />
                         <Button Grid.Column="1"
-                                Content="Edit"
+                                Content="{x:Static i18n:Strings.Common_Edit}"
                                 Classes="Ghost"
                                 Padding="10,4"
                                 FontSize="10"
                                 Command="{Binding EditCommand}" />
                         <Button Grid.Column="2"
-                                Content="Delete"
+                                Content="{x:Static i18n:Strings.Common_Delete}"
                                 Classes="DangerQuiet"
                                 Padding="10,4"
                                 FontSize="10"
@@ -693,15 +693,15 @@
           <StackPanel Spacing="16" Margin="24,14,24,0">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
               <StackPanel Spacing="4">
-                <TextBlock Text="Vision Recognition"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Vision_Title}"
                            Classes="CardTitle"
                            FontSize="15"
                            FontWeight="SemiBold" />
               </StackPanel>
               <ToggleSwitch x:Name="VisionEnabledToggle"
                             Grid.Column="1"
-                            OnContent="On"
-                            OffContent="Off"
+                            OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                            OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
                             IsChecked="True"
                             VerticalAlignment="Center" />
             </Grid>
@@ -710,13 +710,13 @@
 
             <StackPanel Spacing="14">
               <StackPanel Spacing="6">
-                <TextBlock Text="OCR Model"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Vision_OcrModel}"
                            Classes="CardTitle"
                            FontSize="13"
                            FontWeight="SemiBold" />
                 <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
                   <StackPanel Grid.Column="0" Spacing="6">
-                    <TextBlock Text="Provider" Classes="Muted" FontSize="10" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Vision_Provider}" Classes="Muted" FontSize="10" />
                     <Border Classes="InnerCard" Padding="6,4">
                       <ComboBox x:Name="VisionProviderComboBox"
                                 HorizontalAlignment="Stretch">
@@ -729,7 +729,7 @@
                     </Border>
                   </StackPanel>
                   <StackPanel Grid.Column="1" Spacing="6">
-                    <TextBlock Text="Model" Classes="Muted" FontSize="10" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Vision_Model}" Classes="Muted" FontSize="10" />
                     <Border Classes="InnerCard" Padding="6,4">
                       <ComboBox x:Name="VisionModelComboBox"
                                 HorizontalAlignment="Stretch"
@@ -738,13 +738,13 @@
                   </StackPanel>
                 </Grid>
                 <StackPanel Spacing="6">
-                  <TextBlock Text="Prompt" Classes="Muted" FontSize="10" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Vision_Prompt}" Classes="Muted" FontSize="10" />
                   <Border Classes="InnerCard" Padding="12">
                     <TextBox x:Name="VisionPromptInput"
                              AcceptsReturn="True"
                              TextWrapping="Wrap"
                              Height="68"
-                             PlaceholderText="Free OCR. (DeepSeek-OCR default)" />
+                             PlaceholderText="{x:Static i18n:Strings.Settings_Vision_Prompt_Placeholder}" />
                   </Border>
                 </StackPanel>
               </StackPanel>
@@ -752,21 +752,21 @@
               <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
 
               <StackPanel Spacing="16">
-                <TextBlock Text="Recognition Strategy"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Vision_Strategy}"
                            Classes="CardTitle"
                            FontSize="13"
                            FontWeight="SemiBold" />
 
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
                   <StackPanel Spacing="3">
-                    <TextBlock Text="UI Automation Prefill (Experimental)"
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Vision_UiaPrefill}"
                                FontSize="11"
                                FontWeight="SemiBold" />
                   </StackPanel>
                   <ToggleSwitch x:Name="VisionUiaPrefillToggle"
                                 Grid.Column="1"
-                                OnContent="On"
-                                OffContent="Off"
+                                OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                                OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
                                 IsChecked="False"
                                 VerticalAlignment="Center" />
                 </Grid>
@@ -776,18 +776,18 @@
                         Padding="0,14,0,0">
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
                     <StackPanel Spacing="3">
-                      <TextBlock Text="Disable Model Thinking"
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_Vision_DisableThinking}"
                                  FontSize="11"
                                  FontWeight="SemiBold" />
-                      <TextBlock Text="Recommended for Qwen 3.x."
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_Vision_DisableThinking_Hint}"
                                  Classes="Muted"
                                  FontSize="9"
                                  TextWrapping="Wrap" />
                     </StackPanel>
                     <ToggleSwitch x:Name="VisionDisableThinkingToggle"
                                   Grid.Column="1"
-                                  OnContent="Disabled"
-                                  OffContent="Allowed"
+                                  OnContent="{x:Static i18n:Strings.Settings_Vision_Thinking_Disabled}"
+                                  OffContent="{x:Static i18n:Strings.Settings_Vision_Thinking_Allowed}"
                                   IsChecked="False"
                                   VerticalAlignment="Center" />
                   </Grid>
@@ -796,7 +796,7 @@
             </StackPanel>
 
           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
-            <Button Content="Save Vision Settings"
+            <Button Content="{x:Static i18n:Strings.Settings_SaveVision}"
                     Classes="Primary"
                     Click="OnSaveVisionClick" />
           </StackPanel>
@@ -808,7 +808,7 @@
           <StackPanel Spacing="16" Margin="24,14,24,0">
               <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
                 <StackPanel Spacing="3">
-                  <TextBlock Text="Launcher"
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Launcher_Title}"
                              Classes="CardTitle"
                              FontSize="15"
                              FontWeight="SemiBold" />
@@ -818,11 +818,11 @@
                              FontSize="9" />
                 </StackPanel>
                 <Button Grid.Column="1"
-                        Content="🔍 扫描已安装应用"
+                        Content="{x:Static i18n:Strings.Settings_ScanInstalledApps}"
                         Classes="Ghost"
                         Click="OnScanInstalledAppsClick" />
                 <Button Grid.Column="2"
-                        Content="＋ Add Launcher"
+                        Content="{x:Static i18n:Strings.Settings_AddLauncher}"
                         Classes="Primary"
                         Click="OnAddLauncherClick" />
               </Grid>
@@ -860,13 +860,13 @@
                                 FontSize="10"
                                 Command="{Binding MoveDownCommand}" />
                         <Button Grid.Column="4"
-                                Content="Edit"
+                                Content="{x:Static i18n:Strings.Common_Edit}"
                                 Classes="Ghost"
                                 Padding="10,4"
                                 FontSize="10"
                                 Command="{Binding EditCommand}" />
                         <Button Grid.Column="5"
-                                Content="Delete"
+                                Content="{x:Static i18n:Strings.Common_Delete}"
                                 Classes="DangerQuiet"
                                 Padding="10,4"
                                 FontSize="10"
@@ -884,37 +884,37 @@
             <StackPanel Spacing="14">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
-                  <TextBlock Text="Spotlight Hotkey"
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Spotlight_Title}"
                              Classes="CardTitle"
                              FontSize="15"
                              FontWeight="SemiBold" />
                 </StackPanel>
                 <ToggleSwitch x:Name="SpotlightKeyboardShortcutToggle"
                               Grid.Column="1"
-                              OnContent="On"
-                              OffContent="Off"
+                              OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                              OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
                               IsChecked="True"
                               VerticalAlignment="Center" />
               </Grid>
 
               <Border Classes="InnerCard" Padding="14">
                 <StackPanel Spacing="10">
-                  <TextBlock Text="Hotkey"
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Hotkey}"
                              Classes="Secondary"
                              FontSize="11"
                              FontWeight="SemiBold" />
                   <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,120" ColumnSpacing="10">
-                    <CheckBox Grid.Column="0" x:Name="SpotlightCtrlModifierCheckBox" Content="Ctrl" IsChecked="True" />
-                    <CheckBox Grid.Column="1" x:Name="SpotlightAltModifierCheckBox" Content="Alt" IsChecked="True" />
-                    <CheckBox Grid.Column="2" x:Name="SpotlightShiftModifierCheckBox" Content="Shift" />
-                    <CheckBox Grid.Column="3" x:Name="SpotlightWinModifierCheckBox" Content="Win" />
+                    <CheckBox Grid.Column="0" x:Name="SpotlightCtrlModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Ctrl}" IsChecked="True" />
+                    <CheckBox Grid.Column="1" x:Name="SpotlightAltModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Alt}" IsChecked="True" />
+                    <CheckBox Grid.Column="2" x:Name="SpotlightShiftModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Shift}" />
+                    <CheckBox Grid.Column="3" x:Name="SpotlightWinModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Win}" />
                     <ComboBox Grid.Column="5" x:Name="SpotlightShortcutKeyComboBox" />
                   </Grid>
                 </StackPanel>
               </Border>
 
               <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                <Button Content="Save Hotkey"
+                <Button Content="{x:Static i18n:Strings.Settings_SaveHotkey}"
                         Classes="Primary"
                         Click="OnSaveSpotlightTriggerClick" />
                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
@@ -934,18 +934,18 @@
           <StackPanel Spacing="16" Margin="24,14,24,0">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
               <StackPanel Spacing="3">
-                <TextBlock Text="Clipboard History"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Clipboard_Title}"
                            Classes="CardTitle"
                            FontSize="15"
                            FontWeight="SemiBold" />
-                <TextBlock Text="Recall recent text without leaving the keyboard."
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Clipboard_Subtitle}"
                            Classes="Muted"
                            FontSize="9" />
               </StackPanel>
               <ToggleSwitch x:Name="ClipboardHistoryEnabledToggle"
                             Grid.Column="1"
-                            OnContent="Recording"
-                            OffContent="Paused"
+                            OnContent="{x:Static i18n:Strings.Settings_Clipboard_On}"
+                            OffContent="{x:Static i18n:Strings.Settings_Clipboard_Off}"
                             IsChecked="True"
                             VerticalAlignment="Center" />
             </Grid>
@@ -953,29 +953,29 @@
             <Border Classes="InnerCard" Padding="14">
               <StackPanel Spacing="12">
                 <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                  <TextBlock Text="Global Hotkey"
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Clipboard_GlobalHotkey}"
                              Classes="CardTitle"
                              FontSize="13"
                              FontWeight="SemiBold"
                              VerticalAlignment="Center" />
                   <ToggleSwitch x:Name="ClipboardHistoryKeyboardShortcutToggle"
                                 Grid.Column="1"
-                                OnContent="On"
-                                OffContent="Off"
+                                OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                                OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
                                 IsChecked="True"
                                 VerticalAlignment="Center" />
                 </Grid>
 
                 <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,112" ColumnSpacing="10">
-                  <CheckBox Grid.Column="0" x:Name="ClipboardHistoryCtrlModifierCheckBox" Content="Ctrl" IsChecked="True" />
-                  <CheckBox Grid.Column="1" x:Name="ClipboardHistoryAltModifierCheckBox" Content="Alt" IsChecked="True" />
-                  <CheckBox Grid.Column="2" x:Name="ClipboardHistoryShiftModifierCheckBox" Content="Shift" />
-                  <CheckBox Grid.Column="3" x:Name="ClipboardHistoryWinModifierCheckBox" Content="Win" />
+                  <CheckBox Grid.Column="0" x:Name="ClipboardHistoryCtrlModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Ctrl}" IsChecked="True" />
+                  <CheckBox Grid.Column="1" x:Name="ClipboardHistoryAltModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Alt}" IsChecked="True" />
+                  <CheckBox Grid.Column="2" x:Name="ClipboardHistoryShiftModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Shift}" />
+                  <CheckBox Grid.Column="3" x:Name="ClipboardHistoryWinModifierCheckBox" Content="{x:Static i18n:Strings.Settings_Mod_Win}" />
                   <ComboBox Grid.Column="5" x:Name="ClipboardHistoryShortcutKeyComboBox" />
                 </Grid>
 
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                  <Button Content="Save Hotkey"
+                  <Button Content="{x:Static i18n:Strings.Settings_SaveHotkey}"
                           Classes="Primary"
                           Click="OnSaveClipboardHistoryTriggerClick" />
                   <TextBlock x:Name="ClipboardHistoryShortcutStatusText"
@@ -991,7 +991,7 @@
 
             <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
               <StackPanel Spacing="2" VerticalAlignment="Center">
-                <TextBlock Text="Behavior &amp; Privacy"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Clipboard_BehaviorTitle}"
                            Classes="CardTitle"
                            FontSize="13"
                            FontWeight="SemiBold" />
@@ -1000,11 +1000,11 @@
                            FontSize="9" />
               </StackPanel>
               <Button Grid.Column="1"
-                      Content="Save Settings"
+                      Content="{x:Static i18n:Strings.Settings_SaveSettings}"
                       Classes="Primary"
                       Click="OnSaveClipboardHistorySettingsClick" />
               <Button Grid.Column="2"
-                      Content="Clear History"
+                      Content="{x:Static i18n:Strings.Settings_ClearHistory}"
                       Classes="Ghost"
                       Click="OnClearClipboardHistoryClick" />
             </Grid>
@@ -1013,15 +1013,15 @@
               <Border Grid.Column="0" Classes="InnerCard" Padding="12">
                   <StackPanel Spacing="8">
                     <ToggleSwitch x:Name="ClipboardHistoryAutoPasteToggle"
-                                  OnContent="Auto-paste"
-                                  OffContent="Copy only"
+                                  OnContent="{x:Static i18n:Strings.Settings_Clipboard_AutoPasteOn}"
+                                  OffContent="{x:Static i18n:Strings.Settings_Clipboard_AutoPasteOff}"
                                   IsChecked="False" />
                     <ToggleSwitch x:Name="ClipboardHistoryMaskSensitiveToggle"
-                                  OnContent="Mask sensitive"
-                                  OffContent="Show plain"
+                                  OnContent="{x:Static i18n:Strings.Settings_Clipboard_MaskOn}"
+                                  OffContent="{x:Static i18n:Strings.Settings_Clipboard_MaskOff}"
                                   IsChecked="True" />
                     <Grid ColumnDefinitions="*,82" ColumnSpacing="10">
-                      <TextBlock Text="Max entries"
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_Clipboard_MaxEntries}"
                                  Classes="Secondary"
                                  FontSize="11"
                                  VerticalAlignment="Center" />
@@ -1031,11 +1031,11 @@
                                FontSize="12" />
                     </Grid>
                     <ToggleSwitch x:Name="ClipboardHistoryCaptureImagesToggle"
-                                  OnContent="Capture images"
-                                  OffContent="Text only"
+                                  OnContent="{x:Static i18n:Strings.Settings_Clipboard_ImagesOn}"
+                                  OffContent="{x:Static i18n:Strings.Settings_Clipboard_ImagesOff}"
                                   IsChecked="True" />
                     <Grid ColumnDefinitions="*,82" ColumnSpacing="10">
-                      <TextBlock Text="Max image entries"
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_Clipboard_MaxImages}"
                                  Classes="Secondary"
                                  FontSize="11"
                                  VerticalAlignment="Center" />
@@ -1049,7 +1049,7 @@
 
               <Border Grid.Column="1" Classes="InnerCard" Padding="12">
                   <StackPanel Spacing="9">
-                    <TextBlock Text="Excluded applications"
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Clipboard_Excluded}"
                                Classes="Secondary"
                                FontSize="11" />
                     <TextBox x:Name="ClipboardHistoryExcludeAppsInput"
@@ -1237,14 +1237,14 @@
                     Margin="0,-24,-22,0"
                     Background="{DynamicResource ByhGemGlowBrush}" />
             <StackPanel Margin="18,21,102,12" Spacing="3">
-              <TextBlock Text="GOOD MORNING" Classes="Kicker" />
+              <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Kicker}" Classes="Kicker" />
               <Image Source="avares://SelectionAssistant.UI/Assets/Theme/byh-wordmark.png"
                      Width="94"
                      Height="30"
                      Margin="-2,0,0,0"
                      HorizontalAlignment="Left"
                      Stretch="Uniform" />
-              <TextBlock Text="Quiet, quick, within reach."
+              <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Tagline}"
                          Classes="Secondary"
                          FontSize="8"
                          TextWrapping="Wrap" />
@@ -1274,7 +1274,7 @@
                       HorizontalScrollBarVisibility="Disabled">
           <StackPanel Margin="12,5,12,5" Spacing="6">
             <StackPanel Spacing="2" Margin="4,0,0,2">
-              <TextBlock Text="Current setup" Classes="DisplayTitle" FontSize="14" />
+              <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_CurrentSetup}" Classes="DisplayTitle" FontSize="14" />
             </StackPanel>
             <Border Classes="PorcelainCard" Padding="10,8">
               <StackPanel Spacing="7">
@@ -1294,7 +1294,7 @@
                           Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M3,12 L21,12 M12,3 C15,7 15,17 12,21 C9,17 9,7 12,3" />
                   </Border>
                   <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                    <TextBlock Text="TRANSLATION PROVIDER" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_ProviderLabel}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
                     <TextBlock x:Name="SummaryProviderText"
                                Text="Loading…"
                                FontSize="9"
@@ -1317,7 +1317,7 @@
                           Data="M3,7 L21,7 L21,17 L3,17 Z M7,10.5 L9,10.5 M11,10.5 L13,10.5 M15,10.5 L17,10.5 M7,14 L17,14" />
                   </Border>
                   <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                    <TextBlock Text="OCEAN EYES HOTKEY" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_OceanEyesLabel}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
                     <TextBlock x:Name="SummaryShortcutText"
                                Text="Loading…"
                                FontSize="9"
@@ -1340,7 +1340,7 @@
                           Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
                   </Border>
                   <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                    <TextBlock Text="VISION OCR" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_VisionLabel}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
                     <TextBlock x:Name="SummaryVisionText"
                                Text="Loading…"
                                FontSize="9"
@@ -1363,7 +1363,7 @@
                           Data="M5,3 L19,3 A2,2 0 0 1 21,5 L21,17 A2,2 0 0 1 19,19 L9,19 L5,22 Z M9,7 L17,7 M9,11 L17,11 M9,15 L14,15" />
                   </Border>
                   <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                    <TextBlock Text="CLIPBOARD HOTKEY" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_ClipboardLabel}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
                     <TextBlock x:Name="SummaryClipboardText"
                                Text="Loading…"
                                FontSize="9"
@@ -1425,7 +1425,7 @@
                 Padding="18,10,16,4">
           <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
             <StackPanel Spacing="2">
-              <TextBlock Text="SYSTEM OVERVIEW"
+              <TextBlock Text="{x:Static i18n:Strings.Settings_Overview_Title}"
                          FontFamily="Georgia"
                          FontSize="12" />
             </StackPanel>
@@ -1443,7 +1443,7 @@
                 Padding="16,6,16,13">
           <Grid ColumnDefinitions="0.72*,1,0.8*,1,1.18*">
             <StackPanel Grid.Column="0" Spacing="9" Margin="2,0,14,0">
-              <TextBlock Text="Runtime" FontFamily="Georgia" FontSize="13" />
+              <TextBlock Text="{x:Static i18n:Strings.Settings_Overview_Runtime}" FontFamily="Georgia" FontSize="13" />
               <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
                 <Border Width="28" Height="28" CornerRadius="14"
                         Background="{DynamicResource ByhSuccessSoftBrush}"
@@ -1457,7 +1457,7 @@
                           VerticalAlignment="Center" />
                 </Border>
                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                  <TextBlock Text="Background capture active" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Overview_CaptureActive}" FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" />
                 </StackPanel>
               </Grid>
             </StackPanel>
@@ -1468,8 +1468,8 @@
                     HorizontalAlignment="Center" />
 
             <StackPanel Grid.Column="2" Spacing="7" Margin="16,0">
-              <TextBlock Text="Theme" FontFamily="Georgia" FontSize="13" />
-              <TextBlock Text="Ivory Jade" FontSize="11" FontWeight="SemiBold" />
+              <TextBlock Text="{x:Static i18n:Strings.Settings_Overview_Theme}" FontFamily="Georgia" FontSize="13" />
+              <TextBlock Text="{x:Static i18n:Strings.Settings_Overview_ThemeValue}" FontSize="11" FontWeight="SemiBold" />
               <StackPanel Orientation="Horizontal" Spacing="5">
                 <Border Width="16" Height="16" CornerRadius="5"
                         Background="{DynamicResource ByhSurfaceBrush}"
@@ -1496,7 +1496,7 @@
             <Grid Grid.Column="4"
                   RowDefinitions="Auto,*,Auto"
                   Margin="16,0,2,0">
-              <TextBlock Text="Diagnostics" FontFamily="Georgia" FontSize="13" />
+              <TextBlock Text="{x:Static i18n:Strings.Settings_Overview_Diagnostics}" FontFamily="Georgia" FontSize="13" />
               <TextBlock x:Name="PolicyPathText"
                          Grid.Row="1"
                          Margin="0,7,0,5"
@@ -1506,8 +1506,8 @@
                          TextTrimming="CharacterEllipsis"
                          MaxLines="2" />
               <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
-                <Button Content="Config Folder" Click="OnOpenConfigDirectoryClick" />
-                <Button Content="Log Folder" Click="OnOpenLogDirectoryClick" />
+                <Button Content="{x:Static i18n:Strings.Settings_OpenConfigFolder}" Click="OnOpenConfigDirectoryClick" />
+                <Button Content="{x:Static i18n:Strings.Settings_OpenLogFolder}" Click="OnOpenLogDirectoryClick" />
               </StackPanel>
             </Grid>
           </Grid>
@@ -1525,18 +1525,18 @@
               Padding="16">
         <Grid RowDefinitions="Auto,*,Auto">
         <StackPanel Spacing="3">
-          <TextBlock Text="Window controls" FontFamily="Georgia" FontSize="13" />
+          <TextBlock Text="{x:Static i18n:Strings.Settings_WindowControls_Title}" FontFamily="Georgia" FontSize="13" />
           <TextBlock Text="v0.1 · Windows NativeAOT" Classes="Muted" FontSize="9" />
         </StackPanel>
         <TextBlock Grid.Row="1"
-                   Text="Hide keeps BYH running. Exit stops all background services."
+                   Text="{x:Static i18n:Strings.Settings_WindowControls_Hint}"
                    Classes="Secondary"
                    FontSize="9"
                    TextWrapping="Wrap"
                    VerticalAlignment="Center" />
         <Grid Grid.Row="2" ColumnDefinitions="*,*" ColumnSpacing="8">
-          <Button Content="Hide" Classes="Ghost" Click="OnHideClick" />
-          <Button Grid.Column="1" Content="Exit BYH" Classes="DangerQuiet" Click="OnExitClick" />
+          <Button Content="{x:Static i18n:Strings.Settings_Hide}" Classes="Ghost" Click="OnHideClick" />
+          <Button Grid.Column="1" Content="{x:Static i18n:Strings.Settings_Exit}" Classes="DangerQuiet" Click="OnExitClick" />
         </Grid>
         </Grid>
       </Border>

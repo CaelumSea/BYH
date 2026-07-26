@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using SelectionAssistant.Core.I18n;
 
 namespace SelectionAssistant.UI.Views;
 
@@ -24,10 +25,10 @@ internal static class TextBoxContextMenu
     {
         var menu = new ContextMenu();
 
-        var copy = new MenuItem { Header = "复制" };
-        var cut = new MenuItem { Header = "剪切" };
-        var paste = new MenuItem { Header = "粘贴" };
-        var selectAll = new MenuItem { Header = "全选" };
+        var copy = new MenuItem { Header = Strings.Common_Copy };
+        var cut = new MenuItem { Header = Strings.Common_Cut };
+        var paste = new MenuItem { Header = Strings.Common_Paste };
+        var selectAll = new MenuItem { Header = Strings.Common_SelectAll };
 
         copy.Click += async (_, _) =>
         {
