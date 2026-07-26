@@ -2,7 +2,7 @@ id: REQ-027
 title: BYH 皮肤自定义与运行时切换系统
 status: dispatched
 created: '2026-07-26T09:24:17'
-updated: '2026-07-26T19:31:59'
+updated: '2026-07-26T19:43:38'
 score_kind: aesthetic
 aesthetic_template: ''
 acceptance_criteria:
@@ -20,6 +20,7 @@ acceptance_criteria:
   satisfied_by:
   - TASK-030
   - TASK-042
+  - TASK-043
 - id: AC-4
   text: 设置页提供皮肤列表、缩略预览、即时试用、应用、取消恢复及恢复默认操作；试用态不得提前覆盖持久配置。
   satisfied_by:
@@ -47,6 +48,7 @@ acceptance_criteria:
   - TASK-039
   - TASK-040
   - TASK-042
+  - TASK-043
 - id: AC-8
   text: 设置窗口恢复独立的系统标题栏，使用 Windows 原生最小化、最大化、关闭、拖动、双击最大化、Snap Layout 与高 DPI 行为；主题主体从标题栏下方开始。
   satisfied_by:
@@ -73,6 +75,7 @@ acceptance_criteria:
   - TASK-039
   - TASK-040
   - TASK-041
+  - TASK-043
 - id: AC-13
   text: 设置搜索可按标题、关键词和功能定位设置项，结果可点击/键盘访问并导航到对应页面及控件；无结果与清空状态明确。
   satisfied_by:
@@ -132,6 +135,9 @@ tasks:
   status: done
 - id: TASK-042
   title: 统一设置页大窗格的浅象牙立体边框
+  status: done
+- id: TASK-043
+  title: 限定浅边框仅用于中央组合窗
   status: done
 aesthetic_score:
   scored_at: ''

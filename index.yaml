@@ -1,6 +1,6 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-26T19:31:59'
+updated: '2026-07-26T19:43:38'
 secretary_focus: REQ-027
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
@@ -103,7 +103,7 @@ requirements:
 - id: REQ-027
   title: BYH 皮肤自定义与运行时切换系统
   status: dispatched
-  progress: 11/14
+  progress: 12/15
 phase: executing
 next_step: execute
 plan_confirmed_via: ask-user
