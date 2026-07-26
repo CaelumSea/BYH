@@ -1,8 +1,8 @@
 req: REQ-027
 phase: routed
 confirmed_via: ask-user
-confirmed_at: '2026-07-26T10:54:08'
-routed_at: '2026-07-26T10:54:08'
+confirmed_at: '2026-07-26T13:07:49'
+routed_at: '2026-07-26T13:07:49'
 modules:
   dispatch:
     enabled: true
@@ -22,5 +22,5 @@ modules:
   review:
     enabled: true
     reason: 用户启用
-notes: 先重新完成 TASK-033 的全屏响应式比例，再按独立任务处理手机内部导航、中央双窗格、Dashboard 和全屏标题栏。
-confirmed_evidence: 用户要求按新增反馈继续逐项修改。
+notes: 已完成 TASK-033 的响应式比例与 TASK-037 的独立系统标题栏恢复；下一步按任务推进手机内部导航、中央双窗格、Dashboard 与主题系统。
+confirmed_evidence: 用户：只改标题栏改回最开始，其他改动依然保留。

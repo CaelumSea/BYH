@@ -1,22 +1,15 @@
 id: TASK-037
 requirement: REQ-027
-title: 实现标题栏按钮自动隐藏与悬停显示
-status: in_progress
+title: 恢复独立系统标题栏并保留响应式布局
+status: done
 created: '2026-07-26T10:53:04'
-updated: '2026-07-26T12:23:40'
+updated: '2026-07-26T13:24:16'
 satisfies:
 - AC-15
 - AC-8
 - AC-7
-description: 将双箭头改为窗口按钮自动隐藏开关，不进入真正全屏；标题栏本体与窗口尺寸始终保留，仅右上角三个窗口按钮按悬停显隐，并保留拖动、双击最大化、Snap
-  Layout、高 DPI 与键盘可达性。
-handoff: >-
-  用户验收后明确：自动隐藏对象仅是右上角三个窗口按钮，不是标题栏。最终实现使用
-  BorderOnly + 36px BYH 标题栏；双箭头只切换按钮显隐布尔值，不进入 FullScreen，
-  因此窗口矩形、标题和主体布局完全不变。按钮区域固定保留 138px，隐藏时仍可接收悬停，
-  进入后显示、离开 650ms 后收起。标题栏拖动与双击最大化保留；三个按钮及模式开关均可
-  键盘聚焦。不要恢复 FullscreenPopover 方案。QA 图位于
-  artifacts/qa/REQ-027-caption-autohide/。
+description: 移除扩展客户区、自绘标题栏、双箭头和按钮自动隐藏逻辑，恢复最初稳定的独立 Windows 系统标题栏；不得回退最大化响应式列宽、手机卡比例和底部面板高度等既有改动。
+handoff: 用户最终撤销了标题栏融合与按钮自动隐藏方向。恢复独立系统标题栏时只删除标题栏相关 AXAML/C#，保留 ShellGrid 的响应式列宽与此前所有面板比例改动。
 execution_log:
 - step: 1
   action: 核对 Avalonia 12 本地 API 文档与当前设置窗口装饰结构
@@ -66,7 +59,8 @@ execution_log:
   timestamp: '2026-07-26T12:31:00+08:00'
 - step: 10
   action: 用 UI Automation 验证修正后的状态机
-  result: mode-on 按钮不可见且 WindowUnchanged=true；hover-zone 可见；left-zone 再次不可见；mode-off 常驻。
+  result: mode-on 按钮不可见且 WindowUnchanged=true；hover-zone 可见；left-zone 再次不可见；mode-off
+    常驻。
   timestamp: '2026-07-26T12:34:00+08:00'
 - step: 11
   action: 修复自定义最大化按钮与 Avalonia 非客户区角色冲突
@@ -77,3 +71,21 @@ execution_log:
   artifact: artifacts/qa/REQ-027-caption-autohide/controls-hidden.png
   result: 标题栏、标题与整体高度始终一致；仅右上角三个按钮按模式与悬停显隐。
   timestamp: '2026-07-26T12:44:00+08:00'
+- step: 13
+  type: flag-back
+  action: 根据用户最终视觉判断再次收敛标题栏需求
+  result: 撤销扩展客户区、自绘标题栏、双箭头和窗口按钮自动隐藏；只恢复最初的独立系统标题栏，响应式面板比例不回退。
+  timestamp: '2026-07-26T13:00:00+08:00'
+- step: 14
+  action: 选择性移除标题栏融合代码并保留响应式 ShellGrid
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  result: Window 恢复默认系统装饰；ShellGrid 最大化列宽 230/210/310、2.15:1 行高及既有手机卡/底栏布局保持不变。
+  timestamp: '2026-07-26T13:08:00+08:00'
+- step: 15
+  action: 完成构建、测试、NativeAOT 发布与视觉 QA
+  command: dotnet build SelectionAssistant.slnx -c Debug; dotnet test SelectionAssistant.slnx
+    -c Debug --no-build; dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj
+    -c Release -r win-x64 /p:PublishAot=true
+  artifact: artifacts/qa/REQ-027-native-titlebar/native-titlebar-default.png
+  result: Debug 构建 0 warning/0 error；574 项测试全部通过；NativeAOT 发布成功；截图确认标准 Windows 独立标题栏和最新版多窗格布局同时存在。
+  timestamp: '2026-07-26T13:17:00+08:00'

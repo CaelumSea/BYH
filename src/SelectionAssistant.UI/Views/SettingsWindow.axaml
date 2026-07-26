@@ -8,118 +8,15 @@
         MinWidth="1240"
         MinHeight="720"
         CanResize="True"
-        ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="36"
-        WindowDecorations="BorderOnly"
         Background="{DynamicResource ByhBackgroundBrush}"
         WindowStartupLocation="CenterScreen"
         AutomationProperties.AutomationId="BYH.Settings.Window"
         KeyDown="OnWindowKeyDown">
-  <Window.Styles>
-    <Style Selector="Button.CaptionControl">
-      <Setter Property="Width" Value="46" />
-      <Setter Property="Height" Value="36" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="0" />
-      <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
-      <Setter Property="FontSize" Value="15" />
-    </Style>
-    <Style Selector="Button.CaptionControl:pointerover">
-      <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
-    </Style>
-    <Style Selector="Button.CaptionControl.Close:pointerover">
-      <Setter Property="Background" Value="{DynamicResource ByhErrorSoftBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource ByhErrorBrush}" />
-    </Style>
-    <Style Selector="Button.CaptionMode">
-      <Setter Property="Width" Value="42" />
-      <Setter Property="Height" Value="36" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="0" />
-      <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />
-      <Setter Property="FontSize" Value="14" />
-    </Style>
-    <Style Selector="Button.CaptionMode:pointerover">
-      <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
-    </Style>
-    <Style Selector="Button.CaptionMode.Active">
-      <Setter Property="Background" Value="{DynamicResource ByhPrimarySoftBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource ByhPrimaryBrush}" />
-    </Style>
-  </Window.Styles>
-  <Grid x:Name="RootLayout">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="36" />
-      <RowDefinition Height="*" />
-    </Grid.RowDefinitions>
-    <Border Grid.Row="0"
-            Background="{DynamicResource ByhBackgroundBrush}"
-            BorderBrush="{DynamicResource ByhHairlineBrush}"
-            BorderThickness="0,0,0,1">
-      <Grid ColumnDefinitions="*,Auto">
-        <Border Grid.Column="0"
-                Background="Transparent"
-                WindowDecorationProperties.ElementRole="TitleBar">
-          <TextBlock Margin="14,0,0,0"
-                     Text="BYH · Settings"
-                     FontSize="12"
-                     Foreground="{DynamicResource ByhTextSecondaryBrush}"
-                     VerticalAlignment="Center"
-                     IsHitTestVisible="False" />
-        </Border>
-
-        <StackPanel Grid.Column="1"
-                    Orientation="Horizontal"
-                    HorizontalAlignment="Right">
-          <Button x:Name="CaptionAutoHideButton"
-                  Classes="CaptionMode"
-                  Content="↗"
-                  ToolTip.Tip="Auto-hide window controls"
-                  AutomationProperties.Name="Toggle auto-hide window controls"
-                  AutomationProperties.AutomationId="BYH.Settings.Caption.AutoHide"
-                  Click="OnCaptionAutoHideClick" />
-
-          <Border x:Name="CaptionButtonRevealZone"
-                  Width="138"
-                  Height="36"
-                  Background="Transparent"
-                  PointerEntered="OnCaptionButtonRevealZonePointerEntered"
-                  PointerExited="OnCaptionButtonRevealZonePointerExited">
-            <StackPanel x:Name="CaptionButtons"
-                        Orientation="Horizontal">
-              <Button Classes="CaptionControl"
-                      Content="—"
-                      AutomationProperties.Name="Minimize"
-                      AutomationProperties.AutomationId="BYH.Settings.Caption.Minimize"
-                      Click="OnCaptionMinimizeClick" />
-              <Button x:Name="CaptionMaximizeButton"
-                      Classes="CaptionControl"
-                      Content="□"
-                      AutomationProperties.Name="Maximize or restore"
-                      AutomationProperties.AutomationId="BYH.Settings.Caption.Maximize"
-                      Click="OnCaptionMaximizeClick" />
-              <Button Classes="CaptionControl Close"
-                      Content="×"
-                      AutomationProperties.Name="Close"
-                      AutomationProperties.AutomationId="BYH.Settings.Caption.Close"
-                      Click="OnCaptionCloseClick" />
-            </StackPanel>
-          </Border>
-        </StackPanel>
-      </Grid>
-    </Border>
-
-    <Grid x:Name="ShellGrid"
-          Grid.Row="1"
+  <Grid x:Name="ShellGrid"
           RowDefinitions="2.15*,1*"
           ColumnSpacing="12"
           RowSpacing="12"
-          Margin="12,0,12,12">
+          Margin="12">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="190" />
         <ColumnDefinition Width="170" />
@@ -1644,7 +1541,5 @@
         </Grid>
       </Border>
     </Border>
-    </Grid>
-
   </Grid>
 </Window>

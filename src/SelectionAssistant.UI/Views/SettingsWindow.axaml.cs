@@ -3,7 +3,6 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Threading;
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.Input;
@@ -34,8 +33,6 @@ public partial class SettingsWindow : Window
     }
 
     private bool _allowClose;
-    private bool _captionButtonsAutoHideEnabled;
-    private readonly DispatcherTimer _captionButtonHideTimer;
 
     private readonly AvaloniaList<ProviderOption> _providerOptions = [];
     private readonly ObservableCollection<PromptFunctionRow> _functionRows = [];
@@ -63,18 +60,6 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
-        _captionButtonHideTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(650),
-        };
-        _captionButtonHideTimer.Tick += (_, _) =>
-        {
-            _captionButtonHideTimer.Stop();
-            if (_captionButtonsAutoHideEnabled)
-            {
-                SetCaptionButtonsVisible(false);
-            }
-        };
         ProviderComboBox.ItemsSource = _providerOptions;
         VisionProviderComboBox.ItemsSource = _visionProviderOptions;
         ShortcutKeyComboBox.ItemsSource = OceanEyesTriggerSettings.SupportedKeys;
@@ -101,7 +86,6 @@ public partial class SettingsWindow : Window
 
         ShowSettingsPage(SettingsPage.General);
         ApplyResponsiveShellWidths();
-        UpdateCaptionButtonState();
     }
 
     // ── Settings information architecture ──
@@ -122,65 +106,7 @@ public partial class SettingsWindow : Window
         }
 
         ApplyResponsiveShellWidths();
-        CaptionMaximizeButton.Content =
-            WindowState == WindowState.Maximized ? "❐" : "□";
     }
-
-    private void OnCaptionAutoHideClick(object? sender, RoutedEventArgs eventArgs)
-    {
-        _captionButtonsAutoHideEnabled = !_captionButtonsAutoHideEnabled;
-        UpdateCaptionButtonState();
-    }
-
-    private void UpdateCaptionButtonState()
-    {
-        CaptionAutoHideButton.Classes.Remove("Active");
-        if (_captionButtonsAutoHideEnabled)
-        {
-            CaptionAutoHideButton.Classes.Add("Active");
-        }
-
-        SetCaptionButtonsVisible(!_captionButtonsAutoHideEnabled);
-    }
-
-    private void SetCaptionButtonsVisible(bool visible)
-    {
-        CaptionButtons.IsVisible = visible;
-    }
-
-    private void OnCaptionButtonRevealZonePointerEntered(
-        object? sender,
-        PointerEventArgs eventArgs)
-    {
-        if (!_captionButtonsAutoHideEnabled)
-        {
-            return;
-        }
-
-        _captionButtonHideTimer.Stop();
-        SetCaptionButtonsVisible(true);
-    }
-
-    private void OnCaptionButtonRevealZonePointerExited(
-        object? sender,
-        PointerEventArgs eventArgs)
-    {
-        if (_captionButtonsAutoHideEnabled)
-        {
-            _captionButtonHideTimer.Stop();
-            _captionButtonHideTimer.Start();
-        }
-    }
-
-    private void OnCaptionMinimizeClick(object? sender, RoutedEventArgs eventArgs) =>
-        WindowState = WindowState.Minimized;
-
-    private void OnCaptionMaximizeClick(object? sender, RoutedEventArgs eventArgs) =>
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
-
-    private void OnCaptionCloseClick(object? sender, RoutedEventArgs eventArgs) => Close();
 
     private void ShowSettingsPage(SettingsPage page)
     {

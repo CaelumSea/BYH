@@ -2,7 +2,7 @@ id: REQ-027
 title: BYH 皮肤自定义与运行时切换系统
 status: dispatched
 created: '2026-07-26T09:24:17'
-updated: '2026-07-26T12:23:40'
+updated: '2026-07-26T13:24:16'
 score_kind: aesthetic
 aesthetic_template: ''
 acceptance_criteria:
@@ -44,7 +44,7 @@ acceptance_criteria:
   - TASK-036
   - TASK-037
 - id: AC-8
-  text: 设置窗口内容延伸至系统标题栏，顶部背景与主体连续；保留原生最小化、最大化、关闭、拖动、双击最大化、Snap Layout 与高 DPI 行为。
+  text: 设置窗口恢复独立的系统标题栏，使用 Windows 原生最小化、最大化、关闭、拖动、双击最大化、Snap Layout 与高 DPI 行为；主题主体从标题栏下方开始。
   satisfied_by:
   - TASK-029
   - TASK-037
@@ -74,8 +74,7 @@ acceptance_criteria:
   satisfied_by:
   - TASK-036
 - id: AC-15
-  text: 双箭头切换窗口按钮自动隐藏模式，不进入真正全屏：标题栏背景、窗口标题、窗口尺寸与主体布局始终保持不变；仅最小化、最大化/还原、关闭按钮平时隐藏，鼠标进入右上角原按钮区域后可靠显示，离开后自动收起，并保留拖动、双击最大化、Snap
-    Layout、键盘操作与高 DPI 行为。
+  text: 移除设置页自绘标题栏、双箭头及窗口按钮自动隐藏模式，恢复最初稳定的独立系统标题栏；保留已经完成的最大化响应式列宽、手机卡比例与底部面板高度调整。
   satisfied_by:
   - TASK-037
 tasks:
@@ -104,8 +103,8 @@ tasks:
   title: 实现中央 Dashboard 与真实使用概览
   status: pending
 - id: TASK-037
-  title: 实现标题栏按钮自动隐藏与悬停显示
-  status: in_progress
+  title: 恢复独立系统标题栏并保留响应式布局
+  status: done
 aesthetic_score:
   scored_at: ''
   scored_by: ''
@@ -113,5 +112,5 @@ aesthetic_score:
   total: null
 aesthetic_notes: []
 aligned_via: ask-user
-aligned_at: '2026-07-26T12:22:50'
-aligned_evidence: 用户：标题栏还是留着，平时只隐藏那几个按钮。
+aligned_at: '2026-07-26T13:06:08'
+aligned_evidence: 用户：只改标题栏改回最开始，其他全屏缩放和窗口尺寸关系保留。
