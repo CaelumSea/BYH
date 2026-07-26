@@ -18,11 +18,10 @@ public sealed record ScreenshotGalleryEntry(
 /// R49: scans the Ocean Eyes save folder for <c>ocean-eyes-*.png</c> files and
 /// returns them newest-first. Pure function, no UI deps, fully testable.
 /// </summary>
-public static class ScreenshotGalleryLoader
+public static partial class ScreenshotGalleryLoader
 {
-    private static readonly Regex NamePattern = new(
-        @"ocean-eyes-(\d{8})-(\d{6})\.png$",
-        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    [GeneratedRegex(@"ocean-eyes-(\d{8})-(\d{6})\.png$", RegexOptions.IgnoreCase)]
+    private static partial Regex NamePattern();
 
     private static readonly string[] DayOfWeekLabels =
     {
@@ -73,7 +72,7 @@ public static class ScreenshotGalleryLoader
     /// </summary>
     public static DateTime? ParseTimestampFromName(string fileName)
     {
-        Match match = NamePattern.Match(fileName);
+        Match match = NamePattern().Match(fileName);
         if (!match.Success)
         {
             return null;

@@ -18,7 +18,7 @@ namespace SelectionAssistant.Platform.Windows.Launcher;
 /// No reflection, no COM interop, no dynamic code generation.
 /// </para>
 /// </summary>
-public sealed class WindowsStartMenuDetector : IInstalledAppDetector
+public sealed partial class WindowsStartMenuDetector : IInstalledAppDetector
 {
     /// <summary>
     /// Filename fragments (case-insensitive) that mark a shortcut as a help
@@ -70,10 +70,10 @@ public sealed class WindowsStartMenuDetector : IInstalledAppDetector
         string utf16 = Encoding.Unicode.GetString(bytes);
 
         // Strategy 1: full path with drive letter, ASCII then UTF-16.
-        string? full = FullPathRegex.Match(ascii).Value;
+        string? full = FullPathRegex().Match(ascii).Value;
         if (string.IsNullOrEmpty(full))
         {
-            full = FullPathRegex.Match(utf16).Value;
+            full = FullPathRegex().Match(utf16).Value;
         }
         if (!string.IsNullOrEmpty(full))
         {
@@ -81,10 +81,10 @@ public sealed class WindowsStartMenuDetector : IInstalledAppDetector
         }
 
         // Strategy 2: \system32\*.exe|msc relative — prepend C:\Windows.
-        string? sys = System32RelativeRegex.Match(ascii).Value;
+        string? sys = System32RelativeRegex().Match(ascii).Value;
         if (string.IsNullOrEmpty(sys))
         {
-            sys = System32RelativeRegex.Match(utf16).Value;
+            sys = System32RelativeRegex().Match(utf16).Value;
         }
         if (!string.IsNullOrEmpty(sys))
         {
@@ -94,7 +94,7 @@ public sealed class WindowsStartMenuDetector : IInstalledAppDetector
         // Strategy 3: any \sub\path\app.exe fragment (no drive letter). Only
         // accept paths with at least one directory separator to avoid matching
         // stray "app.exe" tokens in arbitrary string data.
-        string? frag = RelativeFragmentRegex.Match(ascii).Value;
+        string? frag = RelativeFragmentRegex().Match(ascii).Value;
         if (!string.IsNullOrEmpty(frag) && frag.Contains('\\'))
         {
             return SanitizePath(frag);
@@ -106,16 +106,16 @@ public sealed class WindowsStartMenuDetector : IInstalledAppDetector
     // Match a Windows path: drive letter, colon, backslash, then any printable
     // non-control chars, ending in .exe or .msc. Lazy so it stops at the first
     // extension match rather than greedily swallowing trailing garbage.
-    private static readonly Regex FullPathRegex =
-        new(@"[A-Za-z]:\\[^\x00-\x1f]*?\.(?:exe|msc)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    [GeneratedRegex(@"[A-Za-z]:\\[^\x00-\x1f]*?\.(?:exe|msc)", RegexOptions.IgnoreCase)]
+    private static partial Regex FullPathRegex();
 
     // \system32\<anything>.exe or .msc — captures the path *after* \system32\.
-    private static readonly Regex System32RelativeRegex =
-        new(@"\\system32\\[^\x00-\x1f]*?\.(?:exe|msc)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    [GeneratedRegex(@"\\system32\\[^\x00-\x1f]*?\.(?:exe|msc)", RegexOptions.IgnoreCase)]
+    private static partial Regex System32RelativeRegex();
 
     // Relative fragment fallback: \word\word...\app.exe.
-    private static readonly Regex RelativeFragmentRegex =
-        new(@"\\[A-Za-z][^\x00-\x1f\\]{2,}\\[^\x00-\x1f]*?\.exe", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    [GeneratedRegex(@"\\[A-Za-z][^\x00-\x1f\\]{2,}\\[^\x00-\x1f]*?\.exe", RegexOptions.IgnoreCase)]
+    private static partial Regex RelativeFragmentRegex();
 
     /// <summary>
     /// Strips a trailing icon-resource index (e.g. <c>app.exe,0</c> or

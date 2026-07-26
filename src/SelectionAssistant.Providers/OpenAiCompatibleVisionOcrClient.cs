@@ -23,7 +23,7 @@ namespace SelectionAssistant.Providers;
 /// param with HTTP 400. The caller passes <c>disableThinking</c> based on the
 /// configured model. See <see cref="BuildRequestBody" />.
 /// </remarks>
-public sealed class OpenAiCompatibleVisionOcrClient : IVisionOcrClient, IDisposable
+public sealed partial class OpenAiCompatibleVisionOcrClient : IVisionOcrClient, IDisposable
 {
     private readonly OpenAiCompatibleProviderOptions _options;
     private readonly ISecretStore _secretStore;
@@ -42,8 +42,8 @@ public sealed class OpenAiCompatibleVisionOcrClient : IVisionOcrClient, IDisposa
     /// prepended to the OCR text ("OCR 多余文字" bug). Compiled + cached for
     /// reuse across the streaming aggregate.
     /// </summary>
-    private static readonly Regex ThinkBlockPattern =
-        new(@"<think>.*?</think>", RegexOptions.Singleline | RegexOptions.Compiled);
+    [GeneratedRegex(@"<think>.*?</think>", RegexOptions.Singleline)]
+    private static partial Regex ThinkBlockPattern();
 
     /// <param name="ocrPrompt">Instruction sent as the user text part. Defaults
     /// to DeepSeek-OCR's official <c>"Free OCR."</c> when null/whitespace.</param>
@@ -247,7 +247,7 @@ public sealed class OpenAiCompatibleVisionOcrClient : IVisionOcrClient, IDisposa
             return string.Empty;
         }
 
-        string cleaned = ThinkBlockPattern.Replace(raw, string.Empty);
+        string cleaned = ThinkBlockPattern().Replace(raw, string.Empty);
 
         // Unterminated <think> at the end: drop everything from the tag to EOF
         // (the response cut off mid-reasoning, the visible answer never came).

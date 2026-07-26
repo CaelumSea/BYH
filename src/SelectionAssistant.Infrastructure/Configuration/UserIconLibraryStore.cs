@@ -30,7 +30,7 @@ public sealed record UserIcon(string Name, string PathData);
 /// <summary>Pure helpers for loading, saving, and mutating the user icon
 /// library, plus SVG→path-data extraction. Mirrors the ClipboardTagStore
 /// pattern: every mutator returns a NEW record; the caller persists.</summary>
-public static class UserIconLibraryStore
+public static partial class UserIconLibraryStore
 {
     // ── SVG geometry extraction ──
     //
@@ -41,25 +41,25 @@ public static class UserIconLibraryStore
     // paths; circles are synthesized as two arc moves; lines as M/L). Polygons
     // and rects are also handled. Fill/stroke attributes are dropped — the
     // Avalonia Path controls its own Stroke.
-    private static readonly Regex PathTagRe =
-        new(@"<path\b([^/>]*?)/?>", RegexOptions.Compiled | RegexOptions.Singleline);
-    private static readonly Regex CircleTagRe =
-        new(@"<circle\b([^/>]*?)/?>", RegexOptions.Compiled | RegexOptions.Singleline);
-    private static readonly Regex LineTagRe =
-        new(@"<line\b([^/>]*?)/?>", RegexOptions.Compiled | RegexOptions.Singleline);
-    private static readonly Regex RectTagRe =
-        new(@"<rect\b([^/>]*?)/?>", RegexOptions.Compiled | RegexOptions.Singleline);
-    private static readonly Regex PolygonTagRe =
-        new(@"<polygon\b([^/>]*?)/?>", RegexOptions.Compiled | RegexOptions.Singleline);
-    private static readonly Regex AttrRe =
-        new(@"(\w[\w-]*)\s*=\s*""([^""]*)""", RegexOptions.Compiled);
-    private static readonly Regex AttrDRe =
-        new(@"\bd\s*=\s*""([^""]*)""", RegexOptions.Compiled | RegexOptions.Singleline);
+    [GeneratedRegex(@"<path\b([^/>]*?)/?>", RegexOptions.Singleline)]
+    private static partial Regex PathTagRe();
+    [GeneratedRegex(@"<circle\b([^/>]*?)/?>", RegexOptions.Singleline)]
+    private static partial Regex CircleTagRe();
+    [GeneratedRegex(@"<line\b([^/>]*?)/?>", RegexOptions.Singleline)]
+    private static partial Regex LineTagRe();
+    [GeneratedRegex(@"<rect\b([^/>]*?)/?>", RegexOptions.Singleline)]
+    private static partial Regex RectTagRe();
+    [GeneratedRegex(@"<polygon\b([^/>]*?)/?>", RegexOptions.Singleline)]
+    private static partial Regex PolygonTagRe();
+    [GeneratedRegex(@"(\w[\w-]*)\s*=\s*""([^""]*)""")]
+    private static partial Regex AttrRe();
+    [GeneratedRegex(@"\bd\s*=\s*""([^""]*)""", RegexOptions.Singleline)]
+    private static partial Regex AttrDRe();
 
     private static Dictionary<string, string> ParseAttrs(string attrs)
     {
         var d = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (Match m in AttrRe.Matches(attrs))
+        foreach (Match m in AttrRe().Matches(attrs))
         {
             d[m.Groups[1].Value] = m.Groups[2].Value;
         }
@@ -85,16 +85,16 @@ public static class UserIconLibraryStore
         var datas = new List<string>();
 
         // <path d="...">
-        foreach (Match m in PathTagRe.Matches(svg))
+        foreach (Match m in PathTagRe().Matches(svg))
         {
-            Match dm = AttrDRe.Match(m.Groups[1].Value);
+            Match dm = AttrDRe().Match(m.Groups[1].Value);
             if (dm.Success && !string.IsNullOrWhiteSpace(dm.Groups[1].Value))
             {
                 datas.Add(dm.Groups[1].Value.Trim());
             }
         }
         // <circle cx cy r> → two arcs
-        foreach (Match m in CircleTagRe.Matches(svg))
+        foreach (Match m in CircleTagRe().Matches(svg))
         {
             var a = ParseAttrs(m.Groups[1].Value);
             double cx = Num(a, "cx") ?? 0;
@@ -104,7 +104,7 @@ public static class UserIconLibraryStore
             datas.Add($"M {cx - r},{cy} a {r},{r} 0 1,0 {2 * r},0 a {r},{r} 0 1,0 {-2 * r},0");
         }
         // <line x1 y1 x2 y2> → M/L
-        foreach (Match m in LineTagRe.Matches(svg))
+        foreach (Match m in LineTagRe().Matches(svg))
         {
             var a = ParseAttrs(m.Groups[1].Value);
             double? x1 = Num(a, "x1"), y1 = Num(a, "y1");
@@ -115,7 +115,7 @@ public static class UserIconLibraryStore
             }
         }
         // <rect x y width height> → four lines
-        foreach (Match m in RectTagRe.Matches(svg))
+        foreach (Match m in RectTagRe().Matches(svg))
         {
             var a = ParseAttrs(m.Groups[1].Value);
             double x = Num(a, "x") ?? 0;
@@ -126,7 +126,7 @@ public static class UserIconLibraryStore
             datas.Add($"M {x},{y} L {x + w},{y} L {x + w},{y + h} L {x},{y + h} Z");
         }
         // <polygon points="x,y x,y ..."> → polyline closed
-        foreach (Match m in PolygonTagRe.Matches(svg))
+        foreach (Match m in PolygonTagRe().Matches(svg))
         {
             var a = ParseAttrs(m.Groups[1].Value);
             if (!a.TryGetValue("points", out string? pts) || string.IsNullOrWhiteSpace(pts)) continue;
