@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -755,7 +756,8 @@ public partial class App : Application
 
         var runtime = _runtime;
         var overlay = _regionOverlay;
-        bool uiaAssist = runtime.GetOceanEyesCaptureSettings().UiaAssistEnabled;
+        bool uiaAssist = runtime.GetOceanEyesCaptureSettings().UiaAssistEnabled
+            && !IsForegroundOwnedByCurrentProcess();
 
         var timer = new DispatcherTimer { Interval = TimeSpan.Zero };
         timer.Tick += (_, _) =>
@@ -790,6 +792,48 @@ public partial class App : Application
         };
         timer.Start();
     }
+
+    /// <summary>
+    /// Returns true when the current foreground window belongs to BYH itself
+    /// (Settings / Spotlight / Clipboard History / Prompt / Result / toolbar).
+    /// Used by <see cref="EnterOceanEyesAt"/> to skip the UIA prefill + live
+    /// tracking when OE is triggered over our own UI.
+    /// </summary>
+    /// <remarks>
+    /// <b>Why this exists.</b> OE's live UIA tracking polls
+    /// <c>ElementFromPoint</c> on the region overlay's MouseMove (~25 Hz), and
+    /// each poll blocks the UI thread via <c>GetElementBoundsAt</c>'s
+    /// <c>done.Wait</c>. When the foreground window is BYH's own Settings/Spot
+    /// light window, UIA must walk Avalonia's on-demand automation-peer tree
+    /// (hundreds of peers) for every poll — each query jumps from &lt;30ms to
+    /// several hundred ms, so the UI thread is starved and the overlay/input
+    /// freezes ("设置窗口在前台的时候使用OE会卡得用不了"). The overlay is marked
+    /// invisible to UIA, so it punches through to whatever is below; we can't
+    /// exclude BYH windows from that walk cheaply.
+    /// <para>
+    /// The cheap, correct fix: detect "foreground is ours" by PID and skip
+    /// UIA assist for that session entirely. The user never wants to OCR BYH's
+    /// own UI anyway, and free-draw always works. We compare PIDs (not HWND
+    /// identity) so any BYH window — settings, spotlight, clipboard history —
+    /// trips the gate.
+    /// </para>
+    /// </remarks>
+    private static bool IsForegroundOwnedByCurrentProcess()
+    {
+        nint foreground = GetForegroundWindow();
+        if (foreground == 0)
+        {
+            return false;
+        }
+        GetWindowThreadProcessId(foreground, out uint pid);
+        return pid == Environment.ProcessId;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern nint GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
 
     private void RegisterInitialOceanEyesHotKey()
     {
