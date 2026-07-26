@@ -168,19 +168,12 @@
         <GradientStop Color="#7CB77B37" Offset="0.88" />
         <GradientStop Color="#B8F2DDBB" Offset="1" />
       </LinearGradientBrush>
-      <!-- The joined search/workspace pair needs a quieter contour than the
-           freestanding macro panels. Its metal shift remains perceptible, but
-           the ivory surface—not the outline—carries the visual weight. -->
-      <LinearGradientBrush x:Key="ByhJoinedPaneEdgeBrush"
-                           StartPoint="0%,0%"
-                           EndPoint="100%,100%">
-        <GradientStop Color="#58B98242" Offset="0" />
-        <GradientStop Color="#98FFF1DA" Offset="0.14" />
-        <GradientStop Color="#70E8C89A" Offset="0.42" />
-        <GradientStop Color="#62D5A86A" Offset="0.68" />
-        <GradientStop Color="#4CB77B37" Offset="0.88" />
-        <GradientStop Color="#90F2DDBB" Offset="1" />
-      </LinearGradientBrush>
+      <!-- Large panes deliberately use one uniform pale edge. A directional
+           metallic gradient made the top/upper-left contour darker than the
+           quiet lower-left corner in the reference. Depth now comes from the
+           pearl inset and ambient shadow, not from a changing outline. -->
+      <SolidColorBrush x:Key="ByhJoinedPaneEdgeBrush"
+                       Color="#50E1CDAE" />
       <LinearGradientBrush x:Key="ByhPearlInsetBrush"
                            StartPoint="0%,0%"
                            EndPoint="0%,100%">
@@ -351,25 +344,21 @@
   <Style Selector="Border.MetallicFrame.Compact">
     <Setter Property="CornerRadius" Value="24" />
   </Style>
-  <!-- Reference macro frame. One element owns the metallic contour and cast
-       shadow; a separate MacroClip child owns rounded content clipping. This
-       prevents nested full-size borders and clipped shadows from creating the
-       thick or broken rim seen in the previous version. -->
+  <!-- Unified reference macro frame. Every rounded window uses the same pale
+       ivory/champagne double contour and diffuse lift seen at the lower-left
+       corner of the reference. Geometry may vary, but material weight does
+       not. A separate MacroClip owns content clipping so the rim stays clean. -->
   <Style Selector="Border.MetallicFrame.Thin">
     <Setter Property="Background" Value="#FFFFFDF8" />
-    <Setter Property="BorderBrush" Value="{DynamicResource ByhMacroEdgeBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhJoinedPaneEdgeBrush}" />
     <Setter Property="Padding" Value="3" />
-    <!-- Match the successful InnerCard material at macro scale: a bright
-         top inset, a short contact shadow and a broad, faint ambient falloff.
-         Depth comes from light, not from a darker outline. -->
-    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F0FFFFFF, inset 0 0 0 1 #FFFFFFFF, inset 0 0 0 2 #54EAD8B8, 0 3 10 0 #0D4A2B19, 0 14 34 0 #104A2B19, 0 24 54 0 #064A2B19" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F4FFFFFF, inset 0 0 0 1 #FFFFFFFF, inset 0 0 0 2 #38EAD8B8, 0 3 9 0 #0A4A2B19, 0 14 32 0 #0E4A2B19, 0 24 52 0 #054A2B19" />
   </Style>
   <!-- The right summary reads as a small handset rather than another desktop
        card: deeper body radius, a closer double rim and slightly longer lift. -->
   <Style Selector="Border.MetallicFrame.PhoneFrame">
     <Setter Property="CornerRadius" Value="34" />
     <Setter Property="Padding" Value="4" />
-    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F4FFFFFF, inset 0 0 0 1 #FFFFFDF8, inset 0 0 0 3 #70EAD8B8, 0 4 12 0 #104A2B19, 0 18 42 0 #124A2B19, 0 30 64 0 #084A2B19" />
   </Style>
   <Style Selector="Border.PorcelainCard">
     <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
@@ -435,8 +424,6 @@
   <Style Selector="Border.MetallicFrame.SearchFrame">
     <Setter Property="CornerRadius" Value="28" />
     <Setter Property="Padding" Value="3" />
-    <Setter Property="BorderBrush" Value="{DynamicResource ByhJoinedPaneEdgeBrush}" />
-    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F6FFFFFF, inset 0 0 0 1 #FFFFFFFF, inset 0 0 0 2 #36EAD8B8, 0 2 7 0 #084A2B19" />
   </Style>
   <Style Selector="Border.MacroClip.SearchClip">
     <Setter Property="CornerRadius" Value="25" />
@@ -452,8 +439,6 @@
   </Style>
   <Style Selector="Border.MetallicFrame.MainWorkspaceFrame">
     <Setter Property="CornerRadius" Value="28" />
-    <Setter Property="BorderBrush" Value="{DynamicResource ByhJoinedPaneEdgeBrush}" />
-    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #F0FFFFFF, inset 0 0 0 1 #FFFFFFFF, inset 0 0 0 2 #38EAD8B8, 0 4 12 0 #0B4A2B19, 0 16 36 0 #0E4A2B19, 0 26 58 0 #054A2B19" />
   </Style>
   <Style Selector="Border.SearchResultsPopover">
     <Setter Property="Background" Value="#FFFFFDF9" />
