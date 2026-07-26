@@ -83,6 +83,8 @@ internal static partial class Strings_zh_CN
         ["Gallery_CtxReveal"] = "在资源管理器中显示",
         ["Gallery_DeleteConfirmPrompt"] = "删除这张截图？此操作无法撤销。",
         ["Gallery_DeleteConfirmButton"] = "删除",
+        ["Gallery_Today"] = "今天",
+        ["Gallery_Yesterday"] = "昨天",
         ["Gallery_PreviewCloseHint"] = "Esc / 点击空白处关闭",
         ["Gallery_PreviewCopy"] = "📋 复制",
         ["Gallery_PreviewDelete"] = "🗑 删除",

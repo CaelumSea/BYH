@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using SelectionAssistant.Core.I18n;
 
 namespace SelectionAssistant.Core.Capture;
 
@@ -23,10 +24,19 @@ public static partial class ScreenshotGalleryLoader
     [GeneratedRegex(@"ocean-eyes-(\d{8})-(\d{6})\.png$", RegexOptions.IgnoreCase)]
     private static partial Regex NamePattern();
 
-    private static readonly string[] DayOfWeekLabels =
-    {
-        "周日", "周一", "周二", "周三", "周四", "周五", "周六"
-    };
+    // Audit M9: weekday labels were hardcoded Chinese ("周日"/"周一"/…),
+    // so an English-locale user saw "今天 14:30" / "周三 17:00" in the gallery.
+    // Today/Yesterday now go through Strings.Gallery_Today/Gallery_Yesterday.
+    // The weekday-name array still needs to localize per-language; we pick the
+    // set based on AppLanguage.Current (set once at startup, so this read is
+    // safe). ISO weekday order is Sun=0..Sat=6 to match DateTime.DayOfWeek.
+    private static readonly string[] DayOfWeekLabelsZh =
+        { "周日", "周一", "周二", "周三", "周四", "周五", "周六" };
+    private static readonly string[] DayOfWeekLabelsEn =
+        { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+
+    private static string[] DayOfWeekLabels =>
+        AppLanguage.Current == AppLanguage.Chinese ? DayOfWeekLabelsZh : DayOfWeekLabelsEn;
 
     /// <summary>
     /// Returns all <c>ocean-eyes-*.png</c> in <paramref name="directory"/>,
@@ -94,10 +104,10 @@ public static partial class ScreenshotGalleryLoader
     /// <summary>
     /// Formats a timestamp as a localized relative label.
     /// <list type="bullet">
-    ///   <item>Same day: "今天 14:30"</item>
-    ///   <item>Yesterday: "昨天 09:12"</item>
-    ///   <item>Within 7 days: "周三 17:00"</item>
-    ///   <item>Older: "2026-07-15 17:00"</item>
+    ///   <item>Same day: "Today 14:30" / "今天 14:30"</item>
+    ///   <item>Yesterday: "Yesterday 09:12" / "昨天 09:12"</item>
+    ///   <item>Within 7 days: "Wed 17:00" / "周三 17:00"</item>
+    ///   <item>Older: "2026-07-15 17:00" (ISO-style, language-neutral)</item>
     /// </list>
     /// </summary>
     public static string FormatDisplayName(DateTime ts)
@@ -110,15 +120,15 @@ public static partial class ScreenshotGalleryLoader
         int dayDiff = (today - tsDate).Days;
         if (dayDiff == 0)
         {
-            return "今天 " + time;
+            return Strings.Gallery_Today + " " + time; // Audit M9: was "今天"
         }
         if (dayDiff == 1)
         {
-            return "昨天 " + time;
+            return Strings.Gallery_Yesterday + " " + time; // Audit M9: was "昨天"
         }
         if (dayDiff > 0 && dayDiff < 7)
         {
-            return DayOfWeekLabels[(int)ts.DayOfWeek] + " " + time;
+            return DayOfWeekLabels[(int)ts.DayOfWeek] + " " + time; // Audit M9: per-language array
         }
         return ts.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture);
     }

@@ -1,5 +1,6 @@
 using System.Globalization;
 using SelectionAssistant.Core.Capture;
+using SelectionAssistant.Core.I18n;
 using Xunit;
 
 namespace SelectionAssistant.Core.Tests.Capture;
@@ -140,7 +141,10 @@ public sealed class ScreenshotGalleryLoaderTests
         DateTime now = DateTime.Now;
         string label = ScreenshotGalleryLoader.FormatDisplayName(
             new DateTime(now.Year, now.Month, now.Day, 14, 30, 0, DateTimeKind.Local));
-        Assert.StartsWith("今天 ", label);
+        // Audit M9: gallery labels are now i18n'd; assert against the same
+        // Strings.Gallery_Today accessor the production code uses, so the test
+        // passes in whichever language the test process defaults to.
+        Assert.StartsWith(Strings.Gallery_Today + " ", label);
         Assert.EndsWith("14:30", label);
     }
 
@@ -150,7 +154,7 @@ public sealed class ScreenshotGalleryLoaderTests
         DateTime yesterday = DateTime.Now.Date.AddDays(-1);
         DateTime ts = new DateTime(yesterday.Year, yesterday.Month, yesterday.Day, 9, 12, 0, DateTimeKind.Local);
         string label = ScreenshotGalleryLoader.FormatDisplayName(ts);
-        Assert.StartsWith("昨天 ", label);
+        Assert.StartsWith(Strings.Gallery_Yesterday + " ", label); // Audit M9: i18n
         Assert.EndsWith("09:12", label);
     }
 

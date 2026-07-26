@@ -150,6 +150,8 @@ public static partial class Strings
     public static string Gallery_CtxReveal => Get(nameof(Gallery_CtxReveal));
     public static string Gallery_DeleteConfirmPrompt => Get(nameof(Gallery_DeleteConfirmPrompt));
     public static string Gallery_DeleteConfirmButton => Get(nameof(Gallery_DeleteConfirmButton));
+    public static string Gallery_Today => Get(nameof(Gallery_Today));
+    public static string Gallery_Yesterday => Get(nameof(Gallery_Yesterday));
     public static string Gallery_PreviewCloseHint => Get(nameof(Gallery_PreviewCloseHint));
     public static string Gallery_PreviewCopy => Get(nameof(Gallery_PreviewCopy));
     public static string Gallery_PreviewDelete => Get(nameof(Gallery_PreviewDelete));

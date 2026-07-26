@@ -83,6 +83,8 @@ internal static partial class Strings_en
         ["Gallery_CtxReveal"] = "Reveal in Explorer",
         ["Gallery_DeleteConfirmPrompt"] = "Delete this screenshot? This cannot be undone.",
         ["Gallery_DeleteConfirmButton"] = "Delete",
+        ["Gallery_Today"] = "Today",
+        ["Gallery_Yesterday"] = "Yesterday",
         ["Gallery_PreviewCloseHint"] = "Esc / click blank to close",
         ["Gallery_PreviewCopy"] = "📋 Copy",
         ["Gallery_PreviewDelete"] = "🗑 Delete",
