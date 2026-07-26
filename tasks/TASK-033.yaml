@@ -67,3 +67,11 @@ execution_log:
   action: 验证四列完整响应式布局
   result: AXAML 解析通过；Debug 构建 0 warning/0 error；NativeAOT 发布通过。
   timestamp: '2026-07-26T11:49:00+08:00'
+- step: 13
+  action: 改用窗口状态驱动的明确列宽
+  result: 普通窗口使用 190/170/270；最大化或全屏使用 230/210/310，避免高 DPI 下星号列始终停在最小值。
+  timestamp: '2026-07-26T11:58:00+08:00'
+- step: 14
+  action: 修复 Avalonia ColumnDefinition 不生成命名字段的问题
+  result: 改为命名 ShellGrid 并按 ColumnDefinitions 索引更新宽度；Debug 构建、574 项测试和 NativeAOT 全部通过。
+  timestamp: '2026-07-26T12:02:00+08:00'

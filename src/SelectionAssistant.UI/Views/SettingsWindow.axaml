@@ -29,22 +29,17 @@
             Background="{DynamicResource ByhBackgroundBrush}"
             WindowDecorationProperties.ElementRole="TitleBar" />
 
-    <Grid Grid.Row="1"
+    <Grid x:Name="ShellGrid"
+          Grid.Row="1"
           RowDefinitions="2.15*,1*"
           ColumnSpacing="12"
           RowSpacing="12"
           Margin="12,0,12,12">
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="0.22*"
-                          MinWidth="190"
-                          MaxWidth="230" />
-        <ColumnDefinition Width="0.20*"
-                          MinWidth="170"
-                          MaxWidth="210" />
+        <ColumnDefinition Width="190" />
+        <ColumnDefinition Width="170" />
         <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="0.36*"
-                          MinWidth="270"
-                          MaxWidth="330" />
+        <ColumnDefinition Width="270" />
       </Grid.ColumnDefinitions>
 
     <!-- R54 atmosphere: a large warm radial glow behind the floating panels,

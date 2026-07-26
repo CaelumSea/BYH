@@ -80,11 +80,21 @@ public partial class SettingsWindow : Window
             eventArgs.Cancel = true;
             Hide();
         };
+        SizeChanged += (_, _) => ApplyResponsiveShellWidths();
 
         ShowSettingsPage(SettingsPage.General);
+        ApplyResponsiveShellWidths();
     }
 
     // ── Settings information architecture ──
+
+    private void ApplyResponsiveShellWidths()
+    {
+        bool expanded = WindowState is WindowState.Maximized or WindowState.FullScreen;
+        ShellGrid.ColumnDefinitions[0].Width = new GridLength(expanded ? 230 : 190);
+        ShellGrid.ColumnDefinitions[1].Width = new GridLength(expanded ? 210 : 170);
+        ShellGrid.ColumnDefinitions[3].Width = new GridLength(expanded ? 310 : 270);
+    }
 
     private void ShowSettingsPage(SettingsPage page)
     {
