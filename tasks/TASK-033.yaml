@@ -1,9 +1,9 @@
 id: TASK-033
 requirement: REQ-027
 title: 修正手机卡与底部总览的纵向比例
-status: done
+status: in_progress
 created: '2026-07-26T10:30:20'
-updated: '2026-07-26T10:44:17'
+updated: '2026-07-26T10:54:11'
 satisfies:
 - AC-10
 - AC-7
@@ -34,3 +34,12 @@ execution_log:
   artifact: artifacts/qa/REQ-027-proportion-pass-1/v25-unified-tabs-general-default-nativeaot.png
   result: NativeAOT 发布通过；手机卡只比中央上窗略矮，System Overview 获得更充足高度。
   timestamp: '2026-07-26T10:42:00+08:00'
+- step: 5
+  action: 根据最大化验收反馈改为横纵双向响应式比例
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  result: 中央/手机列改为 3.2*:1.25* 且手机最小宽度 300；上下行改为 2.15*:1*，底栏随全屏高度增长。
+  timestamp: '2026-07-26T11:08:00+08:00'
+- step: 6
+  action: 重新完成构建、测试和 NativeAOT 发布
+  result: Debug 构建 0 warning/0 error；574 项测试全部通过；支线最新版已打开等待同屏最大化验收。
+  timestamp: '2026-07-26T11:12:00+08:00'

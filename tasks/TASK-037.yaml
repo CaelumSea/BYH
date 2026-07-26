@@ -1,0 +1,13 @@
+id: TASK-037
+requirement: REQ-027
+title: 实现全屏标题栏自动隐藏与触顶显示
+status: pending
+created: '2026-07-26T10:53:04'
+updated: '2026-07-26T10:53:04'
+satisfies:
+- AC-15
+- AC-8
+- AC-7
+description: 明确原生双箭头全屏行为，在全屏状态提供可恢复的顶部热区与标题栏显隐控制，保留窗口按钮、Esc/退出全屏、高 DPI 和键盘可达性。
+handoff: ''
+execution_log: []
