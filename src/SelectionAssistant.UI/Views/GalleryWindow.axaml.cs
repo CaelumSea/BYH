@@ -7,8 +7,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Transformation;
@@ -56,6 +58,14 @@ public partial class GalleryWindow : Window
     private readonly RedactedLogger _logger;
     private GalleryItemViewModel? _selected;
     private readonly ObservableCollection<GalleryItemViewModel> _items = new();
+
+    // R49 + audit N4: in-app confirmation popup for screenshot deletion.
+    // The Delete key + right-click menu both route here first; the actual
+    // File.Delete only runs after the user clicks "Delete" in the popup.
+    // Prevents unrecoverable loss from a stray keypress while a thumbnail
+    // is hover-selected. Reused across deletions (Close + rebuild on each
+    // request) — same pattern as ClipboardHistoryWindow.ConfirmClearOlder.
+    private Popup? _deleteConfirmPopup;
 
     /// <summary>
     /// Full-size bitmap currently shown in the preview overlay, if any.
@@ -678,7 +688,91 @@ public partial class GalleryWindow : Window
 
     // ── Helpers ────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Shows a themed confirmation popup before deleting the screenshot file.
+    /// Audit N4: previously <c>DeleteEntry</c> removed the file unconditionally
+    /// on the first call (Delete key, right-click menu, or preview button),
+    /// which made a stray keypress irrecoverable. Now the popup must be
+    /// confirmed before <see cref="PerformDelete"/> runs.
+    /// </summary>
     private void DeleteEntry(GalleryItemViewModel vm)
+    {
+        // Close any prior confirm popup (e.g. user opened a second one).
+        _deleteConfirmPopup?.Close();
+
+        var prompt = new TextBlock
+        {
+            Text = Strings.Gallery_DeleteConfirmPrompt,
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 13,
+            Margin = new Thickness(0, 0, 0, 12),
+        };
+
+        var confirmBtn = new Button
+        {
+            Content = Strings.Gallery_DeleteConfirmButton,
+            FontSize = 13,
+            Padding = new Thickness(16, 6),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+        };
+        confirmBtn.Click += (_, _) =>
+        {
+            _deleteConfirmPopup?.Close();
+            PerformDelete(vm);
+        };
+
+        var cancelBtn = new Button
+        {
+            Content = Strings.Common_Cancel,
+            FontSize = 13,
+            Padding = new Thickness(16, 6),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+        };
+        cancelBtn.Click += (_, _) => _deleteConfirmPopup?.Close();
+
+        var card = new Border
+        {
+            Background = (IBrush?)Application.Current?.FindResource("ByhSurfaceBrush"),
+            BorderBrush = (IBrush?)Application.Current?.FindResource("ByhGoldBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(16),
+            Child = new StackPanel
+            {
+                Orientation = Orientation.Vertical,
+                Spacing = 8,
+                Children =
+                {
+                    prompt,
+                    new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 8,
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        Children = { cancelBtn, confirmBtn },
+                    },
+                },
+            },
+        };
+
+        var popup = new Popup
+        {
+            Child = card,
+            Placement = PlacementMode.Center,
+            PlacementTarget = this,
+            IsLightDismissEnabled = true,
+            WindowManagerAddShadowHint = false,
+        };
+        _deleteConfirmPopup = popup;
+        ((ISetLogicalParent)popup).SetParent(this);
+        popup.Open();
+    }
+
+    /// <summary>
+    /// Performs the actual file deletion + UI row removal. Only called after
+    /// the user confirms in the popup raised by <see cref="DeleteEntry"/>.
+    /// </summary>
+    private void PerformDelete(GalleryItemViewModel vm)
     {
         try
         {
@@ -721,6 +815,10 @@ public partial class GalleryWindow : Window
         _previewBitmap?.Dispose();
         _previewBitmap = null;
         _selected = null;
+        // Audit N4: close any pending delete-confirm popup so it doesn't
+        // outlive the window (it captured `this` + the row vm in its closure).
+        _deleteConfirmPopup?.Close();
+        _deleteConfirmPopup = null;
     }
 }
 
