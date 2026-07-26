@@ -175,7 +175,30 @@ The preview window should display representative controls, but the whole
 application should also update so transparent overlays and small utility
 windows can be checked before committing.
 
-## 6. Suggested Settings experience
+## 6. Integrated Settings title bar
+
+The Settings window should extend its client content into the Windows title-bar
+region:
+
+- `ExtendClientAreaToDecorationsHint="True"`;
+- `WindowDecorations="Full"` so Windows keeps ownership of minimize, maximize,
+  close, Snap Layout, accessibility, and platform behavior;
+- a compact themed drag region, approximately 38 DIP high, marked with
+  `WindowDecorationProperties.ElementRole="TitleBar"`;
+- interactive items must stay outside the native caption-button inset;
+- the root background and the title-bar background use the same theme material,
+  with no second card, divider, or detached strip.
+
+This produces one continuous surface rather than stacking a custom toolbar
+below the operating-system title bar. The title-bar material participates in
+skin switching, but window commands and hit-test behavior do not.
+
+`WindowDecorations="None"` and hand-built caption buttons are deliberately not
+the first choice. They would add avoidable work for resize borders, system
+menus, keyboard accessibility, DPI scaling, hover states, and Windows 11 Snap
+Layout.
+
+## 7. Suggested Settings experience
 
 Add an `Appearance` tab rather than hiding theme controls in General:
 
@@ -189,13 +212,15 @@ The first delivery should show Import/Export only after the local schema and
 validation are proven. The editor should expose semantic roles, not a list of
 internal `Byh...` resource keys.
 
-## 7. Delivery sequence
+## 8. Delivery sequence
 
-### Batch A — no visual change
+### Batch A — theme boundary and integrated title bar
 
 - split `IvoryJade.axaml` into token/material and component layers;
 - replace hard-coded theme name and artwork URIs with dynamic resources;
 - migrate remaining high-impact literal colors;
+- extend the Settings surface into the native title bar while retaining Windows
+  caption buttons and drag behavior;
 - add a resource-contract test that every built-in theme supplies required keys.
 
 ### Batch B — runtime switching
@@ -217,7 +242,7 @@ internal `Byh...` resource keys.
 - validate contrast, formats, assets, and path containment;
 - add import/export only after schema v1 is stable.
 
-## 8. Explicit non-goals for v1
+## 9. Explicit non-goals for v1
 
 - arbitrary user AXAML or C# plugins;
 - arbitrary layout/control-template replacement;
