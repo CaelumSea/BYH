@@ -78,6 +78,9 @@ secrets.yaml
 ## --- QA 截图（开发期产物，~126MB，精选的已在 docs/screenshots/） ---
 artifacts/qa/
 
+## --- 分享包（本地打包产物，含 exe + 文档，不进版本控制） ---
+dist/
+
 ## --- reqbase / 多 agent 协作过程产物（仓库根目录散落文件） ---
 ## 这些是开发过程文件，对公众无价值；保留在本地但不纳入版本控制。
 output/
