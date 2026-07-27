@@ -1,6 +1,8 @@
 Add-Type -AssemblyName System.Drawing
-$src = 'C:\dvr\gh-kb\selection-assistant\src\SelectionAssistant.App\Assets\app-icon.png'
-$dst = 'C:\dvr\gh-kb\selection-assistant\src\SelectionAssistant.App\Assets\app-icon.ico'
+# Resolve relative to this script so it works from any checkout location.
+$assetDir = Join-Path $PSScriptRoot 'src\SelectionAssistant.App\Assets'
+$src = Join-Path $assetDir 'app-icon.png'
+$dst = Join-Path $assetDir 'app-icon.ico'
 
 # Downscale from 1254x1254 to 256x256 master, then generate each size from it
 # for crisp small icons (a 16x16 sampled straight from 1254 is muddy).

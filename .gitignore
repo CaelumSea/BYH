@@ -3,7 +3,9 @@
 # =============================================================================
 # 策略说明（见 docs/git-workflow.md）：
 #   - bin/ obj/ 是构建中间产物，9 个 csproj 共 ~1.8 GB，必排除
-#   - artifacts/ 保留（含 BYH.exe，是项目契约的一部分）
+#   - artifacts/publish/ 保留（含 BYH.exe + native DLL，分发基线契约）
+#   - artifacts/qa/ 排除（QA 截图 ~126MB，开发期产物，精选的已复制到
+#     docs/screenshots/ 作为公开展示）
 #   - 用户运行时数据在仓库外：%LOCALAPPDATA%\BYH\，不在此文件管辖
 # =============================================================================
 
@@ -72,3 +74,18 @@ secrets.yaml
 *.apikey
 .env
 .env.*
+
+## --- QA 截图（开发期产物，~126MB，精选的已在 docs/screenshots/） ---
+artifacts/qa/
+
+## --- reqbase / 多 agent 协作过程产物（仓库根目录散落文件） ---
+## 这些是开发过程文件，对公众无价值；保留在本地但不纳入版本控制。
+output/
+requirements/
+tasks/
+.reqbase/
+index.yaml
+preferences.yaml
+project.md
+enabled-modules.yaml
+probe-region.png

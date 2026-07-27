@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest a new capability or improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: The use case, not the solution. What's painful or missing today?
+      placeholder: "When I ... I wish I could ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would help?
+      description: Your suggested approach. Rough is fine — multiple options welcome.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Which module?
+      options:
+        - Ocean Eyes (region screenshot / OCR)
+        - Selection toolbar (translate / summarize / explain)
+        - Clipboard history
+        - Spotlight launcher
+        - Settings / UI
+        - New module
+        - Cross-cutting (performance, i18n, etc.)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true

@@ -1,0 +1,76 @@
+name: Bug report
+description: Report something that's broken or behaving unexpectedly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Before you fill this out:
+
+        - **Search existing issues** first to avoid duplicates.
+        - **Never paste API keys or secrets** in an issue. BYH stores them
+          DPAPI-encrypted at `%LOCALAPPDATA%\BYH\secrets\` — they never belong
+          here. If a key leaked, rotate it at your provider immediately.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. What did you do, what did you expect, what actually happened?
+      placeholder: "Steps to reproduce: 1) ... 2) ... Expected: ... Actual: ..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Which module?
+      options:
+        - Ocean Eyes (region screenshot / OCR)
+        - Selection toolbar (translate / summarize / explain)
+        - Clipboard history
+        - Spotlight launcher
+        - Settings UI
+        - Tray / startup
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: BYH version
+      description: Find it in the exe Properties → Details, or `(Get-Item BYH.exe).VersionInfo.ProductVersion`
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Windows version
+      placeholder: "Windows 11 24H2 (10.0.26100)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: |
+        From `%LOCALAPPDATA%\BYH\logs\BYH.log` (API keys are auto-redacted,
+        but please skim and redact anything personal before pasting).
+        Drag-drop a screenshot if it helps.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I did NOT paste any API key, secret, or password
+          required: true

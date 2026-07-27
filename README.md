@@ -2,9 +2,17 @@
 
 > Context-aware selection assistant for Windows. 选词即用，不离开当前上下文。
 >
-> Status: **v0.1.0** · NativeAOT single-binary · Windows 10+ · .NET 10
+> Status: **v0.1.0** · NativeAOT single-binary · Windows 10+ · .NET 10 · [MIT License](#license)
 
 BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选的内容——OCR 识别、即时翻译、剪贴板历史、启动器、提示词模板。所有配置和用户数据落在 `%LOCALAPPDATA%\BYH\`，密钥走 DPAPI 加密，不上传任何第三方服务（除非你主动调用 LLM provider）。
+
+<table>
+  <tr>
+    <td width="33%" align="center"><b>设置面板（Ivory Jade 主题）</b><br><img src="docs/screenshots/settings-general.png" alt="Settings panel"></td>
+    <td width="33%" align="center"><b>Ocean Eyes 区域截图</b><br><img src="docs/screenshots/ocean-eyes-region-overlay.png" alt="Ocean Eyes region select"></td>
+    <td width="33%" align="center"><b>选词工具栏</b><br><img src="docs/screenshots/selection-toolbar.png" alt="Selection toolbar"></td>
+  </tr>
+</table>
 
 ---
 
@@ -146,16 +154,22 @@ src/
 
 ## 已知限制与下一步
 
-详见 `handoff/AUDIT-findings.md` 和 `handoff/BACKLOG-roadmap.md`。v0.1.0 之后排期中的硬骨头：
+详见 `docs/handoff/AUDIT-findings.md` 和 `docs/handoff/BACKLOG-roadmap.md`。v0.1.0 之后排期中的硬骨头：
 
 - **M1/M2**：`ClipboardHistoryWindow.axaml.cs`（~2900 行）和 `App.axaml.cs`（~2095 行）的 god-class 拆分
 - **L3**：无障碍 `AutomationProperties.Name` 全层补齐（需屏幕阅读器验证）
 - **M4**：剩余 ~46 处 `[DllImport]` → `[LibraryImport]` 迁移（hook / launcher / icon 高风险核心路径）
 - **L8**：`IManagedWindow` 公共接口（与 M1/M2 耦合）
-- 开机自启、LICENSE 文本、安装包
+- 开机自启、安装包
 
 ---
 
 ## 交接与历史
 
-`handoff/` 目录包含完整开发上下文（00-CURRENT-HANDOFF.md 是入口），任何接续工作的 agent 零基础读完即可继续。`handoff/AUDIT-findings.md` 是按 P0/P1/P2/P3 分级的全代码库审查清单与修复进度。
+`docs/handoff/` 目录包含完整开发上下文（`00-CURRENT-HANDOFF.md` 是入口），任何接续工作的 agent 零基础读完即可继续。`docs/handoff/AUDIT-findings.md` 是按 P0/P1/P2/P3 分级的全代码库审查清单与修复进度。
+
+---
+
+## License
+
+[MIT](LICENSE) © Caelum

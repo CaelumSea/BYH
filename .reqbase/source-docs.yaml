@@ -1,7 +1,0 @@
-updated: '2026-07-18T13:49:50'
-target: C:\dvr\gh-kb\selection-assistant
-is_software_repo: true
-source_docs:
-- path: handoff/
-  kind: handoff-dir
-  summary: （交接文档目录）
