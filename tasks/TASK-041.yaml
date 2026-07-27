@@ -1,0 +1,38 @@
+id: TASK-041
+requirement: REQ-027
+title: 补齐中央双窗格接缝切线
+status: done
+created: '2026-07-26T18:39:38'
+updated: '2026-07-26T19:03:23'
+satisfies:
+- AC-12
+description: 在顶部搜索胶囊与主内容框共用横缝的左右端补充参考图式极淡短竖连接线；竖线与两侧圆弧相切，不引入底托、额外横线或完整第三层边框。
+handoff: '中央组合框现在用左右两条 WorkspaceSeamConnector 作为背板切线：每条 1 DIP 宽、56 DIP 高，从搜索胶囊侧边切点连到主面板圆角侧边切点。连接线位于两框之后，只露出圆弧之间的淡竖线。
+
+
+  SearchFrame 与 MainWorkspaceFrame 改用独立的 ByhJoinedPaneEdgeBrush，并同步降低内描边与投影不透明度；不要让它们重新继承较浓的通用
+  ByhMacroEdgeBrush。
+
+
+  NativeAOT 截图已确认：左右连接线存在、共用横缝保持单线、两块框的金色轮廓比上一版柔和。
+
+  '
+execution_log:
+- step: 1
+  action: 对照用户局部参考图和上一版 NativeAOT 截图，确认缺失的是两侧圆弧切点之间的竖向背板线，而非接缝处的短装饰线。
+  timestamp: '2026-07-26T18:43:00'
+- step: 2
+  action: 在搜索胶囊与主工作区后方加入左右对称的 1 DIP x 56 DIP 淡色连接线，并保持两框零间距与单横缝。
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  timestamp: '2026-07-26T18:48:00'
+- step: 3
+  action: 根据用户追加反馈为上下组合框建立更淡的专用金属渐变，降低内描边和环境阴影强度。
+  artifact: src/SelectionAssistant.UI/Themes/IvoryJade.axaml
+  timestamp: '2026-07-26T18:53:00'
+- step: 4
+  action: 完成 Debug 构建、AXAML 解析、NativeAOT 发布及七页 UIA 截图，并以 Dashboard 原始分辨率截图检查连接线和边框权重。
+  command: dotnet build SelectionAssistant.slnx -c Debug --no-restore; dotnet publish
+    src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Release -r win-x64
+    /p:PublishAot=true
+  result: 构建与发布均成功，0 warnings / 0 errors；七页 UIA 导航截图成功。
+  timestamp: '2026-07-26T19:02:00'

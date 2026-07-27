@@ -1,0 +1,91 @@
+id: TASK-037
+requirement: REQ-027
+title: 恢复独立系统标题栏并保留响应式布局
+status: done
+created: '2026-07-26T10:53:04'
+updated: '2026-07-26T13:24:16'
+satisfies:
+- AC-15
+- AC-8
+- AC-7
+description: 移除扩展客户区、自绘标题栏、双箭头和按钮自动隐藏逻辑，恢复最初稳定的独立 Windows 系统标题栏；不得回退最大化响应式列宽、手机卡比例和底部面板高度等既有改动。
+handoff: 用户最终撤销了标题栏融合与按钮自动隐藏方向。恢复独立系统标题栏时只删除标题栏相关 AXAML/C#，保留 ShellGrid 的响应式列宽与此前所有面板比例改动。
+execution_log:
+- step: 1
+  action: 核对 Avalonia 12 本地 API 文档与当前设置窗口装饰结构
+  result: 确认双箭头是框架 FullScreenButton；框架声明全屏时由 FullscreenPopover 负责触顶显示。
+  timestamp: '2026-07-26T12:04:00+08:00'
+- step: 2
+  action: 修正全屏客户区占位与 Esc 行为
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml.cs
+  result: 全屏时标题栏行由 36px 收为 0；Esc 恢复进入全屏前的普通或最大化状态。
+  timestamp: '2026-07-26T12:07:00+08:00'
+- step: 3
+  action: 用 UI Automation 验证框架 FullscreenPopover
+  result: 指针离开和触及屏幕顶部时，原生标题栏按钮都未出现在 UIA 树中，确认默认弹层在当前主题下不可靠。
+  timestamp: '2026-07-26T12:09:00+08:00'
+- step: 4
+  action: 增加顶部感应区与 BYH 全屏浮出控制栏
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  result: 18px 顶部区域可揭示最小化、还原、关闭按钮；离开 650ms 后自动收起。
+  timestamp: '2026-07-26T12:12:00+08:00'
+- step: 5
+  action: 验证自动隐藏、触顶显示、再次收起与还原
+  result: UIA 依次确认 away=不可见、top-zone=可见、auto-hidden-again=不可见；还原后原生标题栏重新出现。
+  timestamp: '2026-07-26T12:14:00+08:00'
+- step: 6
+  action: 完成构建、测试、NativeAOT 发布与视觉截图
+  command: dotnet build SelectionAssistant.slnx -c Debug; dotnet test SelectionAssistant.slnx
+    -c Debug --no-build; dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj
+    -c Release -r win-x64 /p:PublishAot=true
+  artifact: artifacts/qa/REQ-027-fullscreen-titlebar/fullscreen-titlebar-revealed-nativeaot.png
+  result: Debug 构建 0 warning/0 error；574 项测试全部通过；NativeAOT 发布成功；截图确认标题栏与 Ivory Jade
+    主体连续。
+  timestamp: '2026-07-26T12:16:00+08:00'
+- step: 7
+  type: flag-back
+  action: 根据用户视觉验收纠正需求语义
+  result: 旧实现错误隐藏了整条标题栏并进入真正全屏；正确行为是标题栏始终存在，只隐藏三个窗口按钮。
+  timestamp: '2026-07-26T12:22:00+08:00'
+- step: 8
+  action: 用自绘连续标题栏替换框架 FullScreenButton
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  result: WindowDecorations 改为 BorderOnly；36px 标题栏始终保留，双箭头变为按钮自动隐藏模式开关。
+  timestamp: '2026-07-26T12:29:00+08:00'
+- step: 9
+  action: 实现固定按钮热区与 650ms 自动收起
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml.cs
+  result: 三个按钮隐藏时不占用 UIA 树但保留 138px 热区；悬停显示，离开后自动隐藏，模式关闭后常驻。
+  timestamp: '2026-07-26T12:31:00+08:00'
+- step: 10
+  action: 用 UI Automation 验证修正后的状态机
+  result: mode-on 按钮不可见且 WindowUnchanged=true；hover-zone 可见；left-zone 再次不可见；mode-off
+    常驻。
+  timestamp: '2026-07-26T12:34:00+08:00'
+- step: 11
+  action: 修复自定义最大化按钮与 Avalonia 非客户区角色冲突
+  result: 移除会把物理点击错误解释为最小化的 MaximizeButton 角色；物理鼠标连续验证 Normal→Maximized→Normal，标题栏双击同样通过。
+  timestamp: '2026-07-26T12:42:00+08:00'
+- step: 12
+  action: 完成修正版视觉 QA
+  artifact: artifacts/qa/REQ-027-caption-autohide/controls-hidden.png
+  result: 标题栏、标题与整体高度始终一致；仅右上角三个按钮按模式与悬停显隐。
+  timestamp: '2026-07-26T12:44:00+08:00'
+- step: 13
+  type: flag-back
+  action: 根据用户最终视觉判断再次收敛标题栏需求
+  result: 撤销扩展客户区、自绘标题栏、双箭头和窗口按钮自动隐藏；只恢复最初的独立系统标题栏，响应式面板比例不回退。
+  timestamp: '2026-07-26T13:00:00+08:00'
+- step: 14
+  action: 选择性移除标题栏融合代码并保留响应式 ShellGrid
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  result: Window 恢复默认系统装饰；ShellGrid 最大化列宽 230/210/310、2.15:1 行高及既有手机卡/底栏布局保持不变。
+  timestamp: '2026-07-26T13:08:00+08:00'
+- step: 15
+  action: 完成构建、测试、NativeAOT 发布与视觉 QA
+  command: dotnet build SelectionAssistant.slnx -c Debug; dotnet test SelectionAssistant.slnx
+    -c Debug --no-build; dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj
+    -c Release -r win-x64 /p:PublishAot=true
+  artifact: artifacts/qa/REQ-027-native-titlebar/native-titlebar-default.png
+  result: Debug 构建 0 warning/0 error；574 项测试全部通过；NativeAOT 发布成功；截图确认标准 Windows 独立标题栏和最新版多窗格布局同时存在。
+  timestamp: '2026-07-26T13:17:00+08:00'

@@ -1,7 +1,9 @@
 using Avalonia.Collections;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using SelectionAssistant.Core.Appearance;
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.I18n;
@@ -20,10 +22,21 @@ namespace SelectionAssistant.UI.Views;
 /// </summary>
 public sealed record ProviderOption(string Id, string DisplayLabel);
 
+/// <summary>
+/// Privacy-safe aggregate counts derived from BYH's local redacted log.
+/// No selected text, filenames, prompts, or API data are carried into the UI.
+/// </summary>
+public sealed record DashboardUsageSummary(
+    int OceanEyes,
+    int Actions,
+    int Launcher,
+    int Clipboard);
+
 public partial class SettingsWindow : Window
 {
     private enum SettingsPage
     {
+        Dashboard,
         General,
         Provider,
         Functions,
@@ -32,7 +45,17 @@ public partial class SettingsWindow : Window
         ClipboardHistory,
     }
 
+    private enum PhonePage
+    {
+        Overview,
+        Translation,
+        Vision,
+        Clipboard,
+        Launcher,
+    }
+
     private bool _allowClose;
+    private readonly HashSet<string> _activeDashboardModules = new(StringComparer.Ordinal);
 
     private readonly AvaloniaList<ProviderOption> _providerOptions = [];
     private readonly ObservableCollection<PromptFunctionRow> _functionRows = [];
@@ -81,14 +104,37 @@ public partial class SettingsWindow : Window
             eventArgs.Cancel = true;
             Hide();
         };
+        SizeChanged += (_, _) => ApplyResponsiveShellWidths();
+        PropertyChanged += OnWindowPropertyChanged;
 
-        ShowSettingsPage(SettingsPage.General);
+        ShowSettingsPage(SettingsPage.Dashboard);
+        ShowPhonePage(PhonePage.Overview);
+        ApplyResponsiveShellWidths();
     }
 
     // ── Settings information architecture ──
 
+    private void ApplyResponsiveShellWidths()
+    {
+        bool expanded = WindowState == WindowState.Maximized;
+        ShellGrid.ColumnDefinitions[0].Width = new GridLength(expanded ? 230 : 190);
+        ShellGrid.ColumnDefinitions[1].Width = new GridLength(expanded ? 210 : 170);
+        ShellGrid.ColumnDefinitions[3].Width = new GridLength(expanded ? 310 : 270);
+    }
+
+    private void OnWindowPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.Property != WindowStateProperty)
+        {
+            return;
+        }
+
+        ApplyResponsiveShellWidths();
+    }
+
     private void ShowSettingsPage(SettingsPage page)
     {
+        DashboardSection.IsVisible = page == SettingsPage.Dashboard;
         GeneralSection.IsVisible = page == SettingsPage.General;
         ProviderSection.IsVisible = page == SettingsPage.Provider;
         FunctionsSection.IsVisible = page == SettingsPage.Functions;
@@ -96,6 +142,7 @@ public partial class SettingsWindow : Window
         LauncherSection.IsVisible = page == SettingsPage.Launcher;
         ClipboardHistorySection.IsVisible = page == SettingsPage.ClipboardHistory;
 
+        SetNavigationState(DashboardNavButton, page == SettingsPage.Dashboard);
         SetNavigationState(GeneralNavButton, page == SettingsPage.General);
         SetNavigationState(ProviderNavButton, page == SettingsPage.Provider);
         SetNavigationState(FunctionsNavButton, page == SettingsPage.Functions);
@@ -105,6 +152,8 @@ public partial class SettingsWindow : Window
 
         (PageTitleText.Text, PageSubtitleText.Text) = page switch
         {
+            SettingsPage.Dashboard =>
+                ("Dashboard", "Your modules, model routes, and local usage rhythm."),
             SettingsPage.General =>
                 (Strings.Settings_PageTitle_General, Strings.Settings_PageSubtitle_General),
             SettingsPage.Provider =>
@@ -121,6 +170,24 @@ public partial class SettingsWindow : Window
         };
 
         SettingsContentScroll.Offset = default;
+    }
+
+    private void OnShowDashboardClick(object? sender, RoutedEventArgs e) =>
+        ShowSettingsPage(SettingsPage.Dashboard);
+
+    private void ShowPhonePage(PhonePage page)
+    {
+        PhoneOverviewView.IsVisible = page == PhonePage.Overview;
+        PhoneTranslationView.IsVisible = page == PhonePage.Translation;
+        PhoneVisionView.IsVisible = page == PhonePage.Vision;
+        PhoneClipboardView.IsVisible = page == PhonePage.Clipboard;
+        PhoneLauncherView.IsVisible = page == PhonePage.Launcher;
+
+        SetNavigationState(PhoneGeneralButton, page == PhonePage.Overview);
+        SetNavigationState(PhoneProviderButton, page == PhonePage.Translation);
+        SetNavigationState(PhoneVisionButton, page == PhonePage.Vision);
+        SetNavigationState(PhoneClipboardButton, page == PhonePage.Clipboard);
+        SetNavigationState(PhoneLauncherButton, page == PhonePage.Launcher);
     }
 
     private static void SetNavigationState(Button button, bool isActive)
@@ -149,6 +216,21 @@ public partial class SettingsWindow : Window
 
     private void OnShowClipboardHistoryClick(object? sender, RoutedEventArgs e) =>
         ShowSettingsPage(SettingsPage.ClipboardHistory);
+
+    private void OnShowPhoneOverviewClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Overview);
+
+    private void OnShowPhoneTranslationClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Translation);
+
+    private void OnShowPhoneVisionClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Vision);
+
+    private void OnShowPhoneClipboardClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Clipboard);
+
+    private void OnShowPhoneLauncherClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Launcher);
 
     // ── Events wired to the runtime in App.axaml.cs ──
 
@@ -241,6 +323,9 @@ public partial class SettingsWindow : Window
     /// <summary>Tracks the language the App pushed in at startup.</summary>
     private AppLanguage _currentUiLanguage = AppLanguage.English;
 
+    /// <summary>Request to persist the display name used by the phone greeting.</summary>
+    public event Action<UserProfileSettings>? UserProfileSettingsSaved;
+
     // ── Data push from runtime → UI ──
 
     public void Configure(string capturePolicyFile)
@@ -319,6 +404,93 @@ public partial class SettingsWindow : Window
         UiLanguageSaved?.Invoke(selected);
     }
 
+    public void SetDashboardUsage(DashboardUsageSummary summary)
+    {
+        ArgumentNullException.ThrowIfNull(summary);
+
+        int[] counts = [summary.OceanEyes, summary.Actions, summary.Launcher, summary.Clipboard];
+        int total = counts.Sum();
+        int maximum = Math.Max(1, counts.Max());
+
+        DashboardTotalEventsText.Text = total.ToString();
+        DashboardOceanEyesCountText.Text = summary.OceanEyes.ToString();
+        DashboardActionsCountText.Text = summary.Actions.ToString();
+        DashboardLauncherCountText.Text = summary.Launcher.ToString();
+        DashboardClipboardCountText.Text = summary.Clipboard.ToString();
+
+        DashboardOceanEyesBar.Maximum = maximum;
+        DashboardActionsBar.Maximum = maximum;
+        DashboardLauncherBar.Maximum = maximum;
+        DashboardClipboardBar.Maximum = maximum;
+        DashboardOceanEyesBar.Value = summary.OceanEyes;
+        DashboardActionsBar.Value = summary.Actions;
+        DashboardLauncherBar.Value = summary.Launcher;
+        DashboardClipboardBar.Value = summary.Clipboard;
+
+        DashboardUsageEmptyText.IsVisible = total == 0;
+        if (total == 0)
+        {
+            DashboardTopFeatureText.Text = "No activity yet";
+            DashboardTopFeatureCountText.Text = "Waiting for local history";
+            return;
+        }
+
+        (string Name, int Count) top = new[]
+        {
+            ("Ocean Eyes", summary.OceanEyes),
+            ("Actions", summary.Actions),
+            ("Launcher", summary.Launcher),
+            ("Clipboard", summary.Clipboard),
+        }.OrderByDescending(item => item.Item2).First();
+
+        DashboardTopFeatureText.Text = top.Name;
+        DashboardTopFeatureCountText.Text = $"{top.Count} local event{(top.Count == 1 ? string.Empty : "s")}";
+    }
+
+    private void SetDashboardModuleActive(string module, bool isActive)
+    {
+        if (isActive)
+        {
+            _activeDashboardModules.Add(module);
+        }
+        else
+        {
+            _activeDashboardModules.Remove(module);
+        }
+
+        DashboardActiveModulesText.Text = _activeDashboardModules.Count.ToString();
+        DashboardModuleSummaryText.Text = _activeDashboardModules.Count == 0
+            ? "No modules are currently enabled."
+            : string.Join(" · ", _activeDashboardModules.Order(StringComparer.Ordinal));
+    }
+
+    private void RefreshDashboardModelRouteCount()
+    {
+        int routeCount = 0;
+        if (DashboardTextProviderText.Text != "Not configured")
+        {
+            routeCount++;
+        }
+        if (DashboardVisionProviderText.Text != "Not configured")
+        {
+            routeCount++;
+        }
+        DashboardModelRouteCountText.Text = routeCount.ToString();
+    }
+
+    public void SetUserProfileSettings(
+        UserProfileSettings settings,
+        string? statusMessage = null,
+        bool isError = false)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        settings = settings.Normalize();
+        ProfileDisplayNameInput.Text = settings.DisplayName;
+        GreetingUserNameText.Text = settings.DisplayName;
+        ProfileStatusText.Text = statusMessage ?? "Greeting: Hi! " + settings.DisplayName;
+        SetFeedbackTone(ProfileStatusText, isError);
+    }
+
     public void SetOceanEyesTriggerSettings(
         OceanEyesTriggerSettings settings,
         string? statusMessage = null,
@@ -339,6 +511,9 @@ public partial class SettingsWindow : Window
         MouseChordToggle.IsChecked = settings.MouseChordEnabled;
         ShortcutStatusText.Text = statusMessage ?? string.Format(Strings.Settings_Status_CurrentPrefix, settings.ToDisplayText());
         SummaryShortcutText.Text = settings.ToDisplayText();
+        SetDashboardModuleActive(
+            "Ocean Eyes",
+            settings.KeyboardShortcutEnabled || settings.MouseChordEnabled);
         SetFeedbackTone(ShortcutStatusText, isError);
     }
 
@@ -407,6 +582,9 @@ public partial class SettingsWindow : Window
         SpotlightWindowWidthInput.Text = settings.WindowWidth.ToString();
         SpotlightWindowHeightInput.Text = settings.WindowHeight.ToString();
         SpotlightShortcutStatusText.Text = statusMessage ?? string.Format(Strings.Settings_Status_CurrentPrefix, settings.ToDisplayText());
+        PhoneLauncherHotkeyText.Text = settings.KeyboardShortcutEnabled
+            ? settings.ToDisplayText()
+            : Strings.Settings_Status_Disabled;
         SetFeedbackTone(SpotlightShortcutStatusText, isError);
     }
 
@@ -437,6 +615,9 @@ public partial class SettingsWindow : Window
         SummaryClipboardText.Text = settings.KeyboardShortcutEnabled
             ? settings.ToDisplayText()
             : Strings.Settings_Status_Disabled;
+        PhoneClipboardHotkeyText.Text = settings.KeyboardShortcutEnabled
+            ? settings.ToDisplayText()
+            : Strings.Settings_Status_Disabled;
         SetFeedbackTone(ClipboardHistoryShortcutStatusText, isError);
     }
 
@@ -460,6 +641,9 @@ public partial class SettingsWindow : Window
         ClipboardHistoryWindowWidthInput.Text = settings.WindowWidth.ToString();
         ClipboardHistoryWindowHeightInput.Text = settings.WindowHeight.ToString();
         ClipboardHistoryExcludeAppsInput.Text = string.Join(", ", settings.ExcludeProcessNames);
+        PhoneClipboardStatusText.Text = settings.Enabled ? "History active" : "History paused";
+        PhoneClipboardRetentionText.Text = $"{settings.MaxEntries} text · {settings.MaxImageEntries} images";
+        SetDashboardModuleActive("Clipboard", settings.Enabled);
     }
 
     /// <summary>R54: sets the feature-settings status line (save result).</summary>
@@ -477,6 +661,24 @@ public partial class SettingsWindow : Window
         target.Classes.Add(isError ? "FeedbackError" : "FeedbackSuccess");
     }
 
+    private void OnSaveUserProfileClick(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var settings = new UserProfileSettings
+            {
+                DisplayName = ProfileDisplayNameInput.Text ?? string.Empty,
+            }.Normalize();
+            settings.Validate();
+            UserProfileSettingsSaved?.Invoke(settings);
+        }
+        catch (ArgumentException exception)
+        {
+            ProfileStatusText.Text = exception.Message;
+            SetFeedbackTone(ProfileStatusText, isError: true);
+        }
+    }
+
     /// <summary>
     /// Pushes the current prompt templates into the three preview rows. Called
     /// by App whenever templates change (load, save, reset).
@@ -485,6 +687,7 @@ public partial class SettingsWindow : Window
     {
         _promptTemplates = templates;
         RefreshPromptPreviews();
+        SetDashboardModuleActive("Actions", templates.AsList().Count > 0);
     }
 
     private void RefreshPromptPreviews()
@@ -529,8 +732,17 @@ public partial class SettingsWindow : Window
     /// Pushes the current launcher entries into the settings card rows.
     /// Called by App whenever entries change (load, add, save, delete, move).
     /// </summary>
-    public void SetLauncherEntries(IReadOnlyList<LauncherEntry> entries) =>
+    public void SetLauncherEntries(IReadOnlyList<LauncherEntry> entries)
+    {
         RefreshLauncherRows(entries);
+        SetDashboardModuleActive("Launcher", entries.Count > 0);
+        PhoneLauncherCountText.Text = entries.Count == 1
+            ? "1 saved destination"
+            : $"{entries.Count} saved destinations";
+        PhoneLauncherPreviewText.Text = entries.Count == 0
+            ? "No apps or websites saved yet"
+            : string.Join(" · ", entries.Take(3).Select(entry => entry.Name));
+    }
 
     /// <summary>
     /// Sets the launcher scan status line under the Launcher title. Used by App
@@ -676,6 +888,15 @@ public partial class SettingsWindow : Window
         SummaryProviderText.Text = activeProvider is null
             ? Strings.Settings_Status_NoProvider
             : $"{activeProvider.Name}\n{activeProvider.DefaultModel}";
+        PhoneProviderNameText.Text = activeProvider?.Name ?? "No provider selected";
+        PhoneProviderModelText.Text = activeProvider?.DefaultModel ?? "Choose one in Translation";
+        DashboardTextProviderText.Text = activeProvider?.Name ?? "Not configured";
+        DashboardTextModelText.Text = activeProvider?.DefaultModel ?? "No model selected";
+        SetDashboardModuleActive("Translation", activeProvider is not null);
+        RefreshDashboardModelRouteCount();
+        PhoneProviderCountText.Text = providers.Count == 1
+            ? "1 configured provider"
+            : $"{providers.Count} configured providers";
 
         // Rebuild ComboBox options. Keep the label short: just the provider
         // display name (e.g. "DeepSeek"). The model id is visible in the edit
@@ -780,6 +1001,16 @@ public partial class SettingsWindow : Window
         SummaryVisionText.Text = settings.Enabled
             ? $"{visionProviderName}\n{settings.Model}"
             : Strings.Settings_Status_Disabled;
+        PhoneVisionStatusText.Text = settings.Enabled ? "Vision ready" : "Vision disabled";
+        PhoneVisionProviderText.Text = visionProviderName;
+        PhoneVisionModelText.Text = settings.Model;
+        DashboardVisionProviderText.Text = settings.Enabled ? visionProviderName : "Not configured";
+        DashboardVisionModelText.Text = settings.Enabled ? settings.Model : "No model selected";
+        SetDashboardModuleActive("Vision", settings.Enabled);
+        RefreshDashboardModelRouteCount();
+        PhoneVisionAssistText.Text = settings.UiaPrefillEnabled
+            ? "UIA assist on"
+            : "OCR only";
     }
 
     private void OnSaveVisionClick(object? sender, RoutedEventArgs e)

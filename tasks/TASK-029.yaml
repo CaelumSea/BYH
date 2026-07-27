@@ -1,0 +1,53 @@
+id: TASK-029
+requirement: REQ-027
+title: 一体化设置标题栏与手机卡交互导航
+status: done
+created: '2026-07-26T09:43:01'
+updated: '2026-07-26T10:02:49'
+satisfies:
+- AC-8
+- AC-9
+description: 在现有 Ivory Jade 设置页中延伸客户区并保留原生 caption buttons；把手机摘要卡五个 dock 图标改为真实按钮并同步页面选中态。
+handoff: 'SettingsWindow now extends the themed client surface into Avalonia 12 WindowDecorations=Full,
+  retaining native caption behavior. The phone summary dock uses five real Buttons
+  with UIA IDs and mirrors the primary navigation state. The first NativeAOT screenshot
+  exposed a duplicated title caused by adding custom copy on top of WindowDrawnDecorations;
+  the custom copy was removed and the final screenshots are under artifacts/qa/REQ-027-titlebar-phone-nav-final/.
+  Main BYH was restarted from its original publish path after QA.
+
+  [自检修复] NativeAOT 首轮截图发现扩展标题栏上自定义 BYH 文案与 Avalonia 原生标题重叠；已移除重复文案并重新发布、截图验证。'
+execution_log:
+- step: 1
+  action: Inspected SettingsWindow, existing phone dock styles, navigation handlers,
+    and Avalonia 12 window-decoration behavior.
+  result: Selected extended client area with WindowDecorations=Full and a real Button
+    shell around each dock icon.
+  timestamp: '2026-07-26T09:45:00+08:00'
+- step: 2
+  action: Implemented integrated title-bar material, phone dock buttons, synchronized
+    active state, tooltips, focus behavior, and Automation IDs.
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+  timestamp: '2026-07-26T09:49:00+08:00'
+- step: 3
+  action: Added Ivory Jade hover, pressed, selected, center-action, and focus-visible
+    styles.
+  artifact: src/SelectionAssistant.UI/Themes/IvoryJade.axaml
+  timestamp: '2026-07-26T09:49:00+08:00'
+- step: 4
+  action: Built and tested the solution.
+  command: dotnet build SelectionAssistant.slnx -c Debug; dotnet test SelectionAssistant.slnx
+    -c Debug --no-build
+  result: Build passed with 0 warnings and 0 errors; 574 tests passed.
+  timestamp: '2026-07-26T09:55:00+08:00'
+- step: 5
+  action: Published NativeAOT, invoked all five phone navigation buttons through UI
+    Automation, and verified the page title after each click.
+  command: dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj
+    -c Release -r win-x64 /p:PublishAot=true
+  result: General, Translation, Vision, Clipboard, and Launcher mappings all passed.
+  timestamp: '2026-07-26T10:00:00+08:00'
+- step: 6
+  action: Captured all six Settings tabs from the NativeAOT build and visually corrected
+    the duplicated title.
+  artifact: artifacts/qa/REQ-027-titlebar-phone-nav-final/
+  timestamp: '2026-07-26T10:01:51+08:00'

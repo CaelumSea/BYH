@@ -1,0 +1,40 @@
+id: TASK-035
+requirement: REQ-027
+title: 重构中央双窗格并实现设置搜索
+status: done
+created: '2026-07-26T10:30:22'
+updated: '2026-07-26T16:41:27'
+satisfies:
+- AC-7
+description: 把中央区域拆成顶部紧凑搜索框与下方主内容圆角窗格，建立设置索引、结果导航、焦点定位、无结果与清空状态。
+handoff: '中央工作区已拆成两个独立 MetallicFrame：顶部紧凑搜索窗、下方主设置内容窗。
+
+  搜索索引位于 SettingsWindow.axaml.cs 的 BuildSettingsSearchIndex，覆盖 6 个设置页、
+
+  18 个关键设置。结果按钮支持键盘焦点、Enter/点击导航、目标控件滚入视口，
+
+  Escape/清空按钮恢复空状态；无结果状态由 UIA 暴露。
+
+  可复用验证脚本：artifacts/qa/verify-settings-search.ps1。
+
+  下一项 TASK-036 可在下方主内容窗中新增 Dashboard，搜索结构无需改动。
+
+  '
+execution_log:
+- step: 1
+  action: 读取 REQ-027、TASK-035、当前 SettingsWindow 与 IvoryJade 主题结构，确认中央区域仍为单框。
+  timestamp: '2026-07-26T16:25:00'
+- step: 2
+  action: 把中央区域重构为顶部 SearchFrame 与下方主内容 MetallicFrame，并加入轻量双边框、阴影和浮层样式。
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+- step: 3
+  action: 建立 18 项设置搜索索引，实现多关键词匹配、排序、键盘访问、跨页导航、目标控件聚焦、清空与无结果状态。
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml.cs
+- step: 4
+  action: 新增 UI Automation 回归脚本并验证 keyword result、键盘焦点、清空和无结果状态。
+  command: powershell -ExecutionPolicy Bypass -File artifacts/qa/verify-settings-search.ps1
+    -ExePath <NativeAOT BYH.exe>
+  result: 5 checks passed
+- step: 5
+  action: 完成 Debug 构建、578 项测试、AXAML 解析、win-x64 NativeAOT 发布和视觉截图检查。
+  result: 0 warnings / 0 errors; tests 449+35+94 passed; NativeAOT publish succeeded

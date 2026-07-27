@@ -1,0 +1,13 @@
+id: TASK-031
+requirement: REQ-027
+title: 实现内置主题目录、运行时切换与外观持久化
+status: pending
+created: '2026-07-26T09:43:01'
+updated: '2026-07-26T09:43:01'
+satisfies:
+- AC-1
+- AC-2
+- AC-7
+description: 实现 ThemeDefinition、ThemeCatalog、ThemeManager 和 appearance.json，加入第二套内置主题并验证已打开窗口即时更新与回退。
+handoff: ''
+execution_log: []

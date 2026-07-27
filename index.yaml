@@ -1,7 +1,7 @@
 project: BYH
 workspace: C:\dvr\gh-kb
-updated: '2026-07-24T10:28:17'
-secretary_focus: REQ-026
+updated: '2026-07-27T07:02:32'
+secretary_focus: REQ-027
 adopted: true
 adopted_from: C:\dvr\gh-kb\selection-assistant
 adopted_at: '2026-07-18T13:49:50'
@@ -100,9 +100,13 @@ requirements:
   title: 设置页滚动范围与底部内容完整性修复
   status: done
   progress: 1/1
+- id: REQ-027
+  title: BYH 皮肤自定义与运行时切换系统
+  status: confirmed
+  progress: 13/16
 phase: executing
 next_step: execute
-plan_confirmed_via: quick-user
-plan_confirmed_at: '2026-07-24T10:00:33'
+plan_confirmed_via: ask-user
+plan_confirmed_at: '2026-07-26T13:07:49'
 mode: quick
-plan_confirmed_evidence: 用户：设置里面有些窗口的滚轮滚得比较短，最底部可能有些信息没显示全，就滚到底了。你看一下。
+plan_confirmed_evidence: 用户：只改标题栏改回最开始，其他改动依然保留。

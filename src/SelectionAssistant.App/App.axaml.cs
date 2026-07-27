@@ -6,6 +6,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using SelectionAssistant.Core.Appearance;
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.I18n;
@@ -84,6 +85,8 @@ public partial class App : Application
     // and XAML {x:Static loc:Strings.Xxx} bindings resolve correctly. Missing
     // ui-language.json → auto-detect from the OS UI culture.
     private AppLanguage _uiLanguage = AppLanguage.English;
+    // REQ-027: user profile (greeting, theme preferences, phone summary views).
+    private UserProfileSettings _userProfileSettings = UserProfileSettings.Default;
     private IClassicDesktopStyleApplicationLifetime? _desktop;
     private ByhApplicationPaths? _paths;
 
@@ -223,6 +226,17 @@ public partial class App : Application
                 _spotlightLoadWarning ??= "Invalid toolbar shortcuts. Safe defaults restored.";
             }
 
+            string? userProfileLoadWarning = null;
+            try
+            {
+                _userProfileSettings = UserProfileStore.LoadIfExists(_paths.UserProfileFile);
+            }
+            catch (ProviderConfigurationException)
+            {
+                _userProfileSettings = UserProfileSettings.Default;
+                userProfileLoadWarning = "Invalid profile settings. Windows username restored.";
+            }
+
             var toolbarWindow = new ToolbarWindow();
             var resultWindow = new ResultWindow();
             var settingsWindow = new SettingsWindow();
@@ -246,6 +260,10 @@ public partial class App : Application
             clipboardHistoryWindow.Width = _clipboardHistorySettings.WindowWidth;
             clipboardHistoryWindow.Height = _clipboardHistorySettings.WindowHeight;
             settingsWindow.Configure(_paths.CapturePolicyFile);
+            settingsWindow.SetUserProfileSettings(
+                _userProfileSettings,
+                userProfileLoadWarning,
+                isError: userProfileLoadWarning is not null);
             settingsWindow.SetOceanEyesTriggerSettings(
                 _oceanEyesTrigger,
                 _oceanEyesLoadWarning,
@@ -289,6 +307,7 @@ public partial class App : Application
             settingsWindow.OceanEyesTriggerSettingsSaved += OnOceanEyesTriggerSettingsSaved;
             settingsWindow.OceanEyesCaptureSettingsSaved += OnOceanEyesCaptureSettingsSaved;
             settingsWindow.ToolbarShortcutsSaved += OnToolbarShortcutsSaved;
+            settingsWindow.UserProfileSettingsSaved += OnUserProfileSettingsSaved;
             toolbarWindow.PromptRequested += OnPromptRequested;
             promptWindow.PromptRunRequested += OnPromptRun;
 
@@ -1561,6 +1580,33 @@ public partial class App : Application
             isError: false);
     }
 
+    private void OnUserProfileSettingsSaved(UserProfileSettings requested)
+    {
+        if (_paths is null) return;
+        requested = requested.Normalize();
+
+        try
+        {
+            requested.Validate();
+            UserProfileStore.Save(requested, _paths.UserProfileFile);
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or ProviderConfigurationException)
+        {
+            _settingsWindow?.SetUserProfileSettings(
+                _userProfileSettings,
+                exception.Message,
+                isError: true);
+            return;
+        }
+
+        _userProfileSettings = requested;
+        _settingsWindow?.SetUserProfileSettings(
+            requested,
+            "Saved · Hi! " + requested.DisplayName,
+            isError: false);
+    }
+
     /// <summary>
     /// R37: persists the toolbar built-in shortcut bindings and pushes them to
     /// the runtime. Mirrors OnOceanEyesTriggerSettingsSaved minus
@@ -1727,8 +1773,61 @@ public partial class App : Application
         _settingsWindow.SetLauncherEntries(launcherEntries);
         _spotlightWindow?.SetLauncherEntries(launcherEntries);
         _ = LoadLauncherIconsAsync(launcherEntries);
+        _settingsWindow.SetDashboardUsage(BuildDashboardUsageSummary());
 
         await Task.CompletedTask;
+    }
+
+    private DashboardUsageSummary BuildDashboardUsageSummary()
+    {
+        if (_paths is null)
+        {
+            return new DashboardUsageSummary(0, 0, 0, 0);
+        }
+
+        int oceanEyes = 0;
+        int actions = 0;
+        int launcher = 0;
+
+        try
+        {
+            if (File.Exists(_paths.LogFile))
+            {
+                foreach (string line in File.ReadLines(_paths.LogFile))
+                {
+                    if (line.Contains("[Usage] module=OceanEyes ", StringComparison.Ordinal))
+                    {
+                        oceanEyes++;
+                    }
+                    else if (line.Contains("[Usage] module=Actions ", StringComparison.Ordinal))
+                    {
+                        actions++;
+                    }
+                    else if (line.Contains("[Usage] module=Launcher ", StringComparison.Ordinal))
+                    {
+                        launcher++;
+                    }
+                    else if (line.Contains("[OceanEyes] Saved screenshot:", StringComparison.Ordinal))
+                    {
+                        // Preserve a useful count for installations created
+                        // before explicit privacy-safe usage events existed.
+                        oceanEyes++;
+                    }
+                }
+            }
+        }
+        catch (IOException)
+        {
+            // The logger may append while Settings reads. A transient sharing
+            // issue produces an honest empty/partial dashboard, never a crash.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Diagnostics are optional; configuration UI remains available.
+        }
+
+        int clipboard = _clipboardHistoryService?.Snapshot.Count ?? 0;
+        return new DashboardUsageSummary(oceanEyes, actions, launcher, clipboard);
     }
 
     /// <summary>

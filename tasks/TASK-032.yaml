@@ -1,0 +1,14 @@
+id: TASK-032
+requirement: REQ-027
+title: 实现皮肤选择、即时试用与受限自定义编辑器
+status: pending
+created: '2026-07-26T09:43:02'
+updated: '2026-07-26T09:43:02'
+satisfies:
+- AC-4
+- AC-5
+- AC-6
+- AC-7
+description: 在设置页加入 Appearance 页面、预览/应用/取消/恢复默认、自定义语义令牌和安全主题包校验。
+handoff: ''
+execution_log: []

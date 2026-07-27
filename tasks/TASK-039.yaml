@@ -1,0 +1,30 @@
+id: TASK-039
+requirement: REQ-027
+title: 收紧中央双窗格并增加连接底托
+status: done
+created: '2026-07-26T16:47:33'
+updated: '2026-07-26T16:54:55'
+satisfies:
+- AC-12
+- AC-7
+description: 参考图把搜索窗与主内容窗贴近排列，在二者之间加入极淡、极薄的连续底托/连接线，形成搜索窗悬浮于主面板上方的轻量立体关系，不改变搜索交互。
+handoff: '中央双窗格间距由 10 DIP 收紧为 2 DIP，并在两框背后加入 PaneBridge。
+
+  PaneBridge 只在缝隙中露出极淡的象牙金细线与短阴影，搜索框阴影同步减轻，
+
+  因而形成搜索窗轻搭在主内容托盘上的层次，不会出现深色断缝。
+
+  '
+execution_log:
+- step: 1
+  action: 对照用户参考图分析上下圆角框的贴合、细缝和底托层次。
+  timestamp: '2026-07-26T16:48:30'
+- step: 2
+  action: 将中央 Grid RowSpacing 从 10 收紧至 2，加入位于两个框背后的 PaneBridge。
+  artifact: src/SelectionAssistant.UI/Views/SettingsWindow.axaml
+- step: 3
+  action: 新增极淡象牙金连接底托样式，并减弱搜索框投影避免中缝发黑。
+  artifact: src/SelectionAssistant.UI/Themes/IvoryJade.axaml
+- step: 4
+  action: 完成真实窗口默认/最小尺寸截图检查、578 项测试、NativeAOT 发布和搜索 UIA 回归。
+  result: 视觉贴合通过；0 warnings / 0 errors；578 tests passed；5 search checks passed

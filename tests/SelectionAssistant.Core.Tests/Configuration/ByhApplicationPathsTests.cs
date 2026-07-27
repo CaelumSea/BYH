@@ -12,6 +12,7 @@ public sealed class ByhApplicationPathsTests
         var paths = new ByhApplicationPaths(root);
 
         Assert.Equal(Path.Combine(root, "capture-policies.json"), paths.CapturePolicyFile);
+        Assert.Equal(Path.Combine(root, "profile.json"), paths.UserProfileFile);
         Assert.Equal(Path.Combine(root, "logs"), paths.LogsDirectory);
         Assert.Equal(Path.Combine(root, "logs", "BYH.log"), paths.LogFile);
     }

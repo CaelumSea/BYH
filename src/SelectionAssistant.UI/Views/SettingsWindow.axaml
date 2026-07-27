@@ -5,19 +5,25 @@
         x:Class="SelectionAssistant.UI.Views.SettingsWindow"
         Title="{x:Static i18n:Strings.Settings_Title}"
         Width="1320"
-        Height="800"
+        Height="840"
         MinWidth="1240"
-        MinHeight="680"
+        MinHeight="720"
         CanResize="True"
         Background="{DynamicResource ByhBackgroundBrush}"
         WindowStartupLocation="CenterScreen"
         AutomationProperties.AutomationId="BYH.Settings.Window"
         KeyDown="OnWindowKeyDown">
-  <Grid ColumnDefinitions="190,170,*,270"
-        RowDefinitions="*,220"
-        ColumnSpacing="12"
-        RowSpacing="12"
-        Margin="12">
+  <Grid x:Name="ShellGrid"
+          RowDefinitions="2.15*,1*"
+          ColumnSpacing="12"
+          RowSpacing="24"
+          Margin="12,12,12,20">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="190" />
+        <ColumnDefinition Width="170" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="270" />
+      </Grid.ColumnDefinitions>
 
     <!-- R54 atmosphere: a large warm radial glow behind the floating panels,
          echoing the soft bokeh light pools in the Foamie reference. -->
@@ -77,8 +83,20 @@
 
         <StackPanel Grid.Row="1" Spacing="3" VerticalAlignment="Top">
 
-          <Button x:Name="GeneralNavButton"
+          <Button x:Name="DashboardNavButton"
                   Classes="SettingsNav Active"
+                  Padding="12,8"
+                  AutomationProperties.AutomationId="BYH.Settings.Nav.Dashboard"
+                  Click="OnShowDashboardClick">
+            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
+              <Path Classes="NavIcon"
+                    Data="M4,4 L10,4 L10,10 L4,10 Z M14,4 L20,4 L20,10 L14,10 Z M4,14 L10,14 L10,20 L4,20 Z M14,14 L20,14 L20,20 L14,20 Z" />
+              <TextBlock Grid.Column="1" Text="Dashboard" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
+          <Button x:Name="GeneralNavButton"
+                  Classes="SettingsNav"
                   Padding="12,8"
                   AutomationProperties.AutomationId="BYH.Settings.Nav.General"
                   Click="OnShowGeneralClick">
@@ -182,26 +200,33 @@
     </Border>
 
 
-    <!-- Main work pane: the selected settings category remains independently scrollable. -->
+    <!-- Main work pane: the selected dashboard or settings category remains
+         independently scrollable inside one calm, continuous surface. -->
     <Border Grid.Column="2"
             Grid.Row="0"
-            Classes="MetallicFrame Thin">
-      <Border Classes="MacroClip">
+            Classes="MetallicFrame Thin MainWorkspaceFrame">
+        <Border Classes="MacroClip">
         <Grid RowDefinitions="Auto,*">
-      <!-- The single SurfacePanel background is intentionally plain so the
-           reference's clean, continuous card surface is not broken by texture. -->
+      <Image Grid.RowSpan="2"
+             Source="avares://SelectionAssistant.UI/Assets/Theme/ivory-jade-ornament.jpg"
+             Stretch="UniformToFill"
+             Opacity="0.09"
+             IsHitTestVisible="False" />
+      <!-- Foreground content stays quiet while the shared pearl ornament
+           remains a very faint, non-interactive atmosphere layer. -->
       <Grid Grid.Row="0"
             ColumnDefinitions="*,Auto"
             RowDefinitions="Auto,Auto"
             ColumnSpacing="24"
             RowSpacing="12"
-            Margin="28,16,26,12">
+            Margin="28,22,26,12">
           <StackPanel Spacing="3">
             <TextBlock Text="{x:Static i18n:Strings.Settings_Header_Kicker}" Classes="Kicker" />
             <StackPanel Orientation="Horizontal" Spacing="9">
               <TextBlock x:Name="PageTitleText"
                          Text="{x:Static i18n:Strings.Settings_PageTitle_General}"
                          Classes="DisplayTitle"
+                         AutomationProperties.AutomationId="BYH.Settings.PageTitle"
                          FontSize="{DynamicResource ByhFontSizeDisplay}" />
               <TextBlock Text="✦"
                          Foreground="{DynamicResource ByhGoldBrush}"
@@ -265,6 +290,170 @@
              clip even though their offset had technically reached 100%. -->
         <Grid Margin="0,0,0,24">
 
+        <!-- Dashboard -->
+        <StackPanel x:Name="DashboardSection"
+                    Spacing="11"
+                    Margin="24,12,24,0"
+                    AutomationProperties.AutomationId="BYH.Settings.Dashboard">
+          <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="12">
+            <Border Grid.Column="0" Classes="DashboardMetricCard">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Border Classes="DashboardMetricIcon Success">
+                  <Path Classes="MiniIcon"
+                        Stroke="{DynamicResource ByhPrimaryBrush}"
+                        Data="M4,4 L10,4 L10,10 L4,10 Z M14,4 L20,4 L20,10 L14,10 Z M4,14 L10,14 L10,20 L4,20 Z M14,14 L20,14 L20,20 L14,20 Z" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Text="MODULES" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardActiveModulesText" Text="Loading…" Classes="DashboardMetricValue" />
+                  <TextBlock Text="active locally" Classes="Secondary" FontSize="7" />
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border Grid.Column="1" Classes="DashboardMetricCard">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Border Classes="DashboardMetricIcon Warning">
+                  <Path Classes="MiniIcon"
+                        Stroke="{DynamicResource ByhWarningBrush}"
+                        Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,7 L12,12 L16,14" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Text="EVENTS" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardTotalEventsText" Text="Loading…" Classes="DashboardMetricValue" />
+                  <TextBlock Text="privacy-safe" Classes="Secondary" FontSize="7" />
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border Grid.Column="2" Classes="DashboardMetricCard">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Border Classes="DashboardMetricIcon Accent">
+                  <Path Classes="MiniIcon"
+                        Stroke="{DynamicResource ByhAccentBrush}"
+                        Data="M3,7 L21,7 L21,17 L3,17 Z M7,10.5 L9,10.5 M11,10.5 L13,10.5 M15,10.5 L17,10.5 M7,14 L17,14" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Text="TOP FEATURE" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardTopFeatureText" Text="No activity yet" Classes="DashboardMetricName" />
+                  <TextBlock x:Name="DashboardTopFeatureCountText" Text="No local history" Classes="Secondary" FontSize="7" />
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border Grid.Column="3" Classes="DashboardMetricCard">
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                <Border Classes="DashboardMetricIcon Success">
+                  <Path Classes="MiniIcon"
+                        Stroke="{DynamicResource ByhPrimaryBrush}"
+                        Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
+                </Border>
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Text="MODELS" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardModelRouteCountText" Text="Loading…" Classes="DashboardMetricValue" />
+                  <TextBlock Text="text + vision" Classes="Secondary" FontSize="7" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </Grid>
+
+          <Grid ColumnDefinitions="1.45*,1*" ColumnSpacing="12">
+            <Border Grid.Column="0" Classes="DashboardPanel">
+              <Grid RowDefinitions="Auto,*,Auto">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="Feature frequency" Classes="CardTitle" FontSize="13" FontWeight="SemiBold" />
+                    <TextBlock Text="Real events found in BYH's local redacted log" Classes="Secondary" FontSize="8" />
+                  </StackPanel>
+                  <Border Grid.Column="1" Classes="HeroPill" Padding="8,4">
+                    <TextBlock Text="LOCAL ONLY" Classes="Accent" FontSize="7" FontWeight="SemiBold" />
+                  </Border>
+                </Grid>
+                <StackPanel Grid.Row="1" Spacing="9" Margin="0,12,0,8">
+                  <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
+                    <TextBlock Text="Ocean Eyes" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="DashboardOceanEyesBar" Grid.Column="1" Classes="DashboardUsageBar" Minimum="0" Maximum="1" />
+                    <TextBlock x:Name="DashboardOceanEyesCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
+                  </Grid>
+                  <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
+                    <TextBlock Text="Actions" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="DashboardActionsBar" Grid.Column="1" Classes="DashboardUsageBar Accent" Minimum="0" Maximum="1" />
+                    <TextBlock x:Name="DashboardActionsCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
+                  </Grid>
+                  <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
+                    <TextBlock Text="Launcher" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="DashboardLauncherBar" Grid.Column="1" Classes="DashboardUsageBar Gold" Minimum="0" Maximum="1" />
+                    <TextBlock x:Name="DashboardLauncherCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
+                  </Grid>
+                  <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
+                    <TextBlock Text="Clipboard" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <ProgressBar x:Name="DashboardClipboardBar" Grid.Column="1" Classes="DashboardUsageBar Soft" Minimum="0" Maximum="1" />
+                    <TextBlock x:Name="DashboardClipboardCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
+                  </Grid>
+                </StackPanel>
+                <TextBlock x:Name="DashboardUsageEmptyText"
+                           Grid.Row="2"
+                           Text="No activity yet — counts appear after you use BYH."
+                           Classes="Muted"
+                           FontSize="8"
+                           IsVisible="False" />
+              </Grid>
+            </Border>
+
+            <Border Grid.Column="1" Classes="DashboardPanel">
+              <StackPanel Spacing="12">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="Model preference" Classes="CardTitle" FontSize="13" FontWeight="SemiBold" />
+                  <TextBlock Text="Current routes, never inferred or fabricated" Classes="Secondary" FontSize="8" />
+                </StackPanel>
+                <Border Classes="DashboardModelCard">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <Border Classes="DashboardMetricIcon Accent">
+                      <Path Classes="MiniIcon" Stroke="{DynamicResource ByhAccentBrush}"
+                            Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M3,12 L21,12 M12,3 C15,7 15,17 12,21 C9,17 9,7 12,3" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Text="TEXT · ACTIVE" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardTextProviderText" Text="Not configured" FontSize="11" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardTextModelText" Text="No model selected" Classes="Secondary" FontSize="8" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
+                <Border Classes="DashboardModelCard">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                    <Border Classes="DashboardMetricIcon Success">
+                      <Path Classes="MiniIcon" Stroke="{DynamicResource ByhPrimaryBrush}"
+                            Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Text="VISION · ACTIVE" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardVisionProviderText" Text="Not configured" FontSize="11" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardVisionModelText" Text="No model selected" Classes="Secondary" FontSize="8" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <Border Classes="DashboardPanel" Padding="16,12">
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+              <Border Width="9" Height="9" CornerRadius="4.5"
+                      Background="{DynamicResource ByhSuccessBrush}"
+                      VerticalAlignment="Center" />
+              <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock Text="Local services ready" FontSize="10" FontWeight="SemiBold" />
+                <TextBlock x:Name="DashboardModuleSummaryText"
+                           Text="Reading current configuration…"
+                           Classes="Secondary"
+                           FontSize="8"
+                           TextWrapping="Wrap" />
+              </StackPanel>
+              <Button Grid.Column="2"
+                      Content="Open General"
+                      Classes="Ghost"
+                      Click="OnShowGeneralClick" />
+            </Grid>
+          </Border>
+        </StackPanel>
+
         <!-- General -->
         <StackPanel x:Name="GeneralSection" Spacing="0">
           <!-- Language card. Sits at the top of General so users find it
@@ -303,6 +492,42 @@
                            VerticalAlignment="Center" />
               </Grid>
             </Border>
+          </StackPanel>
+
+          <!-- Personal Greeting card. REQ-027 — display name used by the
+               phone greeting. Strings are still hardcoded EN pending i18n
+               follow-up; merged as-is per user request to bring the UI work in. -->
+          <StackPanel Spacing="10" Margin="24,14,24,0">
+            <TextBlock Text="Personal Greeting"
+                       Classes="CardTitle"
+                       FontSize="15"
+                       FontWeight="SemiBold" />
+            <Border Classes="InnerCard" Padding="12">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="Display name"
+                             Classes="Secondary"
+                             FontSize="10"
+                             FontWeight="SemiBold" />
+                  <TextBox x:Name="ProfileDisplayNameInput"
+                           MaxLength="32"
+                           FontSize="11"
+                           PlaceholderText="Windows username"
+                           AutomationProperties.AutomationId="BYH.Settings.Profile.DisplayName" />
+                </StackPanel>
+                <Button Grid.Column="1"
+                        Content="Save"
+                        Classes="Primary"
+                        VerticalAlignment="Bottom"
+                        Click="OnSaveUserProfileClick"
+                        AutomationProperties.AutomationId="BYH.Settings.Profile.Save" />
+              </Grid>
+            </Border>
+            <TextBlock x:Name="ProfileStatusText"
+                       Classes="Muted"
+                       FontSize="9"
+                       Text="Used in the phone greeting."
+                       AutomationProperties.AutomationId="BYH.Settings.Profile.Status" />
           </StackPanel>
 
           <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" Margin="24,16" />
@@ -648,7 +873,8 @@
                              FontSize="{DynamicResource ByhFontSizeSubheading}"
                              FontWeight="SemiBold" />
                 </StackPanel>
-                <Button Grid.Column="1"
+                <Button x:Name="AddFunctionButton"
+                        Grid.Column="1"
                         Content="{x:Static i18n:Strings.Settings_AddAction}"
                         Classes="Primary"
                         Click="OnAddFunctionClick" />
@@ -821,7 +1047,8 @@
                         Content="{x:Static i18n:Strings.Settings_ScanInstalledApps}"
                         Classes="Ghost"
                         Click="OnScanInstalledAppsClick" />
-                <Button Grid.Column="2"
+                <Button x:Name="AddLauncherButton"
+                        Grid.Column="2"
                         Content="{x:Static i18n:Strings.Settings_AddLauncher}"
                         Classes="Primary"
                         Click="OnAddLauncherClick" />
@@ -1134,8 +1361,8 @@
       </ScrollViewer>
 
         </Grid>
+        </Border>
       </Border>
-    </Border>
 
     <!-- Reference-style theme specimen: four calm editorial sections on one
          continuous square sheet. The rail remains decorative and read-only. -->
@@ -1281,8 +1508,7 @@
     <Border Grid.Column="3"
              Grid.Row="0"
              Classes="MetallicFrame Thin PhoneFrame"
-             MaxHeight="520"
-            Margin="0,10"
+            Margin="0,14,0,12"
             VerticalAlignment="Stretch"
             Background="{DynamicResource ByhPanelIvoryBrush}">
       <Border Classes="MacroClip PhoneClip"
@@ -1304,7 +1530,15 @@
                     Margin="0,-24,-22,0"
                     Background="{DynamicResource ByhGemGlowBrush}" />
             <StackPanel Margin="18,21,102,12" Spacing="3">
-              <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Kicker}" Classes="Kicker" />
+              <StackPanel Orientation="Horizontal" Spacing="3">
+                <TextBlock Text="Hi!" Classes="Kicker" />
+                <TextBlock x:Name="GreetingUserNameText"
+                           Text="there"
+                           Classes="Kicker"
+                           TextTrimming="CharacterEllipsis"
+                           MaxWidth="90"
+                           AutomationProperties.AutomationId="BYH.Settings.Phone.GreetingName" />
+              </StackPanel>
               <Image Source="avares://SelectionAssistant.UI/Assets/Theme/byh-wordmark.png"
                      Width="94"
                      Height="30"
@@ -1339,136 +1573,247 @@
         <ScrollViewer Grid.Row="1"
                       VerticalScrollBarVisibility="Hidden"
                       HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="12,5,12,5" Spacing="6">
-            <StackPanel Spacing="2" Margin="4,0,0,2">
-              <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_CurrentSetup}" Classes="DisplayTitle" FontSize="{DynamicResource ByhFontSizeSubheading}" />
+          <Grid Margin="12,5,12,5">
+            <!-- The handset owns a separate five-page information space. None
+                 of these views change the central settings page or its scroll. -->
+            <StackPanel x:Name="PhoneOverviewView"
+                        Spacing="6">
+              <TextBlock Text="Current setup"
+                         Classes="DisplayTitle"
+                         FontSize="14"
+                         Margin="4,0,0,2"
+                         AutomationProperties.AutomationId="BYH.Settings.PhoneView.Overview" />
+              <Border Classes="PorcelainCard" Padding="10,8">
+                <StackPanel Spacing="7">
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                    <Border Classes="PhoneSummaryIcon Accent">
+                      <Path Classes="MiniIcon"
+                            Stroke="{DynamicResource ByhAccentHoverBrush}"
+                            Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M3,12 L21,12 M12,3 C15,7 15,17 12,21 C9,17 9,7 12,3" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                      <TextBlock Text="TRANSLATION PROVIDER" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="SummaryProviderText" Text="Loading…" Classes="PhoneSummaryValue" />
+                    </StackPanel>
+                  </Grid>
+                  <Border Classes="PhoneSummaryDivider" />
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                    <Border Classes="PhoneSummaryIcon Warning">
+                      <Path Classes="MiniIcon"
+                            Stroke="{DynamicResource ByhWarningBrush}"
+                            Data="M3,7 L21,7 L21,17 L3,17 Z M7,10.5 L9,10.5 M11,10.5 L13,10.5 M15,10.5 L17,10.5 M7,14 L17,14" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                      <TextBlock Text="OCEAN EYES HOTKEY" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="SummaryShortcutText" Text="Loading…" Classes="PhoneSummaryValue" />
+                    </StackPanel>
+                  </Grid>
+                  <Border Classes="PhoneSummaryDivider" />
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                    <Border Classes="PhoneSummaryIcon Success">
+                      <Path Classes="MiniIcon"
+                            Stroke="{DynamicResource ByhPrimaryBrush}"
+                            Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                      <TextBlock Text="VISION OCR" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="SummaryVisionText" Text="Loading…" Classes="PhoneSummaryValue" />
+                    </StackPanel>
+                  </Grid>
+                  <Border Classes="PhoneSummaryDivider" />
+                  <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
+                    <Border Classes="PhoneSummaryIcon Accent">
+                      <Path Classes="MiniIcon"
+                            Stroke="{DynamicResource ByhAccentBrush}"
+                            Data="M5,3 L19,3 A2,2 0 0 1 21,5 L21,17 A2,2 0 0 1 19,19 L9,19 L5,22 Z M9,7 L17,7 M9,11 L17,11 M9,15 L14,15" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                      <TextBlock Text="CLIPBOARD HOTKEY" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="SummaryClipboardText" Text="Loading…" Classes="PhoneSummaryValue" />
+                    </StackPanel>
+                  </Grid>
+                </StackPanel>
+              </Border>
             </StackPanel>
-            <Border Classes="PorcelainCard" Padding="10,8">
-              <StackPanel Spacing="7">
-                <!-- Reference Today's Summary rows: soft circular icon badge
-                     left of each label/value pair. -->
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                  <Border Width="24"
-                          Height="24"
-                          CornerRadius="12"
-                          VerticalAlignment="Center"
-                          Background="{DynamicResource ByhAccentSoftBrush}"
-                          BorderBrush="#40D9C28A"
-                          BorderThickness="1"
-                          BoxShadow="0 2 6 0 #109F5E30">
-                    <Path Classes="MiniIcon"
-                          Stroke="{DynamicResource ByhAccentHoverBrush}"
+
+            <StackPanel x:Name="PhoneTranslationView"
+                        IsVisible="False"
+                        Spacing="8">
+              <StackPanel Margin="4,0,0,1" Spacing="2">
+                <TextBlock Text="Translation"
+                           Classes="DisplayTitle"
+                           FontSize="14"
+                           AutomationProperties.AutomationId="BYH.Settings.PhoneView.Translation" />
+                <TextBlock Text="Your active language service" Classes="Secondary" FontSize="8" />
+              </StackPanel>
+              <Border Classes="PorcelainCard" Padding="12">
+                <StackPanel Spacing="10">
+                  <Border Classes="PhoneFeatureEmblem Accent">
+                    <Path Classes="MiniIcon" Stroke="{DynamicResource ByhAccentHoverBrush}"
                           Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M3,12 L21,12 M12,3 C15,7 15,17 12,21 C9,17 9,7 12,3" />
                   </Border>
-                  <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_ProviderLabel}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" FontWeight="SemiBold" />
-                    <TextBlock x:Name="SummaryProviderText"
-                               Text="Loading…"
-                               FontSize="{DynamicResource ByhFontSizeCaption}"
-                               FontWeight="SemiBold"
-                               TextWrapping="Wrap" />
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="ACTIVE PROVIDER" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneProviderNameText" Text="Loading…" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock x:Name="PhoneProviderModelText" Text="Loading…" Classes="Secondary" FontSize="9" TextWrapping="Wrap" />
                   </StackPanel>
-                </Grid>
-                <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                  <Border Width="24"
-                          Height="24"
-                          CornerRadius="12"
-                          VerticalAlignment="Center"
-                          Background="{DynamicResource ByhWarningSoftBrush}"
-                          BorderBrush="#40D9C28A"
-                          BorderThickness="1"
-                          BoxShadow="0 2 6 0 #109F5E30">
-                    <Path Classes="MiniIcon"
-                          Stroke="{DynamicResource ByhWarningBrush}"
-                          Data="M3,7 L21,7 L21,17 L3,17 Z M7,10.5 L9,10.5 M11,10.5 L13,10.5 M15,10.5 L17,10.5 M7,14 L17,14" />
-                  </Border>
-                  <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_OceanEyesLabel}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" FontWeight="SemiBold" />
-                    <TextBlock x:Name="SummaryShortcutText"
-                               Text="Loading…"
-                               FontSize="{DynamicResource ByhFontSizeCaption}"
-                               FontWeight="SemiBold"
-                               TextWrapping="Wrap" />
-                  </StackPanel>
-                </Grid>
-                <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                  <Border Width="24"
-                          Height="24"
-                          CornerRadius="12"
-                          VerticalAlignment="Center"
-                          Background="{DynamicResource ByhSuccessSoftBrush}"
-                          BorderBrush="#40D9C28A"
-                          BorderThickness="1"
-                          BoxShadow="0 2 6 0 #109F5E30">
-                    <Path Classes="MiniIcon"
-                          Stroke="{DynamicResource ByhPrimaryBrush}"
+                  <Border Classes="PhoneSummaryDivider" />
+                  <TextBlock x:Name="PhoneProviderCountText" Text="Loading…" Classes="PhoneStatusPill" />
+                </StackPanel>
+              </Border>
+              <TextBlock Text="Manage providers and keys from the Translation page."
+                         Classes="Muted" FontSize="8" TextWrapping="Wrap" Margin="4,0" />
+            </StackPanel>
+
+            <StackPanel x:Name="PhoneVisionView"
+                        IsVisible="False"
+                        Spacing="8">
+              <StackPanel Margin="4,0,0,1" Spacing="2">
+                <TextBlock Text="Ocean Eyes"
+                           Classes="DisplayTitle"
+                           FontSize="14"
+                           AutomationProperties.AutomationId="BYH.Settings.PhoneView.Vision" />
+                <TextBlock x:Name="PhoneVisionStatusText" Text="Loading…" Classes="Secondary" FontSize="8" />
+              </StackPanel>
+              <Border Classes="PorcelainCard" Padding="12">
+                <StackPanel Spacing="9">
+                  <Border Classes="PhoneFeatureEmblem Success">
+                    <Path Classes="MiniIcon" Stroke="{DynamicResource ByhPrimaryBrush}"
                           Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
                   </Border>
-                  <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_VisionLabel}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" FontWeight="SemiBold" />
-                    <TextBlock x:Name="SummaryVisionText"
-                               Text="Loading…"
-                               FontSize="{DynamicResource ByhFontSizeCaption}"
-                               FontWeight="SemiBold"
-                               TextWrapping="Wrap" />
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="OCR PROVIDER" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneVisionProviderText" Text="Loading…" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneVisionModelText" Text="Loading…" Classes="Secondary" FontSize="9" TextWrapping="Wrap" />
                   </StackPanel>
-                </Grid>
-                <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="9">
-                  <Border Width="24"
-                          Height="24"
-                          CornerRadius="12"
-                          VerticalAlignment="Center"
-                          Background="{DynamicResource ByhAccentSoftBrush}"
-                          BorderBrush="#40D9C28A"
-                          BorderThickness="1"
-                          BoxShadow="0 2 6 0 #109F5E30">
-                    <Path Classes="MiniIcon"
-                          Stroke="{DynamicResource ByhAccentBrush}"
+                  <Border Classes="PhoneSummaryDivider" />
+                  <TextBlock x:Name="PhoneVisionAssistText" Text="Loading…" Classes="PhoneStatusPill" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <StackPanel x:Name="PhoneClipboardView"
+                        IsVisible="False"
+                        Spacing="8">
+              <StackPanel Margin="4,0,0,1" Spacing="2">
+                <TextBlock Text="Clipboard"
+                           Classes="DisplayTitle"
+                           FontSize="14"
+                           AutomationProperties.AutomationId="BYH.Settings.PhoneView.Clipboard" />
+                <TextBlock x:Name="PhoneClipboardStatusText" Text="Loading…" Classes="Secondary" FontSize="8" />
+              </StackPanel>
+              <Border Classes="PorcelainCard" Padding="12">
+                <StackPanel Spacing="10">
+                  <Border Classes="PhoneFeatureEmblem Accent">
+                    <Path Classes="MiniIcon" Stroke="{DynamicResource ByhAccentBrush}"
                           Data="M5,3 L19,3 A2,2 0 0 1 21,5 L21,17 A2,2 0 0 1 19,19 L9,19 L5,22 Z M9,7 L17,7 M9,11 L17,11 M9,15 L14,15" />
                   </Border>
-                  <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_ClipboardLabel}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" FontWeight="SemiBold" />
-                    <TextBlock x:Name="SummaryClipboardText"
-                               Text="Loading…"
-                               FontSize="{DynamicResource ByhFontSizeCaption}"
-                               FontWeight="SemiBold"
-                               TextWrapping="Wrap" />
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="HISTORY HOTKEY" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneClipboardHotkeyText" Text="Loading…" FontSize="12" FontWeight="SemiBold" />
                   </StackPanel>
-                </Grid>
+                  <Border Classes="PhoneSummaryDivider" />
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="LOCAL RETENTION" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneClipboardRetentionText" Text="Loading…" Classes="Secondary" FontSize="9" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+            </StackPanel>
+
+            <StackPanel x:Name="PhoneLauncherView"
+                        IsVisible="False"
+                        Spacing="8">
+              <StackPanel Margin="4,0,0,1" Spacing="2">
+                <TextBlock Text="Launcher"
+                           Classes="DisplayTitle"
+                           FontSize="14"
+                           AutomationProperties.AutomationId="BYH.Settings.PhoneView.Launcher" />
+                <TextBlock Text="Quick destinations within reach" Classes="Secondary" FontSize="8" />
               </StackPanel>
-            </Border>
-          </StackPanel>
+              <Border Classes="PorcelainCard" Padding="12">
+                <StackPanel Spacing="9">
+                  <Border Classes="PhoneFeatureEmblem Warning">
+                    <Path Classes="MiniIcon" Stroke="{DynamicResource ByhWarningBrush}"
+                          Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M12,2 L13,5 M12,19 L12,22 M2,12 L5,12 M19,12 L22,12 M5,5 L7,7 M17,17 L19,19 M19,5 L17,7 M7,17 L5,19" />
+                  </Border>
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="SPOTLIGHT HOTKEY" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneLauncherHotkeyText" Text="Loading…" FontSize="12" FontWeight="SemiBold" />
+                  </StackPanel>
+                  <Border Classes="PhoneSummaryDivider" />
+                  <TextBlock x:Name="PhoneLauncherCountText" Text="Loading…" Classes="PhoneStatusPill" />
+                  <TextBlock x:Name="PhoneLauncherPreviewText" Text="Loading…" Classes="Secondary" FontSize="8" TextWrapping="Wrap" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </Grid>
         </ScrollViewer>
 
-        <!-- Phone-style bottom dock mirrors the reference handset without
-             inventing new settings behavior. It is a compact status/navigation
-             language for the existing summary card. -->
+        <!-- Phone-style bottom dock. Its state and content are intentionally
+             independent from the central settings navigation. -->
         <Border Grid.Row="2" Margin="10,4,10,10" Classes="PhoneDock">
-          <Grid ColumnDefinitions="*,*,*,*,*" Height="34">
-            <Border Grid.Column="0" Classes="PhoneDockItem Active">
-              <Path Classes="PhoneDockIcon"
-                    Data="M3,10 L12,3 L21,10 M5,9 L5,20 L19,20 L19,9 M9,20 L9,14 L15,14 L15,20" />
-            </Border>
-            <Border Grid.Column="1" Classes="PhoneDockItem">
-              <Path Classes="PhoneDockIcon"
-                    Data="M12,3 L19,8 L16,18 L8,18 L5,8 Z M5,8 L19,8 M8,18 L12,8 L16,18" />
-            </Border>
-            <Border Grid.Column="2" Classes="PhoneDockItem Center">
-              <Path Classes="PhoneDockIcon"
-                    Stroke="{DynamicResource ByhPrimaryBrush}"
-                    Data="M12,21 C12,14 7,12 4,7 C10,7 12,10 12,14 M12,21 C12,13 17,10 20,5 C14,5 12,9 12,14" />
-            </Border>
-            <Border Grid.Column="3" Classes="PhoneDockItem">
-              <Path Classes="PhoneDockIcon"
-                    Data="M3,6 L21,6 L21,18 L3,18 Z M3,7 L12,14 L21,7" />
-            </Border>
-            <Border Grid.Column="4" Classes="PhoneDockItem">
-              <Path Classes="PhoneDockIcon"
-                    Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M12,2 L13,5 M12,19 L12,22 M2,12 L5,12 M19,12 L22,12 M5,5 L7,7 M17,17 L19,19 M19,5 L17,7 M7,17 L5,19" />
-            </Border>
+          <Grid ColumnDefinitions="*,*,*,*,*" Height="42">
+            <Button x:Name="PhoneGeneralButton"
+                    Grid.Column="0"
+                    Classes="PhoneDockButton Active"
+                    ToolTip.Tip="Overview"
+                    AutomationProperties.Name="Phone overview"
+                    AutomationProperties.AutomationId="BYH.Settings.PhoneNav.General"
+                    Click="OnShowPhoneOverviewClick">
+              <Border Classes="PhoneDockItem">
+                <Path Classes="PhoneDockIcon"
+                      Data="M3,10 L12,3 L21,10 M5,9 L5,20 L19,20 L19,9 M9,20 L9,14 L15,14 L15,20" />
+              </Border>
+            </Button>
+            <Button x:Name="PhoneProviderButton"
+                    Grid.Column="1"
+                    Classes="PhoneDockButton"
+                    ToolTip.Tip="Translation"
+                    AutomationProperties.Name="Phone translation summary"
+                    AutomationProperties.AutomationId="BYH.Settings.PhoneNav.Translation"
+                    Click="OnShowPhoneTranslationClick">
+              <Border Classes="PhoneDockItem">
+                <Path Classes="PhoneDockIcon"
+                      Data="M12,3 L19,8 L16,18 L8,18 L5,8 Z M5,8 L19,8 M8,18 L12,8 L16,18" />
+              </Border>
+            </Button>
+            <Button x:Name="PhoneVisionButton"
+                    Grid.Column="2"
+                    Classes="PhoneDockButton Center"
+                    ToolTip.Tip="Vision"
+                    AutomationProperties.Name="Phone vision summary"
+                    AutomationProperties.AutomationId="BYH.Settings.PhoneNav.Vision"
+                    Click="OnShowPhoneVisionClick">
+              <Border Classes="PhoneDockItem Center">
+                <Path Classes="PhoneDockIcon"
+                      Data="M12,21 C12,14 7,12 4,7 C10,7 12,10 12,14 M12,21 C12,13 17,10 20,5 C14,5 12,9 12,14" />
+              </Border>
+            </Button>
+            <Button x:Name="PhoneClipboardButton"
+                    Grid.Column="3"
+                    Classes="PhoneDockButton"
+                    ToolTip.Tip="Clipboard"
+                    AutomationProperties.Name="Phone clipboard summary"
+                    AutomationProperties.AutomationId="BYH.Settings.PhoneNav.Clipboard"
+                    Click="OnShowPhoneClipboardClick">
+              <Border Classes="PhoneDockItem">
+                <Path Classes="PhoneDockIcon"
+                      Data="M3,6 L21,6 L21,18 L3,18 Z M3,7 L12,14 L21,7" />
+              </Border>
+            </Button>
+            <Button x:Name="PhoneLauncherButton"
+                    Grid.Column="4"
+                    Classes="PhoneDockButton"
+                    ToolTip.Tip="Launcher"
+                    AutomationProperties.Name="Phone launcher summary"
+                    AutomationProperties.AutomationId="BYH.Settings.PhoneNav.Launcher"
+                    Click="OnShowPhoneLauncherClick">
+              <Border Classes="PhoneDockItem">
+                <Path Classes="PhoneDockIcon"
+                      Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M12,2 L13,5 M12,19 L12,22 M2,12 L5,12 M19,12 L22,12 M5,5 L7,7 M17,17 L19,19 M19,5 L17,7 M7,17 L5,19" />
+              </Border>
+            </Button>
           </Grid>
         </Border>
         </Grid>
@@ -1479,6 +1824,7 @@
     <Border Grid.Column="1"
             Grid.ColumnSpan="2"
             Grid.Row="1"
+            MinHeight="220"
             Classes="MetallicFrame Thin"
             Background="{DynamicResource ByhPanelIvoryBrush}">
       <Border Classes="MacroClip">
