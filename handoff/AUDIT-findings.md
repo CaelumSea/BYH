@@ -169,6 +169,7 @@
 ### [DONE commit:58cdf30] L1 · 代码后置硬编码英文字符串绕过 i18n
 多处：`ClipboardHistoryWindow.axaml.cs:603-607,855,2423,2785`（"just now"/"Xm ago"/"View full…"/图片 popup header/tooltip），`SettingsWindow.axaml.cs:497-498,802,1051,1089,519-523`，AXAML `PromptWindow.axaml:5`/`ResultWindow.axaml:5`/`SpotlightWindow.axaml:6` 的 Title。
 **修复**：加 `Strings.*` keys + 三文件同步（`EveryProperty_HasEntryInBothDictionaries` 测试守卫）。
+**续：第一百一十九/二十批全量接入 [DONE commit:d5b349a + a99130b]**：REQ-027 合并引入的硬编码英文（SettingsWindow 手机视图/Dashboard/Profile/主题概念块 ~70 处 AXAML + ~20 处 code-behind）全部接入 i18n。+~80 个 key（capacity 128→256），复用 16 个已有 key。code-behind 重构 `SetDashboardModuleActive` 为标识符+映射，修 `RefreshDashboardModelRouteCount` 的字面量比较陷阱。补漏 `Settings_PageTitle_Dashboard`/`Settings_Nav_Dashboard`（接入时漏了两处 Dashboard 硬编码）。保留品牌名/hex 色码/字体样本/技术占位符不翻译。整个 SettingsWindow 中英文下一致。**这是 i18n MVP 的收尾**。
 
 ### [DONE commit:97b5021] L2 · `Strings_zh_CN.cs:38,56` 未翻译
 `Result_Title="Translation"`、`Spotlight_SearchPlaceholder="Search…"` 中文词典里仍是英文。
@@ -225,3 +226,5 @@
 - [DEFER] M1/M2 god-class 拆分 / L3 无障碍标注 / L8 IManagedWindow 接口 — 移到独立重构/功能窗口
 - [DONE 部分] M4 LibraryImport 迁移 — 66/112 处已迁（Platform.Windows 纯 blittable + 字符串），剩 46 处高风险（hook/launcher/icon 核心 delegate+复杂 struct）机会性迁移，commit 5e0349c
 - [DONE] L5 日志滚动 — 已落地（size-based 1MB/保留 5，启动归档，commit 42d5033）
+- [DONE d5b349a + a99130b] i18n 全量接入 — SettingsWindow 全覆盖（手机视图/Dashboard/Profile/主题概念块 ~70 AXAML + ~20 code-behind），+~80 key，第一百一十九/二十批。i18n MVP 收尾。
+- [DONE 第一百二十批] feat/i18n-zh-en-mvp fast-forward 合并进 main（51 commit，零冲突）+ 清理 3 个已合并分支 + 2 个 worktree。仓库现仅剩 main 分支。
