@@ -1603,7 +1603,7 @@ public partial class App : Application
         _userProfileSettings = requested;
         _settingsWindow?.SetUserProfileSettings(
             requested,
-            "Saved · Hi! " + requested.DisplayName,
+            string.Format(Strings.Settings_Profile_StatusSaved, requested.DisplayName),
             isError: false);
     }
 

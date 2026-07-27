@@ -546,4 +546,114 @@ public static partial class Strings
     public static string ScanDialog_SelectAll => Get(nameof(ScanDialog_SelectAll));
     public static string ScanDialog_Import => Get(nameof(ScanDialog_Import));
     public static string ScanDialog_Count => Get(nameof(ScanDialog_Count));
+
+    // ── Third i18n pass: REQ-027 Settings redesign (phone views, dashboard,
+    //    profile/greeting, theme concept block). See merge 4af7576.
+
+    // SettingsWindow — Personal Greeting card (General section)
+    public static string Settings_Profile_CardTitle => Get(nameof(Settings_Profile_CardTitle));
+    public static string Settings_Profile_DisplayNameLabel => Get(nameof(Settings_Profile_DisplayNameLabel));
+    public static string Settings_Profile_DisplayNamePlaceholder => Get(nameof(Settings_Profile_DisplayNamePlaceholder));
+    public static string Settings_Profile_Hint => Get(nameof(Settings_Profile_Hint));
+    // Code-behind interpolated status (SetUserProfileSettings default + App save)
+    public static string Settings_Profile_StatusGreeting => Get(nameof(Settings_Profile_StatusGreeting));
+    public static string Settings_Profile_StatusSaved => Get(nameof(Settings_Profile_StatusSaved));
+
+    // SettingsWindow — phone kicker greeting (top of phone panel)
+    public static string Settings_Greeting_Prefix => Get(nameof(Settings_Greeting_Prefix));
+    public static string Settings_Greeting_DefaultName => Get(nameof(Settings_Greeting_DefaultName));
+
+    // SettingsWindow — Dashboard page
+    public static string Settings_Dashboard_PageSubtitle => Get(nameof(Settings_Dashboard_PageSubtitle));
+    public static string Settings_Dashboard_Modules => Get(nameof(Settings_Dashboard_Modules));
+    public static string Settings_Dashboard_Events => Get(nameof(Settings_Dashboard_Events));
+    public static string Settings_Dashboard_Models => Get(nameof(Settings_Dashboard_Models));
+    public static string Settings_Dashboard_TopFeature => Get(nameof(Settings_Dashboard_TopFeature));
+    public static string Settings_Dashboard_TextActive => Get(nameof(Settings_Dashboard_TextActive));
+    public static string Settings_Dashboard_VisionActive => Get(nameof(Settings_Dashboard_VisionActive));
+    public static string Settings_Dashboard_LocalOnly => Get(nameof(Settings_Dashboard_LocalOnly));
+    public static string Settings_Dashboard_FeatureFrequency => Get(nameof(Settings_Dashboard_FeatureFrequency));
+    public static string Settings_Dashboard_FeatureFrequencyDesc => Get(nameof(Settings_Dashboard_FeatureFrequencyDesc));
+    public static string Settings_Dashboard_ModelPreference => Get(nameof(Settings_Dashboard_ModelPreference));
+    public static string Settings_Dashboard_ModelPreferenceDesc => Get(nameof(Settings_Dashboard_ModelPreferenceDesc));
+    public static string Settings_Dashboard_EmptyTitle => Get(nameof(Settings_Dashboard_EmptyTitle));
+    public static string Settings_Dashboard_EmptyHint => Get(nameof(Settings_Dashboard_EmptyHint));
+    public static string Settings_Dashboard_NoLocalHistory => Get(nameof(Settings_Dashboard_NoLocalHistory));
+    public static string Settings_Dashboard_NoModules => Get(nameof(Settings_Dashboard_NoModules));
+    public static string Settings_Dashboard_Ready => Get(nameof(Settings_Dashboard_Ready));
+    public static string Settings_Dashboard_ReadingConfig => Get(nameof(Settings_Dashboard_ReadingConfig));
+    public static string Settings_Dashboard_ActiveLocally => Get(nameof(Settings_Dashboard_ActiveLocally));
+    public static string Settings_Dashboard_PrivacySafe => Get(nameof(Settings_Dashboard_PrivacySafe));
+    public static string Settings_Dashboard_TextAndVision => Get(nameof(Settings_Dashboard_TextAndVision));
+    public static string Settings_Dashboard_NotConfigured => Get(nameof(Settings_Dashboard_NotConfigured));
+    public static string Settings_Dashboard_NoModelSelected => Get(nameof(Settings_Dashboard_NoModelSelected));
+    public static string Settings_Dashboard_WaitingHistory => Get(nameof(Settings_Dashboard_WaitingHistory));
+    // Code-behind picks singular/plural by count.
+    public static string Settings_Dashboard_LocalEventCount_Singular => Get(nameof(Settings_Dashboard_LocalEventCount_Singular));
+    public static string Settings_Dashboard_LocalEventCount_Plural => Get(nameof(Settings_Dashboard_LocalEventCount_Plural));
+    // Module display names (dashboard top-feature row + module-summary join).
+    // SetDashboardModuleActive receives a module identifier and maps it here.
+    public static string Settings_Dashboard_Module_OceanEyes => Get(nameof(Settings_Dashboard_Module_OceanEyes));
+    public static string Settings_Dashboard_Module_Actions => Get(nameof(Settings_Dashboard_Module_Actions));
+    public static string Settings_Dashboard_Module_Launcher => Get(nameof(Settings_Dashboard_Module_Launcher));
+    public static string Settings_Dashboard_Module_Clipboard => Get(nameof(Settings_Dashboard_Module_Clipboard));
+    public static string Settings_Dashboard_Module_Vision => Get(nameof(Settings_Dashboard_Module_Vision));
+    public static string Settings_Dashboard_Module_Translation => Get(nameof(Settings_Dashboard_Module_Translation));
+
+    // SettingsWindow — phone Translation view
+    public static string Settings_Phone_Translation_Title => Get(nameof(Settings_Phone_Translation_Title));
+    public static string Settings_Phone_Translation_Subtitle => Get(nameof(Settings_Phone_Translation_Subtitle));
+    public static string Settings_Phone_Translation_ActiveProvider => Get(nameof(Settings_Phone_Translation_ActiveProvider));
+    public static string Settings_Phone_Translation_ManageHint => Get(nameof(Settings_Phone_Translation_ManageHint));
+    public static string Settings_Phone_Translation_ModelFallback => Get(nameof(Settings_Phone_Translation_ModelFallback));
+    // Code-behind picks singular/plural by count.
+    public static string Settings_Phone_Translation_ProviderCount_Singular => Get(nameof(Settings_Phone_Translation_ProviderCount_Singular));
+    public static string Settings_Phone_Translation_ProviderCount_Plural => Get(nameof(Settings_Phone_Translation_ProviderCount_Plural));
+
+    // SettingsWindow — phone Vision (Ocean Eyes) view
+    public static string Settings_Phone_Vision_Title => Get(nameof(Settings_Phone_Vision_Title));
+    public static string Settings_Phone_Vision_OcrProvider => Get(nameof(Settings_Phone_Vision_OcrProvider));
+    public static string Settings_Phone_Vision_StatusReady => Get(nameof(Settings_Phone_Vision_StatusReady));
+    public static string Settings_Phone_Vision_StatusDisabled => Get(nameof(Settings_Phone_Vision_StatusDisabled));
+    public static string Settings_Phone_Vision_UiaAssistOn => Get(nameof(Settings_Phone_Vision_UiaAssistOn));
+    public static string Settings_Phone_Vision_OcrOnly => Get(nameof(Settings_Phone_Vision_OcrOnly));
+
+    // SettingsWindow — phone Clipboard view
+    public static string Settings_Phone_Clipboard_Title => Get(nameof(Settings_Phone_Clipboard_Title));
+    public static string Settings_Phone_Clipboard_HistoryHotkey => Get(nameof(Settings_Phone_Clipboard_HistoryHotkey));
+    public static string Settings_Phone_Clipboard_LocalRetention => Get(nameof(Settings_Phone_Clipboard_LocalRetention));
+    public static string Settings_Phone_Clipboard_StatusActive => Get(nameof(Settings_Phone_Clipboard_StatusActive));
+    public static string Settings_Phone_Clipboard_StatusPaused => Get(nameof(Settings_Phone_Clipboard_StatusPaused));
+    // Code-behind interpolated: {0}=text count, {1}=image count
+    public static string Settings_Phone_Clipboard_RetentionSummary => Get(nameof(Settings_Phone_Clipboard_RetentionSummary));
+
+    // SettingsWindow — phone Launcher view
+    public static string Settings_Phone_Launcher_Title => Get(nameof(Settings_Phone_Launcher_Title));
+    public static string Settings_Phone_Launcher_Subtitle => Get(nameof(Settings_Phone_Launcher_Subtitle));
+    public static string Settings_Phone_Launcher_SpotlightHotkey => Get(nameof(Settings_Phone_Launcher_SpotlightHotkey));
+    public static string Settings_Phone_Launcher_NoDestinations => Get(nameof(Settings_Phone_Launcher_NoDestinations));
+    // Code-behind picks singular/plural by count.
+    public static string Settings_Phone_Launcher_DestinationsCount_Singular => Get(nameof(Settings_Phone_Launcher_DestinationsCount_Singular));
+    public static string Settings_Phone_Launcher_DestinationsCount_Plural => Get(nameof(Settings_Phone_Launcher_DestinationsCount_Plural));
+
+    // SettingsWindow — theme concept block (pre-existing hardcoded, now wired)
+    public static string Settings_Theme_Concept => Get(nameof(Settings_Theme_Concept));
+    public static string Settings_Theme_Tagline => Get(nameof(Settings_Theme_Tagline));
+    public static string Settings_Theme_Description => Get(nameof(Settings_Theme_Description));
+    public static string Settings_Theme_ColorPalette => Get(nameof(Settings_Theme_ColorPalette));
+    public static string Settings_Theme_Typography => Get(nameof(Settings_Theme_Typography));
+    public static string Settings_Theme_IconStyle => Get(nameof(Settings_Theme_IconStyle));
+    public static string Settings_Theme_IconStyleDesc => Get(nameof(Settings_Theme_IconStyleDesc));
+    public static string Settings_Theme_Role_Primary => Get(nameof(Settings_Theme_Role_Primary));
+    public static string Settings_Theme_Role_Secondary => Get(nameof(Settings_Theme_Role_Secondary));
+    public static string Settings_Theme_Role_Accent => Get(nameof(Settings_Theme_Role_Accent));
+    public static string Settings_Theme_Role_Border => Get(nameof(Settings_Theme_Role_Border));
+    public static string Settings_Theme_Role_Ivory => Get(nameof(Settings_Theme_Role_Ivory));
+    public static string Settings_Theme_Role_Cream => Get(nameof(Settings_Theme_Role_Cream));
+    public static string Settings_Theme_Role_DeepBrown => Get(nameof(Settings_Theme_Role_DeepBrown));
+    public static string Settings_Theme_BodyFont => Get(nameof(Settings_Theme_BodyFont));
+    public static string Settings_Theme_HeadingFont => Get(nameof(Settings_Theme_HeadingFont));
+
+        // SettingsWindow — misc
+        public static string Settings_VersionTag => Get(nameof(Settings_VersionTag));
 }

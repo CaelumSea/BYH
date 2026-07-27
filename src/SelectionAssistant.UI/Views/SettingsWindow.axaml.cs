@@ -55,7 +55,43 @@ public partial class SettingsWindow : Window
     }
 
     private bool _allowClose;
+    // Active dashboard module IDENTIFIERS (not display labels). Each call to
+    // SetDashboardModuleActive passes one of the DashboardModule.* constants;
+    // DashboardModuleLabel maps an identifier to its localized display name so
+    // the module-summary join and the dashboard top-feature row render in the
+    // active UI language.
     private readonly HashSet<string> _activeDashboardModules = new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Stable identifiers for the dashboard's feature modules. Callers pass
+    /// these to <see cref="SetDashboardModuleActive"/>; the summary row maps
+    /// them to localized labels via <see cref="DashboardModuleLabel"/>.
+    /// </summary>
+    private static class DashboardModule
+    {
+        public const string OceanEyes = "oceaneyes";
+        public const string Actions = "actions";
+        public const string Launcher = "launcher";
+        public const string Clipboard = "clipboard";
+        public const string Vision = "vision";
+        public const string Translation = "translation";
+    }
+
+    /// <summary>
+    /// Maps a <see cref="DashboardModule"/> identifier to its localized
+    /// display label. Returns the identifier itself if unknown (defensive —
+    /// should never happen since all call sites use the constants above).
+    /// </summary>
+    private static string DashboardModuleLabel(string module) => module switch
+    {
+        DashboardModule.OceanEyes => Strings.Settings_Dashboard_Module_OceanEyes,
+        DashboardModule.Actions => Strings.Settings_Dashboard_Module_Actions,
+        DashboardModule.Launcher => Strings.Settings_Dashboard_Module_Launcher,
+        DashboardModule.Clipboard => Strings.Settings_Dashboard_Module_Clipboard,
+        DashboardModule.Vision => Strings.Settings_Dashboard_Module_Vision,
+        DashboardModule.Translation => Strings.Settings_Dashboard_Module_Translation,
+        _ => module,
+    };
 
     private readonly AvaloniaList<ProviderOption> _providerOptions = [];
     private readonly ObservableCollection<PromptFunctionRow> _functionRows = [];
@@ -430,21 +466,25 @@ public partial class SettingsWindow : Window
         DashboardUsageEmptyText.IsVisible = total == 0;
         if (total == 0)
         {
-            DashboardTopFeatureText.Text = "No activity yet";
-            DashboardTopFeatureCountText.Text = "Waiting for local history";
+            DashboardTopFeatureText.Text = Strings.Settings_Dashboard_EmptyTitle;
+            DashboardTopFeatureCountText.Text = Strings.Settings_Dashboard_WaitingHistory;
             return;
         }
 
-        (string Name, int Count) top = new[]
+        (string Id, int Count) top = new[]
         {
-            ("Ocean Eyes", summary.OceanEyes),
-            ("Actions", summary.Actions),
-            ("Launcher", summary.Launcher),
-            ("Clipboard", summary.Clipboard),
+            (DashboardModule.OceanEyes, summary.OceanEyes),
+            (DashboardModule.Actions, summary.Actions),
+            (DashboardModule.Launcher, summary.Launcher),
+            (DashboardModule.Clipboard, summary.Clipboard),
         }.OrderByDescending(item => item.Item2).First();
 
-        DashboardTopFeatureText.Text = top.Name;
-        DashboardTopFeatureCountText.Text = $"{top.Count} local event{(top.Count == 1 ? string.Empty : "s")}";
+        DashboardTopFeatureText.Text = DashboardModuleLabel(top.Id);
+        DashboardTopFeatureCountText.Text = string.Format(
+            top.Count == 1
+                ? Strings.Settings_Dashboard_LocalEventCount_Singular
+                : Strings.Settings_Dashboard_LocalEventCount_Plural,
+            top.Count);
     }
 
     private void SetDashboardModuleActive(string module, bool isActive)
@@ -460,18 +500,21 @@ public partial class SettingsWindow : Window
 
         DashboardActiveModulesText.Text = _activeDashboardModules.Count.ToString();
         DashboardModuleSummaryText.Text = _activeDashboardModules.Count == 0
-            ? "No modules are currently enabled."
-            : string.Join(" · ", _activeDashboardModules.Order(StringComparer.Ordinal));
+            ? Strings.Settings_Dashboard_NoModules
+            : string.Join(" · ", _activeDashboardModules
+                .Order(StringComparer.Ordinal)
+                .Select(DashboardModuleLabel));
     }
 
     private void RefreshDashboardModelRouteCount()
     {
+        string notConfigured = Strings.Settings_Dashboard_NotConfigured;
         int routeCount = 0;
-        if (DashboardTextProviderText.Text != "Not configured")
+        if (!string.Equals(DashboardTextProviderText.Text, notConfigured, StringComparison.Ordinal))
         {
             routeCount++;
         }
-        if (DashboardVisionProviderText.Text != "Not configured")
+        if (!string.Equals(DashboardVisionProviderText.Text, notConfigured, StringComparison.Ordinal))
         {
             routeCount++;
         }
@@ -487,7 +530,8 @@ public partial class SettingsWindow : Window
         settings = settings.Normalize();
         ProfileDisplayNameInput.Text = settings.DisplayName;
         GreetingUserNameText.Text = settings.DisplayName;
-        ProfileStatusText.Text = statusMessage ?? "Greeting: Hi! " + settings.DisplayName;
+        ProfileStatusText.Text = statusMessage
+            ?? string.Format(Strings.Settings_Profile_StatusGreeting, settings.DisplayName);
         SetFeedbackTone(ProfileStatusText, isError);
     }
 
@@ -512,7 +556,7 @@ public partial class SettingsWindow : Window
         ShortcutStatusText.Text = statusMessage ?? string.Format(Strings.Settings_Status_CurrentPrefix, settings.ToDisplayText());
         SummaryShortcutText.Text = settings.ToDisplayText();
         SetDashboardModuleActive(
-            "Ocean Eyes",
+            DashboardModule.OceanEyes,
             settings.KeyboardShortcutEnabled || settings.MouseChordEnabled);
         SetFeedbackTone(ShortcutStatusText, isError);
     }
@@ -641,9 +685,14 @@ public partial class SettingsWindow : Window
         ClipboardHistoryWindowWidthInput.Text = settings.WindowWidth.ToString();
         ClipboardHistoryWindowHeightInput.Text = settings.WindowHeight.ToString();
         ClipboardHistoryExcludeAppsInput.Text = string.Join(", ", settings.ExcludeProcessNames);
-        PhoneClipboardStatusText.Text = settings.Enabled ? "History active" : "History paused";
-        PhoneClipboardRetentionText.Text = $"{settings.MaxEntries} text · {settings.MaxImageEntries} images";
-        SetDashboardModuleActive("Clipboard", settings.Enabled);
+        PhoneClipboardStatusText.Text = settings.Enabled
+            ? Strings.Settings_Phone_Clipboard_StatusActive
+            : Strings.Settings_Phone_Clipboard_StatusPaused;
+        PhoneClipboardRetentionText.Text = string.Format(
+            Strings.Settings_Phone_Clipboard_RetentionSummary,
+            settings.MaxEntries,
+            settings.MaxImageEntries);
+        SetDashboardModuleActive(DashboardModule.Clipboard, settings.Enabled);
     }
 
     /// <summary>R54: sets the feature-settings status line (save result).</summary>
@@ -687,7 +736,7 @@ public partial class SettingsWindow : Window
     {
         _promptTemplates = templates;
         RefreshPromptPreviews();
-        SetDashboardModuleActive("Actions", templates.AsList().Count > 0);
+        SetDashboardModuleActive(DashboardModule.Actions, templates.AsList().Count > 0);
     }
 
     private void RefreshPromptPreviews()
@@ -735,12 +784,14 @@ public partial class SettingsWindow : Window
     public void SetLauncherEntries(IReadOnlyList<LauncherEntry> entries)
     {
         RefreshLauncherRows(entries);
-        SetDashboardModuleActive("Launcher", entries.Count > 0);
-        PhoneLauncherCountText.Text = entries.Count == 1
-            ? "1 saved destination"
-            : $"{entries.Count} saved destinations";
+        SetDashboardModuleActive(DashboardModule.Launcher, entries.Count > 0);
+        PhoneLauncherCountText.Text = string.Format(
+            entries.Count == 1
+                ? Strings.Settings_Phone_Launcher_DestinationsCount_Singular
+                : Strings.Settings_Phone_Launcher_DestinationsCount_Plural,
+            entries.Count);
         PhoneLauncherPreviewText.Text = entries.Count == 0
-            ? "No apps or websites saved yet"
+            ? Strings.Settings_Phone_Launcher_NoDestinations
             : string.Join(" · ", entries.Take(3).Select(entry => entry.Name));
     }
 
@@ -888,15 +939,17 @@ public partial class SettingsWindow : Window
         SummaryProviderText.Text = activeProvider is null
             ? Strings.Settings_Status_NoProvider
             : $"{activeProvider.Name}\n{activeProvider.DefaultModel}";
-        PhoneProviderNameText.Text = activeProvider?.Name ?? "No provider selected";
-        PhoneProviderModelText.Text = activeProvider?.DefaultModel ?? "Choose one in Translation";
-        DashboardTextProviderText.Text = activeProvider?.Name ?? "Not configured";
-        DashboardTextModelText.Text = activeProvider?.DefaultModel ?? "No model selected";
-        SetDashboardModuleActive("Translation", activeProvider is not null);
+        PhoneProviderNameText.Text = activeProvider?.Name ?? Strings.Settings_Status_NoProvider;
+        PhoneProviderModelText.Text = activeProvider?.DefaultModel ?? Strings.Settings_Phone_Translation_ModelFallback;
+        DashboardTextProviderText.Text = activeProvider?.Name ?? Strings.Settings_Dashboard_NotConfigured;
+        DashboardTextModelText.Text = activeProvider?.DefaultModel ?? Strings.Settings_Dashboard_NoModelSelected;
+        SetDashboardModuleActive(DashboardModule.Translation, activeProvider is not null);
         RefreshDashboardModelRouteCount();
-        PhoneProviderCountText.Text = providers.Count == 1
-            ? "1 configured provider"
-            : $"{providers.Count} configured providers";
+        PhoneProviderCountText.Text = string.Format(
+            providers.Count == 1
+                ? Strings.Settings_Phone_Translation_ProviderCount_Singular
+                : Strings.Settings_Phone_Translation_ProviderCount_Plural,
+            providers.Count);
 
         // Rebuild ComboBox options. Keep the label short: just the provider
         // display name (e.g. "DeepSeek"). The model id is visible in the edit
@@ -1001,16 +1054,18 @@ public partial class SettingsWindow : Window
         SummaryVisionText.Text = settings.Enabled
             ? $"{visionProviderName}\n{settings.Model}"
             : Strings.Settings_Status_Disabled;
-        PhoneVisionStatusText.Text = settings.Enabled ? "Vision ready" : "Vision disabled";
+        PhoneVisionStatusText.Text = settings.Enabled
+            ? Strings.Settings_Phone_Vision_StatusReady
+            : Strings.Settings_Phone_Vision_StatusDisabled;
         PhoneVisionProviderText.Text = visionProviderName;
         PhoneVisionModelText.Text = settings.Model;
-        DashboardVisionProviderText.Text = settings.Enabled ? visionProviderName : "Not configured";
-        DashboardVisionModelText.Text = settings.Enabled ? settings.Model : "No model selected";
-        SetDashboardModuleActive("Vision", settings.Enabled);
+        DashboardVisionProviderText.Text = settings.Enabled ? visionProviderName : Strings.Settings_Dashboard_NotConfigured;
+        DashboardVisionModelText.Text = settings.Enabled ? settings.Model : Strings.Settings_Dashboard_NoModelSelected;
+        SetDashboardModuleActive(DashboardModule.Vision, settings.Enabled);
         RefreshDashboardModelRouteCount();
         PhoneVisionAssistText.Text = settings.UiaPrefillEnabled
-            ? "UIA assist on"
-            : "OCR only";
+            ? Strings.Settings_Phone_Vision_UiaAssistOn
+            : Strings.Settings_Phone_Vision_OcrOnly;
     }
 
     private void OnSaveVisionClick(object? sender, RoutedEventArgs e)

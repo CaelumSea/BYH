@@ -8,7 +8,7 @@ namespace SelectionAssistant.Core.I18n;
 /// </summary>
 internal static partial class Strings_zh_CN
 {
-    public static Dictionary<string, string> Build() => new(128, StringComparer.Ordinal)
+    public static Dictionary<string, string> Build() => new(256, StringComparer.Ordinal)
     {
         // Common
         ["Common_Confirm"] = "确定",
@@ -471,5 +471,108 @@ internal static partial class Strings_zh_CN
         ["ScanDialog_SelectAll"] = "全选/全不选",
         ["ScanDialog_Import"] = "导入选中",
         ["ScanDialog_Count"] = "共 {0} 个，已选 {1} 个",
+
+        // ── 第三轮 i18n：REQ-027 设置改版（手机视图、仪表盘、问候、主题概念块）。
+
+        // SettingsWindow — 个性问候卡（通用页）
+        ["Settings_Profile_CardTitle"] = "个性问候",
+        ["Settings_Profile_DisplayNameLabel"] = "显示名称",
+        ["Settings_Profile_DisplayNamePlaceholder"] = "Windows 用户名",
+        ["Settings_Profile_Hint"] = "用于手机面板的问候。",
+        ["Settings_Profile_StatusGreeting"] = "问候：Hi! {0}",
+        ["Settings_Profile_StatusSaved"] = "已保存 · Hi! {0}",
+
+        // SettingsWindow — 手机顶部问候
+        ["Settings_Greeting_Prefix"] = "Hi!",
+        ["Settings_Greeting_DefaultName"] = "朋友",
+
+        // SettingsWindow — 仪表盘页
+        ["Settings_Dashboard_PageSubtitle"] = "你的模块、模型路由与本地使用节奏。",
+        ["Settings_Dashboard_Modules"] = "模块",
+        ["Settings_Dashboard_Events"] = "事件",
+        ["Settings_Dashboard_Models"] = "模型",
+        ["Settings_Dashboard_TopFeature"] = "热门功能",
+        ["Settings_Dashboard_TextActive"] = "文本 · 已启用",
+        ["Settings_Dashboard_VisionActive"] = "视觉 · 已启用",
+        ["Settings_Dashboard_LocalOnly"] = "仅本地",
+        ["Settings_Dashboard_FeatureFrequency"] = "功能使用频率",
+        ["Settings_Dashboard_FeatureFrequencyDesc"] = "来自 BYH 本地脱敏日志的真实事件",
+        ["Settings_Dashboard_ModelPreference"] = "模型偏好",
+        ["Settings_Dashboard_ModelPreferenceDesc"] = "当前路由，绝不推断或编造",
+        ["Settings_Dashboard_EmptyTitle"] = "暂无活动",
+        ["Settings_Dashboard_EmptyHint"] = "暂无活动——使用 BYH 后才会出现计数。",
+        ["Settings_Dashboard_NoLocalHistory"] = "无本地历史",
+        ["Settings_Dashboard_NoModules"] = "当前没有启用的模块。",
+        ["Settings_Dashboard_Ready"] = "本地服务就绪",
+        ["Settings_Dashboard_ReadingConfig"] = "正在读取当前配置…",
+        ["Settings_Dashboard_ActiveLocally"] = "本地已启用",
+        ["Settings_Dashboard_PrivacySafe"] = "隐私安全",
+        ["Settings_Dashboard_TextAndVision"] = "文本 + 视觉",
+        ["Settings_Dashboard_NotConfigured"] = "未配置",
+        ["Settings_Dashboard_NoModelSelected"] = "未选择模型",
+        ["Settings_Dashboard_WaitingHistory"] = "等待本地历史",
+        ["Settings_Dashboard_LocalEventCount_Singular"] = "{0} 个本地事件",
+        ["Settings_Dashboard_LocalEventCount_Plural"] = "{0} 个本地事件",
+        // 模块显示名（中文不分单复数，两 key 同值；保留单复数对以便与英文一致）
+        ["Settings_Dashboard_Module_OceanEyes"] = "Ocean Eyes",
+        ["Settings_Dashboard_Module_Actions"] = "动作",
+        ["Settings_Dashboard_Module_Launcher"] = "启动器",
+        ["Settings_Dashboard_Module_Clipboard"] = "剪贴板",
+        ["Settings_Dashboard_Module_Vision"] = "视觉",
+        ["Settings_Dashboard_Module_Translation"] = "翻译",
+
+        // SettingsWindow — 手机翻译视图
+        ["Settings_Phone_Translation_Title"] = "翻译",
+        ["Settings_Phone_Translation_Subtitle"] = "你的当前语言服务",
+        ["Settings_Phone_Translation_ActiveProvider"] = "当前服务",
+        ["Settings_Phone_Translation_ManageHint"] = "在翻译页管理服务与密钥。",
+        ["Settings_Phone_Translation_ModelFallback"] = "在翻译页选择一个",
+        ["Settings_Phone_Translation_ProviderCount_Singular"] = "{0} 个已配置服务",
+        ["Settings_Phone_Translation_ProviderCount_Plural"] = "{0} 个已配置服务",
+
+        // SettingsWindow — 手机视觉（Ocean Eyes）视图
+        ["Settings_Phone_Vision_Title"] = "Ocean Eyes",
+        ["Settings_Phone_Vision_OcrProvider"] = "OCR 服务",
+        ["Settings_Phone_Vision_StatusReady"] = "视觉就绪",
+        ["Settings_Phone_Vision_StatusDisabled"] = "视觉已禁用",
+        ["Settings_Phone_Vision_UiaAssistOn"] = "UIA 辅助开",
+        ["Settings_Phone_Vision_OcrOnly"] = "仅 OCR",
+
+        // SettingsWindow — 手机剪贴板视图
+        ["Settings_Phone_Clipboard_Title"] = "剪贴板",
+        ["Settings_Phone_Clipboard_HistoryHotkey"] = "历史快捷键",
+        ["Settings_Phone_Clipboard_LocalRetention"] = "本地保留",
+        ["Settings_Phone_Clipboard_StatusActive"] = "历史已启用",
+        ["Settings_Phone_Clipboard_StatusPaused"] = "历史已暂停",
+        ["Settings_Phone_Clipboard_RetentionSummary"] = "{0} 文本 · {1} 图片",
+
+        // SettingsWindow — 手机启动器视图
+        ["Settings_Phone_Launcher_Title"] = "启动器",
+        ["Settings_Phone_Launcher_Subtitle"] = "触手可及的快捷目标",
+        ["Settings_Phone_Launcher_SpotlightHotkey"] = "Spotlight 快捷键",
+        ["Settings_Phone_Launcher_NoDestinations"] = "尚未保存任何应用或网页",
+        ["Settings_Phone_Launcher_DestinationsCount_Singular"] = "{0} 个已保存目标",
+        ["Settings_Phone_Launcher_DestinationsCount_Plural"] = "{0} 个已保存目标",
+
+        // SettingsWindow — 主题概念块
+        ["Settings_Theme_Concept"] = "主题概念",
+        ["Settings_Theme_Tagline"] = "柔和 · 优雅 · 自然 · 安静",
+        ["Settings_Theme_Description"] = "灵感取自象牙、碧玉与温润金色的暖奶油色调。柔和的层次让日常工具从容舒展、触手可及。",
+        ["Settings_Theme_ColorPalette"] = "调色板",
+        ["Settings_Theme_Typography"] = "字体排印",
+        ["Settings_Theme_IconStyle"] = "图标风格",
+        ["Settings_Theme_IconStyleDesc"] = "柔和的线性图标，圆角与暖色调。",
+        ["Settings_Theme_Role_Primary"] = "主色",
+        ["Settings_Theme_Role_Secondary"] = "次色",
+        ["Settings_Theme_Role_Accent"] = "强调色",
+        ["Settings_Theme_Role_Border"] = "边框",
+        ["Settings_Theme_Role_Ivory"] = "象牙",
+        ["Settings_Theme_Role_Cream"] = "奶油",
+        ["Settings_Theme_Role_DeepBrown"] = "深棕",
+        ["Settings_Theme_BodyFont"] = "正文字体",
+        ["Settings_Theme_HeadingFont"] = "标题字体",
+
+        // SettingsWindow — 杂项
+        ["Settings_VersionTag"] = "v0.1 · Windows NativeAOT",
     };
 }

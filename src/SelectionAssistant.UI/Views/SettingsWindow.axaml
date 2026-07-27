@@ -304,9 +304,9 @@
                         Data="M4,4 L10,4 L10,10 L4,10 Z M14,4 L20,4 L20,10 L14,10 Z M4,14 L10,14 L10,20 L4,20 Z M14,14 L20,14 L20,20 L14,20 Z" />
                 </Border>
                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                  <TextBlock Text="MODULES" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                  <TextBlock x:Name="DashboardActiveModulesText" Text="Loading…" Classes="DashboardMetricValue" />
-                  <TextBlock Text="active locally" Classes="Secondary" FontSize="7" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_Modules}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardActiveModulesText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="DashboardMetricValue" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_ActiveLocally}" Classes="Secondary" FontSize="7" />
                 </StackPanel>
               </Grid>
             </Border>
@@ -318,9 +318,9 @@
                         Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M12,7 L12,12 L16,14" />
                 </Border>
                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                  <TextBlock Text="EVENTS" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                  <TextBlock x:Name="DashboardTotalEventsText" Text="Loading…" Classes="DashboardMetricValue" />
-                  <TextBlock Text="privacy-safe" Classes="Secondary" FontSize="7" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_Events}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardTotalEventsText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="DashboardMetricValue" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_PrivacySafe}" Classes="Secondary" FontSize="7" />
                 </StackPanel>
               </Grid>
             </Border>
@@ -332,9 +332,9 @@
                         Data="M3,7 L21,7 L21,17 L3,17 Z M7,10.5 L9,10.5 M11,10.5 L13,10.5 M15,10.5 L17,10.5 M7,14 L17,14" />
                 </Border>
                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                  <TextBlock Text="TOP FEATURE" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                  <TextBlock x:Name="DashboardTopFeatureText" Text="No activity yet" Classes="DashboardMetricName" />
-                  <TextBlock x:Name="DashboardTopFeatureCountText" Text="No local history" Classes="Secondary" FontSize="7" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_TopFeature}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardTopFeatureText" Text="{x:Static i18n:Strings.Settings_Dashboard_EmptyTitle}" Classes="DashboardMetricName" />
+                  <TextBlock x:Name="DashboardTopFeatureCountText" Text="{x:Static i18n:Strings.Settings_Dashboard_NoLocalHistory}" Classes="Secondary" FontSize="7" />
                 </StackPanel>
               </Grid>
             </Border>
@@ -346,9 +346,9 @@
                         Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
                 </Border>
                 <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                  <TextBlock Text="MODELS" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                  <TextBlock x:Name="DashboardModelRouteCountText" Text="Loading…" Classes="DashboardMetricValue" />
-                  <TextBlock Text="text + vision" Classes="Secondary" FontSize="7" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_Models}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                  <TextBlock x:Name="DashboardModelRouteCountText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="DashboardMetricValue" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_TextAndVision}" Classes="Secondary" FontSize="7" />
                 </StackPanel>
               </Grid>
             </Border>
@@ -359,38 +359,38 @@
               <Grid RowDefinitions="Auto,*,Auto">
                 <Grid ColumnDefinitions="*,Auto">
                   <StackPanel Spacing="2">
-                    <TextBlock Text="Feature frequency" Classes="CardTitle" FontSize="13" FontWeight="SemiBold" />
-                    <TextBlock Text="Real events found in BYH's local redacted log" Classes="Secondary" FontSize="8" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_FeatureFrequency}" Classes="CardTitle" FontSize="13" FontWeight="SemiBold" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_FeatureFrequencyDesc}" Classes="Secondary" FontSize="8" />
                   </StackPanel>
                   <Border Grid.Column="1" Classes="HeroPill" Padding="8,4">
-                    <TextBlock Text="LOCAL ONLY" Classes="Accent" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_LocalOnly}" Classes="Accent" FontSize="7" FontWeight="SemiBold" />
                   </Border>
                 </Grid>
                 <StackPanel Grid.Row="1" Spacing="9" Margin="0,12,0,8">
                   <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
-                    <TextBlock Text="Ocean Eyes" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_Module_OceanEyes}" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
                     <ProgressBar x:Name="DashboardOceanEyesBar" Grid.Column="1" Classes="DashboardUsageBar" Minimum="0" Maximum="1" />
                     <TextBlock x:Name="DashboardOceanEyesCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
                   </Grid>
                   <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
-                    <TextBlock Text="Actions" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_Module_Actions}" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
                     <ProgressBar x:Name="DashboardActionsBar" Grid.Column="1" Classes="DashboardUsageBar Accent" Minimum="0" Maximum="1" />
                     <TextBlock x:Name="DashboardActionsCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
                   </Grid>
                   <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
-                    <TextBlock Text="Launcher" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_Module_Launcher}" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
                     <ProgressBar x:Name="DashboardLauncherBar" Grid.Column="1" Classes="DashboardUsageBar Gold" Minimum="0" Maximum="1" />
                     <TextBlock x:Name="DashboardLauncherCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
                   </Grid>
                   <Grid ColumnDefinitions="86,*,34" ColumnSpacing="9">
-                    <TextBlock Text="Clipboard" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_Module_Clipboard}" Classes="Secondary" FontSize="9" VerticalAlignment="Center" />
                     <ProgressBar x:Name="DashboardClipboardBar" Grid.Column="1" Classes="DashboardUsageBar Soft" Minimum="0" Maximum="1" />
                     <TextBlock x:Name="DashboardClipboardCountText" Grid.Column="2" Text="0" Classes="Accent" FontSize="9" HorizontalAlignment="Right" />
                   </Grid>
                 </StackPanel>
                 <TextBlock x:Name="DashboardUsageEmptyText"
                            Grid.Row="2"
-                           Text="No activity yet — counts appear after you use BYH."
+                           Text="{x:Static i18n:Strings.Settings_Dashboard_EmptyHint}"
                            Classes="Muted"
                            FontSize="8"
                            IsVisible="False" />
@@ -400,8 +400,8 @@
             <Border Grid.Column="1" Classes="DashboardPanel">
               <StackPanel Spacing="12">
                 <StackPanel Spacing="2">
-                  <TextBlock Text="Model preference" Classes="CardTitle" FontSize="13" FontWeight="SemiBold" />
-                  <TextBlock Text="Current routes, never inferred or fabricated" Classes="Secondary" FontSize="8" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_ModelPreference}" Classes="CardTitle" FontSize="13" FontWeight="SemiBold" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_ModelPreferenceDesc}" Classes="Secondary" FontSize="8" />
                 </StackPanel>
                 <Border Classes="DashboardModelCard">
                   <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
@@ -410,9 +410,9 @@
                             Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M3,12 L21,12 M12,3 C15,7 15,17 12,21 C9,17 9,7 12,3" />
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="2">
-                      <TextBlock Text="TEXT · ACTIVE" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                      <TextBlock x:Name="DashboardTextProviderText" Text="Not configured" FontSize="11" FontWeight="SemiBold" />
-                      <TextBlock x:Name="DashboardTextModelText" Text="No model selected" Classes="Secondary" FontSize="8" TextWrapping="Wrap" />
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_TextActive}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardTextProviderText" Text="{x:Static i18n:Strings.Settings_Dashboard_NotConfigured}" FontSize="11" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardTextModelText" Text="{x:Static i18n:Strings.Settings_Dashboard_NoModelSelected}" Classes="Secondary" FontSize="8" TextWrapping="Wrap" />
                     </StackPanel>
                   </Grid>
                 </Border>
@@ -423,9 +423,9 @@
                             Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="2">
-                      <TextBlock Text="VISION · ACTIVE" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                      <TextBlock x:Name="DashboardVisionProviderText" Text="Not configured" FontSize="11" FontWeight="SemiBold" />
-                      <TextBlock x:Name="DashboardVisionModelText" Text="No model selected" Classes="Secondary" FontSize="8" TextWrapping="Wrap" />
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_VisionActive}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardVisionProviderText" Text="{x:Static i18n:Strings.Settings_Dashboard_NotConfigured}" FontSize="11" FontWeight="SemiBold" />
+                      <TextBlock x:Name="DashboardVisionModelText" Text="{x:Static i18n:Strings.Settings_Dashboard_NoModelSelected}" Classes="Secondary" FontSize="8" TextWrapping="Wrap" />
                     </StackPanel>
                   </Grid>
                 </Border>
@@ -439,15 +439,15 @@
                       Background="{DynamicResource ByhSuccessBrush}"
                       VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="2">
-                <TextBlock Text="Local services ready" FontSize="10" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Dashboard_Ready}" FontSize="10" FontWeight="SemiBold" />
                 <TextBlock x:Name="DashboardModuleSummaryText"
-                           Text="Reading current configuration…"
+                           Text="{x:Static i18n:Strings.Settings_Dashboard_ReadingConfig}"
                            Classes="Secondary"
                            FontSize="8"
                            TextWrapping="Wrap" />
               </StackPanel>
               <Button Grid.Column="2"
-                      Content="Open General"
+                      Content="{x:Static i18n:Strings.Settings_Nav_General}"
                       Classes="Ghost"
                       Click="OnShowGeneralClick" />
             </Grid>
@@ -495,28 +495,27 @@
           </StackPanel>
 
           <!-- Personal Greeting card. REQ-027 — display name used by the
-               phone greeting. Strings are still hardcoded EN pending i18n
-               follow-up; merged as-is per user request to bring the UI work in. -->
+               phone greeting. -->
           <StackPanel Spacing="10" Margin="24,14,24,0">
-            <TextBlock Text="Personal Greeting"
+            <TextBlock Text="{x:Static i18n:Strings.Settings_Profile_CardTitle}"
                        Classes="CardTitle"
                        FontSize="15"
                        FontWeight="SemiBold" />
             <Border Classes="InnerCard" Padding="12">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <StackPanel Spacing="4">
-                  <TextBlock Text="Display name"
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Profile_DisplayNameLabel}"
                              Classes="Secondary"
                              FontSize="10"
                              FontWeight="SemiBold" />
                   <TextBox x:Name="ProfileDisplayNameInput"
                            MaxLength="32"
                            FontSize="11"
-                           PlaceholderText="Windows username"
+                           PlaceholderText="{x:Static i18n:Strings.Settings_Profile_DisplayNamePlaceholder}"
                            AutomationProperties.AutomationId="BYH.Settings.Profile.DisplayName" />
                 </StackPanel>
                 <Button Grid.Column="1"
-                        Content="Save"
+                        Content="{x:Static i18n:Strings.Common_Save}"
                         Classes="Primary"
                         VerticalAlignment="Bottom"
                         Click="OnSaveUserProfileClick"
@@ -526,7 +525,7 @@
             <TextBlock x:Name="ProfileStatusText"
                        Classes="Muted"
                        FontSize="9"
-                       Text="Used in the phone greeting."
+                       Text="{x:Static i18n:Strings.Settings_Profile_Hint}"
                        AutomationProperties.AutomationId="BYH.Settings.Profile.Status" />
           </StackPanel>
 
@@ -830,7 +829,7 @@
                   </Grid>
                   <TextBlock x:Name="ApiKeyStatusText"
                              Classes="Muted"
-                             Text="Not set"
+                             Text="{x:Static i18n:Strings.Settings_Key_NotSet}"
                              FontSize="{DynamicResource ByhFontSizeBodySmall}" />
                 </StackPanel>
               </Border>
@@ -1390,11 +1389,11 @@
                 BorderThickness="0,0,0,1"
                 Padding="22,14,18,12">
           <StackPanel Spacing="7" VerticalAlignment="Center">
-            <TextBlock Text="THEME CONCEPT" Classes="RailSectionTitle" />
-            <TextBlock Text="Soft · Elegant · Natural · Quiet"
+            <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_Concept}" Classes="RailSectionTitle" />
+            <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_Tagline}"
                        Classes="Secondary"
                        FontSize="{DynamicResource ByhFontSizeCaption}" />
-            <TextBlock Text="A warm, creamy palette inspired by ivory, jade and polished gold. Soft structure keeps everyday tools calm and within reach."
+            <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_Description}"
                        Classes="RailBody"
                        MaxWidth="112"
                        HorizontalAlignment="Left"
@@ -1407,50 +1406,50 @@
                 BorderThickness="0,0,0,1"
                 Padding="22,16,18,14">
           <StackPanel Spacing="10" VerticalAlignment="Center">
-            <TextBlock Text="COLOR PALETTE" Classes="RailSectionTitle" />
+            <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_ColorPalette}" Classes="RailSectionTitle" />
             <Grid ColumnDefinitions="48,*"
                   RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto"
                   ColumnSpacing="9" RowSpacing="5">
               <Border Grid.Row="0" Width="40" Height="18" CornerRadius="6"
                       Background="#E8C89A" BorderBrush="#80D5A86A" BorderThickness="1" />
               <StackPanel Grid.Row="0" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
-                <TextBlock Text="Primary" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_Role_Primary}" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
                 <TextBlock Text="#E8C89A" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" />
               </StackPanel>
               <Border Grid.Row="1" Width="40" Height="18" CornerRadius="6"
                       Background="#D5A86A" BorderBrush="#70B77934" BorderThickness="1" />
               <StackPanel Grid.Row="1" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
-                <TextBlock Text="Secondary" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_Role_Secondary}" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
                 <TextBlock Text="#D5A86A" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" />
               </StackPanel>
               <Border Grid.Row="2" Width="40" Height="18" CornerRadius="6"
                       Background="#8FAE5A" BorderBrush="#70667731" BorderThickness="1" />
               <StackPanel Grid.Row="2" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
-                <TextBlock Text="Accent" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_Role_Accent}" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
                 <TextBlock Text="#8FAE5A" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" />
               </StackPanel>
               <Border Grid.Row="3" Width="40" Height="18" CornerRadius="6"
                       Background="#6B4B2A" BorderBrush="#70513822" BorderThickness="1" />
               <StackPanel Grid.Row="3" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
-                <TextBlock Text="Deep Brown" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_Role_DeepBrown}" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
                 <TextBlock Text="#6B4B2A" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" />
               </StackPanel>
               <Border Grid.Row="4" Width="40" Height="18" CornerRadius="6"
                       Background="#FFF7EE" BorderBrush="#90E8C89A" BorderThickness="1" />
               <StackPanel Grid.Row="4" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
-                <TextBlock Text="Cream" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_Role_Cream}" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
                 <TextBlock Text="#FFF7EE" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" />
               </StackPanel>
               <Border Grid.Row="5" Width="40" Height="18" CornerRadius="6"
                       Background="#F6F1E6" BorderBrush="#90EAD8B8" BorderThickness="1" />
               <StackPanel Grid.Row="5" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
-                <TextBlock Text="Ivory" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_Role_Ivory}" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
                 <TextBlock Text="#F6F1E6" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" />
               </StackPanel>
               <Border Grid.Row="6" Width="40" Height="18" CornerRadius="6"
                       Background="#EAD8B8" BorderBrush="#90D5A86A" BorderThickness="1" />
               <StackPanel Grid.Row="6" Grid.Column="1" Spacing="0" VerticalAlignment="Center">
-                <TextBlock Text="Border" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_Role_Border}" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
                 <TextBlock Text="#EAD8B8" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" />
               </StackPanel>
             </Grid>
@@ -1462,18 +1461,18 @@
                 BorderThickness="0,0,0,1"
                 Padding="22,14,18,12">
           <StackPanel Spacing="8" VerticalAlignment="Center">
-            <TextBlock Text="TYPOGRAPHY" Classes="RailSectionTitle" />
+            <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_Typography}" Classes="RailSectionTitle" />
             <Grid ColumnDefinitions="42,*" ColumnSpacing="8">
               <TextBlock Text="Aa" FontFamily="Georgia" FontSize="{DynamicResource ByhFontSizeDisplay}" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                <TextBlock Text="Heading Font" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_HeadingFont}" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
                 <TextBlock Text="Georgia" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" />
               </StackPanel>
             </Grid>
             <Grid ColumnDefinitions="42,*" ColumnSpacing="8">
               <TextBlock Text="Aa" FontFamily="Segoe UI" FontSize="{DynamicResource ByhFontSizeDisplay}" FontWeight="Light" VerticalAlignment="Center" />
               <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
-                <TextBlock Text="Body Font" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_BodyFont}" FontSize="{DynamicResource ByhFontSizeCaption}" FontWeight="SemiBold" />
                 <TextBlock Text="Segoe UI" Classes="Muted" FontSize="{DynamicResource ByhFontSizeMicro}" />
               </StackPanel>
             </Grid>
@@ -1482,7 +1481,7 @@
 
         <Border Grid.Row="3" Padding="22,14,18,14">
           <StackPanel Spacing="11" VerticalAlignment="Center">
-            <TextBlock Text="ICON STYLE" Classes="RailSectionTitle" />
+            <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_IconStyle}" Classes="RailSectionTitle" />
             <Grid ColumnDefinitions="*,*,*,*,*" ColumnSpacing="8">
               <Path Grid.Column="0" Classes="RailSampleIcon"
                     Data="M3,10 L12,3 L21,10 M5,9 L5,20 L19,20 L19,9 M9,20 L9,14 L15,14 L15,20" />
@@ -1495,7 +1494,7 @@
               <Path Grid.Column="4" Classes="RailSampleIcon"
                     Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M12,2 L13,5 M12,19 L12,22 M2,12 L5,12 M19,12 L22,12 M5,5 L7,7 M17,17 L19,19 M19,5 L17,7 M7,17 L5,19" />
             </Grid>
-            <TextBlock Text="Soft line icons with rounded corners and warm tones."
+            <TextBlock Text="{x:Static i18n:Strings.Settings_Theme_IconStyleDesc}"
                        Classes="RailBody"
                        TextWrapping="Wrap" />
           </StackPanel>
@@ -1531,9 +1530,9 @@
                     Background="{DynamicResource ByhGemGlowBrush}" />
             <StackPanel Margin="18,21,102,12" Spacing="3">
               <StackPanel Orientation="Horizontal" Spacing="3">
-                <TextBlock Text="Hi!" Classes="Kicker" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Greeting_Prefix}" Classes="Kicker" />
                 <TextBlock x:Name="GreetingUserNameText"
-                           Text="there"
+                           Text="{x:Static i18n:Strings.Settings_Greeting_DefaultName}"
                            Classes="Kicker"
                            TextTrimming="CharacterEllipsis"
                            MaxWidth="90"
@@ -1578,7 +1577,7 @@
                  of these views change the central settings page or its scroll. -->
             <StackPanel x:Name="PhoneOverviewView"
                         Spacing="6">
-              <TextBlock Text="Current setup"
+              <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_CurrentSetup}"
                          Classes="DisplayTitle"
                          FontSize="14"
                          Margin="4,0,0,2"
@@ -1592,8 +1591,8 @@
                             Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M3,12 L21,12 M12,3 C15,7 15,17 12,21 C9,17 9,7 12,3" />
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                      <TextBlock Text="TRANSLATION PROVIDER" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                      <TextBlock x:Name="SummaryProviderText" Text="Loading…" Classes="PhoneSummaryValue" />
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_ProviderLabel}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="SummaryProviderText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="PhoneSummaryValue" />
                     </StackPanel>
                   </Grid>
                   <Border Classes="PhoneSummaryDivider" />
@@ -1604,8 +1603,8 @@
                             Data="M3,7 L21,7 L21,17 L3,17 Z M7,10.5 L9,10.5 M11,10.5 L13,10.5 M15,10.5 L17,10.5 M7,14 L17,14" />
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                      <TextBlock Text="OCEAN EYES HOTKEY" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                      <TextBlock x:Name="SummaryShortcutText" Text="Loading…" Classes="PhoneSummaryValue" />
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_OceanEyesLabel}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="SummaryShortcutText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="PhoneSummaryValue" />
                     </StackPanel>
                   </Grid>
                   <Border Classes="PhoneSummaryDivider" />
@@ -1616,8 +1615,8 @@
                             Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                      <TextBlock Text="VISION OCR" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                      <TextBlock x:Name="SummaryVisionText" Text="Loading…" Classes="PhoneSummaryValue" />
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_VisionLabel}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="SummaryVisionText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="PhoneSummaryValue" />
                     </StackPanel>
                   </Grid>
                   <Border Classes="PhoneSummaryDivider" />
@@ -1628,8 +1627,8 @@
                             Data="M5,3 L19,3 A2,2 0 0 1 21,5 L21,17 A2,2 0 0 1 19,19 L9,19 L5,22 Z M9,7 L17,7 M9,11 L17,11 M9,15 L14,15" />
                     </Border>
                     <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
-                      <TextBlock Text="CLIPBOARD HOTKEY" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                      <TextBlock x:Name="SummaryClipboardText" Text="Loading…" Classes="PhoneSummaryValue" />
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_ClipboardLabel}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                      <TextBlock x:Name="SummaryClipboardText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="PhoneSummaryValue" />
                     </StackPanel>
                   </Grid>
                 </StackPanel>
@@ -1640,11 +1639,11 @@
                         IsVisible="False"
                         Spacing="8">
               <StackPanel Margin="4,0,0,1" Spacing="2">
-                <TextBlock Text="Translation"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Translation_Title}"
                            Classes="DisplayTitle"
                            FontSize="14"
                            AutomationProperties.AutomationId="BYH.Settings.PhoneView.Translation" />
-                <TextBlock Text="Your active language service" Classes="Secondary" FontSize="8" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Translation_Subtitle}" Classes="Secondary" FontSize="8" />
               </StackPanel>
               <Border Classes="PorcelainCard" Padding="12">
                 <StackPanel Spacing="10">
@@ -1653,15 +1652,15 @@
                           Data="M12,3 A9,9 0 1 0 12,21 A9,9 0 1 0 12,3 M3,12 L21,12 M12,3 C15,7 15,17 12,21 C9,17 9,7 12,3" />
                   </Border>
                   <StackPanel Spacing="3">
-                    <TextBlock Text="ACTIVE PROVIDER" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                    <TextBlock x:Name="PhoneProviderNameText" Text="Loading…" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
-                    <TextBlock x:Name="PhoneProviderModelText" Text="Loading…" Classes="Secondary" FontSize="9" TextWrapping="Wrap" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Translation_ActiveProvider}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneProviderNameText" Text="{x:Static i18n:Strings.Settings_Loading}" FontSize="14" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock x:Name="PhoneProviderModelText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="Secondary" FontSize="9" TextWrapping="Wrap" />
                   </StackPanel>
                   <Border Classes="PhoneSummaryDivider" />
-                  <TextBlock x:Name="PhoneProviderCountText" Text="Loading…" Classes="PhoneStatusPill" />
+                  <TextBlock x:Name="PhoneProviderCountText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="PhoneStatusPill" />
                 </StackPanel>
               </Border>
-              <TextBlock Text="Manage providers and keys from the Translation page."
+              <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Translation_ManageHint}"
                          Classes="Muted" FontSize="8" TextWrapping="Wrap" Margin="4,0" />
             </StackPanel>
 
@@ -1669,11 +1668,11 @@
                         IsVisible="False"
                         Spacing="8">
               <StackPanel Margin="4,0,0,1" Spacing="2">
-                <TextBlock Text="Ocean Eyes"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Vision_Title}"
                            Classes="DisplayTitle"
                            FontSize="14"
                            AutomationProperties.AutomationId="BYH.Settings.PhoneView.Vision" />
-                <TextBlock x:Name="PhoneVisionStatusText" Text="Loading…" Classes="Secondary" FontSize="8" />
+                <TextBlock x:Name="PhoneVisionStatusText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="Secondary" FontSize="8" />
               </StackPanel>
               <Border Classes="PorcelainCard" Padding="12">
                 <StackPanel Spacing="9">
@@ -1682,12 +1681,12 @@
                           Data="M2,12 C5.2,6.8 8.5,5 12,5 C15.5,5 18.8,6.8 22,12 C18.8,17.2 15.5,19 12,19 C8.5,19 5.2,17.2 2,12 Z M12,9 A3,3 0 1 0 12,15 A3,3 0 1 0 12,9" />
                   </Border>
                   <StackPanel Spacing="3">
-                    <TextBlock Text="OCR PROVIDER" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                    <TextBlock x:Name="PhoneVisionProviderText" Text="Loading…" FontSize="12" FontWeight="SemiBold" />
-                    <TextBlock x:Name="PhoneVisionModelText" Text="Loading…" Classes="Secondary" FontSize="9" TextWrapping="Wrap" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Vision_OcrProvider}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneVisionProviderText" Text="{x:Static i18n:Strings.Settings_Loading}" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneVisionModelText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="Secondary" FontSize="9" TextWrapping="Wrap" />
                   </StackPanel>
                   <Border Classes="PhoneSummaryDivider" />
-                  <TextBlock x:Name="PhoneVisionAssistText" Text="Loading…" Classes="PhoneStatusPill" />
+                  <TextBlock x:Name="PhoneVisionAssistText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="PhoneStatusPill" />
                 </StackPanel>
               </Border>
             </StackPanel>
@@ -1696,11 +1695,11 @@
                         IsVisible="False"
                         Spacing="8">
               <StackPanel Margin="4,0,0,1" Spacing="2">
-                <TextBlock Text="Clipboard"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Clipboard_Title}"
                            Classes="DisplayTitle"
                            FontSize="14"
                            AutomationProperties.AutomationId="BYH.Settings.PhoneView.Clipboard" />
-                <TextBlock x:Name="PhoneClipboardStatusText" Text="Loading…" Classes="Secondary" FontSize="8" />
+                <TextBlock x:Name="PhoneClipboardStatusText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="Secondary" FontSize="8" />
               </StackPanel>
               <Border Classes="PorcelainCard" Padding="12">
                 <StackPanel Spacing="10">
@@ -1709,13 +1708,13 @@
                           Data="M5,3 L19,3 A2,2 0 0 1 21,5 L21,17 A2,2 0 0 1 19,19 L9,19 L5,22 Z M9,7 L17,7 M9,11 L17,11 M9,15 L14,15" />
                   </Border>
                   <StackPanel Spacing="3">
-                    <TextBlock Text="HISTORY HOTKEY" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                    <TextBlock x:Name="PhoneClipboardHotkeyText" Text="Loading…" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Clipboard_HistoryHotkey}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneClipboardHotkeyText" Text="{x:Static i18n:Strings.Settings_Loading}" FontSize="12" FontWeight="SemiBold" />
                   </StackPanel>
                   <Border Classes="PhoneSummaryDivider" />
                   <StackPanel Spacing="3">
-                    <TextBlock Text="LOCAL RETENTION" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                    <TextBlock x:Name="PhoneClipboardRetentionText" Text="Loading…" Classes="Secondary" FontSize="9" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Clipboard_LocalRetention}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneClipboardRetentionText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="Secondary" FontSize="9" />
                   </StackPanel>
                 </StackPanel>
               </Border>
@@ -1725,11 +1724,11 @@
                         IsVisible="False"
                         Spacing="8">
               <StackPanel Margin="4,0,0,1" Spacing="2">
-                <TextBlock Text="Launcher"
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Launcher_Title}"
                            Classes="DisplayTitle"
                            FontSize="14"
                            AutomationProperties.AutomationId="BYH.Settings.PhoneView.Launcher" />
-                <TextBlock Text="Quick destinations within reach" Classes="Secondary" FontSize="8" />
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Launcher_Subtitle}" Classes="Secondary" FontSize="8" />
               </StackPanel>
               <Border Classes="PorcelainCard" Padding="12">
                 <StackPanel Spacing="9">
@@ -1738,12 +1737,12 @@
                           Data="M12,8 A4,4 0 1 0 12,16 A4,4 0 1 0 12,8 M12,2 L13,5 M12,19 L12,22 M2,12 L5,12 M19,12 L22,12 M5,5 L7,7 M17,17 L19,19 M19,5 L17,7 M7,17 L5,19" />
                   </Border>
                   <StackPanel Spacing="3">
-                    <TextBlock Text="SPOTLIGHT HOTKEY" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
-                    <TextBlock x:Name="PhoneLauncherHotkeyText" Text="Loading…" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Phone_Launcher_SpotlightHotkey}" Classes="Muted" FontSize="7" FontWeight="SemiBold" />
+                    <TextBlock x:Name="PhoneLauncherHotkeyText" Text="{x:Static i18n:Strings.Settings_Loading}" FontSize="12" FontWeight="SemiBold" />
                   </StackPanel>
                   <Border Classes="PhoneSummaryDivider" />
-                  <TextBlock x:Name="PhoneLauncherCountText" Text="Loading…" Classes="PhoneStatusPill" />
-                  <TextBlock x:Name="PhoneLauncherPreviewText" Text="Loading…" Classes="Secondary" FontSize="8" TextWrapping="Wrap" />
+                  <TextBlock x:Name="PhoneLauncherCountText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="PhoneStatusPill" />
+                  <TextBlock x:Name="PhoneLauncherPreviewText" Text="{x:Static i18n:Strings.Settings_Loading}" Classes="Secondary" FontSize="8" TextWrapping="Wrap" />
                 </StackPanel>
               </Border>
             </StackPanel>
@@ -1939,7 +1938,7 @@
         <Grid RowDefinitions="Auto,*,Auto">
         <StackPanel Spacing="3">
           <TextBlock Text="{x:Static i18n:Strings.Settings_WindowControls_Title}" FontFamily="Georgia" FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
-          <TextBlock Text="v0.1 · Windows NativeAOT" Classes="Muted" FontSize="{DynamicResource ByhFontSizeCaption}" />
+          <TextBlock Text="{x:Static i18n:Strings.Settings_VersionTag}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeCaption}" />
         </StackPanel>
         <TextBlock Grid.Row="1"
                    Text="{x:Static i18n:Strings.Settings_WindowControls_Hint}"

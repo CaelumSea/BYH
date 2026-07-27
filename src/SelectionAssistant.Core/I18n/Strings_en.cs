@@ -8,7 +8,7 @@ namespace SelectionAssistant.Core.I18n;
 /// </summary>
 internal static partial class Strings_en
 {
-    public static Dictionary<string, string> Build() => new(128, StringComparer.Ordinal)
+    public static Dictionary<string, string> Build() => new(256, StringComparer.Ordinal)
     {
         // Common
         ["Common_Confirm"] = "OK",
@@ -471,5 +471,112 @@ internal static partial class Strings_en
         ["ScanDialog_SelectAll"] = "Select all / none",
         ["ScanDialog_Import"] = "Import selected",
         ["ScanDialog_Count"] = "{0} total, {1} selected",
+
+        // ── Third i18n pass: REQ-027 Settings redesign (phone views, dashboard,
+        //    profile/greeting, theme concept block).
+
+        // SettingsWindow — Personal Greeting card (General section)
+        ["Settings_Profile_CardTitle"] = "Personal Greeting",
+        ["Settings_Profile_DisplayNameLabel"] = "Display name",
+        ["Settings_Profile_DisplayNamePlaceholder"] = "Windows username",
+        ["Settings_Profile_Hint"] = "Used in the phone greeting.",
+        ["Settings_Profile_StatusGreeting"] = "Greeting: Hi! {0}",
+        ["Settings_Profile_StatusSaved"] = "Saved · Hi! {0}",
+
+        // SettingsWindow — phone kicker greeting
+        ["Settings_Greeting_Prefix"] = "Hi!",
+        ["Settings_Greeting_DefaultName"] = "there",
+
+        // SettingsWindow — Dashboard page
+        ["Settings_Dashboard_PageSubtitle"] = "Your modules, model routes, and local usage rhythm.",
+        ["Settings_Dashboard_Modules"] = "MODULES",
+        ["Settings_Dashboard_Events"] = "EVENTS",
+        ["Settings_Dashboard_Models"] = "MODELS",
+        ["Settings_Dashboard_TopFeature"] = "TOP FEATURE",
+        ["Settings_Dashboard_TextActive"] = "TEXT · ACTIVE",
+        ["Settings_Dashboard_VisionActive"] = "VISION · ACTIVE",
+        ["Settings_Dashboard_LocalOnly"] = "LOCAL ONLY",
+        ["Settings_Dashboard_FeatureFrequency"] = "Feature frequency",
+        ["Settings_Dashboard_FeatureFrequencyDesc"] = "Real events found in BYH's local redacted log",
+        ["Settings_Dashboard_ModelPreference"] = "Model preference",
+        ["Settings_Dashboard_ModelPreferenceDesc"] = "Current routes, never inferred or fabricated",
+        ["Settings_Dashboard_EmptyTitle"] = "No activity yet",
+        ["Settings_Dashboard_EmptyHint"] = "No activity yet — counts appear after you use BYH.",
+        ["Settings_Dashboard_NoLocalHistory"] = "No local history",
+        ["Settings_Dashboard_NoModules"] = "No modules are currently enabled.",
+        ["Settings_Dashboard_Ready"] = "Local services ready",
+        ["Settings_Dashboard_ReadingConfig"] = "Reading current configuration…",
+        ["Settings_Dashboard_ActiveLocally"] = "active locally",
+        ["Settings_Dashboard_PrivacySafe"] = "privacy-safe",
+        ["Settings_Dashboard_TextAndVision"] = "text + vision",
+        ["Settings_Dashboard_NotConfigured"] = "Not configured",
+        ["Settings_Dashboard_NoModelSelected"] = "No model selected",
+        ["Settings_Dashboard_WaitingHistory"] = "Waiting for local history",
+        // Plurality handled in code-behind (local event vs local events).
+        ["Settings_Dashboard_LocalEventCount_Singular"] = "{0} local event",
+        ["Settings_Dashboard_LocalEventCount_Plural"] = "{0} local events",
+        // Module display names
+        ["Settings_Dashboard_Module_OceanEyes"] = "Ocean Eyes",
+        ["Settings_Dashboard_Module_Actions"] = "Actions",
+        ["Settings_Dashboard_Module_Launcher"] = "Launcher",
+        ["Settings_Dashboard_Module_Clipboard"] = "Clipboard",
+        ["Settings_Dashboard_Module_Vision"] = "Vision",
+        ["Settings_Dashboard_Module_Translation"] = "Translation",
+
+        // SettingsWindow — phone Translation view
+        ["Settings_Phone_Translation_Title"] = "Translation",
+        ["Settings_Phone_Translation_Subtitle"] = "Your active language service",
+        ["Settings_Phone_Translation_ActiveProvider"] = "ACTIVE PROVIDER",
+        ["Settings_Phone_Translation_ManageHint"] = "Manage providers and keys from the Translation page.",
+        ["Settings_Phone_Translation_ModelFallback"] = "Choose one in Translation",
+        // Plurality handled in code-behind.
+        ["Settings_Phone_Translation_ProviderCount_Singular"] = "{0} configured provider",
+        ["Settings_Phone_Translation_ProviderCount_Plural"] = "{0} configured providers",
+
+        // SettingsWindow — phone Vision (Ocean Eyes) view
+        ["Settings_Phone_Vision_Title"] = "Ocean Eyes",
+        ["Settings_Phone_Vision_OcrProvider"] = "OCR PROVIDER",
+        ["Settings_Phone_Vision_StatusReady"] = "Vision ready",
+        ["Settings_Phone_Vision_StatusDisabled"] = "Vision disabled",
+        ["Settings_Phone_Vision_UiaAssistOn"] = "UIA assist on",
+        ["Settings_Phone_Vision_OcrOnly"] = "OCR only",
+
+        // SettingsWindow — phone Clipboard view
+        ["Settings_Phone_Clipboard_Title"] = "Clipboard",
+        ["Settings_Phone_Clipboard_HistoryHotkey"] = "HISTORY HOTKEY",
+        ["Settings_Phone_Clipboard_LocalRetention"] = "LOCAL RETENTION",
+        ["Settings_Phone_Clipboard_StatusActive"] = "History active",
+        ["Settings_Phone_Clipboard_StatusPaused"] = "History paused",
+        ["Settings_Phone_Clipboard_RetentionSummary"] = "{0} text · {1} images",
+
+        // SettingsWindow — phone Launcher view
+        ["Settings_Phone_Launcher_Title"] = "Launcher",
+        ["Settings_Phone_Launcher_Subtitle"] = "Quick destinations within reach",
+        ["Settings_Phone_Launcher_SpotlightHotkey"] = "SPOTLIGHT HOTKEY",
+        ["Settings_Phone_Launcher_NoDestinations"] = "No apps or websites saved yet",
+        // Plurality handled in code-behind.
+        ["Settings_Phone_Launcher_DestinationsCount_Singular"] = "{0} saved destination",
+        ["Settings_Phone_Launcher_DestinationsCount_Plural"] = "{0} saved destinations",
+
+        // SettingsWindow — theme concept block
+        ["Settings_Theme_Concept"] = "THEME CONCEPT",
+        ["Settings_Theme_Tagline"] = "Soft · Elegant · Natural · Quiet",
+        ["Settings_Theme_Description"] = "A warm, creamy palette inspired by ivory, jade and polished gold. Soft structure keeps everyday tools calm and within reach.",
+        ["Settings_Theme_ColorPalette"] = "COLOR PALETTE",
+        ["Settings_Theme_Typography"] = "TYPOGRAPHY",
+        ["Settings_Theme_IconStyle"] = "ICON STYLE",
+        ["Settings_Theme_IconStyleDesc"] = "Soft line icons with rounded corners and warm tones.",
+        ["Settings_Theme_Role_Primary"] = "Primary",
+        ["Settings_Theme_Role_Secondary"] = "Secondary",
+        ["Settings_Theme_Role_Accent"] = "Accent",
+        ["Settings_Theme_Role_Border"] = "Border",
+        ["Settings_Theme_Role_Ivory"] = "Ivory",
+        ["Settings_Theme_Role_Cream"] = "Cream",
+        ["Settings_Theme_Role_DeepBrown"] = "Deep Brown",
+        ["Settings_Theme_BodyFont"] = "Body Font",
+        ["Settings_Theme_HeadingFont"] = "Heading Font",
+
+        // SettingsWindow — misc
+        ["Settings_VersionTag"] = "v0.1 · Windows NativeAOT",
     };
 }
