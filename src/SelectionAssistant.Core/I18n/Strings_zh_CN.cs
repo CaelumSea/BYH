@@ -129,6 +129,7 @@ internal static partial class Strings_zh_CN
         ["Settings_Nav_Vision"] = "视觉",
         ["Settings_Nav_Launcher"] = "启动器",
         ["Settings_Nav_Clipboard"] = "剪贴板",
+        ["Settings_Nav_Dashboard"] = "仪表盘",
 
         // SettingsWindow — page titles / subtitles
         ["Settings_Header_Kicker"] = "欢迎回来",
@@ -138,12 +139,14 @@ internal static partial class Strings_zh_CN
         ["Settings_PageTitle_Vision"] = "视觉",
         ["Settings_PageTitle_Launcher"] = "启动器",
         ["Settings_PageTitle_Clipboard"] = "剪贴板",
+        ["Settings_PageTitle_Dashboard"] = "仪表盘",
         ["Settings_PageSubtitle_General"] = "快捷键、抓图行为与运行时状态。",
         ["Settings_PageSubtitle_Provider"] = "翻译服务配置、API 密钥与模型。",
         ["Settings_PageSubtitle_Functions"] = "绑定到工具栏动作的自定义提示词。",
         ["Settings_PageSubtitle_Vision"] = "OCR 模型与识别策略。",
         ["Settings_PageSubtitle_Launcher"] = "快速启动项与 Spotlight 快捷键。",
         ["Settings_PageSubtitle_Clipboard"] = "无需离开键盘即可调用最近的文本和图片。",
+        ["Settings_PageSubtitle_Dashboard"] = "你的模块、模型路由与本地使用节奏。",
 
         // SettingsWindow — Ocean Eyes Trigger card
         ["Settings_OceanEyesTrigger_Title"] = "Ocean Eyes 触发器",
@@ -487,7 +490,6 @@ internal static partial class Strings_zh_CN
         ["Settings_Greeting_DefaultName"] = "朋友",
 
         // SettingsWindow — 仪表盘页
-        ["Settings_Dashboard_PageSubtitle"] = "你的模块、模型路由与本地使用节奏。",
         ["Settings_Dashboard_Modules"] = "模块",
         ["Settings_Dashboard_Events"] = "事件",
         ["Settings_Dashboard_Models"] = "模型",

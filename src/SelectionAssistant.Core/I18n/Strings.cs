@@ -203,6 +203,7 @@ public static partial class Strings
     public static string Settings_Nav_Vision => Get(nameof(Settings_Nav_Vision));
     public static string Settings_Nav_Launcher => Get(nameof(Settings_Nav_Launcher));
     public static string Settings_Nav_Clipboard => Get(nameof(Settings_Nav_Clipboard));
+    public static string Settings_Nav_Dashboard => Get(nameof(Settings_Nav_Dashboard));
 
     // SettingsWindow — page headers / subtitles (set from code-behind)
     public static string Settings_Header_Kicker => Get(nameof(Settings_Header_Kicker));
@@ -212,12 +213,14 @@ public static partial class Strings
     public static string Settings_PageTitle_Vision => Get(nameof(Settings_PageTitle_Vision));
     public static string Settings_PageTitle_Launcher => Get(nameof(Settings_PageTitle_Launcher));
     public static string Settings_PageTitle_Clipboard => Get(nameof(Settings_PageTitle_Clipboard));
+    public static string Settings_PageTitle_Dashboard => Get(nameof(Settings_PageTitle_Dashboard));
     public static string Settings_PageSubtitle_General => Get(nameof(Settings_PageSubtitle_General));
     public static string Settings_PageSubtitle_Provider => Get(nameof(Settings_PageSubtitle_Provider));
     public static string Settings_PageSubtitle_Functions => Get(nameof(Settings_PageSubtitle_Functions));
     public static string Settings_PageSubtitle_Vision => Get(nameof(Settings_PageSubtitle_Vision));
     public static string Settings_PageSubtitle_Launcher => Get(nameof(Settings_PageSubtitle_Launcher));
     public static string Settings_PageSubtitle_Clipboard => Get(nameof(Settings_PageSubtitle_Clipboard));
+    public static string Settings_PageSubtitle_Dashboard => Get(nameof(Settings_PageSubtitle_Dashboard));
 
     // SettingsWindow — Ocean Eyes Trigger card
     public static string Settings_OceanEyesTrigger_Title => Get(nameof(Settings_OceanEyesTrigger_Title));
@@ -564,7 +567,6 @@ public static partial class Strings
     public static string Settings_Greeting_DefaultName => Get(nameof(Settings_Greeting_DefaultName));
 
     // SettingsWindow — Dashboard page
-    public static string Settings_Dashboard_PageSubtitle => Get(nameof(Settings_Dashboard_PageSubtitle));
     public static string Settings_Dashboard_Modules => Get(nameof(Settings_Dashboard_Modules));
     public static string Settings_Dashboard_Events => Get(nameof(Settings_Dashboard_Events));
     public static string Settings_Dashboard_Models => Get(nameof(Settings_Dashboard_Models));

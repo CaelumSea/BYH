@@ -189,7 +189,7 @@ public partial class SettingsWindow : Window
         (PageTitleText.Text, PageSubtitleText.Text) = page switch
         {
             SettingsPage.Dashboard =>
-                ("Dashboard", "Your modules, model routes, and local usage rhythm."),
+                (Strings.Settings_PageTitle_Dashboard, Strings.Settings_PageSubtitle_Dashboard),
             SettingsPage.General =>
                 (Strings.Settings_PageTitle_General, Strings.Settings_PageSubtitle_General),
             SettingsPage.Provider =>

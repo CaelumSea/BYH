@@ -129,6 +129,7 @@ internal static partial class Strings_en
         ["Settings_Nav_Vision"] = "Vision",
         ["Settings_Nav_Launcher"] = "Launcher",
         ["Settings_Nav_Clipboard"] = "Clipboard",
+        ["Settings_Nav_Dashboard"] = "Dashboard",
 
         // SettingsWindow — page titles / subtitles
         ["Settings_Header_Kicker"] = "WELCOME BACK",
@@ -138,12 +139,14 @@ internal static partial class Strings_en
         ["Settings_PageTitle_Vision"] = "Vision",
         ["Settings_PageTitle_Launcher"] = "Launcher",
         ["Settings_PageTitle_Clipboard"] = "Clipboard",
+        ["Settings_PageTitle_Dashboard"] = "Dashboard",
         ["Settings_PageSubtitle_General"] = "Hotkeys, capture behavior, and runtime status.",
         ["Settings_PageSubtitle_Provider"] = "Provider profiles, API keys, and translation models.",
         ["Settings_PageSubtitle_Functions"] = "Custom prompts bound to toolbar actions.",
         ["Settings_PageSubtitle_Vision"] = "OCR model and recognition strategy.",
         ["Settings_PageSubtitle_Launcher"] = "Quick-launch entries and the Spotlight hotkey.",
         ["Settings_PageSubtitle_Clipboard"] = "Recall recent text and images without leaving the keyboard.",
+        ["Settings_PageSubtitle_Dashboard"] = "Your modules, model routes, and local usage rhythm.",
 
         // SettingsWindow — Ocean Eyes Trigger card
         ["Settings_OceanEyesTrigger_Title"] = "Ocean Eyes Trigger",
@@ -488,7 +491,6 @@ internal static partial class Strings_en
         ["Settings_Greeting_DefaultName"] = "there",
 
         // SettingsWindow — Dashboard page
-        ["Settings_Dashboard_PageSubtitle"] = "Your modules, model routes, and local usage rhythm.",
         ["Settings_Dashboard_Modules"] = "MODULES",
         ["Settings_Dashboard_Events"] = "EVENTS",
         ["Settings_Dashboard_Models"] = "MODELS",

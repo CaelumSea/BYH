@@ -91,7 +91,7 @@
             <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
               <Path Classes="NavIcon"
                     Data="M4,4 L10,4 L10,10 L4,10 Z M14,4 L20,4 L20,10 L14,10 Z M4,14 L10,14 L10,20 L4,20 Z M14,14 L20,14 L20,20 L14,20 Z" />
-              <TextBlock Grid.Column="1" Text="Dashboard" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{x:Static i18n:Strings.Settings_Nav_Dashboard}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
             </Grid>
           </Button>
 
