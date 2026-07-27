@@ -9,14 +9,14 @@
 
 | 项 | 路径 / 值 |
 |---|---|
-| **主仓库根** | `C:\dvr\gh-kb\selection-assistant\` |
-| **主仓库物理路径**（`C:\dvr\` 是 junction） | `C:\Users\DeRant Vilmon Ram\gh-kb\selection-assistant\` |
+| **主仓库根** | `<repo-root>\` |
+| **主仓库物理路径**（`<repo-parent>` 是 junction） | `<user-home>\gh-kb\selection-assistant\` |
 | **默认长期分支** | `main` |
 | **可执行产物** | `artifacts\publish\win-x64-nativeuia\BYH.exe` |
 | **根目录启动器** | `BYH.cmd` → 双击即起 BYH.exe |
 | **桌面快捷方式** | `%USERPROFILE%\Desktop\BYH.lnk` → 指向同一个 exe |
 | **运行时密钥/配置** | `%LOCALAPPDATA%\BYH\`（**仓库外**，所有 worktree 共享） |
-| **并行 worktree 根** | `C:\dvr\byh-worktrees\`（主仓库的同级目录） |
+| **并行 worktree 根** | `<worktree-parent>\`（主仓库的同级目录） |
 
 **重要**：源码、构建产物、启动器、文档全在 `selection-assistant\` 这一个根下，**没有独立的安装目录**。"程序位置 vs 项目位置" 本就是一处 —— git 化后这个事实被显式化。
 
@@ -45,8 +45,8 @@ main                          ← 唯一长期分支，始终可发布
 
 **目录布局**：
 ```
-C:\dvr\gh-kb\selection-assistant\      ← 主仓库 = main 分支（你自己开发用）
-C:\dvr\byh-worktrees\                   ← 所有并行 worktree 的统一父目录
+<repo-root>\      ← 主仓库 = main 分支（你自己开发用）
+<worktree-parent>\                   ← 所有并行 worktree 的统一父目录
 ├── REQ-010-qr-recognize\               ← task/REQ-010-qr-recognize 的工作目录
 ├── REQ-011-number-annotate\
 └── ...
@@ -62,11 +62,11 @@ C:\dvr\byh-worktrees\                   ← 所有并行 worktree 的统一父�
 
 ```bash
 # 1. 在主仓库创建 worktree + 新分支（从 main 拉起）
-cd /c/dvr/gh-kb/selection-assistant
+cd /<repo-root>
 git worktree add -b task/REQ-010-qr-recognize  ../byh-worktrees/REQ-010-qr-recognize  main
 
 # 2. 进入 worktree（这就是给第 N 个 Agent 用的工作目录）
-cd /c/dvr/byh-worktrees/REQ-010-qr-recognize
+cd /<worktree-parent>/REQ-010-qr-recognize
 
 # 3. 预热构建（首次必做：让 bin/obj 就位）
 dotnet build -c Debug
@@ -84,7 +84,7 @@ pwsh tools/new-worktree.ps1 task/REQ-010-qr-recognize
 # 等价于上面 4.1 的全部步骤，自动 cd 到新 worktree
 ```
 
-启动后，把 `C:\dvr\byh-worktrees\REQ-010-qr-recognize\` 这个路径丢给第 N 个 Agent（ZCode session / omp worker / 任意 coding agent）作为它的工作目录即可。它可以：
+启动后，把 `<worktree-parent>\REQ-010-qr-recognize\` 这个路径丢给第 N 个 Agent（ZCode session / omp worker / 任意 coding agent）作为它的工作目录即可。它可以：
 - 自由编辑任何文件，不影响主仓库和其他 worktree
 - 独立 `dotnet build` / `dotnet test`（独立 bin/obj）
 - 双击该 worktree 内的 `BYH.cmd` 直接运行那个分支的 BYH.exe
@@ -95,12 +95,12 @@ pwsh tools/new-worktree.ps1 task/REQ-010-qr-recognize
 
 ```bash
 # 1. 在 worktree 里提交所有改动
-cd /c/dvr/byh-worktrees/REQ-010-qr-recognize
+cd /<worktree-parent>/REQ-010-qr-recognize
 git add .
 git commit -m "feat(REQ-010): add QR code recognition"
 
 # 2. 回到主仓库（main 分支），合并
-cd /c/dvr/gh-kb/selection-assistant
+cd /<repo-root>
 git merge --no-ff task/REQ-010-qr-recognize -m "merge: REQ-010 QR code recognition"
 
 # 3. 清理 worktree 和分支
@@ -139,16 +139,16 @@ git branch -d task/REQ-010-qr-recognize
 
 ```bash
 # 看所有 worktree
-git -C /c/dvr/gh-kb/selection-assistant worktree list
+git -C /<repo-root> worktree list
 
 # 看当前在哪个 worktree
 git rev-parse --show-toplevel
 
 # 看分支图
-git -C /c/dvr/gh-kb/selection-assistant log --oneline --graph --all -20
+git -C /<repo-root> log --oneline --graph --all -20
 
 # 强制清理已删除目录的 worktree 注册
-git -C /c/dvr/gh-kb/selection-assistant worktree prune
+git -C /<repo-root> worktree prune
 ```
 
 ---

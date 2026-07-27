@@ -1,8 +1,14 @@
 # BYH Theme System — Architecture Proposal
 
-Status: draft for REQ-027  
-Product term: Skin  
+Status: **active design intent** (REQ-027 landed). Token contract, theme-pack
+schema and the A/B/C/D delivery sequence below are still the design reference
+for any future skin work.
+Product term: Skin
 Engineering term: Theme
+
+> **实现现状**（色值、Brush 表、AXAML 文件位置、唯一事实源清单）见
+> [`08-theme-system.md`](08-theme-system.md)。本文回答「为什么是这种架构」，
+> 08 回答「现在长什么样」。两份互补，不冲突。
 
 ## 1. Recommendation
 

@@ -154,9 +154,9 @@ src/
 
 ## 已知限制与下一步
 
-详见 `docs/handoff/AUDIT-findings.md` 和 `docs/handoff/BACKLOG-roadmap.md`。v0.1.0 之后排期中的硬骨头：
+详见 `docs/AUDIT-findings.md` 和 `docs/BACKLOG-roadmap.md`。v0.1.0 之后排期中的硬骨头：
 
-- **M1/M2**：`ClipboardHistoryWindow.axaml.cs`（~2900 行）和 `App.axaml.cs`（~2095 行）的 god-class 拆分
+- **M1/M2**：`ClipboardHistoryWindow.axaml.cs`（~2940 行）和 `App.axaml.cs`（~2240 行）的 god-class 拆分
 - **L3**：无障碍 `AutomationProperties.Name` 全层补齐（需屏幕阅读器验证）
 - **M4**：剩余 ~46 处 `[DllImport]` → `[LibraryImport]` 迁移（hook / launcher / icon 高风险核心路径）
 - **L8**：`IManagedWindow` 公共接口（与 M1/M2 耦合）
@@ -164,9 +164,9 @@ src/
 
 ---
 
-## 交接与历史
+## 路线图与审查
 
-`docs/handoff/` 目录包含完整开发上下文（`00-CURRENT-HANDOFF.md` 是入口），任何接续工作的 agent 零基础读完即可继续。`docs/handoff/AUDIT-findings.md` 是按 P0/P1/P2/P3 分级的全代码库审查清单与修复进度。
+`docs/BACKLOG-roadmap.md` 是 R1–R54 路线图待办（含 120 批次演进历史），`docs/AUDIT-findings.md` 是按 P0/P1/P2/P3 分级的全代码库审查清单与修复进度。机器 agent 接续工作时先读根目录 `AGENTS.md`。
 
 ---
 

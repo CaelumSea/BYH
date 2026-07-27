@@ -41,9 +41,9 @@ tests/
 └── SelectionAssistant.Windows.IntegrationTests/
 ```
 
-Architecture rationale lives in `docs/architecture/`. The full historical
-context (decisions, traps, the audit findings) is in `docs/handoff/` — read
-`00-CURRENT-HANDOFF.md` first if you're doing anything non-trivial.
+Architecture rationale lives in `docs/architecture/`. The roadmap and
+audit findings live at `docs/BACKLOG-roadmap.md` and `docs/AUDIT-findings.md`.
+Read them if you're doing anything non-trivial.
 
 ## Things that are easy to get wrong
 
@@ -60,7 +60,7 @@ the app at runtime:
   `Activator.CreateInstance`.
 - **`[DllImport]` → `[LibraryImport]` migration is partial (66/112).** New
   P/Invoke should use `[LibraryImport]` with explicit `EntryPoint="...W"`
-  where Win32 only exports the `W` variant. See `docs/handoff/AUDIT-findings.md`
+  where Win32 only exports the `W` variant. See `docs/AUDIT-findings.md`
   entry M4 for the trap list (`StringMarshalling.Utf16` ≠ `CharSet.Unicode`,
   bool params need `[MarshalAs(Bool)]`, etc.).
 - **Secrets never go in source or config.** Use the `secret://` URI scheme +
@@ -89,7 +89,7 @@ Right now the highest-leverage areas (also the DEFER list in CHANGELOG):
 - **Accessibility**: `AutomationProperties.Name` across the AXAML files
   (audit finding L3 — needs a screen-reader verification pass)
 - **Code structure**: the two god-classes (`ClipboardHistoryWindow.axaml.cs`
-  ~2900 lines, `App.axaml.cs` ~2095 lines) would benefit from splitting
+  ~2940 lines, `App.axaml.cs` ~2240 lines) would benefit from splitting
 - **NativeAOT hygiene**: finishing the `[LibraryImport]` migration (46 sites
   remaining, all high-risk core paths)
 - **New provider support**: BYH is OpenAI-compatible; adding native support

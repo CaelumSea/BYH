@@ -2,13 +2,13 @@
 
 本文件记录 BYH（By Your Hand）的版本演进。格式参考 [Keep a Changelog](https://keepachangelog.com/)，版本号遵循 [Semantic Versioning](https://semver.org/)。
 
-每个版本的完整开发细节见 `docs/handoff/BACKLOG-roadmap.md` 对应批次段落；审查与修复进度见 `docs/handoff/AUDIT-findings.md`。
+每个版本的完整开发细节见 `docs/BACKLOG-roadmap.md` 对应批次段落；审查与修复进度见 `docs/AUDIT-findings.md`。
 
 ---
 
 ## [0.1.0] — 2026-07-27
 
-首个标记版本（"事实上的 v0.1"）。在此之前的演进全部汇总在 `docs/handoff/BACKLOG-roadmap.md` 的 120 个批次里；本条目只描述 v0.1.0 标记时刻的能力快照与关键质量门槛。
+首个标记版本（"事实上的 v0.1"）。在此之前的演进全部汇总在 `docs/BACKLOG-roadmap.md` 的 120 个批次里；本条目只描述 v0.1.0 标记时刻的能力快照与关键质量门槛。
 
 ### 能力快照
 
