@@ -176,7 +176,7 @@
 注释自承被 `AnnotationSession` 替换，"existing tests" 才保留。
 **修复**：删，或 `[Obsolete]`。
 
-### [DONE commit:pending] L5 · `RedactedLogger` 无滚动/封顶
+### [DONE commit:42d5033] L5 · `RedactedLogger` 无滚动/封顶
 **评估后原 DEFER，现落地**：`BYH.log` 无限增长会写满磁盘。落地为 size-based 滚动：`MaximumFileBytes = 1MB`（与 store 惯例一致）+ `RetainedRotations = 5`，超阈值时当前文件 rename 成 `BYH-yyyyMMdd-HHmmss.log`（同秒冲突加 `-2/-3` 后缀），超出保留数的旧归档按文件名（时间戳序）删除。构造时若现有文件已超阈值，先归档再开始写（启动归档）。
 **决策**：保持 `File.AppendAllText` 无状态写入（4 个持有者 Dispose 链分散，引入持久 FileStream 风险大于收益）；不做压缩（NativeAOT 无先例 + 文本压缩比有限）；时间戳命名而非 `.1/.2` 链式 rename（单步 `File.Move` 更原子，与项目截图/归档命名一致）。跨实例并发靠 `File.Move(overwrite:false)` + `File.Exists` re-check 防双滚，单实例 mutex 兜底。
 **真机验证**：当前 2.4MB 老 `BYH.log` 启动时被归档成 `BYH-20260727-100111.log`（18740 行完整保留），新 `BYH.log` 从 869 bytes 重新开始。
@@ -219,4 +219,4 @@
 - [DONE 97b5021] P3-快修 — L2 zh_CN 未译 / L4 NumberedAnnotationSession 死代码（+11 死测试）/ L6 SupportedKeys AsReadOnly / L7 SensitivePattern bearer
 - [DONE 58cdf30] P3-i18n — L1 21 处硬编码英文字符串 → i18n（+18 新 key,复用 2 个已有）
 - [DEFER] M1/M2 god-class 拆分 / M4 LibraryImport 迁移 / L3 无障碍标注 / L8 IManagedWindow 接口 — 移到独立重构/功能窗口
-- [DONE] L5 日志滚动 — 已落地（size-based 1MB/保留 5，启动归档，commit pending）
+- [DONE] L5 日志滚动 — 已落地（size-based 1MB/保留 5，启动归档，commit 42d5033）
