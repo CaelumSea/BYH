@@ -116,7 +116,7 @@
 **证据**：`OpenAiCompatibleStreamingProvider.cs:34-41`、`OpenAiCompatibleVisionOcrClient.cs:67-72`、`App.axaml.cs:1837`。
 **修复**：注入单个共享 `HttpClient` 到 providers，`SelectionRuntime` 持有；favicon 加内存或磁盘缓存。
 
-### [DONE commit:pending — 部分] M4 · P/Invoke 全用 `[DllImport]` 非 `[LibraryImport]`，多处缺 `SetLastError`
+### [DONE commit:5e0349c — 部分] M4 · P/Invoke 全用 `[DllImport]` 非 `[LibraryImport]`，多处缺 `SetLastError`
 **评估后部分落地（66/112 处）**：`[LibraryImport]` source generator 迁移，NativeAOT 下比 `[DllImport]` 的运行时 IL stub 更友好。**实际全仓库 112 处 DllImport**（AUDIT 原估 ~105 偏低）。
 **已迁 66 处**（Platform.Windows 项目的纯 blittable + 纯字符串 marshal）：批次 0-2，覆盖 `WindowsSystemMetrics`/`WindowsMouseContextProvider`/`WindowsProcessIdentityResolver`/`WindowsGlobalHotKey`/`WindowsUiAutomationBackend`/`SendInputHelper`/`NoActivateWindowHost`/`Win32Clipboard` 的大部分。迁移规则统一：`[DllImport]`→`[LibraryImport]` + `static extern`→`static partial` + 保留 `[return: MarshalAs(Bool)]` + 保留 `SetLastError` + 类加 `partial`。
 **关键陷阱（实测）**：① `[LibraryImport]` 总是要求 `AllowUnsafeBlocks=true`（SYSLIB1062），即使纯 blittable 签名——所以 `App`/`UI` 项目的 4 处无法迁（csproj 没开 unsafe，不动 csproj）；② `bool` 参数（非返回值）需显式 `[MarshalAs(UnmanagedType.Bool)]`（SYSLIB1051）；③ **`StringMarshalling.Utf16` 不等价 `CharSet.Unicode`**——前者只管字符串 marshal，不影响入口点查找；凡是 Win32 只有 W/A 版本无裸名的（`GetMessage`/`DispatchMessage`/`PostMessage`/`PostThreadMessage`/`DefWindowProc`/`GetModuleHandle`/`CreateWindowEx`/`UnregisterClass` 等），必须显式 `EntryPoint = "...W"`。`[DllImport]` 靠 .NET runtime 的 fallback 机制找 W 版，`[LibraryImport]` 无此 fallback。
@@ -223,5 +223,5 @@
 - [DONE 97b5021] P3-快修 — L2 zh_CN 未译 / L4 NumberedAnnotationSession 死代码（+11 死测试）/ L6 SupportedKeys AsReadOnly / L7 SensitivePattern bearer
 - [DONE 58cdf30] P3-i18n — L1 21 处硬编码英文字符串 → i18n（+18 新 key,复用 2 个已有）
 - [DEFER] M1/M2 god-class 拆分 / L3 无障碍标注 / L8 IManagedWindow 接口 — 移到独立重构/功能窗口
-- [DONE 部分] M4 LibraryImport 迁移 — 66/112 处已迁（Platform.Windows 纯 blittable + 字符串），剩 46 处高风险（hook/launcher/icon 核心 delegate+复杂 struct）机会性迁移，commit pending
+- [DONE 部分] M4 LibraryImport 迁移 — 66/112 处已迁（Platform.Windows 纯 blittable + 字符串），剩 46 处高风险（hook/launcher/icon 核心 delegate+复杂 struct）机会性迁移，commit 5e0349c
 - [DONE] L5 日志滚动 — 已落地（size-based 1MB/保留 5，启动归档，commit 42d5033）
