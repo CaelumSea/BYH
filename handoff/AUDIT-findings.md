@@ -116,8 +116,12 @@
 **证据**：`OpenAiCompatibleStreamingProvider.cs:34-41`、`OpenAiCompatibleVisionOcrClient.cs:67-72`、`App.axaml.cs:1837`。
 **修复**：注入单个共享 `HttpClient` 到 providers，`SelectionRuntime` 持有；favicon 加内存或磁盘缓存。
 
-### [DEFER reason:机会性,非 bug] M4 · P/Invoke 全用 `[DllImport]` 非 `[LibraryImport]`，多处缺 `SetLastError`
-**评估后 DEFER**：~105 处 DllImport → LibraryImport 是渐进式现代化，无 bug（DllImport 在 NativeAOT 也能用）。审计自己说"新代码一律 LibraryImport；存量分批迁移，机会性，不阻塞"。**新代码已用 LibraryImport（如 N1 的 GeneratedRegex 配套），存量分批迁移留作机会性改进**。`SetLastError=true` 缺失的诊断价值低（错误码多数没人读）。
+### [DONE commit:pending — 部分] M4 · P/Invoke 全用 `[DllImport]` 非 `[LibraryImport]`，多处缺 `SetLastError`
+**评估后部分落地（66/112 处）**：`[LibraryImport]` source generator 迁移，NativeAOT 下比 `[DllImport]` 的运行时 IL stub 更友好。**实际全仓库 112 处 DllImport**（AUDIT 原估 ~105 偏低）。
+**已迁 66 处**（Platform.Windows 项目的纯 blittable + 纯字符串 marshal）：批次 0-2，覆盖 `WindowsSystemMetrics`/`WindowsMouseContextProvider`/`WindowsProcessIdentityResolver`/`WindowsGlobalHotKey`/`WindowsUiAutomationBackend`/`SendInputHelper`/`NoActivateWindowHost`/`Win32Clipboard` 的大部分。迁移规则统一：`[DllImport]`→`[LibraryImport]` + `static extern`→`static partial` + 保留 `[return: MarshalAs(Bool)]` + 保留 `SetLastError` + 类加 `partial`。
+**关键陷阱（实测）**：① `[LibraryImport]` 总是要求 `AllowUnsafeBlocks=true`（SYSLIB1062），即使纯 blittable 签名——所以 `App`/`UI` 项目的 4 处无法迁（csproj 没开 unsafe，不动 csproj）；② `bool` 参数（非返回值）需显式 `[MarshalAs(UnmanagedType.Bool)]`（SYSLIB1051）；③ **`StringMarshalling.Utf16` 不等价 `CharSet.Unicode`**——前者只管字符串 marshal，不影响入口点查找；凡是 Win32 只有 W/A 版本无裸名的（`GetMessage`/`DispatchMessage`/`PostMessage`/`PostThreadMessage`/`DefWindowProc`/`GetModuleHandle`/`CreateWindowEx`/`UnregisterClass` 等），必须显式 `EntryPoint = "...W"`。`[DllImport]` 靠 .NET runtime 的 fallback 机制找 W 版，`[LibraryImport]` 无此 fallback。
+**剩余 46 处 DEFER（高风险，机会性迁移）**：批次 3 未做——`SetWindowsHookExW`（hook delegate callback，快捷键核心）、`ShellExecuteEx`/`SHGetFileInfo`（struct 含多 string/ByValTStr/BestFitMapping，启动器+图标核心）、`RegisterClassEx`（struct 含 delegate+string）、`DragQueryFile`（StringBuilder 需重构调用点）、`GetDIBits`（byte[] 数组 marshal）、ScreenRegionCapture 的 9 处 GDI、Hooks 两文件 20 处。这些回归会导致核心功能失效，本环境无法真机验证 delegate/复杂 struct marshal，留作机会性迁移。**SetLastError 现状健康**（10 处 `GetLastWin32Error` 调用全配对，无 bug），不借迁移修。
+**验证**：build 0 警告，661/661 测试过，NativeAOT 0 警告，exe +2KB（28,412,928→28,414,976），真机启动 OK（MouseHook/KeyboardHook/ClipboardHistory 全正常，无 EntryPointNotFound）。
 ### [DONE commit:3b17337] M5 ·  (批次 C) `PromptTemplateSet` / `LauncherEntrySet` 共享可变集合无线程安全
 **证据**：`PromptTemplates.cs:57-255`、`LauncherEntries.cs:72-198`。设置 UI 线程改、工具栏线程读，会抛 `Collection was modified`。
 **修复**：lock 或 copy-on-write（`ImmutableArray<T>` + `Interlocked.Exchange`）。
@@ -218,5 +222,6 @@
 - [DONE 60f3c03] P2-E — M3 favicon 共享 HttpClient + 内存缓存（M8/M15 评估 SKIP）
 - [DONE 97b5021] P3-快修 — L2 zh_CN 未译 / L4 NumberedAnnotationSession 死代码（+11 死测试）/ L6 SupportedKeys AsReadOnly / L7 SensitivePattern bearer
 - [DONE 58cdf30] P3-i18n — L1 21 处硬编码英文字符串 → i18n（+18 新 key,复用 2 个已有）
-- [DEFER] M1/M2 god-class 拆分 / M4 LibraryImport 迁移 / L3 无障碍标注 / L8 IManagedWindow 接口 — 移到独立重构/功能窗口
+- [DEFER] M1/M2 god-class 拆分 / L3 无障碍标注 / L8 IManagedWindow 接口 — 移到独立重构/功能窗口
+- [DONE 部分] M4 LibraryImport 迁移 — 66/112 处已迁（Platform.Windows 纯 blittable + 字符串），剩 46 处高风险（hook/launcher/icon 核心 delegate+复杂 struct）机会性迁移，commit pending
 - [DONE] L5 日志滚动 — 已落地（size-based 1MB/保留 5，启动归档，commit 42d5033）

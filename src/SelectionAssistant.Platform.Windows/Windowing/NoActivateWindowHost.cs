@@ -8,7 +8,7 @@ namespace SelectionAssistant.Platform.Windows.Windowing;
 /// Applies and preserves the Win32 no-activation contract for an existing HWND.
 /// The HWND remains owned by the UI layer.
 /// </summary>
-public sealed class NoActivateWindowHost : IWindowFocusController
+public sealed partial class NoActivateWindowHost : IWindowFocusController
 {
     private const int GwlExStyle = -20;
     private const long WsExTopmost = 0x00000008L;
@@ -124,21 +124,21 @@ public sealed class NoActivateWindowHost : IWindowFocusController
             ? SetWindowLongPtr64(windowHandle, index, value)
             : new nint(SetWindowLong32(windowHandle, index, value.ToInt32()));
 
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
-    private static extern int GetWindowLong32(nint windowHandle, int index);
+    [LibraryImport("user32.dll", EntryPoint = "GetWindowLongW", SetLastError = true)]
+    private static partial int GetWindowLong32(nint windowHandle, int index);
 
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
-    private static extern int SetWindowLong32(nint windowHandle, int index, int newValue);
+    [LibraryImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
+    private static partial int SetWindowLong32(nint windowHandle, int index, int newValue);
 
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
-    private static extern nint GetWindowLongPtr64(nint windowHandle, int index);
+    [LibraryImport("user32.dll", EntryPoint = "GetWindowLongPtrW", SetLastError = true)]
+    private static partial nint GetWindowLongPtr64(nint windowHandle, int index);
 
-    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
-    private static extern nint SetWindowLongPtr64(nint windowHandle, int index, nint newValue);
+    [LibraryImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+    private static partial nint SetWindowLongPtr64(nint windowHandle, int index, nint newValue);
 
-    [DllImport("user32.dll", SetLastError = true)]
+    [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(
+    private static partial bool SetWindowPos(
         nint windowHandle,
         nint insertAfter,
         int x,
@@ -147,17 +147,17 @@ public sealed class NoActivateWindowHost : IWindowFocusController
         int height,
         uint flags);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ShowWindow(nint windowHandle, int command);
+    private static partial bool ShowWindow(nint windowHandle, int command);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsWindowVisible(nint windowHandle);
+    private static partial bool IsWindowVisible(nint windowHandle);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetWindowRect(nint windowHandle, out NativeRect rect);
+    private static partial bool GetWindowRect(nint windowHandle, out NativeRect rect);
 
     [StructLayout(LayoutKind.Sequential)]
     private readonly record struct NativeRect(int Left, int Top, int Right, int Bottom);

@@ -12,7 +12,7 @@ namespace SelectionAssistant.Platform.Windows.Clipboard;
 /// message-only window for WM_CLIPBOARDUPDATE. Only safely materialized formats
 /// are included in snapshots.
 /// </summary>
-public sealed unsafe class Win32Clipboard : IClipboardAccess, IDisposable
+public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposable
 {
     private const uint CfDib = 8;
     private const uint CfUnicodeText = 13;
@@ -968,81 +968,83 @@ public sealed unsafe class Win32Clipboard : IClipboardAccess, IDisposable
         public uint Private;
     }
 
-    [DllImport("user32.dll")]
-    private static extern uint GetClipboardSequenceNumber();
+    [LibraryImport("user32.dll")]
+    private static partial uint GetClipboardSequenceNumber();
 
-    [DllImport("user32.dll")]
-    private static extern nint GetClipboardOwner();
+    [LibraryImport("user32.dll")]
+    private static partial nint GetClipboardOwner();
 
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(nint window, out uint processId);
+    [LibraryImport("user32.dll")]
+    private static partial uint GetWindowThreadProcessId(nint window, out uint processId);
 
-    [DllImport("user32.dll")]
-    private static extern nint GetForegroundWindow();
+    [LibraryImport("user32.dll")]
+    private static partial nint GetForegroundWindow();
 
-    [DllImport("user32.dll", SetLastError = true)]
+    [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool OpenClipboard(nint newOwner);
+    private static partial bool OpenClipboard(nint newOwner);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CloseClipboard();
+    private static partial bool CloseClipboard();
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool EmptyClipboard();
+    private static partial bool EmptyClipboard();
 
-    [DllImport("user32.dll")]
-    private static extern nint GetClipboardData(uint format);
+    [LibraryImport("user32.dll")]
+    private static partial nint GetClipboardData(uint format);
 
-    [DllImport("user32.dll")]
-    private static extern nint SetClipboardData(uint format, nint memory);
+    [LibraryImport("user32.dll")]
+    private static partial nint SetClipboardData(uint format, nint memory);
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern uint RegisterClipboardFormatW(string name);
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial uint RegisterClipboardFormatW(string name);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsClipboardFormatAvailable(uint format);
+    private static partial bool IsClipboardFormatAvailable(uint format);
 
-    [DllImport("user32.dll")]
-    private static extern uint EnumClipboardFormats(uint format);
+    [LibraryImport("user32.dll")]
+    private static partial uint EnumClipboardFormats(uint format);
 
-    [DllImport("user32.dll", SetLastError = true)]
+    [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool AddClipboardFormatListener(nint window);
+    private static partial bool AddClipboardFormatListener(nint window);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RemoveClipboardFormatListener(nint window);
+    private static partial bool RemoveClipboardFormatListener(nint window);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern nint GlobalAlloc(uint flags, nuint bytes);
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial nint GlobalAlloc(uint flags, nuint bytes);
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern nint GlobalLock(nint memory);
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial nint GlobalLock(nint memory);
 
-    [DllImport("kernel32.dll")]
+    [LibraryImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GlobalUnlock(nint memory);
+    private static partial bool GlobalUnlock(nint memory);
 
-    [DllImport("kernel32.dll")]
-    private static extern nuint GlobalSize(nint memory);
+    [LibraryImport("kernel32.dll")]
+    private static partial nuint GlobalSize(nint memory);
 
-    [DllImport("kernel32.dll")]
-    private static extern nint GlobalFree(nint memory);
+    [LibraryImport("kernel32.dll")]
+    private static partial nint GlobalFree(nint memory);
 
+    // B1 (StringBuilder): migrated in a later batch — LibraryImport StringBuilder support is limited.
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern uint DragQueryFile(nint drop, uint fileIndex, StringBuilder? fileName, uint characterCount);
 
-    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-    private static extern nint GetModuleHandle(string? moduleName);
+    [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, EntryPoint = "GetModuleHandleW")]
+    private static partial nint GetModuleHandle(string? moduleName);
 
+    // B3 (struct with embedded string + delegate): migrated in a later batch.
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern ushort RegisterClassEx(ref WindowClassEx windowClass);
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    private static extern nint CreateWindowEx(
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16, EntryPoint = "CreateWindowExW", SetLastError = true)]
+    private static partial nint CreateWindowEx(
         uint extendedStyle,
         string className,
         string windowName,
@@ -1056,31 +1058,31 @@ public sealed unsafe class Win32Clipboard : IClipboardAccess, IDisposable
         nint instance,
         nint parameter);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool DestroyWindow(nint window);
+    private static partial bool DestroyWindow(nint window);
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern nint DefWindowProc(nint window, uint message, nuint wParam, nint lParam);
+    [LibraryImport("user32.dll", EntryPoint = "DefWindowProcW")]
+    private static partial nint DefWindowProc(nint window, uint message, nuint wParam, nint lParam);
 
-    [DllImport("user32.dll")]
-    private static extern int GetMessage(out NativeMessage message, nint window, uint minimum, uint maximum);
+    [LibraryImport("user32.dll", EntryPoint = "GetMessageW")]
+    private static partial int GetMessage(out NativeMessage message, nint window, uint minimum, uint maximum);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool TranslateMessage(ref NativeMessage message);
+    private static partial bool TranslateMessage(ref NativeMessage message);
 
-    [DllImport("user32.dll")]
-    private static extern nint DispatchMessage(ref NativeMessage message);
+    [LibraryImport("user32.dll", EntryPoint = "DispatchMessageW")]
+    private static partial nint DispatchMessage(ref NativeMessage message);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll", EntryPoint = "PostMessageW")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool PostMessage(nint window, uint message, nuint wParam, nint lParam);
+    private static partial bool PostMessage(nint window, uint message, nuint wParam, nint lParam);
 
-    [DllImport("user32.dll")]
-    private static extern void PostQuitMessage(int exitCode);
+    [LibraryImport("user32.dll")]
+    private static partial void PostQuitMessage(int exitCode);
 
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16, EntryPoint = "UnregisterClassW")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool UnregisterClass(string className, nint instance);
+    private static partial bool UnregisterClass(string className, nint instance);
 }

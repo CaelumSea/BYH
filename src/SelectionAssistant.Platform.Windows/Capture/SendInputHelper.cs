@@ -4,7 +4,7 @@ using SelectionAssistant.Platform.Abstractions;
 namespace SelectionAssistant.Platform.Windows.Capture;
 
 /// <summary>Sends one complete copy chord in a single SendInput call.</summary>
-public sealed unsafe class SendInputHelper : ICopyInputInjector
+public sealed unsafe partial class SendInputHelper : ICopyInputInjector
 {
     private const uint InputKeyboard = 1;
     private const uint KeyEventKeyUp = 0x0002;
@@ -139,18 +139,18 @@ public sealed unsafe class SendInputHelper : ICopyInputInjector
         public nuint ExtraInfo;
     }
 
-    [DllImport("user32.dll")]
-    private static extern short GetAsyncKeyState(int virtualKey);
+    [LibraryImport("user32.dll")]
+    private static partial short GetAsyncKeyState(int virtualKey);
 
-    [DllImport("user32.dll")]
-    private static extern nint GetForegroundWindow();
+    [LibraryImport("user32.dll")]
+    private static partial nint GetForegroundWindow();
 
-    [DllImport("user32.dll")]
-    private static extern nint GetAncestor(nint window, uint flags);
+    [LibraryImport("user32.dll")]
+    private static partial nint GetAncestor(nint window, uint flags);
 
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(nint window, out uint processId);
+    [LibraryImport("user32.dll")]
+    private static partial uint GetWindowThreadProcessId(nint window, out uint processId);
 
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern uint SendInput(uint inputCount, NativeInput* inputs, int inputSize);
+    [LibraryImport("user32.dll", SetLastError = true)]
+    private static partial uint SendInput(uint inputCount, NativeInput* inputs, int inputSize);
 }

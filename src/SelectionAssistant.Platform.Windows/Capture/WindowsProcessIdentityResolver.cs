@@ -4,7 +4,7 @@ using SelectionAssistant.Core.Capture;
 
 namespace SelectionAssistant.Platform.Windows.Capture;
 
-public sealed class WindowsProcessIdentityResolver : IProcessIdentityResolver
+public sealed partial class WindowsProcessIdentityResolver : IProcessIdentityResolver
 {
     private const uint ProcessQueryLimitedInformation = 0x1000;
     private const uint TokenQuery = 0x0008;
@@ -92,23 +92,23 @@ public sealed class WindowsProcessIdentityResolver : IProcessIdentityResolver
         public int TokenIsElevated;
     }
 
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern nint OpenProcess(uint desiredAccess, bool inheritHandle, uint processId);
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    private static partial nint OpenProcess(uint desiredAccess, [MarshalAs(UnmanagedType.Bool)] bool inheritHandle, uint processId);
 
-    [DllImport("advapi32.dll", SetLastError = true)]
+    [LibraryImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool OpenProcessToken(nint processHandle, uint desiredAccess, out nint tokenHandle);
+    private static partial bool OpenProcessToken(nint processHandle, uint desiredAccess, out nint tokenHandle);
 
-    [DllImport("advapi32.dll", SetLastError = true)]
+    [LibraryImport("advapi32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetTokenInformation(
+    private static partial bool GetTokenInformation(
         nint tokenHandle,
         int tokenInformationClass,
         out TokenElevationInfo tokenInformation,
         int tokenInformationLength,
         out int returnLength);
 
-    [DllImport("kernel32.dll")]
+    [LibraryImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool CloseHandle(nint handle);
+    private static partial bool CloseHandle(nint handle);
 }

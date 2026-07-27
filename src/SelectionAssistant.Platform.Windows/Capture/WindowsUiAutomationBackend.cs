@@ -9,7 +9,7 @@ namespace SelectionAssistant.Platform.Windows.Capture;
 /// the Windows SDK UIAutomationClient.h. No WPF assemblies or runtime COM wrappers
 /// are used.
 /// </summary>
-public sealed unsafe class WindowsUiAutomationBackend : IUiAutomationBackend, IDisposable
+public sealed unsafe partial class WindowsUiAutomationBackend : IUiAutomationBackend, IDisposable
 {
     private const uint GaRoot = 2;
     private const uint ClsctxInprocServer = 0x1;
@@ -1073,34 +1073,34 @@ public sealed unsafe class WindowsUiAutomationBackend : IUiAutomationBackend, ID
     [StructLayout(LayoutKind.Sequential)]
     private readonly record struct NativeRect(int Left, int Top, int Right, int Bottom);
 
-    [DllImport("ole32.dll")]
-    private static extern int CoInitializeEx(nint reserved, uint concurrencyModel);
+    [LibraryImport("ole32.dll")]
+    private static partial int CoInitializeEx(nint reserved, uint concurrencyModel);
 
-    [DllImport("ole32.dll")]
-    private static extern int CoCreateInstance(
+    [LibraryImport("ole32.dll")]
+    private static partial int CoCreateInstance(
         Guid* classId,
         nint outer,
         uint context,
         Guid* interfaceId,
         nint* instance);
 
-    [DllImport("ole32.dll")]
-    private static extern void CoUninitialize();
+    [LibraryImport("ole32.dll")]
+    private static partial void CoUninitialize();
 
-    [DllImport("oleaut32.dll")]
-    private static extern uint SysStringLen(nint bstr);
+    [LibraryImport("oleaut32.dll")]
+    private static partial uint SysStringLen(nint bstr);
 
-    [DllImport("oleaut32.dll")]
-    private static extern void SysFreeString(nint bstr);
+    [LibraryImport("oleaut32.dll")]
+    private static partial void SysFreeString(nint bstr);
 
-    [DllImport("user32.dll")]
-    private static extern nint GetForegroundWindow();
+    [LibraryImport("user32.dll")]
+    private static partial nint GetForegroundWindow();
 
-    [DllImport("user32.dll")]
-    private static extern nint GetAncestor(nint windowHandle, uint flags);
+    [LibraryImport("user32.dll")]
+    private static partial nint GetAncestor(nint windowHandle, uint flags);
 
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(nint windowHandle, out uint processId);
+    [LibraryImport("user32.dll")]
+    private static partial uint GetWindowThreadProcessId(nint windowHandle, out uint processId);
 }
 
 /// <summary>

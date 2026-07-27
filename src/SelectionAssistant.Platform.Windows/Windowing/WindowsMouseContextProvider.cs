@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 namespace SelectionAssistant.Platform.Windows.Windowing;
 
 /// <summary>Looks up the root top-level window and process at a screen point.</summary>
-public sealed class WindowsMouseContextProvider
+public sealed partial class WindowsMouseContextProvider
 {
     private const uint GaRoot = 2;
 
@@ -28,14 +28,14 @@ public sealed class WindowsMouseContextProvider
     [StructLayout(LayoutKind.Sequential)]
     private readonly record struct NativePoint(int X, int Y);
 
-    [DllImport("user32.dll")]
-    private static extern nint WindowFromPoint(NativePoint point);
+    [LibraryImport("user32.dll")]
+    private static partial nint WindowFromPoint(NativePoint point);
 
-    [DllImport("user32.dll")]
-    private static extern nint GetAncestor(nint windowHandle, uint flags);
+    [LibraryImport("user32.dll")]
+    private static partial nint GetAncestor(nint windowHandle, uint flags);
 
-    [DllImport("user32.dll")]
-    private static extern uint GetWindowThreadProcessId(nint windowHandle, out uint processId);
+    [LibraryImport("user32.dll")]
+    private static partial uint GetWindowThreadProcessId(nint windowHandle, out uint processId);
 }
 
 public readonly record struct WindowsWindowContext(nint RootWindowHandle, uint ProcessId)

@@ -4,7 +4,7 @@ using SelectionAssistant.Platform.Abstractions;
 namespace SelectionAssistant.Platform.Windows;
 
 /// <summary>Win32-backed gesture thresholds.</summary>
-public sealed class WindowsSystemMetrics : ISystemMetrics
+public sealed partial class WindowsSystemMetrics : ISystemMetrics
 {
     private const int SmCxDoubleClk = 36;
     private const int SmCyDoubleClk = 37;
@@ -23,9 +23,9 @@ public sealed class WindowsSystemMetrics : ISystemMetrics
 
     private static int AtLeastOne(int value) => Math.Max(1, value);
 
-    [DllImport("user32.dll")]
-    private static extern int GetSystemMetrics(int index);
+    [LibraryImport("user32.dll")]
+    private static partial int GetSystemMetrics(int index);
 
-    [DllImport("user32.dll")]
-    private static extern uint GetDoubleClickTime();
+    [LibraryImport("user32.dll")]
+    private static partial uint GetDoubleClickTime();
 }

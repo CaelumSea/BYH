@@ -5,7 +5,7 @@ using SelectionAssistant.Core.Input;
 namespace SelectionAssistant.Platform.Windows.Input;
 
 /// <summary>Global RegisterHotKey registration hosted on a dedicated message thread.</summary>
-public sealed class WindowsGlobalHotKey : IDisposable
+public sealed partial class WindowsGlobalHotKey : IDisposable
 {
     private const uint WmHotKey = 0x0312;
     private const uint WmQuit = 0x0012;
@@ -179,27 +179,27 @@ public sealed class WindowsGlobalHotKey : IDisposable
         public uint Private;
     }
 
-    [DllImport("user32.dll", SetLastError = true)]
+    [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool RegisterHotKey(nint windowHandle, int id, uint modifiers, uint virtualKey);
+    private static partial bool RegisterHotKey(nint windowHandle, int id, uint modifiers, uint virtualKey);
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool UnregisterHotKey(nint windowHandle, int id);
+    private static partial bool UnregisterHotKey(nint windowHandle, int id);
 
-    [DllImport("user32.dll")]
-    private static extern int GetMessage(out NativeMessage message, nint windowHandle, uint min, uint max);
+    [LibraryImport("user32.dll", EntryPoint = "GetMessageW")]
+    private static partial int GetMessage(out NativeMessage message, nint windowHandle, uint min, uint max);
 
-    [DllImport("user32.dll", SetLastError = true)]
+    [LibraryImport("user32.dll", EntryPoint = "PostThreadMessageW", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool PostThreadMessage(uint threadId, uint message, nint wParam, nint lParam);
+    private static partial bool PostThreadMessage(uint threadId, uint message, nint wParam, nint lParam);
 
-    [DllImport("kernel32.dll")]
-    private static extern uint GetCurrentThreadId();
+    [LibraryImport("kernel32.dll")]
+    private static partial uint GetCurrentThreadId();
 
-    [DllImport("user32.dll")]
+    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetCursorPos(out NativePoint point);
+    private static partial bool GetCursorPos(out NativePoint point);
 }
 
 public sealed class GlobalHotKeyRegistrationException : Win32Exception
