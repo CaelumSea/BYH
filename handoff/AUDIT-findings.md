@@ -176,8 +176,11 @@
 注释自承被 `AnnotationSession` 替换，"existing tests" 才保留。
 **修复**：删，或 `[Obsolete]`。
 
-### [DEFER reason:独立功能] L5 · `RedactedLogger` 无滚动/封顶
-**评估后 DEFER**：`BYH.log` 无限增长是真问题，但日志滚动是独立功能（按大小/日期切分 + 保留 N 份），需要设计 + 真机验证写入性能。**移到独立功能窗口**。
+### [DONE commit:pending] L5 · `RedactedLogger` 无滚动/封顶
+**评估后原 DEFER，现落地**：`BYH.log` 无限增长会写满磁盘。落地为 size-based 滚动：`MaximumFileBytes = 1MB`（与 store 惯例一致）+ `RetainedRotations = 5`，超阈值时当前文件 rename 成 `BYH-yyyyMMdd-HHmmss.log`（同秒冲突加 `-2/-3` 后缀），超出保留数的旧归档按文件名（时间戳序）删除。构造时若现有文件已超阈值，先归档再开始写（启动归档）。
+**决策**：保持 `File.AppendAllText` 无状态写入（4 个持有者 Dispose 链分散，引入持久 FileStream 风险大于收益）；不做压缩（NativeAOT 无先例 + 文本压缩比有限）；时间戳命名而非 `.1/.2` 链式 rename（单步 `File.Move` 更原子，与项目截图/归档命名一致）。跨实例并发靠 `File.Move(overwrite:false)` + `File.Exists` re-check 防双滚，单实例 mutex 兜底。
+**真机验证**：当前 2.4MB 老 `BYH.log` 启动时被归档成 `BYH-20260727-100111.log`（18740 行完整保留），新 `BYH.log` 从 869 bytes 重新开始。
+**验证**：8 个新单测（redaction 不回归 / 滚动触发 / 保留数上限 / 启动归档 / 小文件不动 / 目录缺失创建 / 同秒命名消歧）；build 0 警告，661/661 测试过，NativeAOT 0 警告。
 ### [DONE commit:97b5021] L6 · `OceanEyesTriggerSettings.Keys` 数组暴露为 IReadOnlyList 可向下转型改共享静态
 **修复**：`Array.AsReadOnly(Keys)` 或 `ImmutableArray<string>`。
 
@@ -215,4 +218,5 @@
 - [DONE 60f3c03] P2-E — M3 favicon 共享 HttpClient + 内存缓存（M8/M15 评估 SKIP）
 - [DONE 97b5021] P3-快修 — L2 zh_CN 未译 / L4 NumberedAnnotationSession 死代码（+11 死测试）/ L6 SupportedKeys AsReadOnly / L7 SensitivePattern bearer
 - [DONE 58cdf30] P3-i18n — L1 21 处硬编码英文字符串 → i18n（+18 新 key,复用 2 个已有）
-- [DEFER] M1/M2 god-class 拆分 / M4 LibraryImport 迁移 / L3 无障碍标注 / L5 日志滚动 / L8 IManagedWindow 接口 — 移到独立重构/功能窗口
+- [DEFER] M1/M2 god-class 拆分 / M4 LibraryImport 迁移 / L3 无障碍标注 / L8 IManagedWindow 接口 — 移到独立重构/功能窗口
+- [DONE] L5 日志滚动 — 已落地（size-based 1MB/保留 5，启动归档，commit pending）
