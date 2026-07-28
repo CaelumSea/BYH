@@ -105,6 +105,14 @@ public partial class SettingsWindow : Window
     // Null until the user picks/edits one; falls back to the default on first load.
     private string? _editingProviderId;
 
+    // R26: reentry guard for the "Refresh Models" buttons. The codebase has no
+    // CancellationTokenSource convention — a simple bool flag mirrors the only
+    // existing reentry guard (the null-check at the top of
+    // OnProviderSelectionChanged). Two flags because translation and vision
+    // pages can fetch independently (different providers).
+    private bool _isFetchingTranslationModels;
+    private bool _isFetchingVisionModels;
+
     // Current prompt templates (pushed by runtime) + built-in defaults (for
     // the edit window's "恢复默认" hint).
     private PromptTemplateSet _promptTemplates = PromptTemplateDefaults.CreateDefault();
@@ -285,6 +293,17 @@ public partial class SettingsWindow : Window
 
     /// <summary>Request to delete a provider. Arg = provider id.</summary>
     public event Action<string>? DeleteProviderRequested;
+
+    /// <summary>
+    /// R26: request to fetch the upstream model list for a provider via
+    /// <c>GET {BaseUrl}/models</c>. Arg = provider id. Returns the fetched
+    /// model ids, the UTC timestamp of the fetch, and an error string (null on
+    /// success). The window owns the UI state (button disable/restore, status
+    /// line, dropdown repopulate); the App-layer handler owns the network call
+    /// + cache write, mirroring the existing "window raises event, App awaits
+    /// runtime" convention.
+    /// </summary>
+    public event Func<string, Task<(IReadOnlyList<string> Models, DateTime FetchedAtUtc, string? Error)>>? FetchModelsRequested;
 
     /// <summary>Request to save an API key. Args = (apiKeyReference, keyValue).</summary>
     public event Action<string, string>? ApiKeySaveRequested;
@@ -1096,6 +1115,299 @@ public partial class SettingsWindow : Window
         VisionSettingsSaved?.Invoke(settings);
     }
 
+    // ───────────────────────────────────────────────────────────────────────
+    // R26: "Refresh Models" feature.
+    //
+    // _lastFetchedModels is the in-memory mirror of models-cache.json keyed by
+    // provider id. Pushed in by the App layer via SetCachedModels after the
+    // cache is loaded (no network) and updated in-place after each successful
+    // fetch. Kept here (not re-read from disk on every selection) because the
+    // provider list can change mid-session and the window already owns the
+    // live provider state.
+    // ───────────────────────────────────────────────────────────────────────
+    private readonly Dictionary<string, (DateTime FetchedAtUtc, IReadOnlyList<string> Models)> _lastFetchedModels =
+        new(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Pushed by the App layer after loading models-cache.json. Populates the
+    /// Model dropdown for the currently-selected translation provider (if it
+    /// has a cached entry) WITHOUT making a network call. Idempotent — also
+    /// called after a successful fetch to refresh the in-memory mirror.
+    /// </summary>
+    public void SetCachedModels(IReadOnlyDictionary<string, (DateTime FetchedAtUtc, IReadOnlyList<string> Models)> cache)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        _lastFetchedModels.Clear();
+        foreach (KeyValuePair<string, (DateTime, IReadOnlyList<string>)> kv in cache)
+        {
+            _lastFetchedModels[kv.Key] = kv.Value;
+        }
+
+        // If the translation form is currently showing a provider with a cached
+        // entry, refresh its dropdown + status line now.
+        if (GetSelectedProvider() is { Id: var id, DefaultModel: var model })
+        {
+            RepopulateTranslationModelCombo(id, model);
+        }
+
+        // Vision page: refresh its status line for the currently-selected
+        // vision provider. We don't rebuild the vision combo here (SetVisionSettings
+        // already seeded it with VisionModelPresets.All + the configured model);
+        // we just surface the "last fetched" timestamp and append cached models
+        // the user previously pulled for this provider.
+        string? visionProviderId = (VisionProviderComboBox.SelectedItem as ProviderOption)?.Id;
+        if (!string.IsNullOrEmpty(visionProviderId) &&
+            _lastFetchedModels.TryGetValue(visionProviderId, out var visionEntry))
+        {
+            foreach (string m in visionEntry.Models)
+            {
+                if (!ContainsStringItem(VisionModelComboBox, m))
+                {
+                    VisionModelComboBox.Items.Add(m);
+                }
+            }
+        }
+        UpdateVisionModelFetchStatus(visionProviderId);
+    }
+
+    private void UpdateVisionModelFetchStatus(string? providerId)
+    {
+        if (!string.IsNullOrEmpty(providerId) &&
+            _lastFetchedModels.TryGetValue(providerId, out var entry))
+        {
+            int minutes = Math.Max(0, (int)(DateTime.UtcNow - entry.FetchedAtUtc).TotalMinutes);
+            VisionModelFetchStatus.Text = string.Format(Strings.Settings_Provider_LastFetched, minutes);
+            SetFeedbackTone(VisionModelFetchStatus, isError: false);
+        }
+        else
+        {
+            VisionModelFetchStatus.Text = Strings.Settings_Provider_LastFetched_Never;
+            SetFeedbackTone(VisionModelFetchStatus, isError: false);
+        }
+    }
+
+    /// <summary>
+    /// Rebuilds the translation ModelInput dropdown for the given provider:
+    /// cached fetched models first (sorted as returned), then the configured
+    /// default model appended if not already present (keeps it selectable even
+    /// when the upstream list doesn't include it). Sets SelectedItem to the
+    /// configured model and updates the "last fetched" status line.
+    /// </summary>
+    private void RepopulateTranslationModelCombo(string providerId, string configuredModel)
+    {
+        ModelInput.Items.Clear();
+
+        IReadOnlyList<string>? cached = _lastFetchedModels.TryGetValue(providerId, out var e) ? e.Models : null;
+        if (cached is { Count: > 0 })
+        {
+            foreach (string m in cached)
+            {
+                ModelInput.Items.Add(m);
+            }
+        }
+
+        // Always keep the configured model selectable (it may not appear in the
+        // upstream list — e.g. a preset snapshot that drifted, or a hand-typed
+        // OpenRouter "provider/model" id).
+        if (!string.IsNullOrWhiteSpace(configuredModel) &&
+            !ContainsStringItem(ModelInput, configuredModel))
+        {
+            ModelInput.Items.Add(configuredModel);
+        }
+
+        ModelInput.SelectedItem = configuredModel;
+        if (ModelInput.SelectedItem is null && ModelInput.ItemCount > 0)
+        {
+            ModelInput.SelectedIndex = 0;
+        }
+
+        UpdateModelFetchStatus(providerId);
+    }
+
+    private void UpdateModelFetchStatus(string providerId)
+    {
+        if (_lastFetchedModels.TryGetValue(providerId, out var entry))
+        {
+            int minutes = Math.Max(0, (int)(DateTime.UtcNow - entry.FetchedAtUtc).TotalMinutes);
+            ModelFetchStatus.Text = string.Format(Strings.Settings_Provider_LastFetched, minutes);
+            SetFeedbackTone(ModelFetchStatus, isError: false);
+        }
+        else
+        {
+            ModelFetchStatus.Text = Strings.Settings_Provider_LastFetched_Never;
+            SetFeedbackTone(ModelFetchStatus, isError: false);
+        }
+    }
+
+    private async void OnFetchModelsClick(object? sender, RoutedEventArgs e)
+    {
+        await FetchModelsAsync(isVision: false);
+    }
+
+    private async void OnVisionFetchModelsClick(object? sender, RoutedEventArgs e)
+    {
+        await FetchModelsAsync(isVision: true);
+    }
+
+    /// <summary>
+    /// Shared fetch driver for both translation and vision pages. Resolves the
+    /// target provider id from the relevant combo, flips the reentry flag +
+    /// button label, awaits the App-layer handler (which does the actual
+    /// GET /models + cache write), then on success repopulates the dropdown
+    /// and on failure surfaces the error in the status line. UI updates are
+    /// marshalled via Dispatcher.UIThread.Post to be safe if the await resumes
+    /// off the UI thread (mirrors UpdateLauncherIcon's pattern).
+    /// </summary>
+    private async Task FetchModelsAsync(bool isVision)
+    {
+        bool flag = isVision ? _isFetchingVisionModels : _isFetchingTranslationModels;
+        if (flag) { return; }
+
+        // Resolve the target provider id from the relevant combo.
+        string? providerId;
+        ComboBox modelCombo;
+        Button fetchButton;
+        TextBlock statusText;
+        bool prependPresets;
+
+        if (isVision)
+        {
+            providerId = (VisionProviderComboBox.SelectedItem as ProviderOption)?.Id
+                ?? (_visionProviderOptions.Count > 0 ? _visionProviderOptions[0].Id : null);
+            modelCombo = VisionModelComboBox;
+            fetchButton = VisionFetchModelsButton;
+            statusText = VisionModelFetchStatus;
+            // Vision page always shows VisionModelPresets.All first, then appends
+            // fetched models (de-duped) — the presets are the curated OCR set.
+            prependPresets = true;
+            _isFetchingVisionModels = true;
+        }
+        else
+        {
+            providerId = GetSelectedProvider()?.Id;
+            modelCombo = ModelInput;
+            fetchButton = FetchModelsButton;
+            statusText = ModelFetchStatus;
+            // Translation page: show only fetched models (no preset list).
+            prependPresets = false;
+            _isFetchingTranslationModels = true;
+        }
+
+        if (string.IsNullOrWhiteSpace(providerId) || FetchModelsRequested is null)
+        {
+            if (isVision) { _isFetchingVisionModels = false; } else { _isFetchingTranslationModels = false; }
+            return;
+        }
+
+        // Preserve the user's current selection/text so we can restore it after
+        // the dropdown rebuild (the fetch may add/remove items).
+        string currentModel = (modelCombo.SelectedItem as string ?? modelCombo.Text)?.Trim() ?? string.Empty;
+
+        string originalLabel = fetchButton.Content as string ?? string.Empty;
+        fetchButton.IsEnabled = false;
+        fetchButton.Content = Strings.Settings_Provider_FetchingModels;
+        statusText.Text = Strings.Settings_Provider_FetchingModels;
+        SetFeedbackTone(statusText, isError: false);
+
+        IReadOnlyList<string> models = Array.Empty<string>();
+        DateTime fetchedAtUtc = DateTime.UtcNow;
+        string? error = null;
+        try
+        {
+            (models, fetchedAtUtc, error) = await FetchModelsRequested.Invoke(providerId);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            fetchButton.IsEnabled = true;
+            fetchButton.Content = originalLabel;
+            if (isVision) { _isFetchingVisionModels = false; } else { _isFetchingTranslationModels = false; }
+        }
+
+        // Marshal the UI mutation back to the UI thread. The await above may
+        // resume on a thread-pool thread depending on the handler's ConfigureAwait.
+        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                statusText.Text = string.Format(Strings.Settings_Provider_FetchFailed, error);
+                SetFeedbackTone(statusText, isError: true);
+                // Don't clobber the dropdown on failure — keep whatever was there
+                // (cached or preset list) so the user can still pick a model.
+                return;
+            }
+
+            // Success: refresh the in-memory cache mirror + rebuild the dropdown.
+            _lastFetchedModels[providerId!] = (fetchedAtUtc, models);
+
+            // Remember the user's selection/text so we can restore it if the
+            // fetched list still contains it.
+            modelCombo.Items.Clear();
+
+            if (prependPresets)
+            {
+                foreach (string preset in VisionModelPresets.All)
+                {
+                    if (!ContainsStringItem(modelCombo, preset))
+                    {
+                        modelCombo.Items.Add(preset);
+                    }
+                }
+            }
+
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            if (prependPresets)
+            {
+                foreach (string p in VisionModelPresets.All) { seen.Add(p); }
+            }
+            foreach (string m in models)
+            {
+                if (seen.Add(m))
+                {
+                    modelCombo.Items.Add(m);
+                }
+            }
+
+            // Keep the configured/current model selectable even if upstream
+            // doesn't list it (mirrors the load path's invariant).
+            if (!string.IsNullOrWhiteSpace(currentModel) && !seen.Contains(currentModel))
+            {
+                modelCombo.Items.Add(currentModel);
+            }
+
+            // Restore selection: prefer the prior pick if still listed.
+            if (!string.IsNullOrWhiteSpace(currentModel) && ContainsStringItem(modelCombo, currentModel))
+            {
+                modelCombo.SelectedItem = currentModel;
+            }
+            else if (modelCombo.ItemCount > 0)
+            {
+                modelCombo.SelectedIndex = 0;
+            }
+
+            int minutes = Math.Max(0, (int)(DateTime.UtcNow - fetchedAtUtc).TotalMinutes);
+            statusText.Text = string.Format(Strings.Settings_Provider_LastFetched, minutes);
+            SetFeedbackTone(statusText, isError: false);
+        });
+    }
+
+    /// <summary>Avalonia ComboBox.Items is a non-generic collection; this is the bare-string contains check.</summary>
+    private static bool ContainsStringItem(ComboBox combo, string value)
+    {
+        foreach (object? item in combo.Items)
+        {
+            if (item is string s && string.Equals(s, value, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     private void OnSaveOceanEyesTriggerClick(object? sender, RoutedEventArgs e)
     {
         GlobalHotKeyModifiers modifiers = GlobalHotKeyModifiers.None;
@@ -1384,7 +1696,10 @@ public partial class SettingsWindow : Window
             NameInput.Text = string.Empty;
             EditingProviderNameHint.Text = string.Empty;
             BaseUrlInput.Text = string.Empty;
+            ModelInput.Items.Clear();
             ModelInput.Text = string.Empty;
+            ModelFetchStatus.Text = Strings.Settings_Provider_LastFetched_Never;
+            SetFeedbackTone(ModelFetchStatus, isError: false);
             ApiKeyInput.Text = string.Empty;
             ApiKeyStatusText.Text = Strings.Settings_Status_NoProvider;
             SetFeedbackTone(ApiKeyStatusText, isError: true);
@@ -1394,7 +1709,12 @@ public partial class SettingsWindow : Window
         NameInput.Text = entry.Name;
         EditingProviderNameHint.Text = $"({entry.Name})";
         BaseUrlInput.Text = entry.BaseUrl;
-        ModelInput.Text = entry.DefaultModel;
+
+        // R26: ModelInput is now an editable ComboBox. Repopulate items from
+        // the cached fetch (if any) so the dropdown isn't empty on first open,
+        // then ensure the configured model is selectable (append if not listed,
+        // mirroring the vision combo pattern). Text falls back to DefaultModel.
+        RepopulateTranslationModelCombo(entry.Id, entry.DefaultModel);
         ChatPathInput.Text = string.IsNullOrEmpty(entry.ChatCompletionsPath)
             ? "chat/completions"
             : entry.ChatCompletionsPath;
@@ -1472,7 +1792,7 @@ public partial class SettingsWindow : Window
 
         foreach (ProviderPreset preset in ProviderPresets.BuiltIn)
         {
-            var item = new MenuItem { Header = $"{preset.Name} ({preset.DefaultModel})" };
+            var item = new MenuItem { Header = preset.Name };
             string presetId = preset.Id;
             item.Click += (_, _) => AddProviderFromPresetRequested?.Invoke(presetId);
             menu.Items.Add(item);
@@ -1526,7 +1846,13 @@ public partial class SettingsWindow : Window
         {
             Name = NameInput.Text?.Trim() ?? current.Name,
             BaseUrl = BaseUrlInput.Text?.Trim() ?? current.BaseUrl,
-            DefaultModel = ModelInput.Text?.Trim() ?? current.DefaultModel,
+            // R26: ModelInput is now an editable ComboBox. SelectedItem wins
+            // when the user picked from the list; Text is the fallback for a
+            // hand-typed id (e.g. an OpenRouter "provider/model" not yet in
+            // the cached list). Mirrors VisionModelComboBox's save read.
+            DefaultModel = (ModelInput.SelectedItem as string ?? ModelInput.Text)?.Trim() is { Length: > 0 } picked
+                ? picked
+                : current.DefaultModel,
             ChatCompletionsPath = string.IsNullOrWhiteSpace(ChatPathInput.Text)
                 ? "chat/completions"
                 : ChatPathInput.Text.Trim(),

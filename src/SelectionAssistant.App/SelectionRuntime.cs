@@ -1806,6 +1806,86 @@ internal sealed class SelectionRuntime : IDisposable
 
     public string GetProviderLabel() => _providerLabel;
 
+    /// <summary>
+    /// R26: returns the configured provider entry for the given id, or null if
+    /// not found. Exposed so the settings UI's "Refresh Models" handler can
+    /// build a one-shot <see cref="OpenAiCompatibleModelsClient"/> for an
+    /// arbitrary provider (not just the active one) without reaching into the
+    /// runtime's private config bag.
+    /// </summary>
+    public ProviderProfileEntry? GetProviderEntry(string providerId) =>
+        _providerConfig.FindById(providerId);
+
+    /// <summary>
+    /// R26: fetches the upstream model list for a provider via
+    /// <c>GET {BaseUrl}/models</c>, updates the on-disk cache, and returns the
+    /// fresh list + UTC timestamp. Returns (empty, now, error) on failure
+    /// instead of throwing — the caller (settings UI) surfaces the error in
+    /// the status line and keeps the last-known cached list intact.
+    /// </summary>
+    public async Task<(IReadOnlyList<string> Models, DateTime FetchedAtUtc, string? Error)> FetchProviderModelsAsync(
+        string providerId,
+        CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
+
+        ProviderProfileEntry? entry = _providerConfig.FindById(providerId);
+        if (entry is null)
+        {
+            return (Array.Empty<string>(), DateTime.UtcNow, $"provider '{providerId}' not found.");
+        }
+
+        var options = new OpenAiCompatibleProviderOptions
+        {
+            Id = entry.Id,
+            DisplayName = entry.Name,
+            BaseUrl = entry.BaseUrl,
+            ApiKeyReference = entry.ApiKeyReference,
+            DefaultModel = entry.DefaultModel,
+            ChatCompletionsPath = entry.ChatCompletionsPath,
+            Timeout = TimeSpan.FromSeconds(entry.TimeoutSeconds),
+            MaxSourceCharacters = entry.MaxSourceCharacters,
+        };
+
+        using var client = new OpenAiCompatibleModelsClient(options, _secretStore);
+        try
+        {
+            IReadOnlyList<string> models = await client.ListModelsAsync(cancellationToken).ConfigureAwait(false);
+            DateTime fetchedAtUtc = DateTime.UtcNow;
+
+            // Update the on-disk cache (best-effort — a cache write failure
+            // must not mask a successful fetch).
+            try
+            {
+                ModelsCache existing = ModelsCacheStore.LoadIfExists(_paths.ModelsCacheFile);
+                ModelsCache updated = existing.With(new ModelsCacheEntry(providerId, fetchedAtUtc, models));
+                ModelsCacheStore.Save(updated, _paths.ModelsCacheFile);
+            }
+            catch (ProviderConfigurationException ex)
+            {
+                _logger.Error("Translation", $"Fetched models for '{providerId}' but failed to persist cache.", ex);
+            }
+
+            _logger.Info("Translation", $"Fetched {models.Count} models for '{providerId}'.");
+            return (models, fetchedAtUtc, null);
+        }
+        catch (TranslationProviderException ex)
+        {
+            return (Array.Empty<string>(), DateTime.UtcNow, ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Translation", $"Unexpected error fetching models for '{providerId}'.", ex);
+            return (Array.Empty<string>(), DateTime.UtcNow, ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// R26: loads the on-disk model-id cache (empty if missing/corrupt) for the
+    /// settings UI to pre-populate the Model dropdown without a network call.
+    /// </summary>
+    public ModelsCache LoadModelsCache() => ModelsCacheStore.LoadIfExists(_paths.ModelsCacheFile);
+
     // ── R24 track B: vision OCR settings (read/written by the settings UI) ──
 
     public VisionCaptureSettings GetVisionSettings() => _visionSettings;

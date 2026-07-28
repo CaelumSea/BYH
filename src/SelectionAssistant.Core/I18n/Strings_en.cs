@@ -202,6 +202,11 @@ internal static partial class Strings_en
         ["Settings_Provider_Timeout"] = "Timeout (seconds)",
         ["Settings_SetActive"] = "Set Active",
         ["Settings_SaveProfile"] = "Save Profile",
+        ["Settings_Provider_FetchModels"] = "Refresh Models",
+        ["Settings_Provider_FetchingModels"] = "Fetching…",
+        ["Settings_Provider_FetchFailed"] = "Failed: {0}",
+        ["Settings_Provider_LastFetched"] = "Updated {0} min ago",
+        ["Settings_Provider_LastFetched_Never"] = "Not fetched yet",
 
         // SettingsWindow — Functions section
         ["Settings_Actions_Title"] = "Actions & Prompts",

@@ -459,80 +459,86 @@
           <!-- Language card. Sits at the top of General so users find it
                immediately. Save persists ui-language.json and triggers a
                restart (Strings' dictionary is snapshotted at process start,
-               so a fresh process is what actually swaps the UI text). -->
-          <StackPanel Spacing="12" Margin="24,14,24,0">
-            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-              <StackPanel Spacing="3">
-                <TextBlock Text="{x:Static i18n:Strings.Settings_LanguageCard_Title}"
-                           Classes="CardTitle"
-                           FontSize="{DynamicResource ByhFontSizeSubheading}"
-                           FontWeight="SemiBold" />
-                <TextBlock Text="{x:Static i18n:Strings.Settings_LanguageCard_Subtitle}"
-                           Classes="Muted"
-                           FontSize="{DynamicResource ByhFontSizeBodySmall}"
-                           TextWrapping="Wrap" />
-              </StackPanel>
-            </Grid>
-
-            <Border Classes="InnerCard" Padding="12">
-              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
-                <ComboBox x:Name="LanguageComboBox"
-                          Grid.Column="0"
-                          HorizontalAlignment="Stretch"
-                          SelectedIndex="0" />
-                <Button Grid.Column="1"
-                        x:Name="SaveLanguageButton"
-                        Content="{x:Static i18n:Strings.Settings_LanguageCard_SaveButton}"
-                        Classes="Primary"
-                        Click="OnSaveLanguageClick" />
-                <TextBlock Grid.Column="2"
-                           x:Name="LanguageStatusText"
-                           Classes="Secondary"
-                           FontSize="{DynamicResource ByhFontSizeBody}"
-                           VerticalAlignment="Center" />
+               so a fresh process is what actually swaps the UI text).
+               Wrapped in a DashboardPanel shell so the header + InnerCard
+               read as one raised ivory tile, matching the Dashboard page. -->
+          <Border Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="12">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_LanguageCard_Title}"
+                             Classes="CardTitle"
+                             FontSize="{DynamicResource ByhFontSizeSubheading}"
+                             FontWeight="SemiBold" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_LanguageCard_Subtitle}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                             TextWrapping="Wrap" />
+                </StackPanel>
               </Grid>
-            </Border>
-          </StackPanel>
+
+              <Border Classes="InnerCard" Padding="12">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+                  <ComboBox x:Name="LanguageComboBox"
+                            Grid.Column="0"
+                            HorizontalAlignment="Stretch"
+                            SelectedIndex="0" />
+                  <Button Grid.Column="1"
+                          x:Name="SaveLanguageButton"
+                          Content="{x:Static i18n:Strings.Settings_LanguageCard_SaveButton}"
+                          Classes="Primary"
+                          Click="OnSaveLanguageClick" />
+                  <TextBlock Grid.Column="2"
+                             x:Name="LanguageStatusText"
+                             Classes="Secondary"
+                             FontSize="{DynamicResource ByhFontSizeBody}"
+                             VerticalAlignment="Center" />
+                </Grid>
+              </Border>
+            </StackPanel>
+          </Border>
 
           <!-- Personal Greeting card. REQ-027 — display name used by the
-               phone greeting. -->
-          <StackPanel Spacing="10" Margin="24,14,24,0">
-            <TextBlock Text="{x:Static i18n:Strings.Settings_Profile_CardTitle}"
-                       Classes="CardTitle"
-                       FontSize="15"
-                       FontWeight="SemiBold" />
-            <Border Classes="InnerCard" Padding="12">
-              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                <StackPanel Spacing="4">
-                  <TextBlock Text="{x:Static i18n:Strings.Settings_Profile_DisplayNameLabel}"
-                             Classes="Secondary"
-                             FontSize="10"
-                             FontWeight="SemiBold" />
-                  <TextBox x:Name="ProfileDisplayNameInput"
-                           MaxLength="32"
-                           FontSize="11"
-                           PlaceholderText="{x:Static i18n:Strings.Settings_Profile_DisplayNamePlaceholder}"
-                           AutomationProperties.AutomationId="BYH.Settings.Profile.DisplayName" />
-                </StackPanel>
-                <Button Grid.Column="1"
-                        Content="{x:Static i18n:Strings.Common_Save}"
-                        Classes="Primary"
-                        VerticalAlignment="Bottom"
-                        Click="OnSaveUserProfileClick"
-                        AutomationProperties.AutomationId="BYH.Settings.Profile.Save" />
-              </Grid>
-            </Border>
-            <TextBlock x:Name="ProfileStatusText"
-                       Classes="Muted"
-                       FontSize="9"
-                       Text="{x:Static i18n:Strings.Settings_Profile_Hint}"
-                       AutomationProperties.AutomationId="BYH.Settings.Profile.Status" />
-          </StackPanel>
+               phone greeting. Wrapped in a DashboardPanel shell. -->
+          <Border Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="10">
+              <TextBlock Text="{x:Static i18n:Strings.Settings_Profile_CardTitle}"
+                         Classes="CardTitle"
+                         FontSize="15"
+                         FontWeight="SemiBold" />
+              <Border Classes="InnerCard" Padding="12">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Profile_DisplayNameLabel}"
+                               Classes="Secondary"
+                               FontSize="10"
+                               FontWeight="SemiBold" />
+                    <TextBox x:Name="ProfileDisplayNameInput"
+                             MaxLength="32"
+                             FontSize="11"
+                             PlaceholderText="{x:Static i18n:Strings.Settings_Profile_DisplayNamePlaceholder}"
+                             AutomationProperties.AutomationId="BYH.Settings.Profile.DisplayName" />
+                  </StackPanel>
+                  <Button Grid.Column="1"
+                          Content="{x:Static i18n:Strings.Common_Save}"
+                          Classes="Primary"
+                          VerticalAlignment="Bottom"
+                          Click="OnSaveUserProfileClick"
+                          AutomationProperties.AutomationId="BYH.Settings.Profile.Save" />
+                </Grid>
+              </Border>
+              <TextBlock x:Name="ProfileStatusText"
+                         Classes="Muted"
+                         FontSize="9"
+                         Text="{x:Static i18n:Strings.Settings_Profile_Hint}"
+                         AutomationProperties.AutomationId="BYH.Settings.Profile.Status" />
+            </StackPanel>
+          </Border>
 
-          <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" Margin="24,16" />
-
-          <!-- Section: Ocean Eyes Trigger sits directly on the surface. -->
-          <StackPanel Spacing="12" Margin="24,0,24,0">
+          <!-- Section: Ocean Eyes Trigger sits directly on the surface.
+               Wrapped in a DashboardPanel shell. -->
+          <Border Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="12">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="{x:Static i18n:Strings.Settings_OceanEyesTrigger_Title}"
@@ -601,72 +607,72 @@
                 </Grid>
               </Border>
           </StackPanel>
+          </Border>
 
-          <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" Margin="24,16" />
+          <!-- Section: Toolbar Shortcuts sits directly on the surface.
+               Wrapped in a DashboardPanel shell. -->
+          <Border Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="12">
+              <TextBlock Text="{x:Static i18n:Strings.Settings_ToolbarShortcuts_Title}"
+                         Classes="CardTitle"
+                         FontSize="{DynamicResource ByhFontSizeSubheading}"
+                         FontWeight="SemiBold" />
+              <Border Classes="InnerCard" Padding="12">
+                <Grid ColumnDefinitions="Auto,60,*" RowDefinitions="Auto,Auto"
+                      RowSpacing="8" ColumnSpacing="12">
+                  <TextBlock Grid.Row="0" Grid.Column="0"
+                             Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Prompt}"
+                             Classes="Secondary"
+                             FontSize="{DynamicResource ByhFontSizeBody}"
+                             VerticalAlignment="Center" />
+                  <TextBox  Grid.Row="0" Grid.Column="1"
+                            x:Name="PromptShortcutInput"
+                            MaxLength="1"
+                            FontSize="{DynamicResource ByhFontSizeBodyLarge}"
+                            HorizontalAlignment="Stretch"
+                            PlaceholderText="{x:Static i18n:Strings.Common_Placeholder_None}" />
+                  <TextBlock Grid.Row="0" Grid.Column="2"
+                             Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Prompt_Hint}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                             VerticalAlignment="Center" />
 
-          <!-- Section: Toolbar Shortcuts sits directly on the surface. -->
-          <StackPanel Spacing="12" Margin="24,0,24,0">
-              <StackPanel Spacing="12">
-                <TextBlock Text="{x:Static i18n:Strings.Settings_ToolbarShortcuts_Title}"
-                           Classes="CardTitle"
-                           FontSize="{DynamicResource ByhFontSizeSubheading}"
-                           FontWeight="SemiBold" />
-                <Border Classes="InnerCard" Padding="12">
-                  <Grid ColumnDefinitions="Auto,60,*" RowDefinitions="Auto,Auto"
-                        RowSpacing="8" ColumnSpacing="12">
-                    <TextBlock Grid.Row="0" Grid.Column="0"
-                               Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Prompt}"
-                               Classes="Secondary"
-                               FontSize="{DynamicResource ByhFontSizeBody}"
-                               VerticalAlignment="Center" />
-                    <TextBox  Grid.Row="0" Grid.Column="1"
-                              x:Name="PromptShortcutInput"
-                              MaxLength="1"
-                              FontSize="{DynamicResource ByhFontSizeBodyLarge}"
-                              HorizontalAlignment="Stretch"
-                              PlaceholderText="{x:Static i18n:Strings.Common_Placeholder_None}" />
-                    <TextBlock Grid.Row="0" Grid.Column="2"
-                               Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Prompt_Hint}"
-                               Classes="Muted"
-                               FontSize="{DynamicResource ByhFontSizeBodySmall}"
-                               VerticalAlignment="Center" />
-
-                    <TextBlock Grid.Row="1" Grid.Column="0"
-                               Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Copy}"
-                               Classes="Secondary"
-                               FontSize="{DynamicResource ByhFontSizeBody}"
-                               VerticalAlignment="Center" />
-                    <TextBox  Grid.Row="1" Grid.Column="1"
-                              x:Name="CopyShortcutInput"
-                              MaxLength="1"
-                              FontSize="{DynamicResource ByhFontSizeBodyLarge}"
-                              HorizontalAlignment="Stretch"
-                              PlaceholderText="{x:Static i18n:Strings.Common_Placeholder_None}" />
-                    <TextBlock Grid.Row="1" Grid.Column="2"
-                               Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Copy_Hint}"
-                               Classes="Muted"
-                               FontSize="{DynamicResource ByhFontSizeBodySmall}"
-                               VerticalAlignment="Center" />
-                  </Grid>
-                </Border>
-
-                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
-                  <Button Content="{x:Static i18n:Strings.Settings_SaveShortcuts}"
-                          Classes="Primary"
-                          Click="OnSaveToolbarShortcutsClick" />
-                  <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
-                    <TextBlock x:Name="ToolbarShortcutsStatusText"
-                               Text="Current: Prompt R · Copy C"
-                               FontSize="{DynamicResource ByhFontSizeBody}" />
-                  </StackPanel>
+                  <TextBlock Grid.Row="1" Grid.Column="0"
+                             Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Copy}"
+                             Classes="Secondary"
+                             FontSize="{DynamicResource ByhFontSizeBody}"
+                             VerticalAlignment="Center" />
+                  <TextBox  Grid.Row="1" Grid.Column="1"
+                            x:Name="CopyShortcutInput"
+                            MaxLength="1"
+                            FontSize="{DynamicResource ByhFontSizeBodyLarge}"
+                            HorizontalAlignment="Stretch"
+                            PlaceholderText="{x:Static i18n:Strings.Common_Placeholder_None}" />
+                  <TextBlock Grid.Row="1" Grid.Column="2"
+                             Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Copy_Hint}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                             VerticalAlignment="Center" />
                 </Grid>
-              </StackPanel>
-          </StackPanel>
+              </Border>
 
-          <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" Margin="24,16" />
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <Button Content="{x:Static i18n:Strings.Settings_SaveShortcuts}"
+                        Classes="Primary"
+                        Click="OnSaveToolbarShortcutsClick" />
+                <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                  <TextBlock x:Name="ToolbarShortcutsStatusText"
+                             Text="Current: Prompt R · Copy C"
+                             FontSize="{DynamicResource ByhFontSizeBody}" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </Border>
 
-          <!-- Section: Ocean Eyes Capture sits directly on the surface. -->
-          <StackPanel Spacing="12" Margin="24,0,24,0">
+          <!-- Section: Ocean Eyes Capture sits directly on the surface.
+               Wrapped in a DashboardPanel shell. -->
+          <Border Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="12">
                 <TextBlock Text="{x:Static i18n:Strings.Settings_OceanEyesCapture_Title}"
                            Classes="CardTitle"
                            FontSize="{DynamicResource ByhFontSizeSubheading}"
@@ -736,12 +742,17 @@
                   </StackPanel>
                 </Grid>
               </StackPanel>
+          </Border>
 
         </StackPanel>
 
-        <!-- Translation providers -->
+        <!-- Translation providers. The whole edit form sits inside one
+             DashboardPanel shell; x:Name="EditFormBorder" stays on the
+             Border (BringIntoView works on Control) so code-behind is
+             unaffected by the StackPanel→Border type change. -->
         <StackPanel x:Name="ProviderSection" IsVisible="False" Spacing="0">
-          <StackPanel x:Name="EditFormBorder" Spacing="16" Margin="24,14,24,0">
+          <Border x:Name="EditFormBorder" Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="16">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                 <StackPanel Spacing="4">
                   <TextBlock Text="{x:Static i18n:Strings.Settings_ProviderProfiles_Title}"
@@ -787,7 +798,22 @@
                   </StackPanel>
                   <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6">
                     <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_Model}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
-                    <TextBox x:Name="ModelInput" />
+                    <ComboBox x:Name="ModelInput"
+                              HorizontalAlignment="Stretch"
+                              IsEditable="True" />
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                      <TextBlock x:Name="ModelFetchStatus"
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"
+                                 Classes="Muted"
+                                 Text="{x:Static i18n:Strings.Settings_Provider_LastFetched_Never}"
+                                 FontSize="{DynamicResource ByhFontSizeCaption}"
+                                 TextTrimming="CharacterEllipsis" />
+                      <Button x:Name="FetchModelsButton"
+                              Grid.Column="1"
+                              Content="{x:Static i18n:Strings.Settings_Provider_FetchModels}"
+                              Click="OnFetchModelsClick" />
+                    </Grid>
                   </StackPanel>
                   <StackPanel Grid.Row="1" Grid.Column="0" Spacing="6">
                     <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_BaseUrl}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
@@ -860,11 +886,13 @@
               </Grid>
 
             </StackPanel>
-          </StackPanel>
+          </Border>
+        </StackPanel>
 
         <!-- Prompt functions -->
         <StackPanel x:Name="FunctionsSection" IsVisible="False" Spacing="0">
-          <StackPanel x:Name="PromptTemplatesCard" Spacing="16" Margin="24,14,24,0">
+          <Border x:Name="PromptTemplatesCard" Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="16">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
                   <TextBlock Text="{x:Static i18n:Strings.Settings_Actions_Title}"
@@ -911,11 +939,15 @@
                 </ItemsControl>
               </Border>
             </StackPanel>
-          </StackPanel>
+          </Border>
+        </StackPanel>
 
-        <!-- Vision OCR -->
+        <!-- Vision OCR. Whole page (title + OCR + strategy) in one
+             DashboardPanel shell; the two inter-block hairlines collapse
+             into the panel's Spacing. -->
         <StackPanel x:Name="VisionSection" IsVisible="False" Spacing="0">
-          <StackPanel Spacing="16" Margin="24,14,24,0">
+          <Border Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="16">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
               <StackPanel Spacing="4">
                 <TextBlock Text="{x:Static i18n:Strings.Settings_Vision_Title}"
@@ -930,8 +962,6 @@
                             IsChecked="True"
                             VerticalAlignment="Center" />
             </Grid>
-
-            <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
 
             <StackPanel Spacing="14">
               <StackPanel Spacing="6">
@@ -960,6 +990,19 @@
                                 HorizontalAlignment="Stretch"
                                 IsEditable="True" />
                     </Border>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                      <TextBlock x:Name="VisionModelFetchStatus"
+                                 Grid.Column="0"
+                                 VerticalAlignment="Center"
+                                 Classes="Muted"
+                                 Text="{x:Static i18n:Strings.Settings_Provider_LastFetched_Never}"
+                                 FontSize="{DynamicResource ByhFontSizeCaption}"
+                                 TextTrimming="CharacterEllipsis" />
+                      <Button x:Name="VisionFetchModelsButton"
+                              Grid.Column="1"
+                              Content="{x:Static i18n:Strings.Settings_Provider_FetchModels}"
+                              Click="OnVisionFetchModelsClick" />
+                    </Grid>
                   </StackPanel>
                 </Grid>
                 <StackPanel Spacing="6">
@@ -973,8 +1016,6 @@
                   </Border>
                 </StackPanel>
               </StackPanel>
-
-              <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
 
               <StackPanel Spacing="16">
                 <TextBlock Text="{x:Static i18n:Strings.Settings_Vision_Strategy}"
@@ -1025,12 +1066,14 @@
                     Classes="Primary"
                     Click="OnSaveVisionClick" />
           </StackPanel>
-        </StackPanel>
+            </StackPanel>
+          </Border>
         </StackPanel>
 
-        <!-- Launcher -->
+        <!-- Launcher. List subsection wrapped in a DashboardPanel shell. -->
         <StackPanel x:Name="LauncherSection" IsVisible="False" Spacing="0">
-          <StackPanel Spacing="16" Margin="24,14,24,0">
+          <Border Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="16">
               <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
                 <StackPanel Spacing="3">
                   <TextBlock Text="{x:Static i18n:Strings.Settings_Launcher_Title}"
@@ -1103,10 +1146,12 @@
                 </ItemsControl>
               </Border>
             </StackPanel>
+          </Border>
 
-            <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
-
-            <!-- R32 Spotlight launcher-search shortcut card -->
+            <!-- R32 Spotlight launcher-search shortcut card. Wrapped in its
+                 own DashboardPanel shell; the inter-block hairline collapses
+                 into the section's Spacing. -->
+            <Border Classes="DashboardPanel" Margin="24,14,24,0">
             <StackPanel Spacing="14">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <StackPanel Spacing="3">
@@ -1185,14 +1230,18 @@
                 </StackPanel>
               </Grid>
             </StackPanel>
-          </StackPanel>
+            </Border>
+        </StackPanel>
 
 
         <!-- Clipboard history follows the same continuous-surface rhythm as
              the five existing pages: one editorial header, then quiet inset
-             groups instead of stacked standalone cards. -->
+             groups instead of stacked standalone cards. Whole page (header +
+             Global Hotkey + Behavior) wrapped in one DashboardPanel shell;
+             the inter-block hairline collapses into the panel's Spacing. -->
         <StackPanel x:Name="ClipboardHistorySection" IsVisible="False" Spacing="0">
-          <StackPanel Spacing="16" Margin="24,14,24,0">
+          <Border Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="16">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
               <StackPanel Spacing="3">
                 <TextBlock Text="{x:Static i18n:Strings.Settings_Clipboard_Title}"
@@ -1247,8 +1296,6 @@
                 </Grid>
               </StackPanel>
             </Border>
-
-            <Border Height="1" Background="{DynamicResource ByhHairlineBrush}" />
 
             <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
               <StackPanel Spacing="2" VerticalAlignment="Center">
@@ -1354,7 +1401,8 @@
                   </StackPanel>
               </Border>
             </Grid>
-          </StackPanel>
+            </StackPanel>
+          </Border>
         </StackPanel>
         </Grid>
       </ScrollViewer>

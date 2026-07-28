@@ -278,6 +278,13 @@ public static partial class Strings
     public static string Settings_Provider_Timeout => Get(nameof(Settings_Provider_Timeout));
     public static string Settings_SetActive => Get(nameof(Settings_SetActive));
     public static string Settings_SaveProfile => Get(nameof(Settings_SaveProfile));
+    // R26: "Refresh Models" button + status line, shown next to the Model
+    // dropdown on the Provider and Vision pages. {0} = error text or minutes.
+    public static string Settings_Provider_FetchModels => Get(nameof(Settings_Provider_FetchModels));
+    public static string Settings_Provider_FetchingModels => Get(nameof(Settings_Provider_FetchingModels));
+    public static string Settings_Provider_FetchFailed => Get(nameof(Settings_Provider_FetchFailed));
+    public static string Settings_Provider_LastFetched => Get(nameof(Settings_Provider_LastFetched));
+    public static string Settings_Provider_LastFetched_Never => Get(nameof(Settings_Provider_LastFetched_Never));
 
     // SettingsWindow — Functions section
     public static string Settings_Actions_Title => Get(nameof(Settings_Actions_Title));

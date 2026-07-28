@@ -295,6 +295,7 @@ public partial class App : Application
             settingsWindow.SaveProviderRequested += OnSaveProvider;
             settingsWindow.DeleteProviderRequested += OnDeleteProvider;
             settingsWindow.ApiKeySaveRequested += OnApiKeySaveRequested;
+            settingsWindow.FetchModelsRequested += OnFetchModelsRequested;
         settingsWindow.PromptTemplateSaved += OnPromptTemplateSaved;
         settingsWindow.PromptTemplateReset += OnPromptTemplateReset;
         settingsWindow.PromptTemplateAdded += OnPromptTemplateAdded;
@@ -536,6 +537,23 @@ public partial class App : Application
         if (_runtime is null) return;
         await _runtime.SaveApiKeyAsync(apiKeyReference, keyValue);
         await RefreshSettingsAsync();
+    }
+
+    // ── R26: "Refresh Models" handler ──
+    //
+    // The window raises FetchModelsRequested(providerId); we ask the runtime
+    // to GET {BaseUrl}/models + update the on-disk cache, then return the
+    // fresh list + timestamp + error to the window (which owns the UI state).
+    // Mirrors the existing "window raises event, App awaits runtime" pattern.
+
+    private async Task<(IReadOnlyList<string> Models, DateTime FetchedAtUtc, string? Error)> OnFetchModelsRequested(
+        string providerId)
+    {
+        if (_runtime is null)
+        {
+            return (Array.Empty<string>(), DateTime.UtcNow, "runtime not initialized.");
+        }
+        return await _runtime.FetchProviderModelsAsync(providerId, CancellationToken.None);
     }
 
     // ── Prompt template handlers (R1 global templates) ──
@@ -1760,6 +1778,20 @@ public partial class App : Application
 
         _settingsWindow.SetProviders(providers, currentId,
             reference => _runtime.HasApiKeyAsync(reference));
+
+        // R26: push the on-disk model cache so the Model dropdowns (translation
+        // + vision) can populate from the last successful fetch without a
+        // network call. Must happen AFTER SetProviders (so the combo has a
+        // provider to resolve against) and BEFORE SetVisionSettings (so the
+        // vision status line reflects the cache).
+        ModelsCache modelsCache = _runtime.LoadModelsCache();
+        var cacheDict = new Dictionary<string, (DateTime FetchedAtUtc, IReadOnlyList<string> Models)>(StringComparer.Ordinal);
+        foreach (KeyValuePair<string, ModelsCacheEntry> kv in modelsCache.ByProvider)
+        {
+            cacheDict[kv.Key] = (kv.Value.FetchedAtUtc, kv.Value.Models);
+        }
+        _settingsWindow.SetCachedModels(cacheDict);
+
         _settingsWindow.SetPromptTemplates(_runtime.GetPromptTemplates());
         _settingsWindow.SetVisionSettings(_runtime.GetVisionSettings());
         _settingsWindow.SetOceanEyesTriggerSettings(_oceanEyesTrigger);

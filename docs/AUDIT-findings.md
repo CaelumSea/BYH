@@ -228,3 +228,4 @@
 - [DONE] L5 日志滚动 — 已落地（size-based 1MB/保留 5，启动归档，commit 42d5033）
 - [DONE d5b349a + a99130b] i18n 全量接入 — SettingsWindow 全覆盖（手机视图/Dashboard/Profile/主题概念块 ~70 AXAML + ~20 code-behind），+~80 key，第一百一十九/二十批。i18n MVP 收尾。
 - [DONE 第一百二十批] feat/i18n-zh-en-mvp fast-forward 合并进 main（51 commit，零冲突）+ 清理 3 个已合并分支 + 2 个 worktree。仓库现仅剩 main 分支。
+- [DONE 第一百二十一批] Provider 模型目录刷新（新功能，非 audit 项）——设置页 "Refresh Models" 按钮 `GET {BaseUrl}/models` + 磁盘缓存（models-cache.json）+ 可编辑 ComboBox；+5 预设（5→9）；新 `OpenAiCompatibleModelsClient` + `ModelsCacheStore`；+37 测试；exe +113KB。附 UI 微调：Add Provider 菜单去模型 + Refresh 按钮下移不再挡 model name。**未提交**（git status 14 文件待 commit）。

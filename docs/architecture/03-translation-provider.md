@@ -15,12 +15,14 @@ OpenAI 兼容的流式翻译 Provider，支持多厂商增删改 + 热切换；S
 | `Core/Translation/ITranslationProvider.cs` | 翻译契约；`TranslationRequest`（含 SystemPrompt + ThinkingEnabled）；`TranslationDelta`/`TranslationResult` |
 | `Core/Translation/TranslationSessionManager.cs` | 流式会话；`StartOrReplaceAsync`；`ReplaceProvider` 热切换；每 chunk generation 守卫 |
 | `Core/Translation/TranslationLanguageSelector.cs` | 自动检测方向（中文→英，非中文→简中） |
-| `Core/Translation/ProviderPresets.cs` | 内置 4 预设（DeepSeek/OpenAI/GLM/Qwen）+ 自定义 |
+| `Core/Translation/ProviderPresets.cs` | 内置 9 预设（DeepSeek/SiliconFlow/OpenAI/Zhipu/Moonshot/MiniMax/MiMo/OpenRouter/OpenCode Go）+ 自定义；模型 id 是快照，靠 /models 拉取覆盖 |
 | `Providers/OpenAiCompatibleStreamingProvider.cs` | OpenAI 兼容流式；URI-aware URL 拼接；Bearer；禁重定向；条件 thinking-disable |
+| `Providers/OpenAiCompatibleModelsClient.cs` | `GET {BaseUrl}/models` 模型目录拉取（设置页 "Refresh Models"）；`JsonDocument` 解析兼容 `{data:[]}` 与裸数组；AOT 安全 |
 | `Providers/OpenAiCompatibleProviderOptions.cs` | Provider 配置项（BaseUrl/Model/ChatPath/Timeout/MaxChars） |
 | `Providers/Sse/` | SSE 解析器（7 种 case，25 单测） |
 | `Providers/MyMemoryTranslationProvider.cs` | 无密钥测试回退 |
 | `Infrastructure/Configuration/ProviderConfiguration.cs` | providers.json 数据模型 + 加载/保存 |
+| `Infrastructure/Configuration/ModelsCacheStore.cs` | models-cache.json（按 provider 缓存 `/models` 拉取结果 + UTC 时间戳）；原子写；AOT 安全手写 Utf8JsonWriter |
 
 ## 数据流
 

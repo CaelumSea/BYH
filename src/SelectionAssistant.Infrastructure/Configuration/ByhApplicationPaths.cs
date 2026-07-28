@@ -130,6 +130,17 @@ public sealed record ByhApplicationPaths(string BaseDirectory)
     public string SecretsDirectory =>
         Path.Combine(BaseDirectory, "secrets");
 
+    /// <summary>
+    /// R26: per-provider cache of model ids fetched from each provider's
+    /// <c>/v1/models</c> endpoint by the Settings UI "Refresh Models" button.
+    /// Lets the model dropdown populate instantly on reopen even when offline.
+    /// Missing file = empty cache (the dropdown falls back to the preset
+    /// default model + any cached ids from a previous fetch). Atomic-write,
+    /// schema-versioned, hand-written via Utf8JsonWriter (AOT-safe).
+    /// </summary>
+    public string ModelsCacheFile =>
+        Path.Combine(BaseDirectory, "models-cache.json");
+
     public string LogsDirectory => Path.Combine(BaseDirectory, "logs");
 
     public string LogFile => Path.Combine(LogsDirectory, "BYH.log");

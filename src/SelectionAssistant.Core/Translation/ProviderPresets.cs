@@ -33,6 +33,19 @@ public static class ProviderPresets
             "https://open.bigmodel.cn/api/paas/v4", "glm-4-flash", "chat/completions"),
         new("moonshot", "Moonshot Kimi",
             "https://api.moonshot.cn/v1", "moonshot-v1-8k", "chat/completions"),
+
+        // R26 added: more OpenAI-compatible presets. DefaultModel is a
+        // best-guess snapshot at the time of writing — the settings UI's
+        // "Refresh Models" button queries each provider's /v1/models so the
+        // user can switch to the current upstream id without code changes.
+        new("minimax", "MiniMax",
+            "https://api.minimaxi.com/v1", "MiniMax-M2", "chat/completions"),
+        new("mimo", "Xiaomi MiMo",
+            "https://api.xiaomimimo.com/v1", "mimo-v2.5-pro", "chat/completions"),
+        new("openrouter", "OpenRouter",
+            "https://openrouter.ai/api/v1", "deepseek/deepseek-chat", "chat/completions"),
+        new("opencode-go", "OpenCode Go",
+            "https://opencode.ai/zen/go/v1", "deepseek-v4-flash", "chat/completions"),
     ];
 
     /// <summary>Special id for fully-custom providers (no preset template).</summary>

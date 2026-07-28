@@ -204,6 +204,11 @@ internal static partial class Strings_zh_CN
         ["Settings_Provider_Timeout"] = "超时（秒）",
         ["Settings_SetActive"] = "设为当前",
         ["Settings_SaveProfile"] = "保存配置",
+        ["Settings_Provider_FetchModels"] = "拉取模型",
+        ["Settings_Provider_FetchingModels"] = "拉取中…",
+        ["Settings_Provider_FetchFailed"] = "失败：{0}",
+        ["Settings_Provider_LastFetched"] = "{0} 分钟前更新",
+        ["Settings_Provider_LastFetched_Never"] = "尚未拉取",
 
         // SettingsWindow — Functions section
         ["Settings_Actions_Title"] = "动作与提示词",
