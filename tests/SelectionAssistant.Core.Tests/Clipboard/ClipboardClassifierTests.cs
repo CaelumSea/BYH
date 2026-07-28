@@ -175,28 +175,17 @@ public sealed class ClipboardClassifierTests
     [InlineData("AKIAIOSFODNN7EXAMPLE")]
     [InlineData("private_key-----BEGIN")]
     [InlineData("Bearer abc123")]
-    public void Classify_Sensitive_HighestPriority(string text)
+    public void Classify_SensitivePatterns_NotAutoClassified_AfterBatch124(string text)
     {
-        // Sensitive must win over everything — a token that also looks like a
-        // link or contains code keywords must still be filed Sensitive.
-        Assert.Equal(ClipboardGroup.Sensitive, ClipboardClassifier.Classify(text));
-        Assert.True(ClipboardClassifier.IsSensitive(text));
-    }
-
-    [Fact]
-    public void Classify_Sensitive_BeatsLinkShape()
-    {
-        // Looks like a link but contains "token" — must be Sensitive, not Link.
-        Assert.Equal(ClipboardGroup.Sensitive,
-            ClipboardClassifier.Classify("https://api.example.com/token=secret"));
-    }
-
-    [Fact]
-    public void IsSensitive_PlainText_False()
-    {
-        Assert.False(ClipboardClassifier.IsSensitive("just some text"));
-        Assert.False(ClipboardClassifier.IsSensitive(""));
-        Assert.False(ClipboardClassifier.IsSensitive(null));
+        // Batch 124 contract pin: Sensitive auto-detection is RETIRED. These
+        // patterns (api_key / secret / password / token / AKIA / private_key /
+        // Bearer) used to short-circuit to ClipboardGroup.Sensitive; they now
+        // fall through to the normal priority chain (Link/Code/Text). The
+        // Sensitive group is reachable ONLY via manual "Move to → 🔒 Sensitive"
+        // (ClipboardHistoryService.SetGroupOverride). If a future batch
+        // re-enables auto-detection, this test will fail loudly.
+        ClipboardGroup group = ClipboardClassifier.Classify(text);
+        Assert.NotEqual(ClipboardGroup.Sensitive, group);
     }
 
     [Fact]

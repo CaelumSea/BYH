@@ -1175,7 +1175,11 @@ public sealed class ClipboardHistoryService : IDisposable
             SourceProcessName = sourceProcessName,
             CapturedAt = DateTimeOffset.UtcNow,
             Group = group,
-            IsSensitive = group == ClipboardGroup.Sensitive,
+            // Batch 124: Sensitive is manual-only. Classify never returns
+            // Sensitive anymore, so IsSensitive is always false at capture
+            // time; it can only be flipped on by the user via
+            // SetGroupOverride ("Move to → 🔒 Sensitive").
+            IsSensitive = false,
         };
     }
 

@@ -10,14 +10,22 @@ public sealed class ClipboardHistoryStoreTests
     private static string TempPath() =>
         Path.Combine(Path.GetTempPath(), $"byh-clip-{Guid.NewGuid():N}.json");
 
-    private static ClipboardEntry Entry(string text, int ageSeconds = 0, bool pinned = false) =>
+    private static ClipboardEntry Entry(
+        string text,
+        int ageSeconds = 0,
+        bool pinned = false,
+        bool isSensitive = false) =>
         new()
         {
             Text = text,
             CapturedAt = DateTimeOffset.UtcNow.AddSeconds(-ageSeconds),
             IsPinned = pinned,
             Group = ClipboardClassifier.Classify(text),
-            IsSensitive = ClipboardClassifier.IsSensitive(text),
+            // Batch 124: Sensitive is no longer auto-derived from text (the
+            // classifier's IsSensitive helper is retired). Tests that need a
+            // sensitive entry pass isSensitive: true explicitly — mirroring
+            // the production path where only SetGroupOverride sets it.
+            IsSensitive = isSensitive,
         };
 
     [Fact]
@@ -38,7 +46,10 @@ public sealed class ClipboardHistoryStoreTests
             {
                 Entry("hello"),
                 Entry("https://x.com"),
-                Entry("password=secret", pinned: true),
+                // Batch 124: isSensitive is explicit (no auto-detection). The
+                // test still proves a sensitive+pinned entry round-trips and
+                // sorts to the front; the entry text is incidental.
+                Entry("password=secret", pinned: true, isSensitive: true),
             };
 
             Assert.True(ClipboardHistoryStore.Save(original, path));
@@ -110,12 +121,16 @@ public sealed class ClipboardHistoryStoreTests
 
         // User re-copies the same text → fresh capture (new Id, classifier ran
         // but no user annotations yet: GroupOverride=null, EntryTags=[]).
+        // Batch 124: the classifier no longer auto-tags AKIA as Sensitive, so
+        // the fresh capture lands as Text/IsSensitive=false — exactly the
+        // "unannotated re-copy" this test exercises. The dedup carry-forward
+        // then restores the user's prior Sensitive override.
         ClipboardEntry reCopy = new()
         {
             Text = "AKIAIOSFODNN7EXAMPLE",
             CapturedAt = DateTimeOffset.UtcNow,
-            Group = ClipboardGroup.Sensitive, // classifier matches the AKIA pattern
-            IsSensitive = true,
+            Group = ClipboardGroup.Text,
+            IsSensitive = false,
         };
 
         List<ClipboardEntry> result = ClipboardHistoryStore.AddAndEvict(existing, reCopy, 100);
@@ -577,7 +592,8 @@ public sealed class ClipboardHistoryStoreTests
             var cipher = new FakeCipher();
             var original = new List<ClipboardEntry>
             {
-                Entry("api_key=sk-secret-12345"),
+                // Batch 124: isSensitive is explicit (no auto-detection).
+                Entry("api_key=sk-secret-12345", isSensitive: true),
             };
             Assert.True(original[0].IsSensitive);
 
@@ -633,7 +649,7 @@ public sealed class ClipboardHistoryStoreTests
         string path = TempPath();
         try
         {
-            var original = new List<ClipboardEntry> { Entry("password=hunter2") };
+            var original = new List<ClipboardEntry> { Entry("password=hunter2", isSensitive: true) };
             Assert.True(original[0].IsSensitive);
 
             Assert.True(ClipboardHistoryStore.Save(original, path, cipher: null));
@@ -696,7 +712,8 @@ public sealed class ClipboardHistoryStoreTests
         try
         {
             // Save encrypted with FakeCipher, then load with WrongCipher.
-            var original = new List<ClipboardEntry> { Entry("token=abc-123") };
+            // Batch 124: isSensitive is explicit (no auto-detection).
+            var original = new List<ClipboardEntry> { Entry("token=abc-123", isSensitive: true) };
             Assert.True(ClipboardHistoryStore.Save(original, path, new FakeCipher()));
 
             List<ClipboardEntry> loaded = ClipboardHistoryStore.Load(path, new WrongCipher());
@@ -720,7 +737,7 @@ public sealed class ClipboardHistoryStoreTests
         string path = TempPath();
         try
         {
-            var original = new List<ClipboardEntry> { Entry("secret=value") };
+            var original = new List<ClipboardEntry> { Entry("secret=value", isSensitive: true) };
             Assert.True(ClipboardHistoryStore.Save(original, path, new FakeCipher()));
 
             List<ClipboardEntry> loaded = ClipboardHistoryStore.Load(path, cipher: null);

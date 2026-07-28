@@ -7,12 +7,34 @@ namespace SelectionAssistant.Core.Clipboard;
 /// <summary>
 /// Smart auto-grouping for clipboard text (R54, Ortu-inspired rule engine).
 /// Pure function: <see cref="Classify"/> maps text to a
-/// <see cref="ClipboardGroup"/> + sensitivity flag using compiled regexes. No
-/// state, no I/O — fully unit-testable. Priority order follows the
-/// <see cref="ClipboardGroup"/> enum: Sensitive wins over everything (a token
-/// like <c>api_key=...</c> must never be filed as Text/Code), then Link, Json,
-/// Code, Shell, Number, Text.
+/// <see cref="ClipboardGroup"/> using compiled regexes. No state, no I/O —
+/// fully unit-testable. Priority order: Link, Json, Code, Shell, Number, Text.
 /// </summary>
+/// <remarks>
+/// <para><b>Batch 124: Sensitive is manual-only.</b> <see cref="Classify"/>
+/// never returns <see cref="ClipboardGroup.Sensitive"/>. The Sensitive group
+/// and the <see cref="ClipboardEntry.IsSensitive"/> flag are set exclusively
+/// by the user via "Move to → 🔒 Sensitive" (see
+/// <c>ClipboardHistoryService.SetGroupOverride</c>). Auto-detection of
+/// api_key/token/password/AKIA/Bearer patterns has been retired — the
+/// <see cref="SensitivePattern"/> regex is kept below for reference and
+/// potential future re-enablement, but is no longer consulted by
+/// <see cref="Classify"/>. Existing on-disk entries that were auto-classified
+/// as Sensitive before this change stay Sensitive (encrypted + masked) — no
+/// migration is performed.</para>
+/// <para><b>Why Code/Shell use structured patterns, not bare keywords.</b>
+/// Earlier versions matched a single keyword like <c>class</c>, <c>public</c>,
+/// <c>return</c>, <c>git</c>, or <c>cd</c> anywhere in the text. Those are all
+/// common English words, so noun-heavy prose — image-generation prompts being
+/// the canonical victim ("a private garden, students return from class") — was
+/// misclassified as Code or Shell. The patterns now require a code-shaped
+/// follower: a PascalCase identifier (<c>class Foo</c>), an assignment
+/// (<c>let x =</c>), a modifier chain (<c>public static</c>), a shell flag
+/// (<c>git commit -m</c>), or a path/quote. The trade-off is that lone
+/// snippets like <c>return value;</c> no longer auto-classify as Code — but
+/// such fragments are rare in clipboard traffic, and the structured form
+/// catches every realistic copy of source.</para>
+/// </remarks>
 /// <remarks>
 /// <para><b>Why Code/Shell use structured patterns, not bare keywords.</b>
 /// Earlier versions matched a single keyword like <c>class</c>, <c>public</c>,
@@ -32,12 +54,19 @@ public static partial class ClipboardClassifier
     /// <summary>api_key / secret / token / password / passwd / private_key /
     /// Bearer / AWS access-key id (AKIA + 16 base32). Case-insensitive.</summary>
     /// <remarks>
+    /// <b>Batch 124: RETIRED from <see cref="Classify"/>.</b> This regex is no
+    /// longer consulted — Sensitive is now manual-only ("Move to → 🔒
+    /// Sensitive"). It is kept here (not deleted) so a future batch can flip
+    /// auto-detection back on without rewriting the pattern. NativeAOT trims
+    /// the unused generated source to zero runtime cost.
+    /// <para>
     /// Audit L7: the Bearer alternative was written <c>bearer\s+\S</c>, which
     /// reads like a token-shape check but actually matches exactly one
     /// non-space char after "bearer " — a presence check, not a validation.
     /// Rewrote as <c>bearer\b</c>: same <see cref="Regex.IsMatch(string)"/>
     /// semantics (a "bearer" word-boundary hit flags the entry), clearer
     /// intent, and removes the false implication that we validate the token.
+    /// </para>
     /// </remarks>
     [GeneratedRegex(
         @"(?:api[_-]?key|secret|token|password|passwd|private[_-]?key|bearer\b)|" +
@@ -94,14 +123,15 @@ public static partial class ClipboardClassifier
     private static partial Regex NumberPattern { get; }
 
     /// <summary>
-    /// Classifies <paramref name="text"/> into a group and reports sensitivity.
-    /// Sensitive is checked first and short-circuits: any sensitive hit returns
-    /// <see cref="ClipboardGroup.Sensitive"/> with <c>IsSensitive=true</c>,
-    /// regardless of whether the text also looks like a link or code.
+    /// Classifies <paramref name="text"/> into a group. Priority order: Link,
+    /// Json, Code, Shell, Number, Text.
     /// </summary>
     /// <param name="text">The clipboard text. Null/whitespace returns Text.</param>
-    /// <returns>The group (paired with the sensitivity flag in
-    /// <see cref="ClipboardEntry.IsSensitive"/> by the caller).</returns>
+    /// <returns>The group. <b>Never returns <see cref="ClipboardGroup.Sensitive"/></b>
+    /// — Sensitive is manual-only as of batch 124 (set via
+    /// <c>ClipboardHistoryService.SetGroupOverride</c>), so callers should not
+    /// derive <see cref="ClipboardEntry.IsSensitive"/> from the returned
+    /// group.</returns>
     public static ClipboardGroup Classify(string? text)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -109,11 +139,9 @@ public static partial class ClipboardClassifier
             return ClipboardGroup.Text;
         }
 
-        // Priority 0: sensitive. Never let a token fall through to other groups.
-        if (SafeMatch(SensitivePattern, text))
-        {
-            return ClipboardGroup.Sensitive;
-        }
+        // Batch 124: the Sensitive auto-detection branch was removed here.
+        // Tokens like api_key=…/password=… now fall through to Code/Text like
+        // any other text. See the class-level remarks and SensitivePattern.
 
         string trimmed = text.Trim();
 
@@ -152,13 +180,6 @@ public static partial class ClipboardClassifier
 
         return ClipboardGroup.Text;
     }
-
-    /// <summary>True when <paramref name="text"/> matches the sensitive
-    /// pattern. Exposed separately so the caller can set
-    /// <see cref="ClipboardEntry.IsSensitive"/> without re-running the full
-    /// classification.</summary>
-    public static bool IsSensitive(string? text) =>
-        !string.IsNullOrWhiteSpace(text) && SafeMatch(SensitivePattern, text);
 
     private static bool SafeMatch(Regex regex, string input)
     {
