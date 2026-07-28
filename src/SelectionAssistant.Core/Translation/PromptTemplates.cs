@@ -4,8 +4,19 @@ namespace SelectionAssistant.Core.Translation;
 /// One named prompt template. <see cref="Id" /> is the stable key persisted to
 /// <c>prompt-templates.json</c> (one of <see cref="PromptActionIds" /> for the
 /// built-in actions, or a <c>custom-*</c> id for user-added actions);
-/// <see cref="Name" /> is the display label; <see cref="Prompt" /> is the actual
-/// system message sent to the model.
+/// <see cref="Name" /> is the display label (a <see cref="LocalizedName" />
+/// carrying both Chinese and English variants for custom actions);
+/// <see cref="Prompt" /> is the actual system message sent to the model.
+/// <para>
+/// <b>Built-in actions</b> (translate/summarize/explain) carry a default
+/// <see cref="Name" /> here for record completeness, but the display name
+/// actually rendered to the user is resolved through i18n by action id (see
+/// <c>SelectionRuntime.ResolveActionDisplayName</c> /
+/// <c>SettingsWindow.GetSettingsActionName</c>) — so the toolbar button and
+/// the result window heading can never drift apart across languages. The
+/// <see cref="Name" /> field is the source of truth only for user-added
+/// custom actions.
+/// </para>
 /// <para>
 /// <see cref="ThinkingEnabled" /> is the single source of truth for whether the
 /// model may reason before answering for this action. It lives here — not on
@@ -18,7 +29,7 @@ namespace SelectionAssistant.Core.Translation;
 /// </summary>
 public sealed record PromptTemplate(
     string Id,
-    string Name,
+    LocalizedName Name,
     string Prompt,
     bool ThinkingEnabled = false,
     string? Shortcut = null);
@@ -75,17 +86,17 @@ public sealed class PromptTemplateSet
         [
             new PromptTemplate(
                 PromptActionIds.Translate,
-                "翻译",
+                new LocalizedName("翻译", "Translate"),
                 "你是翻译器。把用户提供的文本翻译成简体中文。只输出译文，不要解释、不要添加说明。",
                 Shortcut: "F"),
             new PromptTemplate(
                 PromptActionIds.Summarize,
-                "总结",
+                new LocalizedName("总结", "Summarize"),
                 "用一段话总结以下内容，只输出总结，不要额外说明。",
                 Shortcut: "Z"),
             new PromptTemplate(
                 PromptActionIds.Explain,
-                "解释",
+                new LocalizedName("解释", "Explain"),
                 "解释以下内容，用简洁易懂的语言，只输出解释。",
                 Shortcut: "J"),
         ];
@@ -230,6 +241,32 @@ public sealed class PromptTemplateSet
                 return false;
             }
             _templates.Add(template);
+            return true;
+        }
+    }
+
+    /// <summary>
+    /// Renames a user custom action (replaces the <see cref="PromptTemplate.Name" />
+    /// with <paramref name="newName" />). Built-in actions cannot be renamed —
+    /// their display name comes from i18n and is not user-editable. Returns
+    /// false if the action id is built-in or not found.
+    /// </summary>
+    public bool TryRename(string actionId, LocalizedName newName)
+    {
+        ArgumentNullException.ThrowIfNull(newName);
+        lock (_gate) // Audit M5
+        {
+            if (PromptActionIds.IsBuiltIn(actionId))
+            {
+                return false;
+            }
+            PromptTemplate? existing = _templates.FirstOrDefault(t => t.Id == actionId);
+            if (existing is null)
+            {
+                return false;
+            }
+            int index = _templates.IndexOf(existing);
+            _templates[index] = existing with { Name = newName };
             return true;
         }
     }

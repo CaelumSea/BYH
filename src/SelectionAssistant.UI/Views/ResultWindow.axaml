@@ -13,7 +13,8 @@
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="12">
       <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
         <StackPanel>
-          <TextBlock Text="{x:Static i18n:Strings.Result_Title}"
+          <TextBlock x:Name="TitleText"
+                     Text="{x:Static i18n:Strings.Result_Title}"
                      Classes="DisplayTitle"
                      FontSize="{DynamicResource ByhFontSizeHeading}" />
           <TextBlock x:Name="LanguagePairText"

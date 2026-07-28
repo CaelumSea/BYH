@@ -289,14 +289,14 @@ public partial class SettingsWindow : Window
     /// <summary>Request to save an API key. Args = (apiKeyReference, keyValue).</summary>
     public event Action<string, string>? ApiKeySaveRequested;
 
-    /// <summary>Request to save a prompt template. Args = (actionId, newPrompt, thinkingEnabled, shortcut).</summary>
-    public event Action<string, string, bool, string?>? PromptTemplateSaved;
+    /// <summary>Request to save a prompt template. Args = (actionId, newPrompt, thinkingEnabled, shortcut, newName). <paramref name="newName" /> is non-null only when editing a custom action whose name changed.</summary>
+    public event Action<string, string, bool, string?, LocalizedName?>? PromptTemplateSaved;
 
     /// <summary>Request to reset a prompt template to built-in default. Arg = actionId.</summary>
     public event Action<string>? PromptTemplateReset;
 
     /// <summary>Request to add a new custom function. Args = (name, prompt, thinkingEnabled, shortcut).</summary>
-    public event Action<string, string, bool, string?>? PromptTemplateAdded;
+    public event Action<LocalizedName, string, bool, string?>? PromptTemplateAdded;
 
     /// <summary>Request to delete a custom function. Arg = actionId (must be custom-*).</summary>
     public event Action<string>? PromptTemplateDeleted;
@@ -772,7 +772,9 @@ public partial class SettingsWindow : Window
         PromptActionIds.Translate => Strings.Settings_ActionName_Translate,
         PromptActionIds.Summarize => Strings.Settings_ActionName_Summarize,
         PromptActionIds.Explain => Strings.Settings_ActionName_Explain,
-        _ => template.Name,
+        // Custom action: pick the variant for the current UI language, falling
+        // back to the other variant (and finally the action id) if empty.
+        _ => template.Name.Current(template.Id),
     };
 
     // ── Launcher entry management ──
@@ -909,8 +911,8 @@ public partial class SettingsWindow : Window
         PromptTemplate? @default = BuiltInDefaults.Find(actionId);
 
         var editor = new PromptTemplateEditWindow();
-        editor.TemplateSaved += (savedId, newPrompt, thinking, shortcut) =>
-            PromptTemplateSaved?.Invoke(savedId, newPrompt, thinking, shortcut);
+        editor.TemplateSaved += (savedId, newPrompt, thinking, shortcut, newName) =>
+            PromptTemplateSaved?.Invoke(savedId, newPrompt, thinking, shortcut, newName);
         editor.TemplateReset += (resetId) => PromptTemplateReset?.Invoke(resetId);
         editor.ShowFor(
             actionId,

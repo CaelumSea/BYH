@@ -30,6 +30,17 @@ public sealed record TranslationRequest(
     /// the same provider can think for "explain" but not "translate".
     /// </summary>
     public bool ThinkingEnabled { get; init; }
+
+    /// <summary>
+    /// Display name of the action that produced this request (e.g. "翻译",
+    /// "解释", "总结", or a custom action's name). Set by the runtime from the
+    /// triggering <see cref="PromptTemplate.Name"/>. When null (e.g. the
+    /// ad-hoc "Prompt Now" flow), the result window falls back to the default
+    /// "翻译" wording. Carried on the request so the result window can render
+    /// a correct title / loading hint / copy-button label without the runtime
+    /// having to plumb a separate parameter through the session manager.
+    /// </summary>
+    public string? ActionDisplayName { get; init; }
 }
 
 public sealed record TranslationResult(

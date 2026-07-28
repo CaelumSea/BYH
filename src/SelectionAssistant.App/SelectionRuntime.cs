@@ -2152,6 +2152,21 @@ internal sealed class SelectionRuntime : IDisposable
     /// window (R34), which commits all three fields in one save.
     /// </summary>
     public Task<bool> SavePromptTemplateAsync(string actionId, string prompt, bool thinkingEnabled, string? shortcut)
+        => SavePromptTemplateAsync(actionId, prompt, thinkingEnabled, shortcut, newName: null);
+
+    /// <summary>
+    /// Updates one action's prompt, thinking flag, shortcut, AND optionally its
+    /// name together, persists to prompt-templates.json. Pass a non-null
+    /// <paramref name="newName" /> to rename a custom action in the same save
+    /// (built-in actions ignore the rename — their name comes from i18n).
+    /// Used by the edit window, which commits all editable fields in one save.
+    /// </summary>
+    public Task<bool> SavePromptTemplateAsync(
+        string actionId,
+        string prompt,
+        bool thinkingEnabled,
+        string? shortcut,
+        LocalizedName? newName)
     {
         try
         {
@@ -2159,6 +2174,17 @@ internal sealed class SelectionRuntime : IDisposable
             {
                 _logger.Error("PromptTemplates", $"Unknown action id '{actionId}'.");
                 return Task.FromResult(false);
+            }
+            // Rename only affects custom actions; TryRename rejects built-ins.
+            if (newName is not null && !_promptTemplates.TryRename(actionId, newName))
+            {
+                // Not an error for built-ins (name is i18n-driven, not editable);
+                // only log when it was a custom action that mysteriously failed.
+                if (!PromptActionIds.IsBuiltIn(actionId))
+                {
+                    _logger.Error("PromptTemplates", $"Failed to rename custom action '{actionId}'.");
+                    return Task.FromResult(false);
+                }
             }
             PromptTemplatesStore.Save(_promptTemplates, _paths.PromptTemplatesFile);
             string? norm = _promptTemplates.Find(actionId)?.Shortcut;
@@ -2201,7 +2227,7 @@ internal sealed class SelectionRuntime : IDisposable
     /// set, and persists. Returns the new action id on success, or null if the
     /// add failed. Used by the edit window's "new" mode (R34).
     /// </summary>
-    public Task<string?> AddPromptTemplateAsync(string name, string prompt, bool thinkingEnabled, string? shortcut)
+    public Task<string?> AddPromptTemplateAsync(LocalizedName name, string prompt, bool thinkingEnabled, string? shortcut)
     {
         try
         {
@@ -2210,18 +2236,45 @@ internal sealed class SelectionRuntime : IDisposable
             var template = new PromptTemplate(id, name, prompt, thinkingEnabled, normalizedShortcut);
             if (!_promptTemplates.Add(template))
             {
-                _logger.Error("PromptTemplates", $"Failed to add custom function '{name}'.");
+                _logger.Error("PromptTemplates", $"Failed to add custom function '{name.Current(id)}'.");
                 return Task.FromResult<string?>(null);
             }
             PromptTemplatesStore.Save(_promptTemplates, _paths.PromptTemplatesFile);
             _logger.Info("PromptTemplates",
-                $"Added custom function '{name}' (id={id}, thinking={thinkingEnabled}, shortcut={normalizedShortcut ?? "<none>"}).");
+                $"Added custom function '{name.Current(id)}' (id={id}, thinking={thinkingEnabled}, shortcut={normalizedShortcut ?? "<none>"}).");
             return Task.FromResult<string?>(id);
         }
         catch (ProviderConfigurationException exception)
         {
             _logger.Error("PromptTemplates", "Failed to persist prompt-templates.json.", exception);
             return Task.FromResult<string?>(null);
+        }
+    }
+
+    /// <summary>
+    /// Renames a user custom action (both Chinese and English variants).
+    /// Built-in actions cannot be renamed — their display name comes from
+    /// i18n and is not user-editable. Returns false if the action id is not a
+    /// custom action or is not found. Persists atomically on success.
+    /// </summary>
+    public Task<bool> RenamePromptTemplateAsync(string actionId, LocalizedName newName)
+    {
+        try
+        {
+            if (!_promptTemplates.TryRename(actionId, newName))
+            {
+                _logger.Info("PromptTemplates", $"Cannot rename '{actionId}' (built-in or not found).");
+                return Task.FromResult(false);
+            }
+            PromptTemplatesStore.Save(_promptTemplates, _paths.PromptTemplatesFile);
+            _logger.Info("PromptTemplates",
+                $"Renamed custom function '{actionId}' → zh='{newName.Zh}', en='{newName.En}'.");
+            return Task.FromResult(true);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("PromptTemplates", "Failed to persist prompt-templates.json.", exception);
+            return Task.FromResult(false);
         }
     }
 
@@ -2519,7 +2572,22 @@ internal sealed class SelectionRuntime : IDisposable
         {
             request = request with { SystemPrompt = systemPrompt };
         }
-        request = request with { ThinkingEnabled = template.ThinkingEnabled };
+        // Carry the action's display name so the result window can render a
+        // correct title, loading hint, and copy-button label instead of always
+        // saying "翻译". See ResultWindow.
+        //
+        // IMPORTANT: for the three built-in actions we resolve the name through
+        // i18n by actionId — the same keys the toolbar buttons use, so the
+        // result window heading and the toolbar button that launched it can
+        // never drift apart across languages. For user-added custom actions
+        // (which have no i18n key), the LocalizedName carries both Chinese and
+        // English variants and .Current picks the one for the active UI
+        // language (with fallback to the other variant if one is empty).
+        request = request with
+        {
+            ThinkingEnabled = template.ThinkingEnabled,
+            ActionDisplayName = ResolveActionDisplayName(actionId, template.Name),
+        };
 
         _windowHost.Hide();
         // Action invoked → toolbar hidden → stop the keyboard hook so it
@@ -2528,6 +2596,27 @@ internal sealed class SelectionRuntime : IDisposable
         StopKeyboardHookQuiet();
         TrackSessionTask(_translationManager.StartOrReplaceAsync(request));
     }
+
+    /// <summary>
+    /// Resolves the action display name to attach to a
+    /// <see cref="TranslationRequest" />, in the current UI language.
+    /// Built-in actions (translate/summarize/explain) go through i18n using
+    /// the same keys the toolbar buttons use, so the result window heading
+    /// and the toolbar button that launched it stay in sync across languages.
+    /// User-added custom actions have no i18n key, so their
+    /// <see cref="LocalizedName" /> (carrying both Chinese and English
+    /// variants) is resolved via <see cref="LocalizedName.Current" />, which
+    /// picks the active-language variant and falls back to the other when one
+    /// is empty.
+    /// </summary>
+    private static string ResolveActionDisplayName(string actionId, LocalizedName customName) =>
+        actionId switch
+        {
+            PromptActionIds.Translate => Strings.Toolbar_Translate,
+            PromptActionIds.Summarize => Strings.Toolbar_Summarize,
+            PromptActionIds.Explain => Strings.Toolbar_Explain,
+            _ => customName.Current(actionId),
+        };
 
     /// <summary>
     /// Disables the keyboard hook's shortcut dispatching, swallowing failures.
@@ -2957,7 +3046,7 @@ internal sealed class SelectionRuntime : IDisposable
         try
         {
             _logger.Info("KeyboardHook",
-                $"Shortcut '{key}' → action '{template.Id}' ('{template.Name}').");
+                $"Shortcut '{key}' → action '{template.Id}' ('{template.Name.Current(template.Id)}').");
             RunActionAsync(template.Id, text);
             // RunActionAsync hides the toolbar; disable dispatching so the
             // next keystroke goes to the source app, not the shortcut handler.

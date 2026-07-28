@@ -12,6 +12,7 @@ using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
+using SelectionAssistant.Core.Translation;
 using SelectionAssistant.Infrastructure.Configuration;
 using SelectionAssistant.Infrastructure.Logging;
 using SelectionAssistant.Platform.Abstractions;
@@ -539,10 +540,12 @@ public partial class App : Application
 
     // ── Prompt template handlers (R1 global templates) ──
 
-    private async void OnPromptTemplateSaved(string actionId, string prompt, bool thinkingEnabled, string? shortcut)
+    private async void OnPromptTemplateSaved(
+        string actionId, string prompt, bool thinkingEnabled, string? shortcut,
+        LocalizedName? newName)
     {
         if (_runtime is null) return;
-        await _runtime.SavePromptTemplateAsync(actionId, prompt, thinkingEnabled, shortcut);
+        await _runtime.SavePromptTemplateAsync(actionId, prompt, thinkingEnabled, shortcut, newName);
         await RefreshSettingsAsync();
     }
 
@@ -553,7 +556,8 @@ public partial class App : Application
         await RefreshSettingsAsync();
     }
 
-    private async void OnPromptTemplateAdded(string name, string prompt, bool thinkingEnabled, string? shortcut)
+    private async void OnPromptTemplateAdded(
+        LocalizedName name, string prompt, bool thinkingEnabled, string? shortcut)
     {
         if (_runtime is null) return;
         await _runtime.AddPromptTemplateAsync(name, prompt, thinkingEnabled, shortcut);

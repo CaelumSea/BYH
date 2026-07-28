@@ -52,6 +52,17 @@ internal static partial class Strings_zh_CN
         ["Result_LangChinese"] = "简体中文",
         ["Result_LangEnglish"] = "English",
 
+        // ResultWindow — action-aware wording ({0} = action display name).
+        // Used when TranslationRequest.ActionDisplayName is set.
+        // 中文里 {0} 是动作名（翻译/解释/总结/自定义），Loading 加「正在」前缀，
+        // 结果类文案统一用「{0}结果」拼名词（避免给每个动作单独造名词）。
+        ["Result_WindowTitleForAction"] = "BYH · {0}",
+        ["Result_TitleForAction"] = "{0}",
+        ["Result_LoadingForAction"] = "正在{0}…",
+        ["Result_EmptyResultForAction"] = "没有可显示的{0}结果",
+        ["Result_CopyResultForAction"] = "复制{0}结果",
+        ["Result_CopiedResultForAction"] = "已复制{0}结果",
+
         // SpotlightWindow
         ["Spotlight_Title"] = "BYH · Launcher",
         ["Spotlight_WindowTitle"] = "BYH · 启动器",
@@ -431,6 +442,12 @@ internal static partial class Strings_zh_CN
         ["PromptEdit_SubtitleEdit"] = "修改后所有 Provider 立即生效。",
         ["PromptEdit_Name"] = "功能名称",
         ["PromptEdit_NamePlaceholder"] = "例如：润色、改写、续写…",
+        ["PromptEdit_NameZh"] = "中文名",
+        ["PromptEdit_NameEn"] = "英文名",
+        ["PromptEdit_NameZhPlaceholder"] = "例如：润色、改写、续写…",
+        ["PromptEdit_NameEnPlaceholder"] = "e.g. Polish, Rewrite, Continue…",
+        ["PromptEdit_NameHintNew"] = "至少填写一个名字。界面切换到对应语言时显示对应名字。",
+        ["PromptEdit_NameHintEdit"] = "另一种语言留空时会回退到已填的名字。",
         ["PromptEdit_AllowThinking"] = "允许模型思考（思考模式会增加延迟；适合解释/总结，翻译一般关闭）",
         ["PromptEdit_ShortcutLabel"] = "工具栏快捷键：",
         ["PromptEdit_ShortcutHint"] = "（划词弹出工具栏后按此键即触发该动作；留空则不绑定）",

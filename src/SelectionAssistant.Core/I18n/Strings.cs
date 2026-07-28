@@ -119,6 +119,17 @@ public static partial class Strings
     public static string Result_LangChinese => Get(nameof(Result_LangChinese));
     public static string Result_LangEnglish => Get(nameof(Result_LangEnglish));
 
+    // ResultWindow — action-aware wording. {0} = action display name
+    // (翻译/解释/总结/自定义). Used when TranslationRequest.ActionDisplayName
+    // is set; the legacy Result_* keys above remain the fallback for the
+    // ad-hoc "Prompt Now" path which has no action name.
+    public static string Result_WindowTitleForAction => Get(nameof(Result_WindowTitleForAction));
+    public static string Result_TitleForAction => Get(nameof(Result_TitleForAction));
+    public static string Result_LoadingForAction => Get(nameof(Result_LoadingForAction));
+    public static string Result_EmptyResultForAction => Get(nameof(Result_EmptyResultForAction));
+    public static string Result_CopyResultForAction => Get(nameof(Result_CopyResultForAction));
+    public static string Result_CopiedResultForAction => Get(nameof(Result_CopiedResultForAction));
+
     // SpotlightWindow
     public static string Spotlight_Title => Get(nameof(Spotlight_Title));
     public static string Spotlight_WindowTitle => Get(nameof(Spotlight_WindowTitle));
@@ -506,6 +517,15 @@ public static partial class Strings
     public static string PromptEdit_SubtitleEdit => Get(nameof(PromptEdit_SubtitleEdit));
     public static string PromptEdit_Name => Get(nameof(PromptEdit_Name));
     public static string PromptEdit_NamePlaceholder => Get(nameof(PromptEdit_NamePlaceholder));
+    // Custom-action bilingual name fields (Chinese + English). Both are shown
+    // when creating or editing a custom action so the name can follow the UI
+    // language. At least one must be filled.
+    public static string PromptEdit_NameZh => Get(nameof(PromptEdit_NameZh));
+    public static string PromptEdit_NameEn => Get(nameof(PromptEdit_NameEn));
+    public static string PromptEdit_NameZhPlaceholder => Get(nameof(PromptEdit_NameZhPlaceholder));
+    public static string PromptEdit_NameEnPlaceholder => Get(nameof(PromptEdit_NameEnPlaceholder));
+    public static string PromptEdit_NameHintNew => Get(nameof(PromptEdit_NameHintNew));
+    public static string PromptEdit_NameHintEdit => Get(nameof(PromptEdit_NameHintEdit));
     public static string PromptEdit_AllowThinking => Get(nameof(PromptEdit_AllowThinking));
     public static string PromptEdit_ShortcutLabel => Get(nameof(PromptEdit_ShortcutLabel));
     public static string PromptEdit_ShortcutHint => Get(nameof(PromptEdit_ShortcutHint));

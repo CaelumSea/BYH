@@ -14,6 +14,19 @@ public partial class ResultWindow : Window
     private string? _translatedText;
     private bool _allowClose;
 
+    // The display name of the action driving the current session
+    // (翻译/解释/总结/自定义名), captured from TranslationRequest on each
+    // ShowLoading. Null for the ad-hoc "Prompt Now" flow. When non-null, the
+    // window title, loading hint, empty-result text, and copy-button label
+    // all switch from the legacy "翻译" wording to action-aware wording. The
+    // OnCopyClick feedback message reads the same field so "已复制译文"
+    // becomes "已复制解释结果" etc.
+    //
+    // Retry path: TranslationSessionManager.RetryAsync reuses the original
+    // request (with ActionDisplayName), so a retry goes through ShowLoading
+    // again and re-captures the action name — no special-casing needed.
+    private string? _actionDisplayName;
+
     public ResultWindow()
     {
         InitializeComponent();
@@ -132,11 +145,26 @@ public partial class ResultWindow : Window
     {
         _translatedText = null;
         _streamingStarted = false;
+        _actionDisplayName = request.ActionDisplayName;
+        ApplyActionWording();
         SourceTextBox.Text = request.SourceText;
-        LanguagePairText.Text = FormatLanguage(request.SourceLanguage) +
-            " → " + FormatLanguage(request.TargetLanguage);
+        // The "Source → Target" language pair is only meaningful for the
+        // translate action (and the ad-hoc Prompt Now flow, which has no
+        // action name). For explain / summarize / custom actions, the
+        // direction is irrelevant — hide the badge so the header doesn't lie
+        // about what the model is doing.
+        if (request.ActionDisplayName is null)
+        {
+            LanguagePairText.IsVisible = true;
+            LanguagePairText.Text = FormatLanguage(request.SourceLanguage) +
+                " → " + FormatLanguage(request.TargetLanguage);
+        }
+        else
+        {
+            LanguagePairText.IsVisible = false;
+        }
         ProviderText.Text = providerName;
-        ResultTextBox.Text = Strings.Result_Loading;
+        ResultTextBox.Text = ActionLoadingText();
         LoadingBar.IsVisible = true;
         ErrorText.IsVisible = false;
         CopyButton.IsEnabled = false;
@@ -145,6 +173,38 @@ public partial class ResultWindow : Window
         RetryButton.IsEnabled = false;
         ShowAndActivate();
     }
+
+    /// <summary>
+    /// Switches the window title, content heading, and copy-button label to
+    /// action-aware wording when <see cref="_actionDisplayName"/> is set, or
+    /// restores the legacy "翻译" defaults when it is null. Called on every
+    /// ShowLoading so a retry / new session never shows stale wording from a
+    /// previous action.
+    /// </summary>
+    private void ApplyActionWording()
+    {
+        string? name = _actionDisplayName;
+        if (string.IsNullOrEmpty(name))
+        {
+            Title = Strings.Result_WindowTitle;
+            TitleText.Text = Strings.Result_Title;
+            CopyButton.Content = Strings.Result_CopyTranslation;
+            return;
+        }
+        Title = string.Format(Strings.Result_WindowTitleForAction, name);
+        TitleText.Text = string.Format(Strings.Result_TitleForAction, name);
+        CopyButton.Content = string.Format(Strings.Result_CopyResultForAction, name);
+    }
+
+    private string ActionLoadingText() =>
+        string.IsNullOrEmpty(_actionDisplayName)
+            ? Strings.Result_Loading
+            : string.Format(Strings.Result_LoadingForAction, _actionDisplayName);
+
+    private string ActionEmptyResultText() =>
+        string.IsNullOrEmpty(_actionDisplayName)
+            ? Strings.Result_EmptyResult
+            : string.Format(Strings.Result_EmptyResultForAction, _actionDisplayName);
 
     public void ShowResult(TranslationResult result)
     {
@@ -183,7 +243,7 @@ public partial class ResultWindow : Window
     public void ShowError(string userMessage)
     {
         _translatedText = null;
-        ResultTextBox.Text = Strings.Result_EmptyResult;
+        ResultTextBox.Text = ActionEmptyResultText();
         LoadingBar.IsVisible = false;
         ErrorText.Text = userMessage;
         SetFeedbackTone(ErrorText, isError: true);
@@ -212,7 +272,9 @@ public partial class ResultWindow : Window
         }
 
         await clipboard.SetTextAsync(text);
-        ErrorText.Text = Strings.Result_CopiedTranslation;
+        ErrorText.Text = string.IsNullOrEmpty(_actionDisplayName)
+            ? Strings.Result_CopiedTranslation
+            : string.Format(Strings.Result_CopiedResultForAction, _actionDisplayName);
         SetFeedbackTone(ErrorText, isError: false);
         ErrorText.IsVisible = true;
     }

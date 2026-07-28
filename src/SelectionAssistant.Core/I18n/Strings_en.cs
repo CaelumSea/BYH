@@ -52,6 +52,15 @@ internal static partial class Strings_en
         ["Result_LangChinese"] = "Simplified Chinese",
         ["Result_LangEnglish"] = "English",
 
+        // ResultWindow — action-aware wording ({0} = action display name).
+        // Used when TranslationRequest.ActionDisplayName is set.
+        ["Result_WindowTitleForAction"] = "BYH · {0}",
+        ["Result_TitleForAction"] = "{0}",
+        ["Result_LoadingForAction"] = "{0}…",
+        ["Result_EmptyResultForAction"] = "No {0} result to show",
+        ["Result_CopyResultForAction"] = "Copy {0}",
+        ["Result_CopiedResultForAction"] = "{0} result copied",
+
         // SpotlightWindow
         ["Spotlight_Title"] = "BYH · Launcher",
         ["Spotlight_WindowTitle"] = "BYH · Launcher",
@@ -431,6 +440,12 @@ internal static partial class Strings_en
         ["PromptEdit_SubtitleEdit"] = "Changes apply to all providers immediately.",
         ["PromptEdit_Name"] = "Action name",
         ["PromptEdit_NamePlaceholder"] = "e.g. Polish, Rewrite, Continue…",
+        ["PromptEdit_NameZh"] = "Chinese name",
+        ["PromptEdit_NameEn"] = "English name",
+        ["PromptEdit_NameZhPlaceholder"] = "e.g. 润色、改写、续写…",
+        ["PromptEdit_NameEnPlaceholder"] = "e.g. Polish, Rewrite, Continue…",
+        ["PromptEdit_NameHintNew"] = "At least one name is required. The matching one is shown when the UI is in that language.",
+        ["PromptEdit_NameHintEdit"] = "Leave the other language blank to fall back to this one.",
         ["PromptEdit_AllowThinking"] = "Allow model thinking (thinking mode adds latency; good for Explain/Summarize, usually off for Translate)",
         ["PromptEdit_ShortcutLabel"] = "Toolbar shortcut: ",
         ["PromptEdit_ShortcutHint"] = "(Press this key after the selection toolbar appears to trigger this action; blank = unbound)",

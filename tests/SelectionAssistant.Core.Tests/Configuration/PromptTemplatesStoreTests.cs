@@ -194,7 +194,11 @@ public sealed class PromptTemplatesStoreTests
 
             PromptTemplate? custom = loaded.Find("custom-polish");
             Assert.NotNull(custom);
-            Assert.Equal("润色", custom!.Name);
+            // Single-string construction (implicit conversion) sets Zh = En;
+            // the store persists only `name` (Zh) when En == Zh (no nameEn
+            // field written), so on reload En is empty. Current() falls back
+            // to Zh, so display still works — assert on Zh here.
+            Assert.Equal("润色", custom!.Name.Zh);
             Assert.Equal("润色以下文字，使其更流畅自然", custom.Prompt);
             Assert.True(custom.ThinkingEnabled);
             // Built-ins are still present.
@@ -261,7 +265,9 @@ public sealed class PromptTemplatesStoreTests
             // 3 built-in + 2 custom = 5 total.
             Assert.Equal(5, loaded.AsList().Count);
             Assert.Equal("改过的总结", loaded.Summarize.Prompt);
-            Assert.Equal("改写", loaded.Find("custom-rewrite")!.Name);
+            // Legacy v1 JSON has only `name` (no nameEn) → En loads empty,
+            // Zh holds the value. Assert on Zh.
+            Assert.Equal("改写", loaded.Find("custom-rewrite")!.Name.Zh);
             Assert.True(loaded.Find("custom-polish")!.ThinkingEnabled);
         }
         finally
@@ -281,5 +287,87 @@ public sealed class PromptTemplatesStoreTests
         Assert.True(PromptActionIds.IsCustom("custom-polish"));
         Assert.False(PromptActionIds.IsCustom(PromptActionIds.Translate));
         Assert.False(PromptActionIds.IsCustom("nonexistent"));
+    }
+
+    [Fact]
+    public void Add_CustomTemplate_BilingualName_RoundTripsNameEn()
+    {
+        // A custom action with distinct Chinese and English names should
+        // persist both: `name` (Zh) and `nameEn` (En). On reload both variants
+        // come back, so the result window / toolbar can show the right one per
+        // UI language.
+        string path = TempPath();
+        try
+        {
+            var original = new PromptTemplateSet();
+            Assert.True(original.Add(new PromptTemplate(
+                "custom-polish",
+                new LocalizedName("润色", "Polish"),
+                "润色以下文字",
+                ThinkingEnabled: false)));
+
+            PromptTemplatesStore.Save(original, path);
+            var loaded = PromptTemplatesStore.LoadIfExists(path);
+
+            PromptTemplate? custom = loaded.Find("custom-polish");
+            Assert.NotNull(custom);
+            Assert.Equal("润色", custom!.Name.Zh);
+            Assert.Equal("Polish", custom.Name.En);
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void Load_LegacyJsonWithoutNameEn_FallsBackToName()
+    {
+        // Legacy v1 JSON files (written before bilingual names existed) have
+        // only `name` and no `nameEn`. They must still load: En comes back
+        // empty, and LocalizedName.Current() falls back to Zh so the action is
+        // still displayed correctly under either UI language.
+        string path = TempPath();
+        try
+        {
+            File.WriteAllText(path, """
+            {
+              "schemaVersion": 1,
+              "templates": [
+                { "id": "custom-legacy", "name": "改写", "prompt": "改写" }
+              ]
+            }
+            """);
+
+            var loaded = PromptTemplatesStore.LoadIfExists(path);
+            PromptTemplate? custom = loaded.Find("custom-legacy");
+            Assert.NotNull(custom);
+            Assert.Equal("改写", custom!.Name.Zh);
+            Assert.Equal(string.Empty, custom.Name.En);
+            // Current() must fall back from empty En to Zh under both languages.
+            Assert.Equal("改写", custom.Name.Current());
+        }
+        finally
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void TryRename_CustomAction_UpdatesName()
+    {
+        // Renaming a custom action replaces both variants atomically.
+        // Built-in actions cannot be renamed (name comes from i18n).
+        var set = new PromptTemplateSet();
+        Assert.True(set.Add(new PromptTemplate("custom-1", "旧名", "prompt")));
+
+        Assert.True(set.TryRename("custom-1", new LocalizedName("新名", "NewName")));
+        Assert.Equal("新名", set.Find("custom-1")!.Name.Zh);
+        Assert.Equal("NewName", set.Find("custom-1")!.Name.En);
+
+        // Built-in id rejected.
+        Assert.False(set.TryRename(PromptActionIds.Translate, new LocalizedName("x", "y")));
+        // Unknown id rejected.
+        Assert.False(set.TryRename("custom-nonexistent", new LocalizedName("a", "b")));
     }
 }

@@ -160,7 +160,20 @@ public static class PromptTemplatesStore
 
         writer.WriteStartObject();
         writer.WriteString("id", current.Id);
-        writer.WriteString("name", current.Name);
+        // name: the Chinese / primary variant. Persisted for every entry so
+        // legacy BYH builds (which only know the single-string `name` field)
+        // can still read files written by this build.
+        writer.WriteString("name", current.Name.Zh);
+        // nameEn: the English variant. Written only for custom actions whose
+        // English name differs from the Chinese name — built-in actions don't
+        // need it (their English display name comes from i18n), and writing
+        // nameEn == name would just bloat the file. Absent on load → empty →
+        // LocalizedName.Current falls back to the Chinese name.
+        if (!isBuiltIn && !string.IsNullOrEmpty(current.Name.En) &&
+            !string.Equals(current.Name.En, current.Name.Zh, StringComparison.Ordinal))
+        {
+            writer.WriteString("nameEn", current.Name.En);
+        }
         writer.WriteString("prompt", current.Prompt);
         // Persist thinkingEnabled only when non-default (true), so legacy
         // files without the key load as false and the file stays minimal.
@@ -191,9 +204,21 @@ public static class PromptTemplatesStore
         }
         string id = idElement.GetString() ?? string.Empty;
 
-        string name = element.TryGetProperty("name", out JsonElement nameElement) &&
+        // name (Chinese / primary) — required, falls back to id when absent.
+        string nameZh = element.TryGetProperty("name", out JsonElement nameElement) &&
             nameElement.ValueKind == JsonValueKind.String
                 ? (nameElement.GetString() ?? id) : id;
+
+        // nameEn (English) — optional, added in schema v1 alongside nameZh.
+        // Absent in legacy files → empty string, which LocalizedName.Current
+        // falls back from (returns nameZh). Present but equal to name → treated
+        // as "user hasn't set a distinct English name yet" (we don't persist
+        // nameEn on save when En == Zh, see WriteEntry).
+        string nameEn = element.TryGetProperty("nameEn", out JsonElement nameEnElement) &&
+            nameEnElement.ValueKind == JsonValueKind.String
+                ? (nameEnElement.GetString() ?? string.Empty) : string.Empty;
+
+        LocalizedName name = new(nameZh, nameEn);
 
         string prompt = element.TryGetProperty("prompt", out JsonElement promptElement) &&
             promptElement.ValueKind == JsonValueKind.String

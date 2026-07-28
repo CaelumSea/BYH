@@ -26,13 +26,29 @@
                    TextWrapping="Wrap" />
       </StackPanel>
 
-      <StackPanel Grid.Row="1" x:Name="NamePanel" Spacing="4" IsVisible="False">
-        <TextBlock Text="{x:Static i18n:Strings.PromptEdit_Name}"
-                   Classes="Muted"
-                   FontSize="{DynamicResource ByhFontSizeBody}" />
-        <TextBox x:Name="NameInput"
-                 PlaceholderText="{x:Static i18n:Strings.PromptEdit_NamePlaceholder}"
-                 FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
+      <StackPanel Grid.Row="1" x:Name="NamePanel" Spacing="6" IsVisible="False">
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+          <StackPanel Grid.Column="0" Spacing="4">
+            <TextBlock Text="{x:Static i18n:Strings.PromptEdit_NameZh}"
+                       Classes="Muted"
+                       FontSize="{DynamicResource ByhFontSizeBody}" />
+            <TextBox x:Name="NameZhInput"
+                     PlaceholderText="{x:Static i18n:Strings.PromptEdit_NameZhPlaceholder}"
+                     FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Spacing="4">
+            <TextBlock Text="{x:Static i18n:Strings.PromptEdit_NameEn}"
+                       Classes="Muted"
+                       FontSize="{DynamicResource ByhFontSizeBody}" />
+            <TextBox x:Name="NameEnInput"
+                     PlaceholderText="{x:Static i18n:Strings.PromptEdit_NameEnPlaceholder}"
+                     FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
+          </StackPanel>
+        </Grid>
+        <TextBlock x:Name="NameHintText"
+                   Classes="Secondary"
+                   FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                   TextWrapping="Wrap" />
       </StackPanel>
 
       <TextBlock Grid.Row="2"

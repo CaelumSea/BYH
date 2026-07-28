@@ -67,7 +67,7 @@ public partial class ToolbarWindow : Window
             _actionRows.Add(new PromptFunctionRow
             {
                 Id = actionId,
-                Name = t.Name,
+                Name = t.Name.Current(actionId),
                 RunCommand = new RelayCommand(() => RunAction(actionId)),
             });
         }
