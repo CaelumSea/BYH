@@ -405,13 +405,17 @@
        Reference-matched: a bright top highlight + a soft, diffuse cast
        shadow sells the convex form without a heavy border.
        R57: stronger, wider shadow so the input tiles actually read as
-       raised against the SurfacePanel. -->
+       raised against the SurfacePanel.
+       Dashboard-style refresh: cream-sheen gradient fill + champagne-gold
+       1px edge + warm double-layer float, matching DashboardMetricCard so
+       every settings page reads as the same material family as the
+       Dashboard page (no more "white tile on ivory" mismatch). -->
   <Style Selector="Border.InnerCard">
-    <Setter Property="Background" Value="#FCFFFFFF" />
-    <Setter Property="BorderBrush" Value="#30E8C89A" />
+    <Setter Property="Background" Value="{DynamicResource ByhCreamSheenBrush}" />
+    <Setter Property="BorderBrush" Value="#58E8C89A" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #E6FFFEFA, 0 3 10 0 #104A2B19, 0 10 26 0 #144A2B19" />
+    <Setter Property="BoxShadow" Value="inset 0 1 0 0 #EFFFFFFF, inset 0 0 0 1 #80FFFDF8, 0 3 9 0 #0C6B4B2A, 0 12 28 0 #0E6B4B2A" />
   </Style>
   <!-- R54 clipboard-history left nav tower. A compact raised tile that hosts
        the vertical tab rail (built-in tabs + custom tags + footer gear). Uses
@@ -924,20 +928,193 @@
     <Setter Property="BoxShadow" Value="inset 0 0 0 2 #FFFCF7EA, inset 0 0 0 3 #FFF4E7C8" />
   </Style>
 
-  <!-- Inputs -->
+  <!-- Inputs. TextBox default is borderless + transparent: in the settings
+       pages every TextBox lives inside a Border.InnerCard that already
+       owns the frame, so the TextBox's own Fluent border was producing a
+       distracting double-frame (especially on the tall multi-line fields
+       like SystemPrompt / VisionPrompt / ExcludedApps). Making the default
+       borderless lets the InnerCard be the single visible frame.
+
+       Focus is signalled by an inset accent ring (BoxShadow) rather than a
+       2px outer border, so keyboard users still get a clear focus
+       indicator without reintroducing the second frame. The caret +
+       selection brushes are unchanged.
+
+       TextBoxes that are NOT inside an InnerCard (launcher/profile/prompt
+       edit dialogs, parameter input, installed-apps search) opt back into
+       the classic bordered look via Classes="Bordered" — see below. -->
   <Style Selector="TextBox">
-    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderBrush}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
     <Setter Property="PlaceholderForeground" Value="{DynamicResource ByhTextPlaceholderBrush}" />
     <Setter Property="CaretBrush" Value="{DynamicResource ByhPrimaryBrush}" />
     <Setter Property="SelectionBrush" Value="{DynamicResource ByhPrimarySoftBrush}" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="TextBox:focus">
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <!-- TextBox has no BoxShadow property, so focus is signalled by a soft
+         background tint instead of a border/inset ring. The tint is barely
+         visible against the InnerCard but enough that keyboard users can
+         tell which field is active. The caret itself is the primary cue. -->
+    <Setter Property="Background" Value="#14FFFDF8" />
+  </Style>
+  <Style Selector="TextBox:not(:focus)">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <!-- Classic bordered TextBox — for inputs that are NOT wrapped in an
+       InnerCard and therefore need their own visible frame (launcher /
+       profile / prompt-edit dialogs, parameter input, installed-apps
+       search). Restores the original Surface fill + Border edge + small
+       radius + the 2px primary focus border. -->
+  <Style Selector="TextBox.Bordered">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderBrush}" />
     <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
     <Setter Property="BorderThickness" Value="1" />
   </Style>
-  <Style Selector="TextBox:focus">
+  <Style Selector="TextBox.Bordered:focus">
     <Setter Property="BorderBrush" Value="{DynamicResource ByhPrimaryBrush}" />
     <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+  </Style>
+
+  <!-- ── FluentTheme resource-key overrides ────────────────────────────
+       The Fluent control templates paint their OWN inner frame via
+       resource keys (TextControlBorderBrush, ComboBoxBackground, the
+       dropdown chrome, RepeatButton spin arrows, ...), separate from
+       the outer BorderBrush/Background setters above. Setting only the
+       outer properties leaves a residual Fluent-gray inner frame — that
+       is the "second layer" the user saw around ComboBox/NumericUpDown
+       and the gray dropdown drawer.
+
+       These Style.Resources blocks shadow every relevant key per control
+       so the InnerCard is the single visible inline frame, and the
+       ComboBox dropdown reads in the Ivory Jade palette:
+         · dropdown panel  = ivory cream (#FFFDF8)
+         · dropdown border = champagne gold (#58E8C89A)
+         · item hover      = pale ivory (#F6F1E6)
+         · item selected   = olive soft (#DDE8B9)
+         · item text       = brand text primary (#4A301E)
+         · chevron/arrows  = brand primary olive (#667731)
+       Defined BEFORE TextBox.SpotlightSearch so that style's own
+       (identical) resource overrides still win by document order for
+       the Spotlight box specifically. -->
+  <Style Selector="TextBox">
+    <Style.Resources>
+      <!-- Inline box chrome — fully transparent so InnerCard is the frame. -->
+      <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrushDisabled" Color="Transparent" />
+      <!-- Foreground stays brand-colored across all states. -->
+      <SolidColorBrush x:Key="TextControlForeground" Color="{StaticResource ByhColorTextPrimary}" />
+      <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="{StaticResource ByhColorTextPrimary}" />
+      <SolidColorBrush x:Key="TextControlForegroundFocused" Color="{StaticResource ByhColorTextPrimary}" />
+      <SolidColorBrush x:Key="TextControlForegroundDisabled" Color="{StaticResource ByhColorDisabled}" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="{StaticResource ByhColorTextPlaceholder}" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="{StaticResource ByhColorTextPlaceholder}" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="{StaticResource ByhColorTextPlaceholder}" />
+      <SolidColorBrush x:Key="TextControlPlaceholderForegroundDisabled" Color="{StaticResource ByhColorDisabled}" />
+      <!-- Inline clear/reveal buttons — transparent fill, olive glyph. -->
+      <SolidColorBrush x:Key="TextControlButtonBackground" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlButtonBackgroundPointerOver" Color="{StaticResource ByhColorSurfaceSecondary}" />
+      <SolidColorBrush x:Key="TextControlButtonBackgroundPressed" Color="{StaticResource ByhColorSurfaceSelected}" />
+      <SolidColorBrush x:Key="TextControlButtonBorderBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlButtonBorderBrushPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlButtonBorderBrushPressed" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlButtonForeground" Color="{StaticResource ByhColorPrimary}" />
+      <SolidColorBrush x:Key="TextControlButtonForegroundPointerOver" Color="{StaticResource ByhColorPrimaryHover}" />
+      <SolidColorBrush x:Key="TextControlButtonForegroundPressed" Color="{StaticResource ByhColorPrimaryHover}" />
+      <!-- Selection highlight inside the text field. -->
+      <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="{StaticResource ByhColorPrimarySoft}" />
+    </Style.Resources>
+  </Style>
+
+  <Style Selector="ComboBox">
+    <Style.Resources>
+      <!-- Inline selector box — transparent so InnerCard is the frame. -->
+      <SolidColorBrush x:Key="ComboBoxBackground" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="{StaticResource ByhColorSurfaceSecondary}" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="{StaticResource ByhColorSurfaceSelected}" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundDisabled" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundUnfocused" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="{StaticResource ByhColorPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrushDisabled" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushFocused" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundBorderBrushUnfocused" Color="Transparent" />
+      <!-- Selector text + placeholder in brand colors. -->
+      <SolidColorBrush x:Key="ComboBoxForeground" Color="{StaticResource ByhColorTextPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxForegroundFocused" Color="{StaticResource ByhColorTextPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxForegroundFocusedPressed" Color="{StaticResource ByhColorTextPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxForegroundDisabled" Color="{StaticResource ByhColorDisabled}" />
+      <SolidColorBrush x:Key="ComboBoxPlaceHolderForeground" Color="{StaticResource ByhColorTextPlaceholder}" />
+      <SolidColorBrush x:Key="ComboBoxPlaceHolderForegroundFocusedPressed" Color="{StaticResource ByhColorTextPlaceholder}" />
+      <!-- Chevron glyph — brand olive. -->
+      <SolidColorBrush x:Key="ComboBoxDropDownGlyphForeground" Color="{StaticResource ByhColorPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundFocused" Color="{StaticResource ByhColorPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundFocusedPressed" Color="{StaticResource ByhColorPrimaryHover}" />
+      <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundDisabled" Color="{StaticResource ByhColorDisabled}" />
+      <!-- DROPDOWN DRAWER — the "gray" popup, now Ivory Jade. -->
+      <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{StaticResource ByhColorSurface}" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#58E8C89A" />
+      <!-- Dropdown items — ivory hover / olive-soft selected, brand text. -->
+      <SolidColorBrush x:Key="ComboBoxItemBackground" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxItemBackgroundPointerOver" Color="{StaticResource ByhColorSurfaceSecondary}" />
+      <SolidColorBrush x:Key="ComboBoxItemBackgroundPressed" Color="{StaticResource ByhColorSurfaceSelected}" />
+      <SolidColorBrush x:Key="ComboBoxItemBackgroundDisabled" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelected" Color="{StaticResource ByhColorGold}" />
+      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPointerOver" Color="#FFE0B478" />
+      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedPressed" Color="#FFC99A55" />
+      <SolidColorBrush x:Key="ComboBoxItemBackgroundSelectedDisabled" Color="{StaticResource ByhColorGold}" />
+      <SolidColorBrush x:Key="ComboBoxItemBorderBrushPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxItemBorderBrushPressed" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxItemBorderBrushDisabled" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxItemBorderBrushSelected" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxItemBorderBrushSelectedPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxItemBorderBrushSelectedPressed" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxItemBorderBrushSelectedDisabled" Color="Transparent" />
+      <SolidColorBrush x:Key="ComboBoxItemForeground" Color="{StaticResource ByhColorTextPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxItemForegroundPointerOver" Color="{StaticResource ByhColorTextPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxItemForegroundPressed" Color="{StaticResource ByhColorTextPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxItemForegroundDisabled" Color="{StaticResource ByhColorDisabled}" />
+      <SolidColorBrush x:Key="ComboBoxItemForegroundSelected" Color="{StaticResource ByhColorTextOnPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedPointerOver" Color="{StaticResource ByhColorTextOnPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedPressed" Color="{StaticResource ByhColorTextOnPrimary}" />
+      <SolidColorBrush x:Key="ComboBoxItemForegroundSelectedDisabled" Color="{StaticResource ByhColorTextOnPrimary}" />
+      <!-- Editable ComboBox embeds a TextBox; mirror its transparent chrome. -->
+      <SolidColorBrush x:Key="TextControlBackground" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrush" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="Transparent" />
+      <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="Transparent" />
+    </Style.Resources>
+  </Style>
+
+  <!-- NumericUpDown spinner — scoped to the control's template so global
+       RepeatButton styles (ScrollBar arrows etc.) are untouched. Spin
+       column transparent, arrows brand olive, hover pale ivory. -->
+  <Style Selector="NumericUpDown /template/ RepeatButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhPrimaryBrush}" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ RepeatButton:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource ByhPrimaryHoverBrush}" />
+  </Style>
+  <Style Selector="NumericUpDown /template/ RepeatButton:pressed">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSelectedBrush}" />
   </Style>
 
   <!-- R43 Spotlight search box: the TextBox is fully borderless and
@@ -978,21 +1155,43 @@
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Background" Value="Transparent" />
   </Style>
+  <!-- ComboBox + NumericUpDown: same borderless/transparent treatment as
+       TextBox. All instances in the app live inside a Border.InnerCard,
+       so the InnerCard is the single visible frame; the control's own
+       Fluent border was producing a distracting double-frame (Language
+       picker, Provider/Model selectors, Timeout, Shortcut keys, ...).
+       BorderThickness left at 1 + transparent brush so the focus state
+       below can still swap in an accent edge without a layout shift.
+       The dropdown popup itself keeps its own chrome (that's separate
+       from the inline selector frame). -->
   <Style Selector="ComboBox">
-    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderBrush}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
     <Setter Property="PlaceholderForeground" Value="{DynamicResource ByhTextPlaceholderBrush}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
+    <Setter Property="CornerRadius" Value="0" />
   </Style>
+  <!-- ComboBox:focus / NumericUpDown:focus: NO residual border after the
+       dropdown closes or the value changes. The InnerCard is the only
+       visible frame; a focus border here would paint a 1px olive-green
+       ring around the inline selector the moment focus returns to it
+       (after picking an item / editing the number). Keep it transparent
+       so the box never shows a stray second frame. -->
   <Style Selector="ComboBox:focus">
-    <Setter Property="BorderBrush" Value="{DynamicResource ByhPrimaryBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
   </Style>
   <Style Selector="NumericUpDown">
-    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderBrush}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Foreground" Value="{DynamicResource ByhTextPrimaryBrush}" />
-    <Setter Property="CornerRadius" Value="{DynamicResource ByhRadiusSmall}" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+  <Style Selector="NumericUpDown:focus">
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
   </Style>
   <Style Selector="CheckBox">
     <Setter Property="Foreground" Value="{DynamicResource ByhTextSecondaryBrush}" />

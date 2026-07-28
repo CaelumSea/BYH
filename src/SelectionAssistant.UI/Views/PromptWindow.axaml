@@ -27,6 +27,7 @@
 
       <TextBox Grid.Row="1"
                x:Name="PromptInput"
+               Classes="Bordered"
                PlaceholderText="{x:Static i18n:Strings.Prompt_Placeholder}"
                AcceptsReturn="True"
                TextWrapping="Wrap"

@@ -33,6 +33,7 @@
                        Classes="Muted"
                        FontSize="{DynamicResource ByhFontSizeBody}" />
             <TextBox x:Name="NameZhInput"
+                     Classes="Bordered"
                      PlaceholderText="{x:Static i18n:Strings.PromptEdit_NameZhPlaceholder}"
                      FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
           </StackPanel>
@@ -41,6 +42,7 @@
                        Classes="Muted"
                        FontSize="{DynamicResource ByhFontSizeBody}" />
             <TextBox x:Name="NameEnInput"
+                     Classes="Bordered"
                      PlaceholderText="{x:Static i18n:Strings.PromptEdit_NameEnPlaceholder}"
                      FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
           </StackPanel>
@@ -59,6 +61,7 @@
 
       <TextBox Grid.Row="3"
                x:Name="PromptInput"
+               Classes="Bordered"
                AcceptsReturn="True"
                TextWrapping="Wrap"
                FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
@@ -77,6 +80,7 @@
                    FontSize="{DynamicResource ByhFontSizeBody}"
                    VerticalAlignment="Center" />
         <TextBox x:Name="ShortcutInput"
+                 Classes="Bordered"
                  MaxLength="1"
                  Width="40"
                  FontSize="{DynamicResource ByhFontSizeBodyLarge}"

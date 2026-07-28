@@ -34,9 +34,12 @@
       </StackPanel>
 
       <!-- Search box — bare TextBox (its own border is the single frame;
-           an InnerCard wrapper here would double up into a two-layer look). -->
+           an InnerCard wrapper here would double up into a two-layer look).
+           .Bordered restores the classic TextBox frame since this input is
+           not wrapped in an InnerCard. -->
       <TextBox Grid.Row="1"
                x:Name="SearchInput"
+               Classes="Bordered"
                PlaceholderText="{x:Static i18n:Strings.ScanDialog_SearchPlaceholder}"
                FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                TextChanged="OnSearchTextChanged" />

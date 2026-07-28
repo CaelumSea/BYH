@@ -35,6 +35,12 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 4. **P/Invoke 迁移进行中**（66/112 完成）。新增 P/Invoke 用 `[LibraryImport]` + 显式 `EntryPoint="...W"`。陷阱见 `docs/AUDIT-findings.md` M4：`StringMarshalling.Utf16` ≠ `CharSet.Unicode`、bool 参数要 `[MarshalAs(Bool)]`、out 句柄要显式 release。
 5. **单实例 mutex**。`Global\BYH_ByYourHand_SingleInstance`。**替换 exe 前先 `taskkill /F /IM BYH.exe`**——运行中的进程锁文件，部署/发布前必做。
 6. **品牌名约定**。`AssemblyName=BYH`（exe 名、进程名、mutex、配置目录、托盘 tooltip 统一），但 namespace 仍是 `SelectionAssistant.*`（技术标识符不改）。`avares://` URI 用 `avares://BYH/*`（App 项目）和 `avares://SelectionAssistant.UI/*`（UI 项目），两者并存。
+7. **样式约定：InnerCard 即唯一框 + Fluent 资源键双层陷阱**。设置页所有输入控件（TextBox / ComboBox / NumericUpDown）都包在 `Border.InnerCard` 里，**InnerCard 是唯一可见的框**——控件自己的 Fluent 边框必须透明，否则会"套两层"（白瓷砖 + 金边，很丑）。具体：
+   - **TextBox**：`IvoryJade.axaml` 里 `Style Selector="TextBox"` 默认 `Background=Transparent` + `BorderBrush=Transparent` + `BorderThickness=0`；focus 用极淡背景 tint（TextBox **没有** `BoxShadow` 属性，别试 inset ring）。不在 InnerCard 里的 TextBox（11 个对话框/搜索框）加 `Classes="Bordered"` 恢复传统边框。
+   - **Fluent 模板内部资源键必须一并覆盖**：光改外层 `BorderBrush`/`Background` 属性**不够**——Fluent 控件模板内部用 `TextControlBorderBrush`/`ComboBoxBackground`/`ComboBoxDropDownBackground` 等资源键画自己的框。必须在 `Style Selector="控件"` 里用 `<Style.Resources>` 把这些键全部 shadow 掉（TextBox 完整 28 键、ComboBox ~50 键含下拉抽屉 chrome）。参照现有 `TextBox`/`ComboBox` 的 `Style.Resources` 块（IvoryJade.axaml，在 SpotlightSearch 样式之前）。
+   - **下拉抽屉配色**：`ComboBoxDropDownBackground` = ivory cream（`ByhColorSurface`），`ComboBoxDropDownBorderBrush` = 香槟金 `#58E8C89A`；项目 hover 淡象牙、**selected 用金色 `ByhColorGold` (`#D5A86A`) + 白字**（不是橄榄绿）；chevron 橄榄 `ByhColorPrimary`。
+   - **focus 残留框陷阱（自己挖的坑）**：选完下拉项后焦点回到 ComboBox，如果 `ComboBox:focus` 样式设了 `BorderBrush=ByhPrimaryBrush`，会画出 1px 橄榄绿残留框。`ComboBox:focus` 和 `NumericUpDown:focus` 的 BorderBrush **必须 Transparent**——任何 focus 指示都不该在 inline selector 上画第二层框。NumericUpDown 的 spinner 箭头用 scoped `NumericUpDown /template/ RepeatButton` 选择器（**不要**全局改 `RepeatButton*`，会污染 ScrollBar）。
+   - **设置页结构**：每个 section 包一层 `Border Classes="DashboardPanel"`（奶白渐变 + 香槟金细边 + 暖调柔光，与 Dashboard 页同款），section 间靠 Spacing 间隔、**不用 hairline 分隔线**。子卡片用 `Classes="InnerCard"`。`EditFormBorder`/`PromptTemplatesCard` 这两个 x:Name 在 Border 上（code-behind 调 `BringIntoView()`，`Control` 基类方法，StackPanel→Border 类型变更安全）。
 
 ## 当前状态与下一步
 

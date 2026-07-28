@@ -24,6 +24,7 @@
                  TextWrapping="Wrap" />
 
       <TextBox x:Name="ValueInput"
+               Classes="Bordered"
                FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                KeyDown="OnValueInputKeyDown" />
 
