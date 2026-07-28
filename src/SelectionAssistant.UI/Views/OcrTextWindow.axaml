@@ -1,0 +1,55 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:i18n="clr-namespace:SelectionAssistant.Core.I18n;assembly=SelectionAssistant.Core"
+        x:Class="SelectionAssistant.UI.Views.OcrTextWindow"
+        Title="{x:Static i18n:Strings.Ocr_WindowTitle}"
+        Width="560"
+        Height="380"
+        MinWidth="420"
+        MinHeight="260"
+        WindowStartupLocation="CenterScreen"
+        KeyDown="OnWindowKeyDown">
+  <Border Padding="20" Classes="Card">
+    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
+      <StackPanel Grid.Row="0" Spacing="4">
+        <TextBlock Text="{x:Static i18n:Strings.Ocr_Title}"
+                   Classes="DisplayTitle"
+                   FontSize="{DynamicResource ByhFontSizeHeading}" />
+        <TextBlock Text="{x:Static i18n:Strings.Ocr_Subtitle}"
+                   Classes="Muted"
+                   FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                   TextWrapping="Wrap" />
+      </StackPanel>
+
+      <Border Grid.Row="1"
+              Classes="Card"
+              BorderBrush="{DynamicResource ByhPrimarySoftBrush}"
+              BorderThickness="1"
+              Padding="4">
+        <TextBox x:Name="OcrTextBox"
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"
+                 Classes="Bordered"
+                 FontSize="{DynamicResource ByhFontSizeBodyLarge}"
+                 KeyDown="OnOcrTextBoxKeyDown" />
+      </Border>
+
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+        <TextBlock x:Name="FeedbackText"
+                   Grid.Column="0"
+                   Classes="Muted"
+                   FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                   VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" />
+        <Button Grid.Column="1"
+                Classes="Primary"
+                x:Name="CopyAndCloseButton"
+                Content="{x:Static i18n:Strings.Ocr_CopyAndClose}"
+                Click="OnCopyAndCloseClick" />
+        <Button Grid.Column="2"
+                Content="{x:Static i18n:Strings.Common_Close}"
+                Click="OnCloseClick" />
+      </Grid>
+    </Grid>
+  </Border>
+</Window>

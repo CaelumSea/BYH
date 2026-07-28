@@ -242,7 +242,7 @@ internal sealed class SelectionRuntime : IDisposable
 
         _toolbarWindow.TranslateRequested += OnTranslateRequested;
         _toolbarWindow.ActionRequested += (actionId, text) => RunActionAsync(actionId, text);
-        _resultWindow.RetryRequested += OnRetryRequested;
+        _resultWindow.RetryWithTextRequested += OnRetryWithTextRequested;
         _resultWindow.ReplaceRequested += OnReplaceRequested;
         _resultWindow.CloseRequested += OnResultCloseRequested;
 
@@ -346,6 +346,15 @@ internal sealed class SelectionRuntime : IDisposable
     /// thread — the handler must marshal to the UI thread. Args = screen coords.
     /// </summary>
     public event Action<int, int>? ChordTriggered;
+
+    /// <summary>
+    /// Raised when the user presses the Q toolbar shortcut to open the OCR text
+    /// extraction popup. Arg = the captured/recognized text to pre-fill the
+    /// editable box. App.axaml.cs subscribes and shows the OcrTextWindow.
+    /// Always raised on the UI thread (DispatchToolbarActionKey marshals via
+    /// Dispatcher.UIThread.Post before invoking).
+    /// </summary>
+    public event Action<string>? OcrTextPopupRequested;
 
     /// <summary>
     /// R42: callback set by App.axaml.cs to close the region-select overlay
@@ -1995,7 +2004,30 @@ internal sealed class SelectionRuntime : IDisposable
             return null;
         }
 
-        string? dataUri = ScreenRegionCapture.CaptureAsDataUri(x, y, width, height);
+        // Hide the toolbar (WS_EX_TOPMOST) before the BitBlt so it isn't
+        // captured into the screenshot and obscure the text the user wants
+        // OCR'd. The toolbar is shown again the moment the capture returns —
+        // OCR itself is a network round-trip (~1s), during which the toolbar
+        // SHOULD stay visible (the user is waiting on it). Only the capture
+        // frame needs a clear screen. Run on the UI thread because window
+        // visibility is UI-thread state.
+        bool toolbarWasVisible = _toolbarVisible;
+        if (toolbarWasVisible)
+        {
+            await Dispatcher.UIThread.InvokeAsync(() => _windowHost.Hide());
+        }
+        string? dataUri;
+        try
+        {
+            dataUri = ScreenRegionCapture.CaptureAsDataUri(x, y, width, height);
+        }
+        finally
+        {
+            if (toolbarWasVisible)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() => _windowHost.ShowAtCurrentPosition());
+            }
+        }
         if (string.IsNullOrEmpty(dataUri))
         {
             _logger.Info("RegionOcr", "Screen capture returned empty data URI.");
@@ -3093,6 +3125,37 @@ internal sealed class SelectionRuntime : IDisposable
     /// </summary>
     private bool DispatchToolbarActionKey(string key)
     {
+        // Q = OCR 文本提取弹窗（本地动作，不走 PromptTemplate / 翻译系统）。
+        // 特判在前：Q 不是 LLM 动作（不调 provider、不产 TranslationResult），
+        // 没有对应的 PromptTemplate，也不属于 R/C 内建工具栏快捷键。它需要的
+        // 只是已捕获的文本（Ocean Eyes lazy-OCR 闸门已保证 OCR 完成 / 选区流程
+        // 已有文本），然后弹一个可编辑的本地窗口。
+        if (KeysEqual(key, "Q"))
+        {
+            string? ocrText = _sessionManager.GetLastCapturedText();
+            if (string.IsNullOrEmpty(ocrText))
+            {
+                return false;  // nothing captured — pass through
+            }
+            Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    _windowHost.Hide();
+                    OcrTextPopupRequested?.Invoke(ocrText);
+                }
+                catch (Exception exception)
+                {
+                    _logger.Error("OceanEyes", "Failed to raise OcrTextPopupRequested.", exception);
+                }
+            });
+            // The popup takes over — stop the keyboard hook so typing inside the
+            // editable text box isn't filtered by the A-Z gate. Matches RunActionAsync.
+            StopKeyboardHookQuiet();
+            _logger.Info("Usage", "module=Actions feature=ocr-extract");
+            return true;
+        }
+
         PromptTemplate? template;
         try
         {
@@ -3205,6 +3268,12 @@ internal sealed class SelectionRuntime : IDisposable
                     if (isCopy)
                     {
                         _toolbarWindow.InvokeCopyShortcut();
+                        // C = copy then immediately close the toolbar. Mirrors the
+                        // F/J/Z actions (which hide the toolbar via RunActionAsync)
+                        // and the R/Prompt path (which hides via App's handler).
+                        // Without this the toolbar stayed open after copy — the user
+                        // asked for copy-and-close semantics on C.
+                        HideToolbarAndDisableHook();
                     }
                     else
                     {
@@ -3266,9 +3335,12 @@ internal sealed class SelectionRuntime : IDisposable
         TrackSessionTask(_translationManager.StartOrReplaceAsync(request));
     }
 
-    private void OnRetryRequested()
+    private void OnRetryWithTextRequested(string sourceText)
     {
-        TrackSessionTask(_translationManager.RetryAsync());
+        // User clicked "Re-run" with a (possibly edited) source. Re-create the
+        // request from the new text so a fix to a mis-recognized source actually
+        // feeds back into the model. Direction is recomputed by the manager.
+        TrackSessionTask(_translationManager.RetryWithTextAsync(sourceText));
     }
 
     /// <summary>
@@ -3573,7 +3645,7 @@ internal sealed class SelectionRuntime : IDisposable
         _mouseHook.MouseEvent -= OnMouseEvent;
         _keyboardHook.KeyPressed -= OnToolbarKeyPressed;
         _toolbarWindow.TranslateRequested -= OnTranslateRequested;
-        _resultWindow.RetryRequested -= OnRetryRequested;
+        _resultWindow.RetryWithTextRequested -= OnRetryWithTextRequested;
         _resultWindow.ReplaceRequested -= OnReplaceRequested;
         _resultWindow.CloseRequested -= OnResultCloseRequested;
         _mouseHook.Dispose();

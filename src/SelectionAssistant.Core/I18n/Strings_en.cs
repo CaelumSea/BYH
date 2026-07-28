@@ -600,5 +600,17 @@ internal static partial class Strings_en
 
         // SettingsWindow — misc
         ["Settings_VersionTag"] = "v0.1 · Windows NativeAOT",
+
+        // OcrTextWindow — OCR text extraction popup (Q shortcut)
+        ["Ocr_WindowTitle"] = "BYH · OCR Text",
+        ["Ocr_Title"] = "Extracted Text",
+        ["Ocr_Subtitle"] = "Edit if needed, then press C or click below to copy.",
+        ["Ocr_CopyAndClose"] = "Copy & Close",
+        ["Ocr_Copied"] = "Copied",
+        ["Ocr_ClipboardError"] = "Clipboard access failed",
+
+        // ResultWindow — editable source / C accelerator
+        ["Result_SourceEditable"] = "Source (editable)",
+        ["Result_RetryWithEdited"] = "Re-run",
     };
 }

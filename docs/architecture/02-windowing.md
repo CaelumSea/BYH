@@ -17,7 +17,8 @@
 | `UI/Views/QuickToolsWindow.axaml(.cs)` | 全局快捷键浮层面板（chord 可选）；动态功能按钮（ItemsControl）+ 自定义指令 + 复制/粘贴/管理功能 |
 | `UI/Views/PromptWindow.axaml(.cs)` | 任意指令输入；Topmost |
 | `UI/Views/PromptTemplateEditWindow.axaml(.cs)` | 自定义功能编辑/新建；Topmost |
-| `UI/Views/ResultWindow.axaml(.cs)` | 流式结果显示；重试/关闭 |
+| `UI/Views/ResultWindow.axaml(.cs)` | 流式结果显示；源文本可编辑 + Retry 带文本重跑 + C 加速器复制关闭 |
+| `UI/Views/OcrTextWindow.axaml(.cs)` | Q 快捷键 OCR 文本提取弹窗；可编辑 TextBox + C 加速器复制关闭（焦点门控）+ Esc 关闭 |
 | `UI/Views/SettingsWindow.axaml(.cs)` | 1000×720 设置主界面；固定侧栏分为常规/翻译服务/自定义功能/视觉识别，右侧独立滚动 + 固定底栏 |
 | `UI/Views/RegionSelectOverlay.axaml(.cs)` | 全屏画框 OCR；暖色遮罩 + 手动画框/调整/确认 |
 | `UI/Themes/IvoryJade.axaml` | 七窗口共享主题；详见 `08-theme-system.md` |
@@ -33,6 +34,7 @@
 | PromptWindow | Topmost | Show() | 手动关闭 |
 | PromptTemplateEditWindow | Topmost | Show(owner) | 手动关闭 |
 | ResultWindow | 否 | Show() | 手动关闭 |
+| OcrTextWindow | Topmost | Show() + Activate() + 全选文本 | 手动关闭（Esc/Close/C 复制关闭） |
 | SettingsWindow | 否 | Show() + Activate() | 隐藏（不关闭） |
 | RegionSelectOverlay | Topmost | 覆盖主屏幕 Show() | 确认/ESC 后隐藏 |
 

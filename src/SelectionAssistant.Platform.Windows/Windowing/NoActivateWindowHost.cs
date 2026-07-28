@@ -88,6 +88,22 @@ public sealed partial class NoActivateWindowHost : IWindowFocusController
         ShowWindow(_windowHandle, SwHide);
     }
 
+    /// <summary>
+    /// Re-shows the window at its current top-left position (no relocation),
+    /// using the same WS_EX_NOACTIVATE / SWP_NOACTIVATE semantics as
+    /// <see cref="ShowAtNoActivatePoint"/>. Used to restore a window that was
+    /// temporarily <see cref="Hide"/>den (e.g. hiding the toolbar so it isn't
+    /// captured into a screenshot, then showing it again at the same spot).
+    /// </summary>
+    public void ShowAtCurrentPosition()
+    {
+        if (!GetWindowRect(_windowHandle, out NativeRect rect))
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "GetWindowRect failed.");
+        }
+        ShowAtNoActivatePoint(rect.Left, rect.Top);
+    }
+
     private void ApplyNoActivateStyles()
     {
         nint style = GetWindowLongPtr(_windowHandle, GwlExStyle);

@@ -57,6 +57,45 @@ public sealed class TranslationSessionManagerTests
     }
 
     [Fact]
+    public async Task RetryWithTextAsync_RerunsWithEditedSourceAndRecomputesDirection()
+    {
+        var provider = new CapturingProvider();
+        var view = new RecordingView();
+        await using var manager = new TranslationSessionManager(provider, view, new InlineDispatcher());
+
+        // Seed a request with a system prompt + thinking flag so we can assert
+        // they survive the retry (only the source text + direction should change).
+        TranslationRequest original = TranslationLanguageSelector.CreateRequest("hello")
+            with { SystemPrompt = "custom-prompt", ThinkingEnabled = true, ActionDisplayName = "解释" };
+        await manager.StartOrReplaceAsync(original);
+        // Now retry with Chinese text — the direction must flip en→zh to zh→en,
+        // the source must be the new text, and the action identity preserved.
+        await manager.RetryWithTextAsync("你好");
+
+        // Two calls captured: the original "hello" seed + the "你好" retry.
+        // Assert against the last (the retry), not the whole list.
+        Assert.Equal(2, provider.CapturedRequests.Count);
+        TranslationRequest retried = provider.CapturedRequests[1];
+        Assert.Equal("你好", retried.SourceText);
+        Assert.Equal("zh-CN", retried.SourceLanguage);
+        Assert.Equal("en", retried.TargetLanguage);
+        Assert.Equal("custom-prompt", retried.SystemPrompt);
+        Assert.True(retried.ThinkingEnabled);
+        Assert.Equal("解释", retried.ActionDisplayName);
+    }
+
+    [Fact]
+    public async Task RetryWithTextAsync_ThrowsWhenNoPriorSession()
+    {
+        var provider = new CapturingProvider();
+        var view = new RecordingView();
+        await using var manager = new TranslationSessionManager(provider, view, new InlineDispatcher());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => manager.RetryWithTextAsync("anything"));
+    }
+
+    [Fact]
     public async Task CancelAndHidePreventsLateResultWrite()
     {
         var provider = new ControlledProvider();
@@ -184,6 +223,30 @@ public sealed class TranslationSessionManagerTests
         {
             CallCount++;
             throw new TranslationProviderException("测试服务不可用");
+        }
+    }
+
+    /// <summary>
+    /// A provider that captures every request it sees, for asserting what the
+    /// session manager actually forwarded (source text, language pair, action
+    /// context). Returns a fixed result so the call completes synchronously.
+    /// </summary>
+    private sealed class CapturingProvider : ITranslationProvider
+    {
+        public string DisplayName => "Capturing";
+
+        public List<TranslationRequest> CapturedRequests { get; } = [];
+
+        public Task<TranslationResult> TranslateAsync(
+            TranslationRequest request,
+            CancellationToken cancellationToken)
+        {
+            CapturedRequests.Add(request);
+            return Task.FromResult(new TranslationResult(
+                "captured-result",
+                request.SourceLanguage,
+                request.TargetLanguage,
+                DisplayName));
         }
     }
 

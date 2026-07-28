@@ -53,6 +53,9 @@ public partial class App : Application
     private ResultWindow? _resultWindow;
     private SettingsWindow? _settingsWindow;
     private PromptWindow? _promptWindow;
+    // OCR text extraction popup (Q toolbar shortcut). Created once and reused
+    // via Show/Hide, matching the other long-lived popup windows.
+    private OcrTextWindow? _ocrTextWindow;
     // R24: region-select overlay for chord → draw-region OCR. R40: the panel
     // (QuickToolsWindow) is retired; Ctrl+Alt+Q now enters this overlay
     // directly and the OCR text flows into the shared ToolbarWindow.
@@ -244,12 +247,14 @@ public partial class App : Application
             var promptWindow = new PromptWindow();
             var spotlightWindow = new SpotlightWindow();
             var clipboardHistoryWindow = new ClipboardHistoryWindow();
+            var ocrTextWindow = new OcrTextWindow();
             _toolbarWindow = toolbarWindow;
             _resultWindow = resultWindow;
             _settingsWindow = settingsWindow;
             _promptWindow = promptWindow;
             _spotlightWindow = spotlightWindow;
             _clipboardHistoryWindow = clipboardHistoryWindow;
+            _ocrTextWindow = ocrTextWindow;
             // R54: apply the user-configured default window sizes. The windows
             // are constructed once and reused via Show/Hide, so setting
             // Width/Height here covers every subsequent open this session.
@@ -312,6 +317,11 @@ public partial class App : Application
             settingsWindow.UserProfileSettingsSaved += OnUserProfileSettingsSaved;
             toolbarWindow.PromptRequested += OnPromptRequested;
             promptWindow.PromptRunRequested += OnPromptRun;
+
+            // OCR text extraction popup (Q): the runtime raises OcrTextPopupRequested
+            // when the user presses Q with a captured/recognized text; App owns the
+            // window and shows it. Matches the ResultWindow/ToolbarWindow pattern.
+            ocrTextWindow.CloseRequested += OnOcrTextClosed;
 
             // R32 Spotlight: independent window, reuses the same launch flow but
             // is wired to its own hotkey + own toggle logic.
@@ -376,6 +386,9 @@ public partial class App : Application
 
                 _runtime = new SelectionRuntime(toolbarWindow, resultWindow, _paths);
                 _runtime.Start();
+                // OCR text extraction popup (Q shortcut). The runtime raises the
+                // event on the UI thread; App shows the shared OcrTextWindow.
+                _runtime.OcrTextPopupRequested += OnOcrTextPopupRequested;
                 _runtime.SetMouseChordEnabled(_oceanEyesTrigger.MouseChordEnabled);
                 // R37: push the toolbar built-in shortcut bindings (Prompt/Copy/Paste).
                 _runtime.SetToolbarShortcuts(_toolbarShortcuts);
@@ -784,6 +797,30 @@ public partial class App : Application
     private void OnPromptRun(string selectedText, string userPrompt)
     {
         _runtime?.RunPromptAsync(selectedText, userPrompt);
+    }
+
+    // ── OCR text extraction popup (Q toolbar shortcut) ──
+
+    /// <summary>
+    /// Runtime raised OcrTextPopupRequested: the user pressed Q with captured/
+    /// recognized text. Show the shared OcrTextWindow pre-filled with the text.
+    /// </summary>
+    private void OnOcrTextPopupRequested(string ocrText)
+    {
+        _ocrTextWindow?.Show(ocrText);
+    }
+
+    /// <summary>
+    /// OcrTextWindow closed (copy+close, close, or Esc). No runtime state to
+    /// restore — the keyboard hook was already stopped in DispatchToolbarActionKey
+    /// when Q fired, and the popup is a terminal local action (unlike F/J/Z which
+    /// can be retried/replaced). Kept as a hook for future "popup dismissed"
+    /// bookkeeping (e.g. re-arming the hook if we later want Q to return to the
+    /// toolbar instead of ending the flow).
+    /// </summary>
+    private void OnOcrTextClosed()
+    {
+        // Intentionally empty: the OCR popup is a fire-and-forget local action.
     }
 
     // ── R40 Ocean Eyes trigger handlers (global hotkey + optional chord) ──
@@ -2238,6 +2275,7 @@ public partial class App : Application
         _promptWindow?.PrepareForShutdown();
         _spotlightWindow?.PrepareForShutdown();
         _clipboardHistoryWindow?.PrepareForShutdown();
+        _ocrTextWindow?.PrepareForShutdown();
         _regionOverlay?.PrepareForShutdown();
         _oceanEyesHotKey?.Dispose();
         _oceanEyesHotKey = null;

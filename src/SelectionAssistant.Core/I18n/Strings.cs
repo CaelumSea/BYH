@@ -685,4 +685,16 @@ public static partial class Strings
 
         // SettingsWindow — misc
         public static string Settings_VersionTag => Get(nameof(Settings_VersionTag));
+
+    // OcrTextWindow — OCR 文本提取弹窗（Q 快捷键）
+    public static string Ocr_WindowTitle => Get(nameof(Ocr_WindowTitle));
+    public static string Ocr_Title => Get(nameof(Ocr_Title));
+    public static string Ocr_Subtitle => Get(nameof(Ocr_Subtitle));
+    public static string Ocr_CopyAndClose => Get(nameof(Ocr_CopyAndClose));
+    public static string Ocr_Copied => Get(nameof(Ocr_Copied));
+    public static string Ocr_ClipboardError => Get(nameof(Ocr_ClipboardError));
+
+    // ResultWindow — 源文本可编辑 / C 加速器
+    public static string Result_SourceEditable => Get(nameof(Result_SourceEditable));
+    public static string Result_RetryWithEdited => Get(nameof(Result_RetryWithEdited));
 }

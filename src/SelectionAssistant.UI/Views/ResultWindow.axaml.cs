@@ -13,6 +13,11 @@ public partial class ResultWindow : Window
 {
     private string? _translatedText;
     private bool _allowClose;
+    // Tracks whether the editable SourceTextBox currently holds keyboard
+    // focus, so the C-key copy accelerator can be suppressed while the user
+    // is typing inside it (C is both a copy shortcut and a normal letter).
+    // Same pattern OcrTextWindow uses.
+    private bool _sourceTextBoxFocused;
 
     // The display name of the action driving the current session
     // (翻译/解释/总结/自定义名), captured from TranslationRequest on each
@@ -87,6 +92,11 @@ public partial class ResultWindow : Window
             _armTimer.Stop();
             _autoCloseArmed = true;
         };
+
+        // Track source box focus so the C-key copy accelerator can tell
+        // "C typed inside the source" apart from "C pressed elsewhere".
+        SourceTextBox.GotFocus += (_, _) => _sourceTextBoxFocused = true;
+        SourceTextBox.LostFocus += (_, _) => _sourceTextBoxFocused = false;
     }
 
     // R54 v2 bug fix: false during the grace period right after Show(), so an
@@ -107,7 +117,13 @@ public partial class ResultWindow : Window
     // Deactivated). Reusing one timer + Stop-on-Closing fixes both.
     private readonly DispatcherTimer _armTimer = new() { Interval = TimeSpan.FromMilliseconds(400) };
 
-    public event Action? RetryRequested;
+    /// <summary>
+    /// Raised when the user clicks "Re-run" with the current (possibly edited)
+    /// contents of the source box. Arg = the trimmed source text. The runtime
+    /// re-creates the translation request from this text so a fix to a
+    /// mis-recognized source actually re-runs the model.
+    /// </summary>
+    public event Action<string>? RetryWithTextRequested;
 
     public event Action? ReplaceRequested;
 
@@ -308,8 +324,20 @@ public partial class ResultWindow : Window
         target.Classes.Add(isError ? "FeedbackError" : "FeedbackSuccess");
     }
 
-    private void OnRetryClick(object? sender, RoutedEventArgs eventArgs) =>
-        RetryRequested?.Invoke();
+    private void OnRetryClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        // Re-run uses the current contents of the source box so a user fix to
+        // a mis-recognized or mistyped source actually feeds back into the
+        // model. Trim to drop incidental whitespace.
+        string text = SourceTextBox.Text?.Trim() ?? string.Empty;
+        if (text.Length == 0)
+        {
+            // Nothing to re-run — leave the window as-is rather than firing
+            // an empty request that the manager would reject anyway.
+            return;
+        }
+        RetryWithTextRequested?.Invoke(text);
+    }
 
     private void OnReplaceClick(object? sender, RoutedEventArgs eventArgs) =>
         ReplaceRequested?.Invoke();
@@ -320,9 +348,12 @@ public partial class ResultWindow : Window
         CloseRequested?.Invoke();
     }
 
-    // ESC closes the result window. Unlike the WS_EX_NOACTIVATE toolbar
-    // (which needs a low-level hook), this window activates normally and
-    // receives Avalonia KeyDown directly.
+    // ESC closes the result window; C copies the translated result and closes
+    // it (a keyboard shortcut for the Copy button). The C accelerator is
+    // suppressed while the editable SourceTextBox has focus so typing the
+    // letter c works normally. Unlike the WS_EX_NOACTIVATE toolbar (which
+    // needs a low-level hook), this window activates normally and receives
+    // Avalonia KeyDown directly.
     private void OnWindowKeyDown(object? sender, KeyEventArgs eventArgs)
     {
         if (eventArgs.Key == Key.Escape)
@@ -330,6 +361,46 @@ public partial class ResultWindow : Window
             eventArgs.Handled = true;
             Hide();
             CloseRequested?.Invoke();
+            return;
+        }
+
+        if (eventArgs.Key == Key.C && !_sourceTextBoxFocused)
+        {
+            // C accelerator: copy the translated result (same path as the
+            // Copy button) and close. Reuses OnCopyClick so feedback state and
+            // clipboard logic stay in one place.
+            eventArgs.Handled = true;
+            OnCopyClick(this, new RoutedEventArgs());
+            Hide();
+            CloseRequested?.Invoke();
+        }
+    }
+
+    /// <summary>
+    /// Handles key presses while the editable SourceTextBox has focus. Esc
+    /// closes the window from anywhere (matching OnWindowKeyDown); Enter with
+    /// Ctrl is treated as "re-run with the edited source" (Ctrl so plain
+    /// Enter still inserts a newline in the multi-line source). Plain C is
+    /// left alone — it types the letter c (the C copy accelerator is gated on
+    /// <see cref="_sourceTextBoxFocused"/> in OnWindowKeyDown).
+    /// </summary>
+    private void OnSourceTextBoxKeyDown(object? sender, KeyEventArgs eventArgs)
+    {
+        if (eventArgs.Key == Key.Escape)
+        {
+            eventArgs.Handled = true;
+            Hide();
+            CloseRequested?.Invoke();
+            return;
+        }
+
+        // Ctrl+Enter = re-run with the (possibly edited) source. Ctrl-free
+        // Enter inserts a newline so multi-line paste/edit still works.
+        if (eventArgs.Key == Key.Enter &&
+            (eventArgs.KeyModifiers & KeyModifiers.Control) != 0)
+        {
+            eventArgs.Handled = true;
+            OnRetryClick(this, new RoutedEventArgs());
         }
     }
 
@@ -358,6 +429,16 @@ public partial class ResultWindow : Window
 
         Topmost = true;
         Activate();
+        // Default to "view mode": the window activates but the editable
+        // SourceTextBox must NOT auto-receive focus. Avalonia gives focus to the
+        // first focusable control in tab order when a window activates, which
+        // would put SourceTextBox into edit mode and select its text — the user
+        // asked for the popup to open in a read/inspect state where a stray
+        // keystroke can't wipe the source, and where C copies+close works
+        // immediately. We defer placing focus on CopySourceButton (always
+        // enabled, a non-edit control) to AFTER Avalonia's auto-focus pass, so
+        // _sourceTextBoxFocused stays false until the user clicks the source.
+        Dispatcher.Post(() => CopySourceButton.Focus(), DispatcherPriority.Input);
         // Topmost stays true for the window's visible lifetime — see comment
         // above. (The previous R54 v2 code dropped Topmost on the next
         // dispatch, which is exactly what let the permanently-topmost pinned

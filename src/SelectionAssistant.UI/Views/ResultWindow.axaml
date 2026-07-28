@@ -38,18 +38,20 @@
               Classes="CardWarm"
               Padding="12">
         <StackPanel Spacing="6">
-          <TextBlock Text="{x:Static i18n:Strings.Result_SourceLabel}"
+          <TextBlock Text="{x:Static i18n:Strings.Result_SourceEditable}"
                      Classes="Muted"
                      FontSize="{DynamicResource ByhFontSizeBody}" />
           <TextBox x:Name="SourceTextBox"
-                   IsReadOnly="True"
+                   IsReadOnly="False"
                    AcceptsReturn="True"
                    TextWrapping="Wrap"
                    MaxHeight="92"
                    Background="Transparent"
                    BorderThickness="0"
                    Padding="0"
-                   Foreground="{DynamicResource ByhTextPrimaryBrush}" />
+                   Foreground="{DynamicResource ByhTextPrimaryBrush}"
+                   FontSize="{DynamicResource ByhFontSizeBody}"
+                   KeyDown="OnSourceTextBoxKeyDown" />
         </StackPanel>
       </Border>
 
@@ -106,7 +108,7 @@
                 Click="OnReplaceClick" />
         <Button x:Name="RetryButton"
                 Grid.Column="4"
-                Content="{x:Static i18n:Strings.Common_Retry}"
+                Content="{x:Static i18n:Strings.Result_RetryWithEdited}"
                 IsEnabled="False"
                 Click="OnRetryClick" />
         <Button Grid.Column="5"

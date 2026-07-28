@@ -57,6 +57,39 @@ public sealed class TranslationSessionManager : IDisposable, IAsyncDisposable
         return StartRequestAsync(request);
     }
 
+    /// <summary>
+    /// Re-runs the last session but with a user-edited source text. The
+    /// language direction is recomputed (editing Chinese to English, or vice
+    /// versa, must flip the translate direction); the action identity
+    /// (SystemPrompt / ThinkingEnabled / ActionDisplayName) is preserved so a
+    /// retry of "explain" stays "explain" and doesn't silently fall back to a
+    /// plain translate.
+    /// </summary>
+    /// <param name="newSourceText">The edited source text to re-run.</param>
+    public Task RetryWithTextAsync(string newSourceText)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(newSourceText);
+
+        TranslationRequest? last;
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            last = _lastRequest ?? throw new InvalidOperationException("No translation is available to retry.");
+        }
+
+        // Recompute direction from the edited text, then re-attach the action
+        // context so the prompt / thinking flag / display name are unchanged.
+        TranslationRequest fresh = TranslationLanguageSelector.CreateRequest(newSourceText);
+        TranslationRequest request = last with
+        {
+            SourceText = fresh.SourceText,
+            SourceLanguage = fresh.SourceLanguage,
+            TargetLanguage = fresh.TargetLanguage,
+        };
+
+        return StartRequestAsync(request);
+    }
+
     public Task CancelAndHideAsync()
     {
         CancellationTokenSource? cancellation;

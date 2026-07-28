@@ -598,5 +598,17 @@ internal static partial class Strings_zh_CN
 
         // SettingsWindow — 杂项
         ["Settings_VersionTag"] = "v0.1 · Windows NativeAOT",
+
+        // OcrTextWindow — OCR 文本提取弹窗（Q 快捷键）
+        ["Ocr_WindowTitle"] = "BYH · OCR 文本",
+        ["Ocr_Title"] = "识别文本",
+        ["Ocr_Subtitle"] = "可按需修改，按 C 或点下方按钮复制并关闭。",
+        ["Ocr_CopyAndClose"] = "复制并关闭",
+        ["Ocr_Copied"] = "已复制",
+        ["Ocr_ClipboardError"] = "剪贴板访问失败",
+
+        // ResultWindow — 源文本可编辑 / C 加速器
+        ["Result_SourceEditable"] = "原文（可编辑）",
+        ["Result_RetryWithEdited"] = "重新执行",
     };
 }
