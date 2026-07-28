@@ -135,7 +135,12 @@
                 BorderBrush="{DynamicResource ByhHairlineBrush}"
                 BorderThickness="0,1,0,0"
                 Padding="0,6,0,0">
+          <!-- Batch 123: Grid splits the list (*, fills available height) from
+               the optional "N more entries" hint (Auto, only shown when the
+               incremental renderer still has un-materialized rows). -->
+          <Grid RowDefinitions="*,Auto">
           <ScrollViewer x:Name="ResultsScroll"
+                        Grid.Row="0"
                         Margin="0,0,-12,0"
                         HorizontalScrollBarVisibility="Disabled"
                         VerticalScrollBarVisibility="Auto">
@@ -326,6 +331,15 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </ScrollViewer>
+          <TextBlock x:Name="LoadMoreFooter"
+                     Grid.Row="1"
+                     Margin="12,6,12,4"
+                     IsVisible="False"
+                     Foreground="{DynamicResource ByhTextSecondaryBrush}"
+                     FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                     TextAlignment="Center"
+                     TextTrimming="CharacterEllipsis" />
+          </Grid>
         </Border>
 
         <!-- Footer: keycap hints. Settings button moved to the nav footer. -->

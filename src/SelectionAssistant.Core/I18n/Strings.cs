@@ -430,6 +430,9 @@ public static partial class Strings
     public static string Clip_Group_SensitiveMenu => Get(nameof(Clip_Group_SensitiveMenu));
     // Category header counts
     public static string Clip_CategoryCount => Get(nameof(Clip_CategoryCount));
+    // Batch 123: footer hint shown when incremental rendering still has
+    // un-materialized rows. {0} = remaining count.
+    public static string Clip_LoadMore_Remaining => Get(nameof(Clip_LoadMore_Remaining));
     public static string Clip_CategoryHeader_Links => Get(nameof(Clip_CategoryHeader_Links));
     public static string Clip_CategoryHeader_Code => Get(nameof(Clip_CategoryHeader_Code));
     public static string Clip_CategoryHeader_Commands => Get(nameof(Clip_CategoryHeader_Commands));

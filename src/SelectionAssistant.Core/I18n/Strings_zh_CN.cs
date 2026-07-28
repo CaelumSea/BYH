@@ -353,6 +353,8 @@ internal static partial class Strings_zh_CN
         ["Clip_Group_SensitiveMenu"] = "🔒 敏感",
         // Category header
         ["Clip_CategoryCount"] = "{0} · {1} 项",
+        // 批次 123：滚动加载提示。{0} = 剩余未渲染条数。
+        ["Clip_LoadMore_Remaining"] = "下拉加载剩余 {0} 条…",
         ["Clip_CategoryHeader_Links"] = "链接",
         ["Clip_CategoryHeader_Code"] = "代码",
         ["Clip_CategoryHeader_Commands"] = "命令",

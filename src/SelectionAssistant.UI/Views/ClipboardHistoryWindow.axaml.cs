@@ -83,6 +83,26 @@ public partial class ClipboardHistoryWindow : Window
     private readonly ObservableCollection<ClipboardHistoryEntryRow> _allRows = [];
     private readonly ObservableCollection<ClipboardHistoryEntryRow> _filteredRows = [];
 
+    // Batch 123: incremental rendering. _filteredRows only holds the visible
+    // slice (first InitialBatchSize rows, grown by LoadMoreBatchSize on scroll).
+    // _filteredPool is the full matched set (cheap to compute, no controls);
+    // _visibleCount is how many of it are currently materialized in _filteredRows.
+    // Rationale: Avalonia 12 has no built-in virtualizing panel, and a plain
+    // ItemsControl materializes every container. With MaxEntries=1000 + archive
+    // rows, rebuilding _filteredRows fully on every tab switch/search/refresh
+    // made the window visibly lag. The pool holds the full list so search/tab
+    // semantics are unchanged; only the rendered slice is windowed.
+    private readonly List<ClipboardHistoryEntryRow> _filteredPool = [];
+    private int _visibleCount;
+    // First batch — covers ~7-8 screenfuls at the default window height so the
+    // initial open feels complete but renders in a few ms, not hundreds.
+    private const int InitialBatchSize = 60;
+    // Each scroll-to-bottom or arrow-key-past-edge appends this many rows.
+    private const int LoadMoreBatchSize = 40;
+    // Trigger LoadMore when the distance to the bottom is within this fraction
+    // of one viewport (0.85 = top 85% of viewport scrolled → load next batch).
+    private const double LoadMoreThresholdRatio = 0.85;
+
     // Built-in tab ids. 全部 is always present; the group/pin/favorite tabs are
     // rebuilt on each snapshot to only show tabs that have matching entries.
     private enum ClipboardTab
@@ -170,6 +190,10 @@ public partial class ClipboardHistoryWindow : Window
     {
         InitializeComponent();
         ResultsList.ItemsSource = _filteredRows;
+
+        // Batch 123: incremental rendering — grow the visible slice when the
+        // user scrolls near the bottom (mouse wheel, scrollbar drag, PageDown).
+        ResultsScroll.ScrollChanged += OnResultsScrollChanged;
 
         // R54 v1.2 v4: drag-to-reorder is now handled per-row on a dedicated
         // drag-handle Border (see BuildCustomTagNavButton + OnDragHandle*). No
@@ -1816,14 +1840,89 @@ public partial class ClipboardHistoryWindow : Window
                 .ToList();
         }
 
+        // Batch 123: keep the full matched set in _filteredPool (cheap, no
+        // controls) and only render the first slice in _filteredRows. The
+        // remainder loads on scroll-to-bottom or arrow-past-edge (LoadMore).
+        _filteredPool.Clear();
+        _filteredPool.AddRange(matches);
+
+        _visibleCount = Math.Min(InitialBatchSize, _filteredPool.Count);
+
         _filteredRows.Clear();
-        foreach (var row in matches)
+        for (int i = 0; i < _visibleCount; i++)
         {
-            _filteredRows.Add(row);
+            _filteredRows.Add(_filteredPool[i]);
         }
         _selectedIndex = _filteredRows.Count > 0 ? 0 : -1;
         SyncRowSelection();
         UpdateCategoryHeader();
+        UpdateLoadMoreFooter();
+    }
+
+    /// <summary>Batch 123: appends the next <see cref="LoadMoreBatchSize"/> rows
+    /// from <see cref="_filteredPool"/> into <see cref="_filteredRows"/>. Called
+    /// by the scroll-to-bottom handler and by <see cref="MoveSelection"/> when
+    /// the selection would otherwise walk off the rendered edge. No-op when
+    /// everything is already visible.</summary>
+    private void LoadMore()
+    {
+        if (_visibleCount >= _filteredPool.Count)
+        {
+            return;
+        }
+
+        int newCount = Math.Min(_visibleCount + LoadMoreBatchSize, _filteredPool.Count);
+        for (int i = _visibleCount; i < newCount; i++)
+        {
+            _filteredRows.Add(_filteredPool[i]);
+        }
+        _visibleCount = newCount;
+
+        UpdateLoadMoreFooter();
+    }
+
+    /// <summary>Batch 123: triggers incremental loading when the user scrolls
+    /// near the bottom of the result list. Covers mouse wheel, scrollbar drag,
+    /// and keyboard PageDown/End — all reach this single handler via the
+    /// ScrollViewer's offset change. Distance-to-bottom is measured in pixels;
+    /// LoadMore fires once the remaining scroll fits within (1 − threshold) of
+    /// one viewport, which gives a comfortable lead so new rows appear before
+    /// the user actually hits the end.</summary>
+    private void OnResultsScrollChanged(object? sender, ScrollChangedEventArgs e)
+    {
+        ScrollViewer sv = ResultsScroll;
+        double extent = sv.Extent.Height;
+        double viewport = sv.Viewport.Height;
+        if (extent <= 0 || viewport <= 0)
+        {
+            return;
+        }
+        double distanceToBottom = extent - sv.Offset.Y - viewport;
+        if (distanceToBottom <= viewport * (1.0 - LoadMoreThresholdRatio))
+        {
+            LoadMore();
+        }
+    }
+
+    /// <summary>Batch 123: shows/hides the "N more entries" hint below the list.
+    /// Hidden when everything is rendered; visible (counting the un-rendered
+    /// remainder) otherwise, so the user knows there is more to scroll to.</summary>
+    private void UpdateLoadMoreFooter()
+    {
+        if (LoadMoreFooter is null)
+        {
+            return;
+        }
+        int remaining = _filteredPool.Count - _visibleCount;
+        if (remaining > 0)
+        {
+            LoadMoreFooter.Text = string.Format(Strings.Clip_LoadMore_Remaining, remaining);
+            LoadMoreFooter.IsVisible = true;
+        }
+        else
+        {
+            LoadMoreFooter.IsVisible = false;
+        }
     }
 
     private void UpdateCategoryHeader()
@@ -1930,7 +2029,17 @@ public partial class ClipboardHistoryWindow : Window
         {
             return false;
         }
-        int newIndex = Math.Clamp(_selectedIndex + delta, 0, _filteredRows.Count - 1);
+        int target = _selectedIndex + delta;
+        // Batch 123: if the target row would land past the rendered edge,
+        // grow the visible slice in LoadMoreBatchSize chunks until either
+        // the target is materialized or the pool is exhausted. This keeps
+        // arrow-key navigation seamless when the pool is larger than the
+        // visible slice (only the first InitialBatchSize are rendered).
+        while (target >= _visibleCount && _visibleCount < _filteredPool.Count)
+        {
+            LoadMore();
+        }
+        int newIndex = Math.Clamp(target, 0, _filteredRows.Count - 1);
         if (newIndex == _selectedIndex)
         {
             return false;

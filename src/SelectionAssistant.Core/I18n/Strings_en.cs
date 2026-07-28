@@ -351,6 +351,8 @@ internal static partial class Strings_en
         ["Clip_Group_SensitiveMenu"] = "🔒 Sensitive",
         // Category header
         ["Clip_CategoryCount"] = "{0} · {1} items",
+        // Batch 123: scroll-for-more footer. {0} = remaining un-rendered count.
+        ["Clip_LoadMore_Remaining"] = "Scroll for {0} more…",
         ["Clip_CategoryHeader_Links"] = "Links",
         ["Clip_CategoryHeader_Code"] = "Code",
         ["Clip_CategoryHeader_Commands"] = "Commands",
