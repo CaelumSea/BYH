@@ -91,11 +91,21 @@ public sealed class OceanEyesCaptureStoreTests
     [Fact]
     public void Validate_RejectsPathWithControlCharacters()
     {
-        // Path.GetInvalidPathChars is control chars (< 0x20); include one to
-        // prove the validator catches them.
+        // Path.GetInvalidPathChars() is platform-specific: Windows returns a
+        // large set of control chars, macOS/Linux returns essentially only NUL.
+        // Pick the first one the current OS actually forbids. NUL (\0) would
+        // corrupt the string, so skip the test if only NUL is available.
+        char[] invalid = Path.GetInvalidPathChars();
+        char bad = invalid.FirstOrDefault(c => c != '\0');
+        if (bad == '\0')
+        {
+            // macOS/Linux: no embeddable invalid char to test against.
+            return;
+        }
+
         var settings = new OceanEyesCaptureSettings
         {
-            SavePath = "C:\\bad\u0003path",
+            SavePath = "bad" + bad + "path",
         };
 
         Assert.Throws<ArgumentException>(settings.Validate);
@@ -104,13 +114,27 @@ public sealed class OceanEyesCaptureStoreTests
     [Fact]
     public void Normalize_ExpandsEnvironmentVariablesAndStripsTrailingSeparator()
     {
-        string path = @"%TEMP%\oe-norm\";
-        var settings = new OceanEyesCaptureSettings { SavePath = path };
+        // Use a variable the test sets itself — cross-platform. Relies on
+        // Environment.ExpandEnvironmentVariables using %VAR% syntax on all OSes
+        // (it does not expand $VAR on Unix).
+        string varName = "BYH_TEST_NORM_VAR";
+        string tempDir = Path.Combine(Path.GetTempPath(), "oe-norm");
+        Environment.SetEnvironmentVariable(varName, tempDir);
+        try
+        {
+            char sep = Path.DirectorySeparatorChar;
+            string path = $"%{varName}%{sep}";
+            var settings = new OceanEyesCaptureSettings { SavePath = path };
 
-        OceanEyesCaptureSettings normalized = settings.Normalize();
+            OceanEyesCaptureSettings normalized = settings.Normalize();
 
-        Assert.False(normalized.SavePath.EndsWith('\\'));
-        Assert.DoesNotContain('%', normalized.SavePath);
-        Assert.True(Directory.Exists(Path.GetTempPath())); // %TEMP% resolved to a real dir
+            Assert.False(normalized.SavePath.EndsWith(sep));
+            Assert.DoesNotContain('%', normalized.SavePath);
+            Assert.Equal(tempDir, normalized.SavePath); // expanded to the value we set
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(varName, null);
+        }
     }
 }
