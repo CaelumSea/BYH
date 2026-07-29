@@ -2884,12 +2884,16 @@ internal sealed class SelectionRuntime : IDisposable
     ///     These actions keep the toolbar visible. (R41: V/Paste removed.)
     ///   • Esc → hide the toolbar + swallow (escape hatch if the user changed
     ///     their mind).
-    ///   • Backspace / Delete / digits / punctuation (no modifier held) →
-    ///     hide the toolbar but PASS THROUGH, so the user's typing/editing
-    ///     takes effect in the source app and the toolbar bows out instead of
-    ///     lingering over the next input (bug fix).
+    ///   • Backspace / Delete / digits / punctuation / arrows / Home / End /
+    ///     Page (no modifier held) → hide the toolbar but PASS THROUGH, so the
+    ///     user's typing/editing/navigating takes effect in the source app and
+    ///     the toolbar bows out instead of lingering over the next input
+    ///     (bug fix).
+    ///   • An unbound A-Z letter (no modifier held) → hide the toolbar but
+    ///     PASS THROUGH (handled in <see cref="DispatchToolbarActionKey"/> —
+    ///     the user is just typing a letter, not invoking an action).
     ///   • Any other key → pass through (so the source app keeps working while
-    ///     the toolbar is up — e.g. arrows, Home/End, bare modifier keys).
+    ///     the toolbar is up — e.g. bare modifier keys).
     /// </para>
     /// </summary>
     private bool OnToolbarKeyPressed(int vkCode)
@@ -3119,27 +3123,26 @@ internal sealed class SelectionRuntime : IDisposable
         // Only single-character A-Z (0x41-0x5A) are eligible for shortcuts.
         if (vkCode < 0x41 || vkCode > 0x5A)
         {
-            // Bug fix: when the toolbar is visible and the user starts typing
-            // or editing in the source app (Backspace/Delete to erase the
-            // selection, or any printable char), their focus has moved on —
-            // hide the toolbar so it stops blocking the next input. This does
-            // NOT apply to Ocean Eyes (image-capture mode: non-A-Z keys there
-            // have no text-editing meaning and the session has its own Esc /
-            // right-click redraw dismissal), nor to chord keys (a modifier is
-            // held — Ctrl+C / Ctrl+Backspace are commands, not plain typing),
-            // nor to bare modifier keys themselves (Shift/Ctrl/Alt/Win — part
-            // of a chord, not a signal the user is done) nor navigation keys
-            // (arrows / Home / End / Page — the user may still be adjusting the
-            // selection). We still RETURN FALSE so the key reaches the source
-            // app: the user's delete/keystroke must take effect, the toolbar
-            // just bows out at the same time.
+            // Bug fix: when the toolbar is visible and the user starts typing,
+            // editing, or navigating away in the source app (Backspace/Delete
+            // to erase the selection, any printable char, or arrow/Home/End/
+            // Page keys), their focus has moved on — hide the toolbar so it
+            // stops blocking the next input. This does NOT apply to Ocean Eyes
+            // (image-capture mode: non-A-Z keys there have no text-editing
+            // meaning and the session has its own Esc / right-click redraw
+            // dismissal), nor to chord keys (a modifier is held — Ctrl+C /
+            // Ctrl+Backspace are commands, not plain typing), nor to bare
+            // modifier keys themselves (Shift/Ctrl/Alt/Win — part of a chord,
+            // not a signal the user is done). We still RETURN FALSE so the key
+            // reaches the source app: the user's delete/keystroke must take
+            // effect, the toolbar just bows out at the same time.
             if (Volatile.Read(ref _oceanEyesActive) == 0 &&
                 !IsModifierHeld() &&
                 IsTextEditingKey(vkCode))
             {
                 Dispatcher.UIThread.Post(HideToolbarAndDisableHook);
                 _logger.Info("KeyboardHook",
-                    $"Non-action key vk=0x{vkCode:X2} → hide toolbar (user typing/editing).");
+                    $"Non-action key vk=0x{vkCode:X2} → hide toolbar (user typing/editing/navigating).");
             }
             return false;
         }
@@ -3281,7 +3284,25 @@ internal sealed class SelectionRuntime : IDisposable
             // 自身的复制/提示按钮。两者都需已取词（按钮本身也 disabled 直到
             // 取词成功）。与 F/J/Z 不同：这两个动作不隐藏工具栏（用户可能
             // 复制完继续翻译），所以不调 SetEnabled(false)。
-            return TryInvokeBuiltinToolbarShortcut(key);
+            if (TryInvokeBuiltinToolbarShortcut(key))
+            {
+                return true;
+            }
+
+            // Bug fix (completing the typing-dismiss behavior): this A-Z key is
+            // neither a user-bound action template nor a built-in toolbar
+            // shortcut — the user is just typing a letter in the source app.
+            // Hide the toolbar so it stops blocking the next input, then pass
+            // the key through so the letter is typed. Mirrors the non-A-Z text-
+            // editing branch in OnToolbarKeyPressed. A modifier chord (e.g.
+            // Ctrl+A select-all) is NOT plain typing, so don't dismiss then.
+            if (!IsModifierHeld())
+            {
+                Dispatcher.UIThread.Post(HideToolbarAndDisableHook);
+                _logger.Info("KeyboardHook",
+                    $"Non-action letter '{key}' → hide toolbar (user typing).");
+            }
+            return false;
         }
 
         string? text = _sessionManager.GetLastCapturedText();
@@ -3333,21 +3354,35 @@ internal sealed class SelectionRuntime : IDisposable
     }
 
     /// <summary>
-    /// Bug fix helper: classifies a virtual-key code as a "text-editing" key
+    /// Bug fix helper: classifies a virtual-key code as a "dismiss-trigger" key
     /// whose press means the user has moved on from the selection toolbar and
-    /// is now typing/editing in the source app — so the toolbar should bow
-    /// out. Returns true for Backspace, Delete, and keys that produce a
-    /// printable character (digits, space, punctuation/OEM keys). Returns
-    /// false for bare modifier keys (Shift/Ctrl/Alt/Win — part of a chord
-    /// like Ctrl+C, not a signal the user is done), navigation keys
-    /// (arrows / Home / End / Page — the user may be adjusting the selection),
-    /// and function/system keys. A-Z (0x41-0x5A) never reach here: they are
-    /// consumed as toolbar action keys by <see cref="OnToolbarKeyPressed"/>.
+    /// is now typing / editing / navigating away in the source app — so the
+    /// toolbar should bow out. Returns true for:
+    /// <list type="bullet">
+    ///   <item>Backspace / Delete (erasing the selection — the primary bug
+    ///   scenario).</item>
+    ///   <item>Printable chars: space, digits 0-9, OEM punctuation.</item>
+    ///   <item>Navigation keys: arrows (Left/Up/Right/Down), Home, End, PageUp,
+    ///   PageDown — moving the caret away signals the user is done with this
+    ///   selection.</item>
+    /// </list>
+    /// Returns false for bare modifier keys (Shift/Ctrl/Alt/Win — part of a
+    /// chord like Ctrl+C, not a signal the user is done) and function/system
+    /// keys. A-Z (0x41-0x5A) never reach here: they are consumed as toolbar
+    /// action keys by <see cref="OnToolbarKeyPressed"/> (and only fall through
+    /// to a dismiss in <see cref="DispatchToolbarActionKey"/> when unbound).
     /// </summary>
     private static bool IsTextEditingKey(int vkCode)
     {
         // Backspace / Delete — erasing the selection is the primary bug scenario.
         if (vkCode == 0x08 || vkCode == 0x2E)
+        {
+            return true;
+        }
+
+        // Navigation keys — caret has moved, the user is no longer acting on
+        // this selection. Left=0x25 Up=0x26 Right=0x27 Down=0x28.
+        if ((uint)(vkCode - 0x21) <= 8)  // 0x21..0x28 = PageUp..Down
         {
             return true;
         }
