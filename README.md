@@ -2,13 +2,13 @@
 
 > Context-aware selection assistant. 选词即用，不离开当前上下文。
 >
-> Status: **v0.1.0** · NativeAOT single-binary · Windows 10+（macOS 移植中） · .NET 10 · [MIT License](#license)
+> Status: **v0.1.0** · NativeAOT single-binary · Windows 10+ · .NET 10 · [MIT License](#license)
 
 BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选的内容——**一个工具搞定截图 OCR、即时翻译、剪贴板历史、启动器、提示词模板**，全程不离开当前窗口。
 
-**隐私优先**：所有配置和用户数据只落在本地系统配置目录（Windows: `%LOCALAPPDATA%\BYH\`，macOS: `~/Library/Application Support/BYH/`），API 密钥走系统级加密（Windows DPAPI / macOS Keychain），除你主动调用 LLM provider 外不上传任何第三方服务。
+**隐私优先**：所有配置和用户数据只落在本地系统配置目录（`%LOCALAPPDATA%\BYH\`），API 密钥走系统级加密（DPAPI），除你主动调用 LLM provider 外不上传任何第三方服务。
 
-> **跨平台路线图**：Windows 完整可用；macOS 移植进行中。架构上有干净的平台抽象层（`Platform.Abstractions`），macOS 端只需新建 `Platform.Mac` 项目填充实现，见 [docs/git-workflow.md](docs/git-workflow.md)。
+> **平台定位**：BYH 是 **Windows 专属**工具——核心能力（全局快捷键、UIA 文本捕获、低级 hook、DPAPI）深度依赖 Win32。`Platform.Abstractions` 作为 Windows 内部的解耦设计保留，Core/Providers 保持平台无关（由 macOS CI 守护）。
 
 ---
 
@@ -101,7 +101,7 @@ Clipboard     ← 剪贴板历史所有开关与上限
 
 ## 构建
 
-需要 **.NET 10 SDK**。Windows 完整可用；macOS 端 Core/Providers/UI 项目可编译，Windows 项目（`Platform.Windows`）在 macOS 上预期失败，待平台抽象层重构后解决。
+需要 **.NET 10 SDK**。BYH 是 Windows 专属，完整构建在 Windows 上进行；Core/Providers 是平台无关代码，CI 在 macOS 上验证它们不引入 Win32 依赖。
 
 ```bash
 # 编译检查（Windows）
@@ -138,13 +138,13 @@ src/
 ├── SelectionAssistant.App/             ← 组合根：Program / App / 托盘 / 接线
 ├── SelectionAssistant.Core/            ← 领域模型、设置 record、i18n、输入触发器
 ├── SelectionAssistant.Infrastructure/  ← 配置 store、日志、JSON 序列化
-├── SelectionAssistant.Platform.Abstractions/  ← 平台抽象接口（Windows + macOS 共用）
+├── SelectionAssistant.Platform.Abstractions/  ← 平台抽象接口（Windows 内部解耦，Core/Providers 平台无关的契约）
 ├── SelectionAssistant.Platform.Windows/       ← Win32 P/Invoke、hook、UIA、GDI、托盘
 ├── SelectionAssistant.Providers/      ← OpenAI 兼容翻译 / OCR client
 └── SelectionAssistant.UI/             ← Avalonia 窗口、主题（Ivory Jade）、设置页
 ```
 
-> macOS 移植会新增 `SelectionAssistant.Platform.Mac`（CoreGraphics / AppKit / Keychain 实现 `Platform.Abstractions` 接口）。
+> `Platform.Abstractions` 是 Windows 内部的解耦设计，不做 macOS 移植；详见 [CHANGELOG](CHANGELOG.md) 的平台定位说明。
 
 测试：`tests/SelectionAssistant.Core.Tests` / `.Providers` / `.Windows.IntegrationTests`。
 

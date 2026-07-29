@@ -11,9 +11,9 @@ the essentials.
 You need:
 
 - **Windows 10+** is the primary platform (the app targets `net10.0-windows`;
-  `Platform.Windows` uses Win32 P/Invoke). **macOS** can build/test the
-  cross-platform projects (`Core`, `Providers`, `UI`) today; a full macOS
-  port is in progress.
+  `Platform.Windows` uses Win32 P/Invoke). `Core`, `Providers`, `UI` are
+  platform-agnostic; CI on macOS verifies they do not introduce Win32
+  dependencies. BYH is Windows-only — there is no macOS port.
 - **.NET 10 SDK**
 - Any editor (VS / VS Code / Rider all work)
 
@@ -24,8 +24,8 @@ dotnet build SelectionAssistant.slnx -c Release     # 0 warnings expected
 dotnet test SelectionAssistant.slnx                  # ~660 tests (Windows)
 ```
 
-On macOS, the Windows-specific projects won't build until the platform
-abstraction refactor lands — build `Core`/`Providers` individually for now.
+On macOS, build `Core`/`Providers` individually. BYH is Windows-only; the
+Windows-specific projects only build on Windows.
 
 If build or tests fail on a clean clone, that's a bug — please open an issue.
 

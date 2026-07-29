@@ -3,7 +3,6 @@ namespace SelectionAssistant.Platform.Abstractions;
 /// <summary>
 /// 系统指标的跨平台抽象(v4 §5.2)。
 /// Windows: GetSystemMetrics(SM_CXDRAG/SM_CYDRAG/SM_CXDOUBLECLK/SM_CYDOUBLECLK) + GetDoubleClickTime
-/// macOS: NSEvent.doubleClickInterval; 拖拽阈值用可配置默认值(macOS 无系统指标)
 /// </summary>
 public interface ISystemMetrics
 {

@@ -1181,4 +1181,4 @@ P1+（重功能，最后做）
 - **R24 轨道 B② PaddleOCR-VL-1.6 本地 OCR**：0.9B SOTA 离线兜底，AOT 验证 + 模型分发，v0.2 目标。
 - **R24 轨道 B③ WinRT OCR**：`Windows.Media.Ocr`，长期 backlog，性价比最低。
 - **R23 启动器可选增强**（图标缓存落盘 / UWP / CLI / 多 prompt UX）— 主体已在第二十批落地，这里只是可选优化。
-- **macOS 未开始**。
+- **macOS**：已取消移植计划（2026-07-29）。BYH 定位 Windows 专属，Mac 同类需求走独立项目。

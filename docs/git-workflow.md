@@ -14,7 +14,7 @@
 | **默认长期分支** | `main` |
 | **可执行产物** | 本地 `dotnet publish` 生成；分发走 **GitHub Releases**（不进 git） |
 | **根目录启动器** | `BYH.cmd` → 双击即起本地编译的 BYH.exe |
-| **运行时密钥/配置** | `%LOCALAPPDATA%\BYH\`（Windows）/ `~/Library/Application Support/BYH/`（macOS）（**仓库外**，所有 worktree 共享） |
+| **运行时密钥/配置** | `%LOCALAPPDATA%\BYH\`（**仓库外**，所有 worktree 共享） |
 | **并行 worktree 根** | `<worktree-parent>\`（主仓库的同级目录） |
 
 **重要**：源码、文档、构建脚本在仓库里；**编译产物不进仓库**，每个开发者本地 `dotnet publish` 生成，或从 GitHub Releases 下载现成二进制。
@@ -155,8 +155,8 @@ git -C /<repo-root> worktree prune
 ## 9. 远端与 CI
 
 - **远端**：已推送到 `https://github.com/CaelumSea/BYH`。Mac 端 `git clone` 即可开发。
-- **CI**：`.github/workflows/ci.yml` 在 Windows + macOS 上跑 build & test（Core/Providers 跨平台；Windows.IntegrationTests 仅 Windows）。
-- **跨平台路线图**：Windows 完整可用；macOS 移植进行中（需先做平台抽象层重构，见 docs/architecture/）。
+- **CI**：`.github/workflows/ci.yml` 在 Windows 上跑全量 build & test，在 macOS 上跑 Core/Providers 的平台无关护栏（Windows.IntegrationTests 仅 Windows）。
+- **平台定位**：BYH 是 Windows 专属工具。Core/Providers 保持平台无关（由 macOS CI 守护），但 App/Platform.Windows 依赖 Win32，不做跨平台移植。
 
 ---
 
@@ -177,4 +177,4 @@ gh release create v0.X.0 \
 
 用户从 `https://github.com/CaelumSea/BYH/releases` 下载现成 exe，不必自己装 .NET SDK 编译。
 
-**macOS 发版**（移植完成后）：改用 `-r osx-arm64`，产物是 `BYH`（无后缀）+ `.app` bundle。
+**macOS 版本**：不计划。BYH 定位为 Windows 专属工具（详见 CHANGELOG 的 [Unreleased] 段）。

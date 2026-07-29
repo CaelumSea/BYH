@@ -45,9 +45,10 @@ jobs:
         run: dotnet test SelectionAssistant.slnx -c Release --no-build --verbosity normal
 
   # Cross-platform smoke test on macOS — verifies the platform-agnostic
-  # projects (Core / Providers) build and pass on a non-Windows OS. This is
-  # the foundation for the macOS port: once the platform abstraction refactor
-  # lands, this job will grow to cover the full macOS build.
+  # projects (Core / Providers) stay platform-agnostic: they must build and
+  # pass on a non-Windows OS. This is a guardrail against accidentally
+  # leaking Win32-specific code into the shared Core/Providers layers.
+  # (BYH is Windows-only by design; this job does NOT signal a macOS port.)
   macos:
     name: Cross-platform smoke (macos-latest)
     runs-on: macos-latest
@@ -61,9 +62,10 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # Only the net10.0 (non-Windows) projects are built here. The whole
-      # solution can't be built on macOS yet because App + Platform.Windows
-      # target net10.0-windows. Build each cross-platform project explicitly.
+      # Only the net10.0 (non-Windows) projects are built here. The full
+      # solution can't be built on macOS because App + Platform.Windows
+      # target net10.0-windows (BYH is Windows-only). Build each cross-platform
+      # project explicitly to exercise the platform-agnostic layers.
       - name: Build cross-platform projects
         run: |
           dotnet build src/SelectionAssistant.Core/SelectionAssistant.Core.csproj -c Release /warnaserror

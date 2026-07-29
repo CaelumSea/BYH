@@ -4,8 +4,7 @@ namespace SelectionAssistant.Platform.Abstractions.Secrets;
 /// Platform-agnostic secret storage. Secrets (API keys, bearer tokens) are
 /// addressed by a <c>secret://</c>-style reference string and stored in a
 /// platform-native secure store — never in plaintext config (§11.3).
-/// Implementations must encrypt at rest (Windows: DPAPI / Credential Manager;
-/// macOS: Keychain).
+/// Implementations must encrypt at rest (Windows: DPAPI / Credential Manager).
 /// </summary>
 public interface ISecretStore
 {

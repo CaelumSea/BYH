@@ -49,4 +49,4 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 - **M1/M2**：god-class 拆分（`ClipboardHistoryWindow.axaml.cs` ~2940 行 / `App.axaml.cs` ~2240 行）
 - **L3**：`AutomationProperties.Name` 无障碍全层补齐（需屏幕阅读器验证）
 - **M4**：剩余 46 处 `[DllImport]` → `[LibraryImport]`（高风险核心路径）
-- **macOS**：v0.1.0 之后 roadmap（现役仅 Windows）
+- **macOS**：已取消移植计划。BYH 是 Windows 专属工具，Mac 同类需求由独立项目专项开发。

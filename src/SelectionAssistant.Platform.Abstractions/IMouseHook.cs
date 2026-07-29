@@ -3,7 +3,6 @@ namespace SelectionAssistant.Platform.Abstractions;
 /// <summary>
 /// 平台无关的鼠标钩子抽象。
 /// Windows 实现: WH_MOUSE_LL (LowLevelMouseHook)
-/// macOS 实现: CGEventTap (P1 macOS 阶段)
 /// </summary>
 public interface IMouseHook : IDisposable
 {
