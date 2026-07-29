@@ -4,29 +4,23 @@
 >
 > Status: **v0.1.0** · NativeAOT single-binary · Windows 10+（macOS 移植中） · .NET 10 · [MIT License](#license)
 
-BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选的内容——OCR 识别、即时翻译、剪贴板历史、启动器、提示词模板。所有配置和用户数据落在系统配置目录（Windows: `%LOCALAPPDATA%\BYH\`，macOS: `~/Library/Application Support/BYH/`），密钥走系统级加密（Windows DPAPI / macOS Keychain），不上传任何第三方服务（除非你主动调用 LLM provider）。
+BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选的内容——**一个工具搞定截图 OCR、即时翻译、剪贴板历史、启动器、提示词模板**，全程不离开当前窗口。
+
+**隐私优先**：所有配置和用户数据只落在本地系统配置目录（Windows: `%LOCALAPPDATA%\BYH\`，macOS: `~/Library/Application Support/BYH/`），API 密钥走系统级加密（Windows DPAPI / macOS Keychain），除你主动调用 LLM provider 外不上传任何第三方服务。
 
 > **跨平台路线图**：Windows 完整可用；macOS 移植进行中。架构上有干净的平台抽象层（`Platform.Abstractions`），macOS 端只需新建 `Platform.Mac` 项目填充实现，见 [docs/git-workflow.md](docs/git-workflow.md)。
 
-<table>
-  <tr>
-    <td width="33%" align="center"><b>设置面板（Ivory Jade 主题）</b><br><img src="docs/screenshots/settings-general.png" alt="Settings panel"></td>
-    <td width="33%" align="center"><b>Ocean Eyes 区域截图</b><br><img src="docs/screenshots/ocean-eyes-region-overlay.png" alt="Ocean Eyes region select"></td>
-    <td width="33%" align="center"><b>选词工具栏</b><br><img src="docs/screenshots/selection-toolbar.png" alt="Selection toolbar"></td>
-  </tr>
-</table>
-
 ---
 
-## 这个版本能做什么（v0.1.0）
+## 五大核心能力
 
-| 模块 | 触发 | 说明 |
+| 能力 | 触发 | 做什么 |
 |---|---|---|
-| **Ocean Eyes**（区域截图 OCR） | `Ctrl+Alt+Q` | 拖框选屏幕区域，截图 → OCR → 可选标注/翻译/识别。截图自动写入配置目录，支持贴图、UIA 辅助预填。 |
-| **Spotlight 启动器** | `Ctrl+Alt+Space` | 全局快速搜索面板，可启动配置的应用/网页/命令。 |
-| **剪贴板历史** | `Ctrl+Alt+V` | 本地历史弹窗，支持文本/图片、自动分类、手动归类、置顶、标签、自定义 tab、全文搜索、月度归档、敏感条目 DPAPI 掩码。 |
-| **工具栏**（选中文字后） | 自动浮出 | 选词后弹出，按配置的快捷键执行翻译 / 总结 / 解释 / 自定义提示词。 |
-| **托盘菜单** | 右键托盘图标 | 打开设置 / 打开配置目录 / 打开截图画廊 / 重启 / 退出。 |
+| 📸 **Ocean Eyes** 区域截图 OCR | `Ctrl+Alt+Q` | 拖框选屏幕区域 → 截图 → OCR 文字识别。截图自动保存到配置目录，可贴图钉在桌面、UIA 辅助自动框选元素、识别结果可翻译/编辑/复制。 |
+| 🚀 **Spotlight 启动器** | `Ctrl+Alt+Space` | 全局快速搜索面板，一键启动配置的应用 / 网页 / 命令。支持自定义图标、URL、启动参数。 |
+| 📋 **剪贴板历史** | `Ctrl+Alt+V` | 本地剪贴板管理弹窗：文本 + 图片、自动分类、手动归类、置顶、标签、自定义分组 tab、全文搜索、按月归档。敏感条目（密码类）DPAPI 加密掩码，不会明文展示。 |
+| 🔤 **选词工具栏** | 选中文字自动浮出 | 在任意应用选中文字即弹出工具栏，一键执行翻译 / 总结 / 解释 / 自定义提示词。结果窗口支持多模型同时对比、自定义动作、双语标题。 |
+| 🎛️ **托盘与设置** | 托盘右键 | 统一设置中心（Dashboard / 通用 / 翻译 / 动作 / 视觉 / 启动器 / 剪贴板七页），所有改动即时保存。托盘菜单直达设置、配置目录、截图画廊、重启、退出。 |
 
 > 三组主快捷键均可在 **设置 → 各模块页** 自定义（支持 Ctrl/Alt/Shift/Win 修饰键 + A–Z / 0–9 / F1–F12 / Space）。修改后保存即时生效。
 
