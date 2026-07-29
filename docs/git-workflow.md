@@ -9,16 +9,15 @@
 
 | 项 | 路径 / 值 |
 |---|---|
-| **主仓库根** | `<repo-root>\` |
-| **主仓库物理路径**（`<repo-parent>` 是 junction） | `<user-home>\gh-kb\selection-assistant\` |
+| **主仓库根** | `<repo-root>\`（git clone 后的目录） |
+| **远端仓库** | `https://github.com/CaelumSea/BYH` |
 | **默认长期分支** | `main` |
-| **可执行产物** | `artifacts\publish\win-x64-nativeuia\BYH.exe` |
-| **根目录启动器** | `BYH.cmd` → 双击即起 BYH.exe |
-| **桌面快捷方式** | `%USERPROFILE%\Desktop\BYH.lnk` → 指向同一个 exe |
-| **运行时密钥/配置** | `%LOCALAPPDATA%\BYH\`（**仓库外**，所有 worktree 共享） |
+| **可执行产物** | 本地 `dotnet publish` 生成；分发走 **GitHub Releases**（不进 git） |
+| **根目录启动器** | `BYH.cmd` → 双击即起本地编译的 BYH.exe |
+| **运行时密钥/配置** | `%LOCALAPPDATA%\BYH\`（Windows）/ `~/Library/Application Support/BYH/`（macOS）（**仓库外**，所有 worktree 共享） |
 | **并行 worktree 根** | `<worktree-parent>\`（主仓库的同级目录） |
 
-**重要**：源码、构建产物、启动器、文档全在 `selection-assistant\` 这一个根下，**没有独立的安装目录**。"程序位置 vs 项目位置" 本就是一处 —— git 化后这个事实被显式化。
+**重要**：源码、文档、构建脚本在仓库里；**编译产物不进仓库**，每个开发者本地 `dotnet publish` 生成，或从 GitHub Releases 下载现成二进制。
 
 ---
 
@@ -52,7 +51,7 @@ main                          ← 唯一长期分支，始终可发布
 └── ...
 ```
 
-每个 worktree 是**完整的一份项目副本**：独立 `bin/`、`obj/`、独立 `artifacts/publish/.../BYH.exe`，但共享同一个 `.git/`（在主仓库里），分支切换和合并都很快。
+每个 worktree 是**完整的一份项目副本**：独立 `bin/`、`obj/`，但共享同一个 `.git/`（在主仓库里），分支切换和合并都很快。每个 worktree 本地 `dotnet publish` 生成各自的 BYH.exe（产物不进 git）。
 
 ---
 
@@ -70,10 +69,10 @@ cd /<worktree-parent>/REQ-010-qr-recognize
 
 # 3. 预热构建（首次必做：让 bin/obj 就位）
 dotnet build -c Debug
-# 或要刷新产物：
+# 或要本地运行（产物在 bin/.../publish/BYH.exe，不进 git）：
 dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Release -r win-x64
-cp src/SelectionAssistant.App/bin/Release/net10.0-windows/win-x64/publish/BYH.exe \
-   artifacts/publish/win-x64-nativeuia/BYH.exe
+# 直接运行本地编译产物：
+./src/SelectionAssistant.App/bin/Release/net10.0-windows/win-x64/publish/BYH.exe
 ```
 
 ### 4.2 脚本版（推荐）
@@ -128,10 +127,10 @@ git branch -d task/REQ-010-qr-recognize
 
 ## 7. 产物（BYH.exe）的版本控制策略
 
-- `artifacts/publish/win-x64-nativeuia/BYH.exe` **纳入 git**（见 `.gitignore` 明确保留 `artifacts/`）
-- 目的：每个 worktree checkout 后立即可运行，不必先 publish
-- **改了源码后**：在 worktree 里跑 `dotnet publish`，把新 exe 拷到约定路径，和源码改动**一起 commit**，这样合并后 main 的产物也是新的
-- 历史会含二进制 diff，但因 BYH.exe ~28 MB 且变化不频繁，单人项目可接受。若日后膨胀，再迁 Git LFS（见下）
+- **编译产物不进 git**（见 `.gitignore` 排除 `artifacts/publish/`）
+- **原因**：二进制在 git 里压不动（每次提交 ~47 MB delta），单人项目让仓库膨胀到 GB 级；本地 `dotnet publish` 秒级生成，没必要进版本控制
+- **本地开发**：每个 worktree 自己 `dotnet publish`，产物在 `bin/.../publish/BYH.exe`，直接运行
+- **对外分发**：用 **GitHub Releases**（见第 10 节），用户从 Releases 页下载现成 exe，不必自己编译
 
 ---
 
@@ -153,8 +152,29 @@ git -C /<repo-root> worktree prune
 
 ---
 
-## 9. 未来扩展（暂不做）
+## 9. 远端与 CI
 
-- **远端备份**：`git remote add origin <url>` + `git push -u origin main`。当前为纯本地 git，需要时随时加。
-- **Git LFS**：若 BYH.exe 频繁更新导致仓库膨胀（>500 MB），`git lfs install` + `git lfs track "artifacts/publish/**/*.exe"`，重新提交。
-- **CI**：本地脚本已足够；要上 GitHub Actions 时再加 `.github/workflows/`。
+- **远端**：已推送到 `https://github.com/CaelumSea/BYH`。Mac 端 `git clone` 即可开发。
+- **CI**：`.github/workflows/ci.yml` 在 Windows + macOS 上跑 build & test（Core/Providers 跨平台；Windows.IntegrationTests 仅 Windows）。
+- **跨平台路线图**：Windows 完整可用；macOS 移植进行中（需先做平台抽象层重构，见 docs/architecture/）。
+
+---
+
+## 10. GitHub Releases 分发流程
+
+编译产物（BYH.exe + native DLL）**不进 git**，每次发版用 `gh release` 上传到 GitHub Releases 页：
+
+```bash
+# 1. 本地编译出干净的 release 产物
+dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Release -r win-x64
+
+# 2. 打 tag + 上传到 Releases（产物从 bin/.../publish/ 取，不碰 git 工作区）
+gh release create v0.X.0 \
+  src/SelectionAssistant.App/bin/Release/net10.0-windows/win-x64/publish/BYH.exe \
+  --title "v0.X.0 — Windows" \
+  --notes "Release notes here."
+```
+
+用户从 `https://github.com/CaelumSea/BYH/releases` 下载现成 exe，不必自己装 .NET SDK 编译。
+
+**macOS 发版**（移植完成后）：改用 `-r osx-arm64`，产物是 `BYH`（无后缀）+ `.app` bundle。

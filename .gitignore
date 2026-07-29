@@ -3,7 +3,7 @@
 # =============================================================================
 # 策略说明（见 docs/git-workflow.md）：
 #   - bin/ obj/ 是构建中间产物，9 个 csproj 共 ~1.8 GB，必排除
-#   - artifacts/publish/ 保留（含 BYH.exe + native DLL，分发基线契约）
+#   - 编译产物（BYH.exe + native DLL）不进 git，用 GitHub Releases 分发
 #   - artifacts/qa/ 排除（QA 截图 ~126MB，开发期产物，精选的已复制到
 #     docs/screenshots/ 作为公开展示）
 #   - 用户运行时数据在仓库外：%LOCALAPPDATA%\BYH\，不在此文件管辖
@@ -64,8 +64,9 @@ diag.log
 *.orig
 *.rej
 
-## --- 发布临时目录（保留 artifacts/publish/，但 publish 子工作目录里的中间文件排除） ---
-artifacts/publish/tmp/
+## --- 编译产物（不进仓库，用 GitHub Releases 分发；见 docs/git-workflow.md） ---
+artifacts/publish/
+artifacts/__diag/
 
 ## --- 严禁纳入的本地密钥文件（防御性 —— 真实密钥在 %LOCALAPPDATA%\BYH\secrets\） ---
 secrets.json

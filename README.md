@@ -1,10 +1,12 @@
 # BYH — By Your Hand
 
-> Context-aware selection assistant for Windows. 选词即用，不离开当前上下文。
+> Context-aware selection assistant. 选词即用，不离开当前上下文。
 >
-> Status: **v0.1.0** · NativeAOT single-binary · Windows 10+ · .NET 10 · [MIT License](#license)
+> Status: **v0.1.0** · NativeAOT single-binary · Windows 10+（macOS 移植中） · .NET 10 · [MIT License](#license)
 
-BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选的内容——OCR 识别、即时翻译、剪贴板历史、启动器、提示词模板。所有配置和用户数据落在 `%LOCALAPPDATA%\BYH\`，密钥走 DPAPI 加密，不上传任何第三方服务（除非你主动调用 LLM provider）。
+BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选的内容——OCR 识别、即时翻译、剪贴板历史、启动器、提示词模板。所有配置和用户数据落在系统配置目录（Windows: `%LOCALAPPDATA%\BYH\`，macOS: `~/Library/Application Support/BYH/`），密钥走系统级加密（Windows DPAPI / macOS Keychain），不上传任何第三方服务（除非你主动调用 LLM provider）。
+
+> **跨平台路线图**：Windows 完整可用；macOS 移植进行中。架构上有干净的平台抽象层（`Platform.Abstractions`），macOS 端只需新建 `Platform.Mac` 项目填充实现，见 [docs/git-workflow.md](docs/git-workflow.md)。
 
 <table>
   <tr>
@@ -105,21 +107,21 @@ Clipboard     ← 剪贴板历史所有开关与上限
 
 ## 构建
 
-需要 **.NET 10 SDK** + Windows 10+。
+需要 **.NET 10 SDK**。Windows 完整可用；macOS 端 Core/Providers/UI 项目可编译，Windows 项目（`Platform.Windows`）在 macOS 上预期失败，待平台抽象层重构后解决。
 
 ```bash
-# 编译检查
+# 编译检查（Windows）
 dotnet build SelectionAssistant.slnx -c Release
 
-# 测试（约 661 项，含 i18n 三向同步守卫）
+# 测试（约 661 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
 dotnet test
 
-# NativeAOT 单文件发布（生成 BYH.exe，约 28MB）
+# NativeAOT 单文件发布（Windows，生成 BYH.exe，约 28MB）
 dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj \
   -c Release -r win-x64
 ```
 
-发布产物在 `src/SelectionAssistant.App/bin/Release/net10.0-windows/win-x64/publish/BYH.exe`。仓库约定把成品同步到 `artifacts/publish/win-x64-nativeuia/BYH.exe` 作为分发基线。
+**产物不进 git**——编译产物在 `bin/.../publish/BYH.exe`，直接运行即可。对外分发走 [GitHub Releases](https://github.com/CaelumSea/BYH/releases)，用户从 Releases 页下载现成 exe，不必自己编译。
 
 ---
 
@@ -142,11 +144,13 @@ src/
 ├── SelectionAssistant.App/             ← 组合根：Program / App / 托盘 / 接线
 ├── SelectionAssistant.Core/            ← 领域模型、设置 record、i18n、输入触发器
 ├── SelectionAssistant.Infrastructure/  ← 配置 store、日志、JSON 序列化
-├── SelectionAssistant.Platform.Abstractions/  ← 平台抽象接口
+├── SelectionAssistant.Platform.Abstractions/  ← 平台抽象接口（Windows + macOS 共用）
 ├── SelectionAssistant.Platform.Windows/       ← Win32 P/Invoke、hook、UIA、GDI、托盘
 ├── SelectionAssistant.Providers/      ← OpenAI 兼容翻译 / OCR client
 └── SelectionAssistant.UI/             ← Avalonia 窗口、主题（Ivory Jade）、设置页
 ```
+
+> macOS 移植会新增 `SelectionAssistant.Platform.Mac`（CoreGraphics / AppKit / Keychain 实现 `Platform.Abstractions` 接口）。
 
 测试：`tests/SelectionAssistant.Core.Tests` / `.Providers` / `.Windows.IntegrationTests`。
 

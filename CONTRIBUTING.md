@@ -10,17 +10,22 @@ the essentials.
 
 You need:
 
-- **Windows 10+** (the app targets `net10.0-windows`; the platform layer
-  uses Win32 P/Invoke that can't be built or tested on macOS/Linux)
+- **Windows 10+** is the primary platform (the app targets `net10.0-windows`;
+  `Platform.Windows` uses Win32 P/Invoke). **macOS** can build/test the
+  cross-platform projects (`Core`, `Providers`, `UI`) today; a full macOS
+  port is in progress.
 - **.NET 10 SDK**
 - Any editor (VS / VS Code / Rider all work)
 
 ```bash
-git clone <your-fork-url>
-cd selection-assistant
+git clone https://github.com/CaelumSea/BYH.git
+cd BYH
 dotnet build SelectionAssistant.slnx -c Release     # 0 warnings expected
-dotnet test SelectionAssistant.slnx                  # ~660 tests
+dotnet test SelectionAssistant.slnx                  # ~660 tests (Windows)
 ```
+
+On macOS, the Windows-specific projects won't build until the platform
+abstraction refactor lands — build `Core`/`Providers` individually for now.
 
 If build or tests fail on a clean clone, that's a bug — please open an issue.
 
@@ -69,6 +74,9 @@ the app at runtime:
 - **Single-instance mutex.** The app holds `Global\BYH_ByYourHand_SingleInstance`.
   Always `taskkill /F /IM BYH.exe` before publishing/redeploying — the running
   process locks the exe and will block file writes.
+- **Build artifacts never go in git.** `bin/`, `obj/`, `artifacts/publish/`
+  (the compiled BYH.exe + native DLLs) are gitignored. Releases are distributed
+  via GitHub Releases, not committed. See `docs/git-workflow.md` §10.
 
 ## Before you open a PR
 

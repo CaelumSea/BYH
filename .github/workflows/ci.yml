@@ -10,7 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
+  # Full build & test on Windows — the primary platform. Exercises the whole
+  # solution (net10.0-windows projects, Win32 P/Invoke, Windows.IntegrationTests).
+  windows:
     name: Build & Test (windows-latest)
     runs-on: windows-latest
 
@@ -41,3 +43,33 @@ jobs:
         # Windows.IntegrationTests need a Windows desktop session (P/Invoke +
         # clipboard/hook), which windows-latest provides.
         run: dotnet test SelectionAssistant.slnx -c Release --no-build --verbosity normal
+
+  # Cross-platform smoke test on macOS — verifies the platform-agnostic
+  # projects (Core / Providers) build and pass on a non-Windows OS. This is
+  # the foundation for the macOS port: once the platform abstraction refactor
+  # lands, this job will grow to cover the full macOS build.
+  macos:
+    name: Cross-platform smoke (macos-latest)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Only the net10.0 (non-Windows) projects are built here. The whole
+      # solution can't be built on macOS yet because App + Platform.Windows
+      # target net10.0-windows. Build each cross-platform project explicitly.
+      - name: Build cross-platform projects
+        run: |
+          dotnet build src/SelectionAssistant.Core/SelectionAssistant.Core.csproj -c Release /warnaserror
+          dotnet build src/SelectionAssistant.Providers/SelectionAssistant.Providers.csproj -c Release /warnaserror
+
+      - name: Test cross-platform projects
+        run: |
+          dotnet test tests/SelectionAssistant.Core.Tests/SelectionAssistant.Core.Tests.csproj -c Release --verbosity normal
+          dotnet test tests/SelectionAssistant.Providers.Tests/SelectionAssistant.Providers.Tests.csproj -c Release --verbosity normal
