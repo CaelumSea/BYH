@@ -11,33 +11,41 @@
         ShowActivated="True"
         ShowInTaskbar="True"
         WindowDecorations="Full"
-        Background="#FFFCF7EA"
+        Background="{DynamicResource ByhBackgroundBrush}"
         KeyDown="OnKeyDown">
   <!-- R49: standard application window (not frameless) showing the user's
-       Ocean Eyes screenshot history. Ivory Jade background (#FFFCF7EA) to
-       match the rest of the app. Esc closes; Delete removes the selected
+       Ocean Eyes screenshot history. Ivory Jade theme (batch 125) — the
+       shell, thumbnail cards, and preview overlay all use the same
+       ByhBrush/ByhFontSize tokens as SettingsWindow so the two windows
+       read as one app. Esc closes; Delete removes the selected
        thumbnail's underlying file; double-click opens a full-size preview
-       overlay (Esc/click-out closes); right-click opens a context menu
-       (copy to clipboard / delete / reveal in explorer). The runtime owns
-       the clipboard/explorer calls — the UI raises events back to it. -->
+       overlay (Esc/click-out/double-tap closes; ←/→ steps through shots);
+       right-click opens a context menu (copy / delete / reveal). The
+       runtime owns the clipboard/explorer calls — the UI raises events
+       back to it. -->
+  <!-- Batch 125: GalleryCard = a cream-sheen card with a champagne-gold
+       border on hover, matching SettingsWindow's card grid. Selection in
+       this window is hover/click based, so :pointerover doubles as the
+       active emphasis. Tinting follows Ivory Jade accent tokens. -->
+  <Window.Styles>
+    <Style Selector="Border.GalleryCard">
+      <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ByhBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BoxShadow" Value="0 2 6 0 #22000000" />
+    </Style>
+    <Style Selector="Border.GalleryCard:pointerover">
+      <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+      <Setter Property="BoxShadow" Value="0 4 12 0 #33000000" />
+    </Style>
+  </Window.Styles>
   <Panel>
-    <Grid RowDefinitions="Auto,*">
-      <!-- Top bar: title + count + hint -->
-      <Border Grid.Row="0" Padding="16,12" Background="#22FFFFFF">
-        <StackPanel Orientation="Horizontal" Spacing="12">
-          <TextBlock Text="{x:Static i18n:Strings.Gallery_Heading}" FontWeight="SemiBold" FontSize="{DynamicResource ByhFontSizeSubheading}"
-                     VerticalAlignment="Center"/>
-          <TextBlock x:Name="CountText" Classes="Secondary"
-                     FontSize="{DynamicResource ByhFontSizeBodyLarge}" VerticalAlignment="Center"/>
-          <TextBlock Classes="Secondary"
-                     FontSize="{DynamicResource ByhFontSizeBodyLarge}"
-                     Text="{x:Static i18n:Strings.Gallery_Hint}"
-                     VerticalAlignment="Center"/>
-        </StackPanel>
-      </Border>
-
+    <!-- Batch 125: the in-window count/hint bar was removed (the title bar
+         already shows the window title, and the count surfaces inside the
+         preview as "N / M"). The thumbnail grid fills the whole client area. -->
+    <Grid RowDefinitions="*">
       <!-- Thumbnail grid (wrap panel, fixed-width cells) -->
-      <ScrollViewer Grid.Row="1"
+      <ScrollViewer Grid.Row="0"
                     HorizontalScrollBarVisibility="Disabled"
                     VerticalScrollBarVisibility="Auto">
         <ItemsControl x:Name="GalleryItems">
@@ -48,15 +56,28 @@
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="vm:GalleryItemViewModel">
-              <Border Width="172" Height="142" Margin="4"
-                      CornerRadius="6"
-                      Background="#FFFFFFFF"
-                      BoxShadow="0 2 4 0 #20000000"
+              <!-- Batch 125: Ivory Jade InnerCard shell (cream-sheen fill +
+                   champagne-gold border, matches SettingsWindow cards).
+                   Padding=0 lets the image sit flush to the rounded edges;
+                   an inner clip Border with the same CornerRadius crops the
+                   bitmap so it respects the card's rounded corners. The
+                   caption row carries its own padding. Selection/hover
+                   emphasis is handled by the GalleryCard style below. -->
+              <!-- Batch 125: Ivory Jade GalleryCard shell. Image-only card —
+                   the time caption (DisplayName) was removed per request; the
+                   thumbnail fills the whole card. The inner clip Border rounds
+                   the bitmap to the card's corners. Selection/hover emphasis
+                   is handled by the GalleryCard style below. -->
+              <Border Width="176" Height="132" Margin="6"
+                      Classes="GalleryCard"
+                      CornerRadius="{DynamicResource ByhRadiusMedium}"
+                      Padding="0"
+                      ClipToBounds="True"
                       PointerPressed="OnItemPointerPressed"
                       PointerReleased="OnItemPointerReleased"
                       PointerEntered="OnItemPointerEntered">
                 <Border.ContextMenu>
-                  <ContextMenu>
+                  <ContextMenu Opening="OnContextMenuOpening" Closed="OnContextMenuClosed">
                     <MenuItem Header="{x:Static i18n:Strings.Gallery_CtxCopy}"
                               Click="OnContextCopy_Click"
                               Tag="{Binding}"/>
@@ -72,15 +93,8 @@
                               Tag="{Binding}"/>
                   </ContextMenu>
                 </Border.ContextMenu>
-                <StackPanel>
-                  <Image Source="{Binding Thumbnail}"
-                         Width="172" Height="108"
-                         Stretch="UniformToFill"/>
-                  <TextBlock Text="{Binding DisplayName}"
-                             Margin="8,4"
-                             FontSize="{DynamicResource ByhFontSizeBody}"
-                             TextTrimming="CharacterEllipsis"/>
-                </StackPanel>
+                <Image Source="{Binding Thumbnail}"
+                       Stretch="UniformToFill"/>
               </Border>
             </DataTemplate>
           </ItemsControl.ItemTemplate>
@@ -88,7 +102,7 @@
       </ScrollViewer>
 
       <!-- Empty state -->
-      <Border Grid.Row="1" x:Name="EmptyState" IsVisible="False"
+      <Border Grid.Row="0" x:Name="EmptyState" IsVisible="False"
               HorizontalAlignment="Center" VerticalAlignment="Center"
               Background="Transparent">
         <StackPanel HorizontalAlignment="Center" Spacing="8">
@@ -101,101 +115,147 @@
       </Border>
     </Grid>
 
-    <!-- Full-size preview overlay (lightbox). Visible only while a preview
-         is open. PointerPressed on the background closes it; the inner Image
-         marks e.Handled so clicks on the image itself don't dismiss. -->
-    <Border x:Name="PreviewOverlay"
-            IsVisible="False"
-            Background="#E6000000"
-            ZIndex="100"
-            PointerPressed="OnPreviewOverlayPointerPressed">
-      <Grid RowDefinitions="Auto,*,Auto">
-        <!-- Top bar: filename + close hint -->
-        <Border Grid.Row="0" Padding="20,12" Background="#33000000">
-          <Grid ColumnDefinitions="*,Auto">
+    <!-- Batch 125: preview lives in a Popup (an independent top-level
+         window), NOT an in-window Border. This is the same mechanism as the
+         clipboard image popup. A Popup is not clipped by GalleryWindow's
+         bounds, so the image can be panned outside the gallery window —
+         across the whole screen. The Popup's Child is a screen-sized dark
+         backdrop Border (PreviewOverlay) hosting the shell (title/counter,
+         image viewport, prev/next + action bar). The zoom/pan/fit kernel
+         (Canvas > Image Stretch=None + manual matrix) is unchanged.
+         Open/Close is driven by PreviewPopup.IsOpen from code-behind; the
+         IsVisible/PointerPressed handlers on the backdrop still apply. -->
+    <Popup x:Name="PreviewPopup"
+           Placement="Center"
+           IsLightDismissEnabled="False"
+           WindowManagerAddShadowHint="False">
+      <!-- PreviewOverlay is the Popup's transparent card — copied verbatim
+           from the clipboard image popup (ClipboardHistoryWindow.ShowImagePopup).
+           Transparent (NOT a dark scrim): the clipboard popup has no full-screen
+           dark backdrop either; the image sits on the acrylic/translucent window
+           surface. The entrance scale animation (attached in code-behind) masks
+           the OS-level white frame a Popup HWND paints on creation — that flash
+           is unrelated to the scrim color, so a dark scrim bought nothing but
+           ugliness. Width/Height are set from code-behind on open. -->
+      <Border x:Name="PreviewOverlay"
+              Background="Transparent"
+              ClipToBounds="True"
+              Focusable="True"
+              PointerPressed="OnPreviewOverlayPointerPressed"
+              KeyDown="OnKeyDown">
+        <Grid x:Name="PreviewShell"
+              RowDefinitions="Auto,*,Auto">
+
+          <!-- Top bar: filename + index counter (N/M). No fill — the soft
+               backdrop carries contrast for the white text. -->
+          <StackPanel Grid.Row="0" Margin="24,18,24,8" Spacing="2">
             <TextBlock x:Name="PreviewTitle"
-                       Grid.Column="0"
                        Foreground="White"
                        FontSize="{DynamicResource ByhFontSizeBodyLarge}"
-                       TextTrimming="CharacterEllipsis"
-                       VerticalAlignment="Center"/>
-            <TextBlock Grid.Column="1"
-                       Foreground="#CCFFFFFF"
-                       FontSize="{DynamicResource ByhFontSizeBodyLarge}"
-                       Text="{x:Static i18n:Strings.Gallery_PreviewCloseHint}"
-                       VerticalAlignment="Center"/>
-          </Grid>
-        </Border>
-
-        <!-- Image area: Border(ClipToBounds) is the viewport. Inside it, a
-             LayoutTransformControl wraps an Image. The LayoutTransform
-             (ScaleTransform) controls zoom; the Image.Stretch="Uniform"
-             handles fit-to-window natively within whatever size the scaled
-             LayoutTransformControl allots.
-
-             This combination is reliable where direct RenderTransform math
-             on Image Stretch="None" was not (off-center / clipped output on
-             some PNG DPI metadata combinations). By leaning on Avalonia's
-             own Stretch + LayoutTransformControl measure pipeline, we avoid
-             manually computing scaled pixel sizes and centering offsets.
-
-             For panning when zoomed in, we wrap LayoutTransformControl in a
-             Grid and shift it via Margin. No ScrollViewer = no wheel hijack. -->
-        <!-- Image area: Border ClipToBounds is the viewport. Image Stretch=
-             None renders at its native DIP size. We compute the entire
-             transform matrix ourselves (mirroring the PanAndZoom ZoomBorder
-             pattern): fit-to-window on image load, ScaleAtPrepend on wheel
-             zoom (cursor-anchored), TranslatePrepend on drag pan. The matrix
-             is applied to Image.RenderTransform via MatrixTransform.
-
-             Why not Image Stretch="Uniform": that creates a *second* scaling
-             on top of our matrix (Avalonia fits the bitmap to the Image's
-             layout box, then our RenderTransform scales that result), which
-             breaks the zoom-at-cursor math. By using Stretch="None" and
-             computing fit ourselves, we have one and only one transformation
-             in the pipeline. -->
-        <Border x:Name="PreviewViewport"
-                Grid.Row="1"
-                Background="Transparent"
-                ClipToBounds="True"
-                PointerWheelChanged="OnPreviewPointerWheelChanged">
-          <!-- Canvas gives its child infinite available size during measure,
-               so Image Stretch=None can finally report its true native DIP
-               size (bitmap.Size) as its Bounds — not constrained to the
-               Border's size. Without Canvas, Avalonia 12 forces Image's
-               Bounds to the parent's size even with Stretch=None, which
-               silently re-introduces the "double scaling" problem (bitmap
-               gets fit into the layout box, then our RenderTransform scales
-               that result again). Canvas breaks the constraint chain. -->
-          <Canvas x:Name="PreviewCanvas"
-                  Background="Transparent"
-                  ClipToBounds="False">
-            <Image x:Name="PreviewImage"
-                   Stretch="None"
-                   Cursor="SizeAll"
-                   PointerPressed="OnPreviewImagePointerPressed"
-                   PointerMoved="OnPreviewImagePointerMoved"
-                   PointerReleased="OnPreviewImagePointerReleased"/>
-          </Canvas>
-        </Border>
-
-        <!-- Bottom bar: action buttons -->
-        <Border Grid.Row="2" Padding="20,10" Background="#33000000">
-          <StackPanel Orientation="Horizontal"
-                      HorizontalAlignment="Center"
-                      Spacing="8">
-            <Button Content="{x:Static i18n:Strings.Gallery_PreviewCopy}"
-                    Click="OnPreviewCopy_Click"
-                    Padding="16,6"/>
-            <Button Content="{x:Static i18n:Strings.Gallery_PreviewDelete}"
-                    Click="OnPreviewDelete_Click"
-                    Padding="16,6"/>
-            <Button Content="{x:Static i18n:Strings.Gallery_PreviewReveal}"
-                    Click="OnPreviewReveal_Click"
-                    Padding="16,6"/>
+                       TextTrimming="CharacterEllipsis"/>
+            <TextBlock x:Name="PreviewIndex"
+                       Foreground="#B3FFFFFF"
+                       FontSize="{DynamicResource ByhFontSizeCaption}"/>
           </StackPanel>
-        </Border>
-      </Grid>
-    </Border>
+
+          <!-- Image viewport (kernel unchanged). Border ClipToBounds is the
+               viewport. Image Stretch=None renders at its native DIP size. We
+               compute the entire transform matrix ourselves (mirroring the
+               PanAndZoom ZoomBorder pattern): fit-to-window on image load,
+               ScaleAtPrepend on wheel zoom (cursor-anchored), TranslatePrepend
+               on drag pan. The matrix is applied to Image.RenderTransform via
+               TransformOperations (MatrixTransform is unreliable on NativeAOT).
+
+               Why not Image Stretch="Uniform": that creates a *second* scaling
+               on top of our matrix (Avalonia fits the bitmap to the Image's
+               layout box, then our RenderTransform scales that result), which
+               breaks the zoom-at-cursor math. By using Stretch="None" and
+               computing fit ourselves, we have one and only one transformation
+               in the pipeline. -->
+          <!-- PreviewViewport ClipToBounds=False lets the image pan freely
+               across the backdrop (and outside the gallery window, since the
+               Popup is a separate top-level window). The backdrop Border is
+               the soft outer boundary. -->
+          <Border x:Name="PreviewViewport"
+                  Grid.Row="1"
+                  Background="Transparent"
+                  ClipToBounds="False"
+                  PointerWheelChanged="OnPreviewPointerWheelChanged">
+            <!-- Canvas gives its child infinite available size during measure,
+                 so Image Stretch=None can finally report its true native DIP
+                 size (bitmap.Size) as its Bounds — not constrained to the
+                 Border's size. Without Canvas, Avalonia 12 forces Image's
+                 Bounds to the parent's size even with Stretch=None, which
+                 silently re-introduces the "double scaling" problem (bitmap
+                 gets fit into the layout box, then our RenderTransform scales
+                 that result again). Canvas breaks the constraint chain. -->
+            <Canvas x:Name="PreviewCanvas"
+                    Background="Transparent"
+                    ClipToBounds="False">
+              <Image x:Name="PreviewImage"
+                     Stretch="None"
+                     Cursor="SizeAll"
+                     PointerPressed="OnPreviewImagePointerPressed"
+                     PointerMoved="OnPreviewImagePointerMoved"
+                     PointerReleased="OnPreviewImagePointerReleased"
+                     DoubleTapped="OnPreviewImageDoubleTapped">
+                <!-- Batch 125: right-click the previewed image for the action
+                     menu (copy / pin as sticker / reveal / delete). These act
+                     on the currently previewed shot (_selected), so no Tag is
+                     needed — the handlers read _selected directly. -->
+                <Image.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="{x:Static i18n:Strings.Gallery_PreviewCopy}"
+                              Click="OnPreviewCopy_Click"/>
+                    <MenuItem Header="{x:Static i18n:Strings.Gallery_PreviewPin}"
+                              Click="OnPreviewPin_Click"/>
+                    <MenuItem Header="{x:Static i18n:Strings.Gallery_PreviewReveal}"
+                              Click="OnPreviewReveal_Click"/>
+                    <Separator/>
+                    <MenuItem Header="{x:Static i18n:Strings.Gallery_PreviewDelete}"
+                              Click="OnPreviewDelete_Click"/>
+                  </ContextMenu>
+                </Image.ContextMenu>
+              </Image>
+            </Canvas>
+          </Border>
+
+          <!-- Bottom bar: prev/next arrows flank a centered action cluster.
+               Ivory Jade Ghost/DangerQuiet button classes match SettingsWindow.
+               The arrows repeat the keyboard ←/→ stepping (StepPreview). -->
+          <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="24,8,24,18">
+            <Button Grid.Column="0" x:Name="PrevButton"
+                    Classes="Ghost"
+                    Click="OnPreviewPrev_Click"
+                    Content="‹"
+                    FontSize="{DynamicResource ByhFontSizeHeading}"
+                    Padding="14,4"
+                    VerticalAlignment="Center"/>
+            <StackPanel Grid.Column="1" Orientation="Horizontal"
+                        HorizontalAlignment="Center" Spacing="8">
+              <Button Classes="Ghost"
+                      Click="OnPreviewCopy_Click"
+                      Content="{x:Static i18n:Strings.Gallery_PreviewCopy}"
+                      Padding="16,6"/>
+              <Button Classes="Ghost"
+                      Click="OnPreviewReveal_Click"
+                      Content="{x:Static i18n:Strings.Gallery_PreviewReveal}"
+                      Padding="16,6"/>
+              <Button Classes="DangerQuiet"
+                      Click="OnPreviewDelete_Click"
+                      Content="{x:Static i18n:Strings.Gallery_PreviewDelete}"
+                      Padding="16,6"/>
+            </StackPanel>
+            <Button Grid.Column="2" x:Name="NextButton"
+                    Classes="Ghost"
+                    Click="OnPreviewNext_Click"
+                    Content="›"
+                    FontSize="{DynamicResource ByhFontSizeHeading}"
+                    Padding="14,4"
+                    VerticalAlignment="Center"/>
+          </Grid>
+        </Grid>
+      </Border>
+    </Popup>
   </Panel>
 </Window>

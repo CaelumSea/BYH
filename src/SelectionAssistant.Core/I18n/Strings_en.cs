@@ -84,7 +84,7 @@ internal static partial class Strings_en
         // GalleryWindow
         ["Gallery_Title"] = "BYH · Screenshot Gallery",
         ["Gallery_Heading"] = "📷 Screenshot Gallery",
-        ["Gallery_Hint"] = "Double-click to view · right-click for more · Esc to close",
+        ["Gallery_Hint"] = "Click to view · double-click to delete · Esc to close",
         ["Gallery_CountSuffix"] = " shot(s)",
         ["Gallery_CopiedSuffix"] = " · copied",
         ["Gallery_EmptyTitle"] = "No screenshots yet",
@@ -100,6 +100,8 @@ internal static partial class Strings_en
         ["Gallery_PreviewCopy"] = "📋 Copy",
         ["Gallery_PreviewDelete"] = "🗑 Delete",
         ["Gallery_PreviewReveal"] = "📁 Open folder",
+        ["Gallery_PreviewPin"] = "📌 Pin on top",
+        ["Gallery_PreviewCount"] = "{0} / {1}",
 
         // ParameterInputDialog
         ["ParamDialog_Title"] = "BYH · Enter parameter",
@@ -390,6 +392,7 @@ internal static partial class Strings_en
         ["Clip_Row_AddTag"] = "Add tag…",
         ["Clip_Row_RemoveTag"] = "Remove tag",
         ["Clip_Row_ViewImage"] = "View image…",
+        ["Clip_Row_PinOnTop"] = "Pin on top",
         ["Clip_Row_MoveTo"] = "Move to…",
         ["Clip_Row_NoTabsHint"] = "No custom tabs yet — create one for this entry…",
         ["Clip_Row_NewTabForEntry"] = "New tab for this entry…",

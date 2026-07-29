@@ -359,6 +359,8 @@ public partial class App : Application
             // R54 v1.2 v6: user-imported icon library.
             clipboardHistoryWindow.ImportIconsRequested += OnClipboardHistoryImportIcons;
             clipboardHistoryWindow.RemoveUserIconRequested += OnClipboardHistoryRemoveUserIcon;
+            // Batch 125: pin a clipboard image as an always-on-top sticker.
+            clipboardHistoryWindow.PinOnTopRequested += OnClipboardHistoryPinOnTop;
 
             // R24/R40: region-select overlay. R40 entry point: Ctrl+Alt+Q goes
             // straight into the overlay (no panel). On confirm → capture PNG →
@@ -1535,6 +1537,14 @@ public partial class App : Application
         if (_clipboardHistoryService is null) return;
         _clipboardHistoryService.RemoveUserIcon(iconName);
         PushClipboardHistoryTags();
+    }
+
+    /// <summary>Batch 125: pin a clipboard image as an always-on-top sticker.
+    /// Forwards the PNG path to the runtime, which reads the bytes and creates
+    /// a PinnedScreenshotWindow (same code path as the gallery's pin).</summary>
+    private void OnClipboardHistoryPinOnTop(string imagePath)
+    {
+        _runtime?.PinGalleryScreenshot(imagePath);
     }
 
     /// <summary>

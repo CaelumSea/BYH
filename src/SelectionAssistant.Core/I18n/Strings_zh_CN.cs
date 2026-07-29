@@ -86,7 +86,7 @@ internal static partial class Strings_zh_CN
         // GalleryWindow
         ["Gallery_Title"] = "BYH · 截图相册",
         ["Gallery_Heading"] = "📷 截图相册",
-        ["Gallery_Hint"] = "双击查看 · 右键更多操作 · Esc 关闭",
+        ["Gallery_Hint"] = "单击查看 · 双击删除 · Esc 关闭",
         ["Gallery_CountSuffix"] = " 张",
         ["Gallery_CopiedSuffix"] = " · 已复制",
         ["Gallery_EmptyTitle"] = "还没有截图",
@@ -102,6 +102,8 @@ internal static partial class Strings_zh_CN
         ["Gallery_PreviewCopy"] = "📋 复制",
         ["Gallery_PreviewDelete"] = "🗑 删除",
         ["Gallery_PreviewReveal"] = "📁 打开目录",
+        ["Gallery_PreviewPin"] = "📌 置顶为贴图",
+        ["Gallery_PreviewCount"] = "{0} / {1}",
 
         // ParameterInputDialog
         ["ParamDialog_Title"] = "BYH · 输入参数",
@@ -392,6 +394,7 @@ internal static partial class Strings_zh_CN
         ["Clip_Row_AddTag"] = "添加标签…",
         ["Clip_Row_RemoveTag"] = "移除标签",
         ["Clip_Row_ViewImage"] = "查看图片…",
+        ["Clip_Row_PinOnTop"] = "置顶为贴图",
         ["Clip_Row_MoveTo"] = "移动到…",
         ["Clip_Row_NoTabsHint"] = "还没有自定义标签页 — 为此条目创建一个…",
         ["Clip_Row_NewTabForEntry"] = "为此条目新建标签页…",

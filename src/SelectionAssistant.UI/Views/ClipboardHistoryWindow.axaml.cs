@@ -552,6 +552,13 @@ public partial class ClipboardHistoryWindow : Window
     /// after the <c>user:</c> prefix).</summary>
     public event Action<string>? RemoveUserIconRequested;
 
+    /// <summary>Pin an image entry as an always-on-top floating sticker.
+    /// Arg = the image's PNG file path on disk. The App forwards this to the
+    /// runtime, which reads the bytes and creates a PinnedScreenshotWindow —
+    /// the UI layer stays free of Platform.Windows (same pattern as Gallery's
+    /// RequestPin).</summary>
+    public event Action<string>? PinOnTopRequested;
+
     public void PrepareForShutdown() => _allowClose = true;
 
     // ── Row construction ──
@@ -2912,6 +2919,16 @@ public partial class ClipboardHistoryWindow : Window
             var viewImage = new MenuItem { Header = Strings.Clip_Row_ViewImage, Tag = row };
             viewImage.Click += (_, _) => ShowImagePopup(row);
             menu.Items.Add(viewImage);
+
+            // Pin the image as an always-on-top floating sticker. Handed to the
+            // App/runtime via PinOnTopRequested (the runtime reads the PNG bytes
+            // and creates a PinnedScreenshotWindow). Requires a real on-disk path.
+            if (!string.IsNullOrEmpty(row.ImagePath))
+            {
+                var pinOnTop = new MenuItem { Header = Strings.Clip_Row_PinOnTop, Tag = row };
+                pinOnTop.Click += (_, _) => PinOnTopRequested?.Invoke(row.ImagePath!);
+                menu.Items.Add(pinOnTop);
+            }
         }
 
         // "Move to…" submenu: only for text rows (R54 v2 — images can't be

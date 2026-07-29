@@ -6,6 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Animation;
+using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -47,6 +49,27 @@ public partial class GalleryWindow : Window
 
     /// <summary>Multiply zoom by this per wheel notch (1.2 = ~5 notches to double).</summary>
     private const double ZoomPerNotch = 1.2;
+
+    /// <summary>
+    /// Batch 125: the fit-to-window result is scaled by this factor so the
+    /// image renders smaller than the viewport at 1×, leaving free pan room
+    /// (the user can drag the image around and past its own layout box up to
+    /// the viewport clip without first zooming out). Mirrors the clipboard
+    /// image-popup's "display size &lt; clip size" design. 0.65 = the fitted
+    /// image fills ~65% of the viewport — a comfortable default that isn't
+    /// overwhelmingly large on open, with ample margin to pan into.
+    /// </summary>
+    private const double FitMarginRatio = 0.65;
+
+    /// <summary>
+    /// Batch 125: corner radius (DIP) applied to the preview image via
+    /// Image.Clip (a RectangleGeometry with matching RadiusX/RadiusY). The
+    /// clip lives in the image's local coordinate space, so it tracks the
+    /// bitmap's own edges through zoom/pan (the corners stay rounded on the
+    /// image, not on some fixed viewport rectangle that would crop panning).
+    /// A small value — just enough to soften the hard corners.
+    /// </summary>
+    private const double PreviewCornerRadius = 16.0;
 
     /// <summary>Minimum zoom relative to fit-to-window. 1.0 = exactly fit.</summary>
     private const double MinZoom = 1.0;
@@ -107,6 +130,14 @@ public partial class GalleryWindow : Window
     public event Action<string>? RequestDelete;
 
     /// <summary>
+    /// Raised with the absolute path of a PNG the user wants pinned as an
+    /// always-on-top floating sticker (preview button). The runtime owns the
+    /// PinnedScreenshotWindow creation + lifecycle (UI layer stays free of
+    /// Platform.Windows).
+    /// </summary>
+    public event Action<string>? RequestPin;
+
+    /// <summary>
     /// Raised with the absolute path of a PNG whose containing folder the
     /// user wants to see in Explorer (context menu / preview button). The
     /// runtime owns the OS shell call.
@@ -137,7 +168,7 @@ public partial class GalleryWindow : Window
         // meaningful while a preview is open.
         PreviewViewport.SizeChanged += (_, _) =>
         {
-            if (PreviewOverlay.IsVisible && _previewBitmap is not null)
+            if (PreviewPopup.IsOpen && _previewBitmap is not null)
             {
                 FitToWindow();
             }
@@ -209,6 +240,13 @@ public partial class GalleryWindow : Window
         {
             zoom = 1.0; // don't upscale past 1:1
         }
+        // Batch 125: shrink the fit slightly so the image doesn't fill the
+        // viewport edge-to-edge at 1×. The margin this leaves (~20% of the
+        // viewport) is free pan room — the user can drag the image around
+        // (and past its own layout box, up to the viewport clip) without
+        // first having to zoom out. Mirrors the clipboard image-popup, where
+        // the display size is deliberately smaller than the clip boundary.
+        zoom *= FitMarginRatio;
 
         // Centered: image center maps to viewport center.
         // Pan offset = viewportCenter - imageCenter * zoom.
@@ -219,6 +257,10 @@ public partial class GalleryWindow : Window
 
         _matrix = new Matrix(zoom, 0, 0, zoom, panX, panY);
         ApplyMatrix();
+        // Reveal the image now that it's centered — paired with the Opacity=0
+        // set before Source in OpenPreview, this prevents the upper-left flash
+        // of the un-positioned bitmap.
+        PreviewImage.Opacity = 1;
     }
 
     private async void OnLoaded(object? sender, RoutedEventArgs e)
@@ -308,21 +350,82 @@ public partial class GalleryWindow : Window
 
     // ── Thumbnail grid interactions ────────────────────────────────────
 
+    /// <summary>
+    /// Batch 125: centralizes selection. Updates <see cref="_selected"/> and
+    /// mirrors the state onto each VM's <see cref="GalleryItemViewModel.IsSelected"/>
+    /// (clears the old, sets the new) so the grid can react to the persistent
+    /// "current" shot — the one Delete/Enter act on — independent of the
+    /// :pointerover hover cue.
+    /// </summary>
+    private void SetSelected(GalleryItemViewModel? vm)
+    {
+        if (ReferenceEquals(_selected, vm)) return;
+        if (_selected is { } prev) prev.IsSelected = false;
+        _selected = vm;
+        if (vm is { } next) next.IsSelected = true;
+    }
+
+    // Batch 125: single-click opens the preview, double-click deletes (with
+    // the N4 confirmation popup). Because the first click of a double-click
+    // would otherwise open the preview overlay immediately — swallowing the
+    // second click on the backdrop instead of the thumbnail — the single-click
+    // open is deferred by a short timer. If a second click lands within that
+    // window (ClickCount >= 2 on the next press), the pending open is cancelled
+    // and the delete path runs instead. This mirrors how desktop file managers
+    // disambiguate single- vs double-click on the same target.
+    private DispatcherTimer? _pendingOpenTimer;
+    private GalleryItemViewModel? _pendingOpenVm;
+    private const int SingleClickOpenDelayMs = 220;
+
     private void OnItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is Control { DataContext: GalleryItemViewModel vm })
         {
-            _selected = vm;
-            // Double-click = open preview (the conventional "open" gesture
-            // for image grids). Copy lives on the right-click menu and the
-            // preview's Copy button — don't surprise users by copying on
-            // what looks like an "open" double-click.
+            // Only the LEFT button drives open/delete. A right press still
+            // raises PointerPressed, but it should only open the context menu
+            // (handled separately) — letting it start the deferred-open timer
+            // made right-click also expand the preview (batch 125 fix).
+            if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            {
+                return;
+            }
+            SetSelected(vm);
             if (e.ClickCount >= 2)
             {
-                OpenPreview(vm);
+                // Second click within the system double-click window: this is a
+                // double-click → cancel any pending single-click open and delete.
+                CancelPendingOpen();
+                DeleteEntry(vm);
                 e.Handled = true;
+                return;
             }
+
+            // First click: defer the preview open so a potential second click
+            // (double-click) can still reach this handler to delete instead.
+            CancelPendingOpen();
+            _pendingOpenVm = vm;
+            _pendingOpenTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SingleClickOpenDelayMs) };
+            _pendingOpenTimer.Tick += (_, _) =>
+            {
+                _pendingOpenTimer.Stop();
+                if (_pendingOpenVm is { } target)
+                {
+                    _pendingOpenVm = null;
+                    OpenPreview(target);
+                }
+            };
+            _pendingOpenTimer.Start();
         }
+    }
+
+    private void CancelPendingOpen()
+    {
+        if (_pendingOpenTimer is { } t)
+        {
+            t.Stop();
+            _pendingOpenTimer = null;
+        }
+        _pendingOpenVm = null;
     }
 
     private void OnItemPointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -332,13 +435,28 @@ public partial class GalleryWindow : Window
         // which happens in PointerPressed above.
     }
 
+    // Batch 125: while a thumbnail's context menu is open, suppress hover-select.
+    // Without this, moving the mouse across other thumbnails fires PointerEntered
+    // → SetSelected → IsSelected PropertyChanged → the card's visual state /
+    // layout is recomputed, which makes the open ContextMenu's Popup flicker and
+    // reposition ("the menu updates several times as the mouse moves"). The
+    // clipboard list avoids this by having no PointerEntered at all; we keep
+    // hover-select as a feature but gate it on this flag.
+    private bool _isContextMenuOpen;
+
+    private void OnContextMenuOpening(object? sender, CancelEventArgs e) => _isContextMenuOpen = true;
+
+    private void OnContextMenuClosed(object? sender, RoutedEventArgs e) => _isContextMenuOpen = false;
+
     private void OnItemPointerEntered(object? sender, PointerEventArgs e)
     {
         // Hover-select: a lightweight UX nicety so Delete works on the
-        // last-hovered thumbnail without requiring a click first.
+        // last-hovered thumbnail without requiring a click first. Skipped while
+        // a context menu is open (see _isContextMenuOpen).
+        if (_isContextMenuOpen) return;
         if (sender is Control { DataContext: GalleryItemViewModel vm })
         {
-            _selected = vm;
+            SetSelected(vm);
         }
     }
 
@@ -379,14 +497,104 @@ public partial class GalleryWindow : Window
 
     // ── Preview overlay (lightbox) ─────────────────────────────────────
 
+    /// <summary>
+    /// Sizes the card to 85% of the primary screen (matching the clipboard
+    /// image-popup's clip region) and opens the preview Popup. The Popup is a
+    /// separate top-level window, so this 85%-screen card can extend beyond
+    /// GalleryWindow's bounds — which is what lets the image be panned outside
+    /// the gallery window. The entrance scale animation is attached BEFORE
+    /// Open (copied verbatim from ClipboardHistoryWindow.AttachPopupEntrance)
+    /// so the OS-level white frame a Popup HWND paints on creation is masked
+    /// by the 0.85 starting scale.
+    /// </summary>
+    private void OpenPreviewPopup()
+    {
+        var primary = Screens.Primary;
+        double w = primary is not null ? primary.Bounds.Width * 0.85 : 900;
+        double h = primary is not null ? primary.Bounds.Height * 0.85 : 700;
+        PreviewOverlay.Width = w;
+        PreviewOverlay.Height = h;
+        // Attach the entrance animation before opening — same pattern as the
+        // clipboard popup. The 0.85 start scale is set synchronously here so
+        // the very first rendered frame is already scaled down, hiding the
+        // creation-frame flash.
+        AttachPreviewEntrance();
+        PreviewPopup.IsOpen = true;
+        // Move keyboard focus into the popup so Esc / ← / → / Delete are
+        // received here (a Popup is a separate top-level window; without
+        // focusing into it, key events stay on GalleryWindow and the preview
+        // key handlers wouldn't fire). Posted to the next frame so the popup
+        // has completed layout before we focus.
+        Dispatcher.UIThread.Post(() => PreviewOverlay.Focus());
+    }
+
+    /// <summary>
+    /// Entrance scale animation for the preview Popup — copied verbatim from
+    /// ClipboardHistoryWindow.AttachPopupEntrance. Scales PreviewOverlay (the
+    /// Popup's root card) from 0.85 → 1.0 over ~180ms with CubicEaseOut. The
+    /// 0.85 start scale is applied BEFORE Popup.Open, so the very first frame
+    /// the OS paints (including the creation-frame white HWND background) is
+    /// already scaled down — that is what masks the flash. The transition to
+    /// 1.0 fires on Popup.Opened's next frame.
+    /// CRITICAL: applied to PreviewOverlay (the card), never to PreviewImage —
+    /// the Image carries the zoom matrix as its own RenderTransform.
+    /// </summary>
+    private void AttachPreviewEntrance()
+    {
+        const double popStartScale = 0.85;
+        var popEasing = new CubicEaseOut();
+        var scale = new ScaleTransform(popStartScale, popStartScale);
+        PreviewOverlay.RenderTransform = scale;
+        PreviewOverlay.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
+        scale.Transitions = new Transitions
+        {
+            new DoubleTransition
+            {
+                Property = ScaleTransform.ScaleXProperty,
+                Duration = TimeSpan.FromMilliseconds(180),
+                Easing = popEasing,
+            },
+            new DoubleTransition
+            {
+                Property = ScaleTransform.ScaleYProperty,
+                Duration = TimeSpan.FromMilliseconds(180),
+                Easing = popEasing,
+            },
+        };
+        // Replace any prior Opened handler (the Popup is reused across opens)
+        // before attaching this one, so handlers don't accumulate.
+        PreviewPopup.Opened -= OnPreviewPopupOpened;
+        PreviewPopup.Opened += OnPreviewPopupOpened;
+        // Capture this scale instance for the handler via a field.
+        _entranceScale = scale;
+    }
+
+    private ScaleTransform? _entranceScale;
+
+    private void OnPreviewPopupOpened(object? sender, EventArgs e)
+    {
+        // Next frame: transition to the final scale so the 0.85 start is
+        // honored for the first frame before interpolation begins.
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_entranceScale is { } s)
+            {
+                s.ScaleX = 1;
+                s.ScaleY = 1;
+            }
+        });
+    }
+
     private void OpenPreview(GalleryItemViewModel vm)
     {
         // Load the full-resolution PNG on a worker thread to avoid UI
         // hitches on big 4K screenshots. The overlay shows immediately
-        // (with the title) so the user gets feedback; the image fills in.
+        // (with the title + counter) so the user gets feedback; the image
+        // fills in.
         PreviewTitle.Text = Path.GetFileName(vm.Entry.FilePath);
-        PreviewOverlay.IsVisible = true;
-        _selected = vm;
+        UpdatePreviewIndex(vm);
+        OpenPreviewPopup();
+        SetSelected(vm);
 
         // Reset state for the new image.
         _previewBitmap?.Dispose();
@@ -414,14 +622,29 @@ public partial class GalleryWindow : Window
             {
                 // If the user closed the overlay or switched to a different
                 // entry before this finished, dispose the late bitmap.
-                if (!PreviewOverlay.IsVisible || PreviewTitle.Text != Path.GetFileName(path))
+                if (!PreviewPopup.IsOpen || PreviewTitle.Text != Path.GetFileName(path))
                 {
                     full.Dispose();
                     return;
                 }
                 _previewBitmap?.Dispose();
                 _previewBitmap = full;
+                // Hide the image until it has been positioned by FitToWindow.
+                // Otherwise the bitmap paints for a frame at the Canvas origin
+                // (matrix is Identity) before the fit poll moves it to center —
+                // a visible flash in the upper-left. Opacity=0 here, restored
+                // to 1 inside FitToWindow once the centered matrix is applied.
+                PreviewImage.Opacity = 0;
                 PreviewImage.Source = full;
+                // Batch 125: rounded corners on the image itself. The clip is
+                // in the image's local (pre-transform) space at the bitmap's
+                // native DIP size, so it rounds the image's own corners and
+                // follows it through zoom/pan rather than cropping to a fixed
+                // rectangle (which would re-clip panning).
+                double iw = full.Size.Width;
+                double ih = full.Size.Height;
+                PreviewImage.Clip = new RectangleGeometry(
+                    new Rect(0, 0, iw, ih), PreviewCornerRadius, PreviewCornerRadius);
                 // Fit as soon as the viewport's Bounds become valid. We try
                 // a few times via short DispatcherTimer retries because
                 // PreviewOverlay's IsVisible=true doesn't synchronously
@@ -446,7 +669,7 @@ public partial class GalleryWindow : Window
         timer.Tick += (_, _) =>
         {
             attempts++;
-            if (!PreviewOverlay.IsVisible)
+            if (!PreviewPopup.IsOpen)
             {
                 timer.Stop();
                 return;
@@ -461,6 +684,11 @@ public partial class GalleryWindow : Window
             }
             if (attempts > 60) // ~1s at 16ms ticks
             {
+                // Fit never succeeded (viewport never reported valid bounds).
+                // Reveal the image anyway at its current (Identity) matrix so
+                // the user isn't left staring at a blank popup — they can
+                // still zoom/pan. Matches the "fails silently" contract above.
+                PreviewImage.Opacity = 1;
                 timer.Stop();
             }
         };
@@ -469,13 +697,66 @@ public partial class GalleryWindow : Window
 
     private void ClosePreview()
     {
-        PreviewOverlay.IsVisible = false;
+        PreviewPopup.IsOpen = false;
         PreviewImage.Source = null;
         _previewBitmap?.Dispose();
         _previewBitmap = null;
         _matrix = Matrix.Identity;
         _isPanning = false;
         ApplyMatrix();
+    }
+
+    /// <summary>
+    /// Batch 125: writes the "N / M" counter for <paramref name="vm"/> into
+    /// PreviewIndex. 1-based for display. Hidden entirely when there is a
+    /// single shot (a counter of "1 / 1" adds noise without aiding navigation).
+    /// </summary>
+    private void UpdatePreviewIndex(GalleryItemViewModel vm)
+    {
+        if (_items.Count <= 1)
+        {
+            PreviewIndex.Text = string.Empty;
+            return;
+        }
+        int index = _items.IndexOf(vm);
+        if (index < 0)
+        {
+            PreviewIndex.Text = string.Empty;
+            return;
+        }
+        PreviewIndex.Text = string.Format(Strings.Gallery_PreviewCount, index + 1, _items.Count);
+    }
+
+    /// <summary>
+    /// Batch 125: steps the preview to the previous/next shot, wrapping
+    /// around at the ends. Reuses <see cref="OpenPreview"/> so the bitmap
+    /// reload, matrix reset, and fit logic all run identically to a fresh
+    /// open — no special-case paging path. A no-op for single-item galleries.
+    /// </summary>
+    private void StepPreview(int delta)
+    {
+        if (_selected is null || _items.Count == 0) return;
+        if (_items.Count == 1) return;
+        int i = _items.IndexOf(_selected);
+        if (i < 0) return;
+        int next = (i + delta + _items.Count) % _items.Count;
+        OpenPreview(_items[next]);
+    }
+
+    private void OnPreviewPrev_Click(object? sender, RoutedEventArgs e) => StepPreview(-1);
+
+    private void OnPreviewNext_Click(object? sender, RoutedEventArgs e) => StepPreview(+1);
+
+    /// <summary>
+    /// Batch 125: double-tap on the image closes the preview — matches the
+    /// clipboard image-popup close gesture. A double-tap is NOT a pan-drag,
+    /// so there's no conflict with the pointer-pressed pan handler (which
+    /// only acts on single-press + move).
+    /// </summary>
+    private void OnPreviewImageDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        ClosePreview();
+        e.Handled = true;
     }
 
     /// <summary>
@@ -551,23 +832,32 @@ public partial class GalleryWindow : Window
 
     private void OnPreviewOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // Click on the dark backdrop (not on the image) closes the preview.
+        // Only a LEFT click on the backdrop closes the preview. A right press
+        // must fall through so the image's ContextMenu (copy/pin/reveal/delete)
+        // can open — handling it here unconditionally made right-click close
+        // the preview instead of showing the menu (batch 125 fix).
+        if (!e.GetCurrentPoint(PreviewOverlay).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
         ClosePreview();
         e.Handled = true;
     }
 
     private void OnPreviewImagePointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        // Left button on the image starts a pan-drag. Swallow so the
-        // backdrop close handler doesn't fire mid-drag.
-        e.Handled = true;
-
         var props = e.GetCurrentPoint(PreviewViewport).Properties;
+        // Only the LEFT button starts a pan-drag. A right press must fall
+        // through unhandled so the Image's ContextMenu (copy/pin/reveal/delete)
+        // can open — marking it Handled here would suppress the menu.
         if (!props.IsLeftButtonPressed)
         {
             return;
         }
 
+        // Swallow the left press so the backdrop close handler doesn't fire
+        // mid-drag.
+        e.Handled = true;
         _isPanning = true;
         // Use viewport coords for pan delta (drag distance is in viewport
         // space regardless of zoom level).
@@ -624,7 +914,11 @@ public partial class GalleryWindow : Window
         double ih = bmp.Size.Height;
         if (iw <= 0 || ih <= 0) return 0;
         double fit = Math.Min(vw / iw, vh / ih);
-        return fit > 1.0 ? 1.0 : fit;
+        if (fit > 1.0) fit = 1.0;
+        // Keep the clamp baseline in lockstep with FitToWindow (which also
+        // applies FitMarginRatio) so wheel-zoom limits refer to the actual
+        // rendered size, not the raw fit.
+        return fit * FitMarginRatio;
     }
 
     private void OnPreviewCopy_Click(object? sender, RoutedEventArgs e)
@@ -653,6 +947,22 @@ public partial class GalleryWindow : Window
         }
     }
 
+    /// <summary>
+    /// Batch 125: pin the previewed shot as an always-on-top sticker. Hands
+    /// the file path to the runtime via <see cref="RequestPin"/> (the runtime
+    /// reads the PNG bytes and creates the PinnedScreenshotWindow). Closes the
+    /// preview afterward — the sticker is now its own window, so the preview
+    /// overlay is no longer needed.
+    /// </summary>
+    private void OnPreviewPin_Click(object? sender, RoutedEventArgs e)
+    {
+        if (_selected is { } vm)
+        {
+            RequestPin?.Invoke(vm.Entry.FilePath);
+            ClosePreview();
+        }
+    }
+
     // ── Keyboard ───────────────────────────────────────────────────────
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -660,7 +970,7 @@ public partial class GalleryWindow : Window
         // Esc has two levels: close preview if open, else close the window.
         if (e.Key == Key.Escape)
         {
-            if (PreviewOverlay.IsVisible)
+            if (PreviewPopup.IsOpen)
             {
                 ClosePreview();
             }
@@ -683,6 +993,23 @@ public partial class GalleryWindow : Window
             // Enter opens the preview (matches double-click).
             OpenPreview(selEnter);
             e.Handled = true;
+        }
+
+        // Batch 125: ←/→ step through shots while the preview is open
+        // (same as the on-screen prev/next arrows). Only handled inside
+        // the overlay so plain arrow keys do nothing odd on the grid.
+        if (PreviewPopup.IsOpen)
+        {
+            if (e.Key == Key.Left)
+            {
+                StepPreview(-1);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Right)
+            {
+                StepPreview(+1);
+                e.Handled = true;
+            }
         }
     }
 
@@ -781,6 +1108,7 @@ public partial class GalleryWindow : Window
             _items.Remove(vm);
             if (ReferenceEquals(_selected, vm))
             {
+                vm.IsSelected = false;
                 _selected = null;
             }
             UpdateCount(_items.Count);
@@ -795,11 +1123,12 @@ public partial class GalleryWindow : Window
         }
     }
 
+    // Batch 125: the in-window count/hint bar was removed, so UpdateCount no
+    // longer has a TextBlock to write to. Kept as a no-op so the existing
+    // call sites (scan complete, copy feedback, post-delete) stay valid without
+    // churn; the entry count is still surfaced inside the preview as "N / M".
     private void UpdateCount(int entriesCount, string suffix = "")
     {
-        CountText.Text = entriesCount == 0
-            ? $"0{Strings.Gallery_CountSuffix}{suffix}"
-            : $"{entriesCount}{Strings.Gallery_CountSuffix}{suffix}";
     }
 
     private void OnClosed(object? sender, EventArgs e)
@@ -815,6 +1144,11 @@ public partial class GalleryWindow : Window
         _previewBitmap?.Dispose();
         _previewBitmap = null;
         _selected = null;
+        // Batch 125: close the preview Popup so it doesn't outlive the window.
+        PreviewPopup.IsOpen = false;
+        // Batch 125: cancel any deferred single-click open so its timer
+        // doesn't fire OpenPreview after the window is gone.
+        CancelPendingOpen();
         // Audit N4: close any pending delete-confirm popup so it doesn't
         // outlive the window (it captured `this` + the row vm in its closure).
         _deleteConfirmPopup?.Close();
@@ -848,6 +1182,25 @@ public sealed class GalleryItemViewModel : INotifyPropertyChanged
             {
                 _thumbnail = value;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Thumbnail)));
+            }
+        }
+    }
+
+    // Batch 125: selection state for the grid. The GalleryCard style reacts
+    // to :pointerover for hover; IsSelected backs a persistent "current"
+    // emphasis (the shot the Delete/Enter keys act on) that survives mouse
+    // leave. Kept even though the hover style is the primary visual cue, so a
+    // future Selected pseudo-class has a backing field ready.
+    private bool _isSelected;
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected != value)
+            {
+                _isSelected = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSelected)));
             }
         }
     }

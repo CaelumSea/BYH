@@ -1349,9 +1349,88 @@ internal sealed class SelectionRuntime : IDisposable
     }
 
     /// <summary>
-    /// R49: opens the screenshot gallery. Browses the user's full
-    /// <c>ocean-eyes-*.png</c> history in <c>_oceanEyesCapture.SavePath</c>,
-    /// independent of the current Ocean Eyes session. Does NOT dismiss
+    /// Batch 125: pins a screenshot (by file path) as an always-on-top sticker.
+    /// Shared entry point for both the gallery ("right-click → pin") and the
+    /// clipboard history ("right-click image → pin"). Mirrors
+    /// <see cref="PinOceanEyesScreenshot"/> but reads the PNG from disk (neither
+    /// the gallery nor the clipboard has an in-memory capture cache) and centers
+    /// the sticker on the primary screen's working area. Disk read runs on a
+    /// worker thread so the UI thread isn't blocked on large 4K PNGs.
+    /// </summary>
+    public void PinGalleryScreenshot(string filePath)
+    {
+        _ = Task.Run(() =>
+        {
+            byte[] png;
+            try
+            {
+                png = File.ReadAllBytes(filePath);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error("OceanEyes", $"Gallery pin: failed to read {filePath}", ex);
+                return;
+            }
+            if (png.Length == 0)
+            {
+                _logger.Info("OceanEyes", $"Gallery pin: empty file {filePath}, ignoring.");
+                return;
+            }
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                try
+                {
+                    var window = new PinnedScreenshotWindow();
+                    nint handle = window.NativeHandle
+                        ?? throw new InvalidOperationException(
+                            "Pinned screenshot HWND is not available after construction.");
+                    var host = new NoActivateWindowHost(handle);
+
+                    window.RequestCopy += () => CopyPinnedToClipboard(window);
+                    window.RequestClose += () => ClosePinned(window);
+                    window.RequestCloseAll += CloseAllPinned;
+                    window.GetOtherPinnedBounds = () =>
+                    {
+                        var result = new List<PhysicalRect>();
+                        foreach (var w in _pinnedWindows)
+                        {
+                            if (ReferenceEquals(w, window)) continue;
+                            result.Add(w.ImagePhysicalRect);
+                        }
+                        return result;
+                    };
+
+                    window.ShowPng(png);
+
+                    // Center on the primary screen's working area (the part of
+                    // the screen excluding the taskbar) with a small cascading
+                    // offset per existing pinned window, so consecutive pins
+                    // don't stack perfectly on top of each other.
+                    var screen = window.Screens.Primary;
+                    double sx = screen is not null ? screen.WorkingArea.X : 0;
+                    double sy = screen is not null ? screen.WorkingArea.Y : 0;
+                    double sw = screen is not null ? screen.WorkingArea.Width : 1280;
+                    double sh = screen is not null ? screen.WorkingArea.Height : 720;
+                    double imgW = window.Bounds.Width;
+                    double imgH = window.Bounds.Height;
+                    int cascade = _pinnedWindows.Count * 24;
+                    int x = (int)(sx + (sw - imgW) / 2.0) + cascade;
+                    int y = (int)(sy + (sh - imgH) / 2.0) + cascade;
+                    host.ShowAtNoActivatePoint(x, y);
+
+                    _pinnedWindows.Add(window);
+                    _pinnedHosts.Add(host);
+
+                    _logger.Info("OceanEyes", $"Pinned gallery shot {filePath} ({png.Length} bytes) centered on screen.");
+                }
+                catch (Exception exception)
+                {
+                    _logger.Error("OceanEyes", "Gallery pin spawn failed.", exception);
+                }
+            });
+        });
+    }
     /// Ocean Eyes — same pattern as Pin (T), the user can close the gallery
     /// and keep working in the active session. Singleton: a second G press
     /// while the gallery is already visible just activates the existing
@@ -1391,6 +1470,8 @@ internal sealed class SelectionRuntime : IDisposable
                 window.RequestDelete += path =>
                     _logger.Info("OceanEyes", $"Gallery: user deleted {path}");
                 window.RequestReveal += path => RevealGalleryEntryInExplorer(path);
+                // Batch 125: pin a gallery shot as an always-on-top sticker.
+                window.RequestPin += path => PinGalleryScreenshot(path);
                 window.Closed += (_, _) =>
                 {
                     if (ReferenceEquals(_galleryWindow, window))

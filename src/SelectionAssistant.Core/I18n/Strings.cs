@@ -169,6 +169,11 @@ public static partial class Strings
     public static string Gallery_PreviewCopy => Get(nameof(Gallery_PreviewCopy));
     public static string Gallery_PreviewDelete => Get(nameof(Gallery_PreviewDelete));
     public static string Gallery_PreviewReveal => Get(nameof(Gallery_PreviewReveal));
+    // Batch 125: pin the previewed shot as an always-on-top floating sticker.
+    public static string Gallery_PreviewPin => Get(nameof(Gallery_PreviewPin));
+    // Batch 125: "N / M" counter shown above the previewed shot. Format string
+    // consumed via string.Format(Strings.Gallery_PreviewCount, n, total).
+    public static string Gallery_PreviewCount => Get(nameof(Gallery_PreviewCount));
 
     // ParameterInputDialog
     public static string ParamDialog_Title => Get(nameof(ParamDialog_Title));
@@ -470,6 +475,7 @@ public static partial class Strings
     public static string Clip_Row_AddTag => Get(nameof(Clip_Row_AddTag));
     public static string Clip_Row_RemoveTag => Get(nameof(Clip_Row_RemoveTag));
     public static string Clip_Row_ViewImage => Get(nameof(Clip_Row_ViewImage));
+    public static string Clip_Row_PinOnTop => Get(nameof(Clip_Row_PinOnTop));
     public static string Clip_Row_MoveTo => Get(nameof(Clip_Row_MoveTo));
     public static string Clip_Row_NoTabsHint => Get(nameof(Clip_Row_NoTabsHint));
     public static string Clip_Row_NewTabForEntry => Get(nameof(Clip_Row_NewTabForEntry));
