@@ -2884,8 +2884,12 @@ internal sealed class SelectionRuntime : IDisposable
     ///     These actions keep the toolbar visible. (R41: V/Paste removed.)
     ///   • Esc → hide the toolbar + swallow (escape hatch if the user changed
     ///     their mind).
+    ///   • Backspace / Delete / digits / punctuation (no modifier held) →
+    ///     hide the toolbar but PASS THROUGH, so the user's typing/editing
+    ///     takes effect in the source app and the toolbar bows out instead of
+    ///     lingering over the next input (bug fix).
     ///   • Any other key → pass through (so the source app keeps working while
-    ///     the toolbar is up — e.g. backspace, arrows, digits).
+    ///     the toolbar is up — e.g. arrows, Home/End, bare modifier keys).
     /// </para>
     /// </summary>
     private bool OnToolbarKeyPressed(int vkCode)
@@ -3115,6 +3119,28 @@ internal sealed class SelectionRuntime : IDisposable
         // Only single-character A-Z (0x41-0x5A) are eligible for shortcuts.
         if (vkCode < 0x41 || vkCode > 0x5A)
         {
+            // Bug fix: when the toolbar is visible and the user starts typing
+            // or editing in the source app (Backspace/Delete to erase the
+            // selection, or any printable char), their focus has moved on —
+            // hide the toolbar so it stops blocking the next input. This does
+            // NOT apply to Ocean Eyes (image-capture mode: non-A-Z keys there
+            // have no text-editing meaning and the session has its own Esc /
+            // right-click redraw dismissal), nor to chord keys (a modifier is
+            // held — Ctrl+C / Ctrl+Backspace are commands, not plain typing),
+            // nor to bare modifier keys themselves (Shift/Ctrl/Alt/Win — part
+            // of a chord, not a signal the user is done) nor navigation keys
+            // (arrows / Home / End / Page — the user may still be adjusting the
+            // selection). We still RETURN FALSE so the key reaches the source
+            // app: the user's delete/keystroke must take effect, the toolbar
+            // just bows out at the same time.
+            if (Volatile.Read(ref _oceanEyesActive) == 0 &&
+                !IsModifierHeld() &&
+                IsTextEditingKey(vkCode))
+            {
+                Dispatcher.UIThread.Post(HideToolbarAndDisableHook);
+                _logger.Info("KeyboardHook",
+                    $"Non-action key vk=0x{vkCode:X2} → hide toolbar (user typing/editing).");
+            }
             return false;
         }
 
@@ -3283,6 +3309,65 @@ internal sealed class SelectionRuntime : IDisposable
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Bug fix helper: returns true if any keyboard modifier (Ctrl / Alt /
+    /// Shift / Win) is currently held. Used to suppress the "typing dismisses
+    /// the toolbar" behavior while a chord is in progress — e.g. Ctrl+C must
+    /// not hide the toolbar before the Copy action key (C) is dispatched, and
+    /// Ctrl+Backspace (delete-word) is a command, not plain typing. Reads the
+    /// live modifier state via <see cref="GetKeyState"/>; the high bit (0x8000)
+    /// means "currently pressed".
+    /// </summary>
+    private static bool IsModifierHeld()
+    {
+        const int vkMenu = 0x12;   // VK_MENU (Alt)
+        const int vkLwin = 0x5B;   // VK_LWIN
+        const int vkRwin = 0x5C;   // VK_RWIN
+        return (GetKeyState(VK_SHIFT) & 0x8000) != 0 ||
+               (GetKeyState(VK_CONTROL) & 0x8000) != 0 ||
+               (GetKeyState(vkMenu) & 0x8000) != 0 ||
+               (GetKeyState(vkLwin) & 0x8000) != 0 ||
+               (GetKeyState(vkRwin) & 0x8000) != 0;
+    }
+
+    /// <summary>
+    /// Bug fix helper: classifies a virtual-key code as a "text-editing" key
+    /// whose press means the user has moved on from the selection toolbar and
+    /// is now typing/editing in the source app — so the toolbar should bow
+    /// out. Returns true for Backspace, Delete, and keys that produce a
+    /// printable character (digits, space, punctuation/OEM keys). Returns
+    /// false for bare modifier keys (Shift/Ctrl/Alt/Win — part of a chord
+    /// like Ctrl+C, not a signal the user is done), navigation keys
+    /// (arrows / Home / End / Page — the user may be adjusting the selection),
+    /// and function/system keys. A-Z (0x41-0x5A) never reach here: they are
+    /// consumed as toolbar action keys by <see cref="OnToolbarKeyPressed"/>.
+    /// </summary>
+    private static bool IsTextEditingKey(int vkCode)
+    {
+        // Backspace / Delete — erasing the selection is the primary bug scenario.
+        if (vkCode == 0x08 || vkCode == 0x2E)
+        {
+            return true;
+        }
+
+        // Space (0x20) and digits 0-9 (0x30-0x39) — printable.
+        if (vkCode == 0x20 || (uint)(vkCode - 0x30) <= 9)
+        {
+            return true;
+        }
+
+        // OEM punctuation keys (US keyboard): the vkCodes are scattered across
+        // 0xBA-0xE2. Treat the whole OEM range as printable — these are
+        // `-=[]\;',/​.` and the numpad operators. A press here means the user
+        // is typing.
+        if ((uint)(vkCode - 0xBA) <= (0xE2 - 0xBA))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
