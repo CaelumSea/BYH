@@ -71,6 +71,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
             return await CaptureExclusiveAsync(
                 gesture,
                 invocation.Chords,
+                invocation.AllowOwnerlessResult,
                 effectiveOptions,
                 token).ConfigureAwait(false);
         }
@@ -83,6 +84,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
     private async Task<CaptureResult> CaptureExclusiveAsync(
         SelectionGesture gesture,
         IReadOnlyList<SimulatedCopyChord> chords,
+        bool allowOwnerlessResult,
         ClipboardCaptureOptions options,
         CancellationToken callerToken)
     {
@@ -159,7 +161,8 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
 
                 uint? ownerProcessId = _clipboard.GetOwnerProcessId();
                 Trace($"clipboard chord={chord} stable={stableSequence.Value} owner={ownerProcessId?.ToString() ?? "none"}");
-                if (ownerProcessId is null)
+                bool ownerlessResult = ownerProcessId is null && allowOwnerlessResult;
+                if (ownerProcessId is null && !ownerlessResult)
                 {
                     // The source process may exit after placing data. Preserve
                     // the original clipboard, but do not report unowned text as
@@ -168,18 +171,25 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                     return NoCapture();
                 }
 
-                if (ownerProcessId != gesture.SourceProcessId)
+                if (ownerProcessId is not null && ownerProcessId != gesture.SourceProcessId)
                 {
                     Trace($"clipboard rejected owner mismatch expected={gesture.SourceProcessId} actual={ownerProcessId}");
                     externalChangeObserved = true;
                     return NoCapture();
                 }
 
+                // Some GPU/WebView terminals (including Warp) place clipboard
+                // data without an owner HWND, so Win32 cannot map it back to a
+                // process. The caller must opt in per policy; sequence change
+                // + target validation still protect the normal capture path.
+
                 ownedSequence = stableSequence.Value;
                 string? text = _clipboard.GetText();
 
                 if (_clipboard.GetSequenceNumber() != ownedSequence.Value ||
-                    _clipboard.GetOwnerProcessId() != gesture.SourceProcessId)
+                    (ownerlessResult
+                        ? _clipboard.GetOwnerProcessId() is not null
+                        : _clipboard.GetOwnerProcessId() != gesture.SourceProcessId))
                 {
                     Trace("clipboard rejected because sequence/owner changed during read");
                     externalChangeObserved = true;
@@ -189,7 +199,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
 
                 if (!string.IsNullOrWhiteSpace(text))
                 {
-                    Trace($"clipboard success source={chord} length={text.Length}");
+                    Trace($"clipboard success source={chord} ownerless={ownerlessResult} length={text.Length}");
                     bool truncated = text.Length > options.MaxTextLength;
                     if (truncated)
                     {

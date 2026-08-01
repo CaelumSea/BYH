@@ -140,7 +140,10 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
             CaptureResult clipboard = await _clipboardCapture
                 .CaptureAsync(
                     gesture,
-                    new ClipboardCaptureInvocation(chords, stabilization),
+                    new ClipboardCaptureInvocation(
+                        chords,
+                        stabilization,
+                        AllowOwnerlessResult: policy.CopyMode == SimulatedCopyMode.CtrlShiftCOnly),
                     token)
                 .ConfigureAwait(false);
 

@@ -114,6 +114,37 @@ public sealed class Win32ClipboardCaptureTests
     }
 
     [Fact]
+    public async Task OwnerlessCtrlShiftCText_IsAcceptedWhenPolicyOptsIn()
+    {
+        var clipboard = new FakeClipboard(text: "original");
+        var input = new FakeInput
+        {
+            OnSend = chord =>
+            {
+                if (chord == SimulatedCopyChord.CtrlShiftC)
+                {
+                    _ = clipboard.WriteAfterAsync("selected", ownerProcessId: null, delayMs: 5);
+                }
+
+                return true;
+            },
+        };
+        using var capture = CreateCapture(clipboard, input);
+
+        CaptureResult result = await capture.CaptureAsync(
+            Gesture(),
+            new ClipboardCaptureInvocation(
+                [SimulatedCopyChord.CtrlShiftC],
+                AllowOwnerlessResult: true),
+            CancellationToken.None);
+
+        Assert.Equal("selected", result.Text);
+        Assert.Equal(CaptureSource.SimulatedCopyCtrlShiftC, result.Source);
+        Assert.Equal("original", clipboard.Text);
+        Assert.Equal(1, clipboard.RestoreCalls);
+    }
+
+    [Fact]
     public async Task UserCopiesDuringCapture_UserContentWinsAndIsNotReportedAsSelection()
     {
         var clipboard = new FakeClipboard(text: "original");

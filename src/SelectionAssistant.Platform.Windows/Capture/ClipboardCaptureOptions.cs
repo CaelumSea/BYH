@@ -52,7 +52,8 @@ public interface ICopyInputInjector
 
 public sealed record ClipboardCaptureInvocation(
     IReadOnlyList<SimulatedCopyChord> Chords,
-    TimeSpan? StabilizationDelay = null)
+    TimeSpan? StabilizationDelay = null,
+    bool AllowOwnerlessResult = false)
 {
     public ClipboardCaptureInvocation Validate()
     {
