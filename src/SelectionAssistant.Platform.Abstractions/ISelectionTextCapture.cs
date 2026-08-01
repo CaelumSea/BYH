@@ -43,6 +43,7 @@ public enum CaptureSource
     Accessibility,                   // Tier 1: UIA / AX
     SimulatedCopyCtrlInsert,         // Tier 2
     SimulatedCopyCtrlC,              // Tier 3
+    SimulatedCopyCtrlShiftC,         // Terminal-specific copy (e.g. Warp)
     Vision,                          // R24 Tier 4: 截图 → 云端 OCR 专项模型
     ManualFallback,                  // Tier 5: UIA+剪贴板都失败且未开启视觉识别
 }

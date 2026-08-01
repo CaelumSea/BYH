@@ -177,9 +177,12 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                         text = text[..options.MaxTextLength];
                     }
 
-                    CaptureSource source = chord == SimulatedCopyChord.CtrlInsert
-                        ? CaptureSource.SimulatedCopyCtrlInsert
-                        : CaptureSource.SimulatedCopyCtrlC;
+                    CaptureSource source = chord switch
+                    {
+                        SimulatedCopyChord.CtrlInsert => CaptureSource.SimulatedCopyCtrlInsert,
+                        SimulatedCopyChord.CtrlShiftC => CaptureSource.SimulatedCopyCtrlShiftC,
+                        _ => CaptureSource.SimulatedCopyCtrlC,
+                    };
                     return new CaptureResult(text, source, truncated);
                 }
             }

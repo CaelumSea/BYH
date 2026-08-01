@@ -60,6 +60,30 @@ public sealed class WindowsSelectionTextCapturePolicyTests
     }
 
     [Fact]
+    public async Task WarpPolicy_UsesOnlyCtrlShiftC()
+    {
+        var accessibility = new FakeAccessibilityCapture(Result(null, CaptureSource.None));
+        var clipboard = new FakeClipboardCapture(
+            Result("warp", CaptureSource.SimulatedCopyCtrlShiftC));
+        ProcessCapturePolicy policy = ProcessCapturePolicy.Default with
+        {
+            AccessibilityEnabled = false,
+            CopyMode = SimulatedCopyMode.CtrlShiftCOnly,
+            ClipboardStabilizationMs = 120,
+        };
+        using var capture = Create(policy, accessibility, clipboard);
+
+        CaptureResult result = await capture.CaptureAsync(Gesture(), CancellationToken.None);
+
+        Assert.Equal("warp", result.Text);
+        Assert.Equal(
+            [SimulatedCopyChord.CtrlShiftC],
+            clipboard.LastInvocation?.Chords);
+        Assert.Equal(TimeSpan.FromMilliseconds(120), clipboard.LastInvocation?.StabilizationDelay);
+        Assert.Equal(0, accessibility.CallCount);
+    }
+
+    [Fact]
     public async Task AmbiguousAccessibilityWithoutCopy_ReturnsManualFallbackNotText()
     {
         var accessibility = new FakeAccessibilityCapture(
@@ -102,6 +126,7 @@ public sealed class WindowsSelectionTextCapturePolicyTests
     [Theory]
     [InlineData("powershell.exe", SimulatedCopyMode.CtrlInsertOnly, 0)]
     [InlineData("AcroRd32.exe", SimulatedCopyMode.CtrlInsertThenCtrlC, 150)]
+    [InlineData("warp.exe", SimulatedCopyMode.CtrlShiftCOnly, 120)]
     public void WindowsDefaults_ResolveExpectedApplicationPolicy(
         string processName,
         SimulatedCopyMode expectedMode,

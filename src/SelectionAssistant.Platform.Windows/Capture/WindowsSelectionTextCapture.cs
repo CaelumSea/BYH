@@ -18,6 +18,11 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
         SimulatedCopyChord.CtrlC,
     ];
 
+    private static readonly SimulatedCopyChord[] CtrlShiftCOnly =
+    [
+        SimulatedCopyChord.CtrlShiftC,
+    ];
+
     private readonly IProcessCapturePolicyProvider _policyProvider;
     private readonly ISelectionTextCapture _accessibilityCapture;
     private readonly IConfiguredClipboardCapture _clipboardCapture;
@@ -111,6 +116,7 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
         {
             SimulatedCopyMode.CtrlInsertOnly => CtrlInsertOnly,
             SimulatedCopyMode.CtrlInsertThenCtrlC => CtrlInsertThenCtrlC,
+            SimulatedCopyMode.CtrlShiftCOnly => CtrlShiftCOnly,
             _ => null,
         };
 

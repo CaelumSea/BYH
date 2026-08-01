@@ -87,6 +87,19 @@ internal static class Program
             return ProbeCapturePolicy();
         }
 
+        // REQ-029 diagnostic: resolve the capture policy for another process
+        // without starting the desktop shell. This is useful for validating
+        // app-specific terminal rules (for example Warp's Ctrl+Shift+C copy
+        // path) before asking the user to retry a real selection.
+        // Usage: --probe-process-policy <pid>
+        if (args.Length >= 2 &&
+            args[0].Equals("--probe-process-policy", StringComparison.OrdinalIgnoreCase) &&
+            uint.TryParse(args[1], out uint processPolicyPid) &&
+            processPolicyPid != 0)
+        {
+            return ProbeProcessPolicy(processPolicyPid);
+        }
+
         // R24: exercises the vision OCR tier end-to-end without a selection
         // session. Captures a small screen region at the given point (or screen
         // center), encodes it to PNG, and runs the configured OCR model. Usage:
@@ -647,6 +660,35 @@ internal static class Program
         }
         catch
         {
+            return 3;
+        }
+    }
+
+    private static int ProbeProcessPolicy(uint processId)
+    {
+        try
+        {
+            var identityResolver = new WindowsProcessIdentityResolver();
+            Core.Capture.ProcessIdentity identity = identityResolver.Resolve(processId);
+            Core.Capture.IProcessCapturePolicyProvider provider =
+                WindowsDefaultCapturePolicies.CreateProvider();
+            Core.Capture.ProcessCapturePolicy policy = provider.Resolve(processId);
+
+            Console.WriteLine($"PID                  : {identity.ProcessId}");
+            Console.WriteLine($"Process name         : {identity.ProcessName ?? "(unknown)"}");
+            Console.WriteLine($"Executable           : {identity.ExecutablePath ?? "(unknown)"}");
+            Console.WriteLine($"Elevated             : {identity.IsElevated}");
+            Console.WriteLine($"Detection enabled    : {policy.DetectionEnabled}");
+            Console.WriteLine($"Accessibility        : {policy.AccessibilityEnabled}");
+            Console.WriteLine($"Simulated copy mode  : {policy.CopyMode}");
+            Console.WriteLine($"Stabilization (ms)   : {policy.ClipboardStabilizationMs}");
+            Console.WriteLine($"Manual fallback      : {policy.ManualFallbackEnabled}");
+
+            return identity.ProcessName is null ? 2 : 0;
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"进程策略探针出错：{exception.Message}");
             return 3;
         }
     }

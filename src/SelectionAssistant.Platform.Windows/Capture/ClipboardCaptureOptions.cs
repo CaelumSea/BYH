@@ -37,6 +37,8 @@ public enum SimulatedCopyChord
 {
     CtrlInsert,
     CtrlC,
+    /// <summary>Warp and several terminal emulators use Ctrl+Shift+C.</summary>
+    CtrlShiftC,
 }
 
 public interface ICopyInputInjector
