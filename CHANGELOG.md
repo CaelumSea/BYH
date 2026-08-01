@@ -27,7 +27,7 @@
 
 ### 验证
 
-- 2026-08-01 主线合并后的全量测试：**736/736 通过**（Core 581、Windows Integration 105、Providers 50）；Release build 0 warning / 0 error；REQ-029 NativeAOT QA 发布成功。
+- 2026-08-01 主线合并后的全量测试：**736/736 通过**（Core 581、Windows Integration 105、Providers 50）；Release build 0 warning / 0 error；REQ-029 NativeAOT QA 发布成功。Warp 真机日志在 20:34–21:08 多次确认 `source=SimulatedCopyCtrlShiftC`、`ownerless=True`，成功捕获 5–1636 字符。
 
 ---
 
