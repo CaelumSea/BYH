@@ -18,10 +18,16 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
         SimulatedCopyChord.CtrlC,
     ];
 
+    private static readonly SimulatedCopyChord[] CtrlShiftCOnly =
+    [
+        SimulatedCopyChord.CtrlShiftC,
+    ];
+
     private readonly IProcessCapturePolicyProvider _policyProvider;
     private readonly ISelectionTextCapture _accessibilityCapture;
     private readonly IConfiguredClipboardCapture _clipboardCapture;
     private readonly IDisposable[] _ownedDependencies;
+    private readonly Action<string>? _diagnosticSink;
     private int _disposed;
 
     // R24 track B: the optional screenshot→OCR tier (Tier 4). Null when vision
@@ -36,12 +42,18 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
     {
     }
 
-    public WindowsSelectionTextCapture(IProcessCapturePolicyProvider policyProvider)
+    public WindowsSelectionTextCapture(
+        IProcessCapturePolicyProvider policyProvider,
+        Action<string>? diagnosticSink = null)
     {
         _policyProvider = policyProvider ?? throw new ArgumentNullException(nameof(policyProvider));
+        _diagnosticSink = diagnosticSink;
         var accessibility = new UIAutomationTextCapture();
         var clipboard = new Win32Clipboard();
-        var clipboardCapture = new Win32ClipboardCapture(clipboard, new SendInputHelper());
+        var clipboardCapture = new Win32ClipboardCapture(
+            clipboard,
+            new SendInputHelper(),
+            diagnosticSink: diagnosticSink);
 
         _accessibilityCapture = accessibility;
         _clipboardCapture = clipboardCapture;
@@ -51,11 +63,13 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
     public WindowsSelectionTextCapture(
         IProcessCapturePolicyProvider policyProvider,
         ISelectionTextCapture accessibilityCapture,
-        IConfiguredClipboardCapture clipboardCapture)
+        IConfiguredClipboardCapture clipboardCapture,
+        Action<string>? diagnosticSink = null)
     {
         _policyProvider = policyProvider ?? throw new ArgumentNullException(nameof(policyProvider));
         _accessibilityCapture = accessibilityCapture ?? throw new ArgumentNullException(nameof(accessibilityCapture));
         _clipboardCapture = clipboardCapture ?? throw new ArgumentNullException(nameof(clipboardCapture));
+        _diagnosticSink = diagnosticSink;
         _ownedDependencies = [];
     }
 
@@ -89,6 +103,7 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
         ProcessCapturePolicy policy = ResolvePolicy(gesture.SourceProcessId);
+        Trace($"policy proc={gesture.SourceProcessId} mode={policy.CopyMode} accessibility={policy.AccessibilityEnabled} detection={policy.DetectionEnabled}");
         if (!policy.DetectionEnabled)
         {
             return NoCapture();
@@ -103,14 +118,17 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
 
             if (!string.IsNullOrWhiteSpace(accessibility.Text) && !accessibility.IsAmbiguous)
             {
+                Trace($"accessibility success length={accessibility.Text.Length}");
                 return accessibility;
             }
+            Trace($"accessibility empty ambiguous={accessibility.IsAmbiguous}");
         }
 
         IReadOnlyList<SimulatedCopyChord>? chords = policy.CopyMode switch
         {
             SimulatedCopyMode.CtrlInsertOnly => CtrlInsertOnly,
             SimulatedCopyMode.CtrlInsertThenCtrlC => CtrlInsertThenCtrlC,
+            SimulatedCopyMode.CtrlShiftCOnly => CtrlShiftCOnly,
             _ => null,
         };
 
@@ -122,14 +140,19 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
             CaptureResult clipboard = await _clipboardCapture
                 .CaptureAsync(
                     gesture,
-                    new ClipboardCaptureInvocation(chords, stabilization),
+                    new ClipboardCaptureInvocation(
+                        chords,
+                        stabilization,
+                        AllowOwnerlessResult: policy.CopyMode == SimulatedCopyMode.CtrlShiftCOnly),
                     token)
                 .ConfigureAwait(false);
 
             if (!string.IsNullOrWhiteSpace(clipboard.Text))
             {
+                Trace($"clipboard result source={clipboard.Source} length={clipboard.Text.Length}");
                 return clipboard;
             }
+            Trace("clipboard result empty");
         }
 
         // Never return ambiguous accessibility text as a successful selection.
@@ -199,4 +222,16 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
 
     private static CaptureResult NoCapture() =>
         new(null, CaptureSource.None, false);
+
+    private void Trace(string message)
+    {
+        try
+        {
+            _diagnosticSink?.Invoke(message);
+        }
+        catch
+        {
+            // Diagnostics must never affect capture.
+        }
+    }
 }

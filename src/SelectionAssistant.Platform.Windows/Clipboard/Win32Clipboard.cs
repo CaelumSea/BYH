@@ -266,37 +266,33 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
         }
 
         nint memory = AllocateGlobal(png);
+        bool transferred = false;
         try
         {
-            return TryWithOpenClipboard(
+            bool result = TryWithOpenClipboard(
                 () =>
                 {
                     if (!EmptyClipboard())
                     {
                         return false;
                     }
-                    return SetClipboardData(pngFormat, memory) != 0;
+                    transferred = SetClipboardData(pngFormat, memory) != 0;
+                    return transferred;
                 },
                 out bool placed) && placed;
+            return result;
         }
         finally
         {
-            // SetClipboardData transfers ownership on success. If we never
-            // placed it (open failed / EmptyClipboard lost the race), free.
-            if (memory != 0)
+            // Ownership is determined by the return value of SetClipboardData,
+            // not by a later IsClipboardFormatAvailable query. A clipboard
+            // listener may replace the contents between CloseClipboard and the
+            // old query; querying then could report "not available" even though
+            // Windows already owns (and may already have freed) this HGLOBAL,
+            // leading to a double GlobalFree and a delayed access violation.
+            if (memory != 0 && !transferred)
             {
-                // Detect success by re-querying: if the data is ours now, the
-                // system owns the handle and we must NOT free it.
-                if (IsClipboardFormatAvailable(pngFormat))
-                {
-                    // Ownership transferred — nothing to free. The HGLOBAL is
-                    // now owned by the clipboard and freed by the system on
-                    // next EmptyClipboard / shutdown.
-                }
-                else
-                {
-                    GlobalFree(memory);
-                }
+                GlobalFree(memory);
             }
         }
     }
@@ -326,31 +322,27 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
         ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
         nint memory = AllocateGlobal(dib);
+        bool transferred = false;
         try
         {
-            return TryWithOpenClipboard(
+            bool result = TryWithOpenClipboard(
                 () =>
                 {
                     if (!EmptyClipboard())
                     {
                         return false;
                     }
-                    return SetClipboardData(CfDib, memory) != 0;
+                    transferred = SetClipboardData(CfDib, memory) != 0;
+                    return transferred;
                 },
                 out bool placed) && placed;
+            return result;
         }
         finally
         {
-            if (memory != 0)
+            if (memory != 0 && !transferred)
             {
-                if (IsClipboardFormatAvailable(CfDib))
-                {
-                    // Ownership transferred — nothing to free.
-                }
-                else
-                {
-                    GlobalFree(memory);
-                }
+                GlobalFree(memory);
             }
         }
     }
@@ -385,7 +377,12 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
         {
             return false;
         }
-        if (dib is { Length: 0 } or { Length: > int.MaxValue })
+        // Keep the write-side limit aligned with GetImageDib/SetImageDib.
+        // A huge DIB is both unnecessary (the PNG is the primary modern
+        // format) and dangerous: clipboard history readers may materialize it
+        // synchronously on a notification thread. Degrade to PNG-only instead
+        // of placing an unbounded HGLOBAL on the system clipboard.
+        if (dib is { Length: 0 } or { Length: > MaxDibBytes })
         {
             dib = null; // treat empty/oversized as "no DIB, PNG only"
         }
@@ -398,40 +395,50 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
             return false;
         }
 
-        nint pngMemory = AllocateGlobal(png);
-        nint dibMemory = dib is null ? 0 : AllocateGlobal(dib);
+        nint pngMemory = 0;
+        nint dibMemory = 0;
+        bool pngTransferred = false;
+        bool dibTransferred = false;
         try
         {
-            return TryWithOpenClipboard(
+            pngMemory = AllocateGlobal(png);
+            if (dib is not null)
+            {
+                dibMemory = AllocateGlobal(dib);
+            }
+
+            bool result = TryWithOpenClipboard(
                 () =>
                 {
                     if (!EmptyClipboard())
                     {
                         return false;
                     }
-                    bool pngOk = SetClipboardData(pngFormat, pngMemory) != 0;
-                    bool dibOk = false;
+                    pngTransferred = SetClipboardData(pngFormat, pngMemory) != 0;
                     if (dibMemory != 0)
                     {
-                        dibOk = SetClipboardData(CfDib, dibMemory) != 0;
+                        dibTransferred = SetClipboardData(CfDib, dibMemory) != 0;
                     }
                     // Success if at least one format landed. PNG is the primary
                     // artifact (matches what SetPng always wrote); DIB is the
                     // compatibility bonus. If PNG failed but DIB ok, still true
                     // (the image is on the clipboard either way).
-                    return pngOk || dibOk;
+                    return pngTransferred || dibTransferred;
                 },
                 out bool placed) && placed;
+            return result;
         }
         finally
         {
-            // Each HGLOBAL's ownership is decided independently: re-query each
-            // format to see if the system now owns it. Unowned handles are freed.
-            if (pngMemory != 0 && !IsClipboardFormatAvailable(pngFormat))
+            // Each HGLOBAL's ownership is decided independently from the
+            // SetClipboardData return value. Never re-query here: another
+            // clipboard listener can replace/free the data before the query,
+            // making a second GlobalFree an AV/double-free.
+            if (pngMemory != 0 && !pngTransferred)
             {
                 GlobalFree(pngMemory);
             }
-            if (dibMemory != 0 && !IsClipboardFormatAvailable(CfDib))
+            if (dibMemory != 0 && !dibTransferred)
             {
                 GlobalFree(dibMemory);
             }
@@ -465,31 +472,31 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
 
         byte[] bytes = Encoding.Unicode.GetBytes(text + '\0');
         nint memory = AllocateGlobal(bytes);
+        bool transferred = false;
         try
         {
-            return TryWithOpenClipboard(
+            bool result = TryWithOpenClipboard(
                 () =>
                 {
                     if (!EmptyClipboard())
                     {
                         return false;
                     }
-                    return SetClipboardData(CfUnicodeText, memory) != 0;
+                    transferred = SetClipboardData(CfUnicodeText, memory) != 0;
+                    return transferred;
                 },
                 out bool placed) && placed;
+            return result;
         }
         finally
         {
-            if (memory != 0)
+            // SetClipboardData transfers ownership on success. Do not query
+            // clipboard availability after CloseClipboard: a listener can
+            // replace/free the data in between, making that query race with a
+            // second GlobalFree and causing a delayed access violation.
+            if (memory != 0 && !transferred)
             {
-                if (IsClipboardFormatAvailable(CfUnicodeText))
-                {
-                    // Ownership transferred — nothing to free.
-                }
-                else
-                {
-                    GlobalFree(memory);
-                }
+                GlobalFree(memory);
             }
         }
     }

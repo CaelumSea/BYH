@@ -18,6 +18,13 @@ public static class ScreenRegionCapture
 {
     private const int Srccopy = 0x00CC0020;
 
+    // Keep one capture from allocating an unbounded native bitmap and several
+    // equally large managed buffers (BGRA + PNG raw scanlines + compression
+    // workspace). A 4K frame is ~33 MB and remains below this ceiling; larger
+    // selections fail cleanly and let the caller show a normal capture error
+    // instead of taking down the NativeAOT process under memory pressure.
+    public const long MaxPixelBufferBytes = 64L * 1024 * 1024;
+
     /// <summary>
     /// Captures <paramref name="width"/>×<paramref name="height"/> pixels at the
     /// given screen origin and returns the raw PNG bytes, or null if the region
@@ -56,7 +63,7 @@ public static class ScreenRegionCapture
     /// </summary>
     public static byte[]? CaptureRawBgra(int x, int y, int width, int height)
     {
-        if (width <= 0 || height <= 0)
+        if (!TryGetPixelBufferLength(width, height, out _))
         {
             return null;
         }
@@ -142,10 +149,33 @@ public static class ScreenRegionCapture
             Compression = 0,
         };
 
-        int stride = width * 4;
-        var bits = new byte[stride * height];
+        if (!TryGetPixelBufferLength(width, height, out int bufferLength))
+        {
+            return null;
+        }
+
+        int stride = checked(width * 4);
+        var bits = new byte[bufferLength];
         int copied = GetDIBits(memoryDc, bitmap, 0, height, bits, ref info, 0);
         return copied == 0 ? null : bits;
+    }
+
+    internal static bool TryGetPixelBufferLength(int width, int height, out int length)
+    {
+        length = 0;
+        if (width <= 0 || height <= 0)
+        {
+            return false;
+        }
+
+        long bytes = (long)width * height * 4;
+        if (bytes <= 0 || bytes > MaxPixelBufferBytes || bytes > int.MaxValue)
+        {
+            return false;
+        }
+
+        length = (int)bytes;
+        return true;
     }
 
     /// <summary>
@@ -169,6 +199,13 @@ public static class ScreenRegionCapture
     /// </summary>
     public static byte[] EncodeBgraToPng(byte[] bgra, int width, int height)
     {
+        ArgumentNullException.ThrowIfNull(bgra);
+        if (!TryGetPixelBufferLength(width, height, out int expected) ||
+            bgra.Length != expected)
+        {
+            throw new ArgumentException("BGRA dimensions exceed the supported capture budget or do not match the buffer length.", nameof(bgra));
+        }
+
         return PngEncoder.Encode(bgra, width, height);
     }
 
@@ -233,6 +270,12 @@ internal static class PngEncoder
 
     public static byte[] Encode(byte[] bgra, int width, int height)
     {
+        if (!ScreenRegionCapture.TryGetPixelBufferLength(width, height, out int expected) ||
+            bgra.Length != expected)
+        {
+            throw new ArgumentException("BGRA dimensions exceed the supported capture budget or do not match the buffer length.", nameof(bgra));
+        }
+
         byte[] raw = BuildRawWithFilter(bgra, width, height);
         byte[] zlib = ZlibCompress(raw);
 
@@ -249,8 +292,9 @@ internal static class PngEncoder
     // fine for OCR-grade output (Deflate still compresses well).
     private static byte[] BuildRawWithFilter(byte[] bgra, int width, int height)
     {
-        int rowBytes = width * 4;
-        var raw = new byte[(rowBytes + 1) * height];
+        int rowBytes = checked(width * 4);
+        int rawLength = checked((rowBytes + 1) * height);
+        var raw = new byte[rawLength];
         int src = 0;
         int dst = 0;
         for (int y = 0; y < height; y++)

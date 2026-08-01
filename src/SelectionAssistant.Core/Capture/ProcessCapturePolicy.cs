@@ -53,4 +53,6 @@ public enum SimulatedCopyMode
     CtrlInsertOnly,
     /// <summary>先 Ctrl+Insert 再 Ctrl+C(最大兼容性)。</summary>
     CtrlInsertThenCtrlC,
+    /// <summary>仅 Ctrl+Shift+C（Warp 等终端的复制快捷键）。</summary>
+    CtrlShiftCOnly,
 }

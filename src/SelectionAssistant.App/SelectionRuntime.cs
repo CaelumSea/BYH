@@ -223,7 +223,9 @@ internal sealed class SelectionRuntime : IDisposable
             });
         IReadOnlyList<PolicyRule> userPolicyRules = LoadUserCapturePolicies(paths.CapturePolicyFile);
         _capturePolicyProvider = WindowsDefaultCapturePolicies.CreateProvider(userPolicyRules);
-        _textCapture = new WindowsSelectionTextCapture(_capturePolicyProvider);
+        _textCapture = new WindowsSelectionTextCapture(
+            _capturePolicyProvider,
+            diagnosticSink: message => _logger.Info("CaptureDebug", message));
         _sessionManager = new SelectionSessionManager(
             _textCapture,
             view,

@@ -49,6 +49,11 @@ public sealed record ByhApplicationPaths(string BaseDirectory)
     public string OceanEyesCaptureFile =>
         Path.Combine(BaseDirectory, "ocean-eyes-capture.json");
 
+    /// <summary>开机自启偏好(launch-at-startup 开关)。Missing file = 默认关闭。
+    /// 注意:文件存的是「用户意图」,注册表(HKCU\…\Run)才是「真相」。</summary>
+    public string StartupOptionsFile =>
+        Path.Combine(BaseDirectory, "startup-options.json");
+
     /// <summary>R32 Spotlight launcher-search panel keyboard shortcut.</summary>
     public string SpotlightTriggerFile =>
         Path.Combine(BaseDirectory, "spotlight-trigger.json");

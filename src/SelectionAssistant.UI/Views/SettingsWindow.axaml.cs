@@ -9,6 +9,7 @@ using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
+using SelectionAssistant.Core.Startup;
 using SelectionAssistant.Core.Translation;
 using SelectionAssistant.Infrastructure.Configuration;
 using System.Collections.ObjectModel;
@@ -381,6 +382,13 @@ public partial class SettingsWindow : Window
     /// <summary>Request to persist the display name used by the phone greeting.</summary>
     public event Action<UserProfileSettings>? UserProfileSettingsSaved;
 
+    /// <summary>
+    /// Request to apply and persist the launch-at-startup toggle. App writes
+    /// <c>startup-options.json</c> AND mutates the HKCU Run key (the registry
+    /// is the truth source; the JSON records the user's intent).
+    /// </summary>
+    public event Action<StartupSettings>? StartupSettingsSaved;
+
     // ── Data push from runtime → UI ──
 
     public void Configure(string capturePolicyFile)
@@ -611,6 +619,27 @@ public partial class SettingsWindow : Window
         OceanEyesUiaAssistToggle.IsChecked = settings.UiaAssistEnabled;
         OceanEyesCaptureStatusText.Text = statusMessage ?? string.Format(Strings.Settings_Status_LocationPrefix, settings.SavePath);
         SetFeedbackTone(OceanEyesCaptureStatusText, isError);
+    }
+
+    /// <summary>
+    /// Pushes the launch-at-startup setting into the toggle. The toggle reflects
+    /// the registry-truth that App calibrated on load, so if the user disabled
+    /// BYH in Task Manager / Windows Settings it reads Off here. Status line is
+    /// cleared on push; Save sets it to "已启用 / 已关闭 / 启用失败".
+    /// </summary>
+    public void SetStartupSettings(StartupSettings settings, string? statusMessage = null, bool isError = false)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        settings = settings.Normalize();
+        // Guard against the AXAML card not being wired yet (early calls during init).
+        if (LaunchAtStartupToggle is null)
+        {
+            return;
+        }
+
+        LaunchAtStartupToggle.IsChecked = settings.LaunchAtStartup;
+        StartupStatusText.Text = statusMessage ?? string.Empty;
+        SetFeedbackTone(StartupStatusText, isError);
     }
 
     /// <summary>
@@ -1458,6 +1487,31 @@ public partial class SettingsWindow : Window
         catch (ArgumentException exception)
         {
             SetOceanEyesCaptureSettings(settings, exception.Message, isError: true);
+        }
+    }
+
+    /// <summary>
+    /// Read the launch-at-startup toggle and raise
+    /// <see cref="StartupSettingsSaved"/>. The App handler writes the JSON file
+    /// AND mutates the HKCU Run key, then calls back with the real outcome
+    /// (enable may fail under group policy / AV, in which case the toggle rolls
+    /// back to Off and the status shows "启用失败").
+    /// </summary>
+    private void OnSaveStartupClick(object? sender, RoutedEventArgs e)
+    {
+        var settings = new StartupSettings
+        {
+            LaunchAtStartup = LaunchAtStartupToggle.IsChecked == true,
+        }.Normalize();
+
+        try
+        {
+            settings.Validate();
+            StartupSettingsSaved?.Invoke(settings);
+        }
+        catch (ArgumentException exception)
+        {
+            SetStartupSettings(settings, exception.Message, isError: true);
         }
     }
 

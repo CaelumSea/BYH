@@ -12,15 +12,19 @@ using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
+using SelectionAssistant.Core.Startup;
 using SelectionAssistant.Core.Translation;
 using SelectionAssistant.Infrastructure.Configuration;
 using SelectionAssistant.Infrastructure.Logging;
+
 using SelectionAssistant.Platform.Abstractions;
+using SelectionAssistant.Platform.Abstractions.Startup;
 using SelectionAssistant.Platform.Windows.Capture;
 using SelectionAssistant.Platform.Windows.Clipboard;
 using SelectionAssistant.Platform.Windows.Input;
 using SelectionAssistant.Platform.Windows.Launcher;
 using SelectionAssistant.Platform.Windows.Secrets;
+using SelectionAssistant.Platform.Windows.Startup;
 using SelectionAssistant.UI.Views;
 
 namespace SelectionAssistant.App;
@@ -91,6 +95,12 @@ public partial class App : Application
     private AppLanguage _uiLanguage = AppLanguage.English;
     // REQ-027: user profile (greeting, theme preferences, phone summary views).
     private UserProfileSettings _userProfileSettings = UserProfileSettings.Default;
+    // Launch-at-startup. The JSON file stores the user's intent; the registry
+    // (HKCU\…\CurrentVersion\Run) is the truth source. On load we calibrate the
+    // setting against the registry so a user who disabled BYH in Task Manager /
+    // Windows Settings sees the toggle read Off here.
+    private StartupSettings _startupSettings = StartupSettings.Default;
+    private readonly IAutoStartManager _autoStartManager = new WindowsRunAutoStartManager();
     private IClassicDesktopStyleApplicationLifetime? _desktop;
     private ByhApplicationPaths? _paths;
 
@@ -241,6 +251,38 @@ public partial class App : Application
                 userProfileLoadWarning = "Invalid profile settings. Windows username restored.";
             }
 
+            // Launch-at-startup: load the JSON (user intent), then calibrate
+            // against the registry — the registry is the truth source. If the
+            // user disabled BYH in Task Manager / Windows Settings the Run key
+            // is gone but the JSON still says "on"; we honor the registry and
+            // rewrite the JSON so the toggle reflects reality. Conversely a
+            // manual Run-key entry (e.g. migrated from another machine) shows
+            // as On here. Failures to read the registry fall back to the JSON.
+            try
+            {
+                _startupSettings = StartupSettingsStore.LoadIfExists(_paths.StartupOptionsFile);
+            }
+            catch (ProviderConfigurationException)
+            {
+                _startupSettings = StartupSettings.Default;
+            }
+            try
+            {
+                bool registryEnabled = _autoStartManager.IsEnabled();
+                if (_startupSettings.LaunchAtStartup != registryEnabled)
+                {
+                    _startupSettings = _startupSettings with { LaunchAtStartup = registryEnabled };
+                    // Best-effort rewrite; if it fails the toggle is still
+                    // correct for this session (the registry already won).
+                    try
+                    {
+                        StartupSettingsStore.Save(_startupSettings, _paths.StartupOptionsFile);
+                    }
+                    catch (ProviderConfigurationException) { }
+                }
+            }
+            catch { /* registry read failed — keep the JSON-loaded intent. */ }
+
             var toolbarWindow = new ToolbarWindow();
             var resultWindow = new ResultWindow();
             var settingsWindow = new SettingsWindow();
@@ -285,6 +327,7 @@ public partial class App : Application
                 isError: _clipboardHistoryLoadWarning is not null);
             settingsWindow.SetClipboardHistorySettings(_clipboardHistorySettings);
             settingsWindow.SetUiLanguage(_uiLanguage);
+            settingsWindow.SetStartupSettings(_startupSettings);
             desktop.MainWindow = toolbarWindow;
 
             settingsWindow.OpenConfigDirectoryRequested += () => OpenDirectory(_paths.BaseDirectory);
@@ -315,6 +358,7 @@ public partial class App : Application
             settingsWindow.OceanEyesCaptureSettingsSaved += OnOceanEyesCaptureSettingsSaved;
             settingsWindow.ToolbarShortcutsSaved += OnToolbarShortcutsSaved;
             settingsWindow.UserProfileSettingsSaved += OnUserProfileSettingsSaved;
+            settingsWindow.StartupSettingsSaved += OnStartupSettingsSaved;
             toolbarWindow.PromptRequested += OnPromptRequested;
             promptWindow.PromptRunRequested += OnPromptRun;
 
@@ -1674,6 +1718,63 @@ public partial class App : Application
             requested,
             string.Format(Strings.Settings_Profile_StatusSaved, requested.DisplayName),
             isError: false);
+    }
+
+    /// <summary>
+    /// Persists the launch-at-startup toggle AND mutates the HKCU Run key. The
+    /// registry is the truth source: if TryEnable fails (group policy / AV
+    /// blocks the Run-key write) we roll the setting back to Off, rewrite the
+    /// JSON, and show "启用失败". This guarantees the toggle never shows On
+    /// while the registry is actually empty.
+    /// </summary>
+    private void OnStartupSettingsSaved(StartupSettings requested)
+    {
+        if (_paths is null) return;
+        requested = requested.Normalize();
+        requested.Validate();
+
+        bool desired = requested.LaunchAtStartup;
+        bool ok = desired ? _autoStartManager.TryEnable() : _autoStartManager.TryDisable();
+
+        // Re-read the registry as the source of truth. A blocked enable leaves
+        // the key absent → reflected = false; a successful enable/disable →
+        // reflected matches desired. Roll the JSON + UI to the real outcome.
+        bool reflected;
+        try { reflected = _autoStartManager.IsEnabled(); }
+        catch { reflected = desired && ok; }
+
+        StartupSettings persisted = requested with { LaunchAtStartup = reflected };
+        try
+        {
+            StartupSettingsStore.Save(persisted, _paths.StartupOptionsFile);
+        }
+        catch (ProviderConfigurationException)
+        {
+            // JSON write failed — the registry already reflects reality, so the
+            // session is correct; just don't persist the file. Surface it.
+            ok = false;
+        }
+        _startupSettings = persisted;
+
+        string status;
+        bool isError;
+        if (desired && !reflected)
+        {
+            status = Strings.Settings_Startup_EnableFailed;
+            isError = true;
+        }
+        else if (reflected)
+        {
+            status = Strings.Settings_Startup_Enabled;
+            isError = false;
+        }
+        else
+        {
+            status = Strings.Settings_Startup_Disabled;
+            isError = false;
+        }
+
+        _settingsWindow?.SetStartupSettings(persisted, status, isError);
     }
 
     /// <summary>

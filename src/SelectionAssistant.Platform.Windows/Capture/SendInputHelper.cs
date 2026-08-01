@@ -52,8 +52,24 @@ public sealed unsafe partial class SendInputHelper : ICopyInputInjector
         {
             SimulatedCopyChord.CtrlInsert => VkInsert,
             SimulatedCopyChord.CtrlC => VkC,
+            SimulatedCopyChord.CtrlShiftC => VkC,
             _ => throw new ArgumentOutOfRangeException(nameof(chord)),
         };
+
+        if (chord == SimulatedCopyChord.CtrlShiftC)
+        {
+            NativeInput* shiftedInputs = stackalloc NativeInput[6]
+            {
+                Keyboard(VkControl, 0),
+                Keyboard(VkShift, 0),
+                Keyboard(key, 0),
+                Keyboard(key, KeyEventKeyUp),
+                Keyboard(VkShift, KeyEventKeyUp),
+                Keyboard(VkControl, KeyEventKeyUp),
+            };
+
+            return SendInput(6, shiftedInputs, sizeof(NativeInput)) == 6;
+        }
 
         NativeInput* inputs = stackalloc NativeInput[4]
         {

@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media.Imaging;
+using SelectionAssistant.Platform.Windows.Capture;
 
 namespace SelectionAssistant.App;
 
@@ -29,6 +30,7 @@ public static class PngToDibConverter
 {
     private const int BitmapInfoHeaderSize = 40;
     private const int BiRgb = 0;
+    private const int MaxDibBytes = 32 * 1024 * 1024;
 
     /// <summary>Converts PNG bytes to a CF_DIB payload. Returns null on any
     /// decode failure (caller logs + falls back). Never throws.</summary>
@@ -86,11 +88,11 @@ public static class PngToDibConverter
     public static byte[]? ConvertBgraToDib(byte[] bgra, int width, int height)
     {
         ArgumentNullException.ThrowIfNull(bgra);
-        if (width <= 0 || height <= 0)
+        if (!TryGetDibSize(width, height, out int expectedBgraBytes, out _))
         {
             return null;
         }
-        if (bgra.Length != width * height * 4)
+        if (bgra.Length != expectedBgraBytes)
         {
             return null;
         }
@@ -113,8 +115,12 @@ public static class PngToDibConverter
             return null;
         }
 
-        int stride = width * 4;
-        int totalBytes = width * height * 4;
+        if (!TryGetDibSize(width, height, out int totalBytes, out _))
+        {
+            return null;
+        }
+
+        int stride = checked(width * 4);
         var bgra = new byte[totalBytes];
         nint nativeBuffer = Marshal.AllocHGlobal(totalBytes);
         try
@@ -132,11 +138,14 @@ public static class PngToDibConverter
     /// <summary>Builds a CF_DIB (BITMAPINFOHEADER + bottom-up BGRA) from a
     /// top-down BGRA buffer. 32bpp rows are already 4-byte aligned (no extra
     /// padding needed). Rows are reversed so biHeight &gt; 0 = bottom-up.</summary>
-    private static byte[] BuildDibFromBgra(byte[] topDownBgra, int width, int height)
+    private static byte[]? BuildDibFromBgra(byte[] topDownBgra, int width, int height)
     {
-        int rowStride = width * 4; // 32bpp → always 4-byte aligned
-        int pixelBytes = rowStride * height;
-        byte[] dib = new byte[BitmapInfoHeaderSize + pixelBytes];
+        if (!TryGetDibSize(width, height, out int pixelBytes, out int rowStride))
+        {
+            return null;
+        }
+
+        byte[] dib = new byte[checked(BitmapInfoHeaderSize + pixelBytes)];
 
         // BITMAPINFOHEADER (little-endian).
         WriteInt32LE(dib, 0, BitmapInfoHeaderSize); // biSize
@@ -158,6 +167,33 @@ public static class PngToDibConverter
             Buffer.BlockCopy(topDownBgra, srcOffset, dib, dstOffset, rowStride);
         }
         return dib;
+    }
+
+    private static bool TryGetDibSize(
+        int width,
+        int height,
+        out int bgraBytes,
+        out int rowStride)
+    {
+        bgraBytes = 0;
+        rowStride = 0;
+        if (width <= 0 || height <= 0)
+        {
+            return false;
+        }
+
+        long rowBytes = (long)width * 4;
+        long pixelBytes = rowBytes * height;
+        long dibBytes = BitmapInfoHeaderSize + pixelBytes;
+        if (rowBytes <= 0 || pixelBytes <= 0 || pixelBytes > ScreenRegionCapture.MaxPixelBufferBytes ||
+            pixelBytes > int.MaxValue || dibBytes > MaxDibBytes)
+        {
+            return false;
+        }
+
+        bgraBytes = (int)pixelBytes;
+        rowStride = (int)rowBytes;
+        return true;
     }
 
     private static void WriteInt32LE(byte[] data, int offset, int value)

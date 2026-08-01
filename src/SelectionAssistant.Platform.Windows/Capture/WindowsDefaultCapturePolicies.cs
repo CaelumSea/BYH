@@ -22,6 +22,11 @@ public static class WindowsDefaultCapturePolicies
         "FoxitReader",
     ];
 
+    private static readonly string[] WarpProcessNames =
+    [
+        "warp",
+    ];
+
     public static void AddTo(ProcessPolicyResolver resolver)
     {
         ArgumentNullException.ThrowIfNull(resolver);
@@ -36,6 +41,23 @@ public static class WindowsDefaultCapturePolicies
                 PolicyMatchKind.ProcessName,
                 processName,
                 terminalPolicy));
+        }
+
+        // Warp renders terminal content in its own surface and does not use
+        // Ctrl+Insert. On Windows its documented copy shortcut is
+        // Ctrl+Shift+C; keep this rule separate from the legacy terminal
+        // Ctrl+Insert policy so other terminals retain their safe behavior.
+        var warpPolicy = ProcessCapturePolicy.Default with
+        {
+            CopyMode = SimulatedCopyMode.CtrlShiftCOnly,
+            ClipboardStabilizationMs = 120,
+        };
+        foreach (string processName in WarpProcessNames)
+        {
+            resolver.AddRule(new PolicyRule(
+                PolicyMatchKind.ProcessName,
+                processName,
+                warpPolicy));
         }
 
         var pdfPolicy = ProcessCapturePolicy.Default with

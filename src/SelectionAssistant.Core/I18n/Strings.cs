@@ -598,6 +598,13 @@ public static partial class Strings
     public static string Settings_Profile_StatusGreeting => Get(nameof(Settings_Profile_StatusGreeting));
     public static string Settings_Profile_StatusSaved => Get(nameof(Settings_Profile_StatusSaved));
 
+    // SettingsWindow — Launch-at-startup card (General section)
+    public static string Settings_Startup_Title => Get(nameof(Settings_Startup_Title));
+    public static string Settings_Startup_Subtitle => Get(nameof(Settings_Startup_Subtitle));
+    public static string Settings_Startup_Enabled => Get(nameof(Settings_Startup_Enabled));
+    public static string Settings_Startup_Disabled => Get(nameof(Settings_Startup_Disabled));
+    public static string Settings_Startup_EnableFailed => Get(nameof(Settings_Startup_EnableFailed));
+
     // SettingsWindow — phone kicker greeting (top of phone panel)
     public static string Settings_Greeting_Prefix => Get(nameof(Settings_Greeting_Prefix));
     public static string Settings_Greeting_DefaultName => Get(nameof(Settings_Greeting_DefaultName));

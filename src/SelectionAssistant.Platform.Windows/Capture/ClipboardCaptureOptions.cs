@@ -37,6 +37,8 @@ public enum SimulatedCopyChord
 {
     CtrlInsert,
     CtrlC,
+    /// <summary>Warp and several terminal emulators use Ctrl+Shift+C.</summary>
+    CtrlShiftC,
 }
 
 public interface ICopyInputInjector
@@ -50,7 +52,8 @@ public interface ICopyInputInjector
 
 public sealed record ClipboardCaptureInvocation(
     IReadOnlyList<SimulatedCopyChord> Chords,
-    TimeSpan? StabilizationDelay = null)
+    TimeSpan? StabilizationDelay = null,
+    bool AllowOwnerlessResult = false)
 {
     public ClipboardCaptureInvocation Validate()
     {

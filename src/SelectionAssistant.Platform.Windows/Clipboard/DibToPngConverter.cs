@@ -20,6 +20,7 @@ public static class DibToPngConverter
 {
     private const int BitmapInfoHeaderSize = 40;
     private const int BiRgb = 0;
+    private const int MaxDibBytes = 32 * 1024 * 1024;
 
     /// <summary>Converts a <c>CF_DIB</c> byte payload to PNG bytes plus the
     /// pixel dimensions. Returns null for truncated data, unsupported
@@ -28,7 +29,7 @@ public static class DibToPngConverter
     public static (byte[] Png, int Width, int Height)? ConvertDibToPng(byte[] dib)
     {
         ArgumentNullException.ThrowIfNull(dib);
-        if (dib.Length < BitmapInfoHeaderSize)
+        if (dib.Length < BitmapInfoHeaderSize || dib.Length > MaxDibBytes)
         {
             return null;
         }
@@ -48,6 +49,13 @@ public static class DibToPngConverter
         // Negative height = top-down DIB (rare). Normalize to positive height
         // and remember whether to flip.
         bool topDown = height < 0;
+        // Math.Abs(int.MinValue) throws and a hostile/malformed DIB can also
+        // make the row arithmetic wrap. Reject those declarations before any
+        // allocation or indexing.
+        if (height == int.MinValue)
+        {
+            return null;
+        }
         int absHeight = Math.Abs(height);
         if (absHeight <= 0)
         {
@@ -68,23 +76,39 @@ public static class DibToPngConverter
         }
 
         // DIB scanlines are padded to a 4-byte boundary.
-        int rowStride = ((width * bytesPerPixel + 3) / 4) * 4;
-        int pixelDataStart = BitmapInfoHeaderSize; // BI_RGB 24/32bpp has no color table
-        int expectedBytes = pixelDataStart + rowStride * absHeight;
-        if (dib.Length < expectedBytes)
+        long rowBytes = (long)width * bytesPerPixel;
+        long rowStrideLong = ((rowBytes + 3) / 4) * 4;
+        if (rowBytes <= 0 || rowStrideLong <= 0 || rowStrideLong > int.MaxValue ||
+            rowStrideLong > (MaxDibBytes - BitmapInfoHeaderSize) / (long)absHeight)
         {
             return null;
         }
 
+        long expectedBytesLong = BitmapInfoHeaderSize + rowStrideLong * absHeight;
+        if (expectedBytesLong > dib.Length || expectedBytesLong > MaxDibBytes)
+        {
+            return null;
+        }
+
+        int rowStride = (int)rowStrideLong;
+        int pixelDataStart = BitmapInfoHeaderSize; // BI_RGB 24/32bpp has no color table
+
         // Emit 32-bit BGRA (what ScreenRegionCapture.EncodeBgraToPng expects),
         // flipping bottom-up → top-down unless the DIB is already top-down.
-        byte[] bgra = new byte[width * absHeight * 4];
+        long bgraBytesLong = (long)width * absHeight * 4;
+        if (bgraBytesLong <= 0 || bgraBytesLong > ScreenRegionCapture.MaxPixelBufferBytes ||
+            bgraBytesLong > int.MaxValue)
+        {
+            return null;
+        }
+
+        byte[] bgra = new byte[(int)bgraBytesLong];
         for (int dstRow = 0; dstRow < absHeight; dstRow++)
         {
             // Source row: bottom-up DIBs store the last scanline first.
             int srcRow = topDown ? dstRow : (absHeight - 1 - dstRow);
-            int srcOffset = pixelDataStart + srcRow * rowStride;
-            int dstOffset = dstRow * width * 4;
+            int srcOffset = checked(pixelDataStart + srcRow * rowStride);
+            int dstOffset = checked(dstRow * width * 4);
             for (int x = 0; x < width; x++)
             {
                 byte b = dib[srcOffset + x * bytesPerPixel];

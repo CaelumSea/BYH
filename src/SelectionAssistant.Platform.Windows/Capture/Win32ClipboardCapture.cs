@@ -19,6 +19,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
     private readonly ICopyInputInjector _input;
     private readonly ClipboardCaptureOptions _options;
     private readonly IReadOnlyList<SimulatedCopyChord> _chords;
+    private readonly Action<string>? _diagnosticSink;
     private readonly SemaphoreSlim _captureGate = new(1, 1);
     private int _disposed;
 
@@ -26,12 +27,14 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
         IClipboardAccess clipboard,
         ICopyInputInjector input,
         ClipboardCaptureOptions? options = null,
-        IReadOnlyList<SimulatedCopyChord>? chords = null)
+        IReadOnlyList<SimulatedCopyChord>? chords = null,
+        Action<string>? diagnosticSink = null)
     {
         _clipboard = clipboard ?? throw new ArgumentNullException(nameof(clipboard));
         _input = input ?? throw new ArgumentNullException(nameof(input));
         _options = (options ?? ClipboardCaptureOptions.Default).Validate();
         _chords = chords ?? DefaultChords;
+        _diagnosticSink = diagnosticSink;
 
         if (_chords.Count == 0)
         {
@@ -68,6 +71,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
             return await CaptureExclusiveAsync(
                 gesture,
                 invocation.Chords,
+                invocation.AllowOwnerlessResult,
                 effectiveOptions,
                 token).ConfigureAwait(false);
         }
@@ -80,17 +84,23 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
     private async Task<CaptureResult> CaptureExclusiveAsync(
         SelectionGesture gesture,
         IReadOnlyList<SimulatedCopyChord> chords,
+        bool allowOwnerlessResult,
         ClipboardCaptureOptions options,
         CancellationToken callerToken)
     {
         callerToken.ThrowIfCancellationRequested();
 
-        if (_input.HasInterferingModifiers() || !_input.CanInjectInto(gesture))
+        bool initialModifiers = _input.HasInterferingModifiers();
+        bool initialTarget = _input.CanInjectInto(gesture);
+        Trace($"clipboard start proc={gesture.SourceProcessId} chords={string.Join(',', chords)} modifiers={initialModifiers} target={initialTarget}");
+        if (initialModifiers || !initialTarget)
         {
+            Trace("clipboard skipped before backup");
             return NoCapture();
         }
 
         ClipboardSnapshot snapshot = _clipboard.Backup();
+        Trace($"clipboard backup ok={snapshot.BackupSucceeded} empty={snapshot.WasEmpty} restorable={snapshot.HasRestorableData} seq={snapshot.SequenceNumber}");
         if (!snapshot.BackupSucceeded ||
             (!snapshot.WasEmpty && !snapshot.HasRestorableData))
         {
@@ -119,13 +129,19 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
             {
                 overallCancellation.Token.ThrowIfCancellationRequested();
 
-                if (_input.HasInterferingModifiers() || !_input.CanInjectInto(gesture))
+                bool modifiers = _input.HasInterferingModifiers();
+                bool target = _input.CanInjectInto(gesture);
+                Trace($"clipboard chord={chord} modifiers={modifiers} target={target}");
+                if (modifiers || !target)
                 {
+                    Trace("clipboard skipped before send");
                     return NoCapture();
                 }
 
                 lastBaseline = _clipboard.GetSequenceNumber();
-                if (!_input.SendCopyChord(chord))
+                bool sent = _input.SendCopyChord(chord);
+                Trace($"clipboard chord={chord} sent={sent} baseline={lastBaseline}");
+                if (!sent)
                 {
                     continue;
                 }
@@ -139,11 +155,14 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
 
                 if (stableSequence is null)
                 {
+                    Trace($"clipboard chord={chord} no sequence change");
                     continue;
                 }
 
                 uint? ownerProcessId = _clipboard.GetOwnerProcessId();
-                if (ownerProcessId is null)
+                Trace($"clipboard chord={chord} stable={stableSequence.Value} owner={ownerProcessId?.ToString() ?? "none"}");
+                bool ownerlessResult = ownerProcessId is null && allowOwnerlessResult;
+                if (ownerProcessId is null && !ownerlessResult)
                 {
                     // The source process may exit after placing data. Preserve
                     // the original clipboard, but do not report unowned text as
@@ -152,18 +171,27 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                     return NoCapture();
                 }
 
-                if (ownerProcessId != gesture.SourceProcessId)
+                if (ownerProcessId is not null && ownerProcessId != gesture.SourceProcessId)
                 {
+                    Trace($"clipboard rejected owner mismatch expected={gesture.SourceProcessId} actual={ownerProcessId}");
                     externalChangeObserved = true;
                     return NoCapture();
                 }
+
+                // Some GPU/WebView terminals (including Warp) place clipboard
+                // data without an owner HWND, so Win32 cannot map it back to a
+                // process. The caller must opt in per policy; sequence change
+                // + target validation still protect the normal capture path.
 
                 ownedSequence = stableSequence.Value;
                 string? text = _clipboard.GetText();
 
                 if (_clipboard.GetSequenceNumber() != ownedSequence.Value ||
-                    _clipboard.GetOwnerProcessId() != gesture.SourceProcessId)
+                    (ownerlessResult
+                        ? _clipboard.GetOwnerProcessId() is not null
+                        : _clipboard.GetOwnerProcessId() != gesture.SourceProcessId))
                 {
+                    Trace("clipboard rejected because sequence/owner changed during read");
                     externalChangeObserved = true;
                     ownedSequence = null;
                     return NoCapture();
@@ -171,15 +199,19 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
 
                 if (!string.IsNullOrWhiteSpace(text))
                 {
+                    Trace($"clipboard success source={chord} ownerless={ownerlessResult} length={text.Length}");
                     bool truncated = text.Length > options.MaxTextLength;
                     if (truncated)
                     {
                         text = text[..options.MaxTextLength];
                     }
 
-                    CaptureSource source = chord == SimulatedCopyChord.CtrlInsert
-                        ? CaptureSource.SimulatedCopyCtrlInsert
-                        : CaptureSource.SimulatedCopyCtrlC;
+                    CaptureSource source = chord switch
+                    {
+                        SimulatedCopyChord.CtrlInsert => CaptureSource.SimulatedCopyCtrlInsert,
+                        SimulatedCopyChord.CtrlShiftC => CaptureSource.SimulatedCopyCtrlShiftC,
+                        _ => CaptureSource.SimulatedCopyCtrlC,
+                    };
                     return new CaptureResult(text, source, truncated);
                 }
             }
@@ -279,6 +311,18 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
 
     private static CaptureResult NoCapture() =>
         new(null, CaptureSource.None, false);
+
+    private void Trace(string message)
+    {
+        try
+        {
+            _diagnosticSink?.Invoke(message);
+        }
+        catch
+        {
+            // Diagnostics must never affect capture or clipboard restoration.
+        }
+    }
 
     public void Dispose()
     {
