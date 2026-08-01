@@ -2,7 +2,7 @@
 
 > Context-aware selection assistant. 选词即用，不离开当前上下文。
 >
-> Status: **v0.1.0** · NativeAOT single-binary · Windows 10+ · .NET 10 · [MIT License](#license)
+> Status: **v0.1.0 + post-release fixes (2026-08-01)** · NativeAOT single-binary · Windows 10+ · .NET 10 · [MIT License](#license)
 
 BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选的内容——**一个工具搞定截图 OCR、即时翻译、剪贴板历史、启动器、提示词模板**，全程不离开当前窗口。
 
@@ -22,6 +22,8 @@ BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选�
 | 🔤 **选词工具栏** | 选中文字自动浮出 | 在任意应用选中文字即弹出工具栏，一键执行翻译 / 总结 / 解释 / 自定义提示词。结果窗口支持多模型同时对比、自定义动作、双语标题。 |
 | 🎛️ **托盘与设置** | 托盘右键 | 统一设置中心（Dashboard / 通用 / 翻译 / 动作 / 视觉 / 启动器 / 剪贴板七页），所有改动即时保存。托盘菜单直达设置、配置目录、截图画廊、重启、退出。 |
 
+**终端兼容性**：Warp（`warp.exe`）使用专用的 `Ctrl+Shift+C` 选区复制策略；其 GPU/WebView 剪贴板可能没有可查询的 Win32 owner，BYH 仅在该明确进程策略下按剪贴板序号变化和稳定文本读取，其他应用仍使用严格 owner 校验。
+
 > 三组主快捷键均可在 **设置 → 各模块页** 自定义（支持 Ctrl/Alt/Shift/Win 修饰键 + A–Z / 0–9 / F1–F12 / Space）。修改后保存即时生效。
 
 ---
@@ -34,7 +36,7 @@ BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选�
 
 **单实例**：进程级 mutex `Global\BYH_ByYourHand_SingleInstance` 保证同一时间只有一个 BYH 在跑。想替换 exe 时必须先关掉运行的实例（托盘 → 退出，或任务管理器结束 `BYH.exe`）。
 
-**开机自启**：v0.1.0 暂未内置，可手动把 `BYH.exe` 的快捷方式放进 `shell:startup`（资源管理器地址栏输入即可打开启动文件夹）。
+**开机自启**：在 **设置 → General → Launch at startup** 开启。BYH 写入当前用户 `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`，无需管理员权限；注册表是运行时真相源，写入失败会在设置页提示而不会崩溃。
 
 ---
 
@@ -59,6 +61,7 @@ OCR（Ocean Eyes）用哪个 provider/model 在 **设置 → Vision** 单独配�
 |---|---|
 | `ui-language.json` | UI 语言（`en` / `zh-CN`）。缺失则按系统语言自动检测。切换需重启。 |
 | `profile.json` | 显示名（用于问候语）。 |
+| `startup-options.json` | 开机自启开关的本地镜像；启动时与当前用户 Run 注册表项同步。 |
 | `providers.json` | 翻译/LLM provider 列表。 |
 | `vision.json` | OCR provider / model / prompt 配置。 |
 | `prompt-templates.json` | 工具栏提示词模板（翻译/总结/解释/自定义）。缺失用内置默认。 |
@@ -72,7 +75,7 @@ OCR（Ocean Eyes）用哪个 provider/model 在 **设置 → Vision** 单独配�
 | `clipboard-history-icons.json` | 用户导入的图标库（SVG path data）。 |
 | `launcher-entries.json` | 启动器条目（用户添加的 app/URL）。 |
 | `toolbar-shortcuts.json` | 工具栏内置快捷键（默认 R/C/V）。 |
-| `capture-policies.json` | 截图捕获策略。 |
+| `capture-policies.json` | 进程级选词捕获策略；内置 Warp 规则使用 `Ctrl+Shift+C`，其他终端保持 `Ctrl+Insert`。 |
 | `clipboard-images/` | 图片剪贴板条目的 PNG。 |
 | `clipboard-archive/` | 按月分片（`YYYY-MM.json`）的剪贴板归档。 |
 | `launcher-icons/` | 启动器图标缓存。 |
@@ -107,7 +110,7 @@ Clipboard     ← 剪贴板历史所有开关与上限
 # 编译检查（Windows）
 dotnet build SelectionAssistant.slnx -c Release
 
-# 测试（约 661 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
+# 测试（当前 736 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
 dotnet test
 
 # NativeAOT 单文件发布（Windows，生成 BYH.exe，约 28MB）
@@ -158,7 +161,7 @@ src/
 - **L3**：无障碍 `AutomationProperties.Name` 全层补齐（需屏幕阅读器验证）
 - **M4**：剩余 ~46 处 `[DllImport]` → `[LibraryImport]` 迁移（hook / launcher / icon 高风险核心路径）
 - **L8**：`IManagedWindow` 公共接口（与 M1/M2 耦合）
-- 开机自启、安装包
+- 安装包 / 代码签名
 
 ---
 

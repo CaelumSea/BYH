@@ -16,9 +16,18 @@
 
 - **开机自启选项（设置 → 通用）。** 新增「开机自启」开关：开启后写入 `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`（用户级注册表，无需管理员），登录 Windows 时自动拉起 BYH。注册表为真相源——若用户在任务管理器 / Windows 设置里手动禁用，启动时以注册表为准回写 `startup-options.json`，开关显示与实际一致。组策略或杀毒软件拦截写入时优雅降级，提示「启用失败」而非崩溃。新增 `IAutoStartManager` 平台抽象 + `WindowsRunAutoStartManager` 实现，沿用了 Ocean Eyes / 剪贴板历史的设置流水线（record → store → App 接线 → 设置卡片 + i18n）。
 
+### 兼容性
+
+- **Warp 选区捕获（REQ-029）。** 对 `warp.exe` 增加专用 `Ctrl+Shift+C` 复制策略与 120ms 剪贴板稳定等待；Warp 的 GPU/WebView 剪贴板没有 Win32 owner 时，在明确的 Warp 策略中按序号变化 + 稳定文本受控接受，其他应用仍保留严格 owner 校验。新增 `--probe-process-policy <pid>` 诊断探针。
+
 ### 修复
 
+- **大尺寸 Ocean Eyes 截图稳定性（REQ-028）。** 为 BGRA/DIB/PNG 路径增加尺寸上限和 checked 算术，修正 `SetClipboardData` 句柄所有权释放竞态，并加入 `tools/monitor-byh-crash.ps1` 监控探针。受控 2880×1620、3840×2160、4000×3000 和 6000×4000 场景均未复现崩溃；6000×4000 会安全返回诊断失败。
 - **选词工具栏打字/编辑时自动隐藏。** 此前选中文字弹出工具栏后，若用户直接打字、按 Backspace/Delete 删除、或按方向键移动光标，工具栏会一直浮在原处挡住输入。现在工具栏可见时，按下任意「非动作」的字符键 / 编辑键 / 导航键（且无 Ctrl/Alt/Shift/Win 修饰键按下）会立即隐藏工具栏，同时按键照常生效给源应用。动作键（翻译/总结/复制等）、修饰键组合（Ctrl+C 等）、Esc、Ocean Eyes 模式行为不变。
+
+### 验证
+
+- 2026-08-01 主线合并后的全量测试：**736/736 通过**（Core 581、Windows Integration 105、Providers 50）；Release build 0 warning / 0 error；REQ-029 NativeAOT QA 发布成功。
 
 ---
 

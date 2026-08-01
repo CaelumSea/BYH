@@ -18,8 +18,10 @@
 | `Core/Selection/ChordDetector.cs` | 左右键同按（chord）判定；400→600ms 时间窗口；触发后等双键释放才重置 |
 | `Core/Selection/SelectionGestureClassifier.cs` | 轴式拖拽/双击判定（SM_CXDRAG/SM_CYDRAG 矩形指标） |
 | `Core/Selection/SelectionSessionManager.cs` | 取词会话生命周期；并发安全；75ms 防闪烁；过期会话 generation 守卫 |
-| `Platform.Windows/Capture/WindowsSelectionTextCapture.cs` | UIA TextPattern2→TextPattern 取词 + 剪贴板回退 |
-| `Platform.Windows/Capture/SendInputHelper.cs` | 注入 Ctrl+Insert（复制）/ Ctrl+V（粘贴）到源应用 |
+| `Platform.Windows/Capture/WindowsSelectionTextCapture.cs` | UIA TextPattern2→TextPattern 取词 + 按进程策略选择剪贴板回退 |
+| `Platform.Windows/Capture/Win32ClipboardCapture.cs` | 监听剪贴板序号、注入复制键、校验来源并恢复原剪贴板 |
+| `Platform.Windows/Capture/SendInputHelper.cs` | 注入 Ctrl+Insert / Ctrl+C / Warp 的 Ctrl+Shift+C（以及 Ctrl+V）到源应用 |
+| `Platform.Windows/Capture/WindowsDefaultCapturePolicies.cs` | 内置终端 / PDF / Warp 的进程匹配策略 |
 | `Core/Capture/IProcessCapturePolicyProvider.cs` | 进程策略（终端只注入 Ctrl+Insert；高完整性降级） |
 | `App/SelectionRuntime.cs` | 组合根；`OnMouseEvent` 分发（chord 优先 → dismiss → 手势 → 取词） |
 
@@ -40,6 +42,23 @@ WH_MOUSE_LL 钩子（原生线程 HookCallback）
             ├── 等 UIA 取词完成 → SetCaptureResult（generation 守卫）
             └── _lastCapturedText = 取到的文本（供 QuickTools 快捷键/chord 复用）
 ```
+
+### 剪贴板回退的进程策略
+
+UIA 没有返回确定文本时，`WindowsSelectionTextCapture` 根据 `SourceProcessId` 解析 `ProcessCapturePolicy`，再由 `Win32ClipboardCapture` 监听剪贴板序号变化并注入该策略允许的复制键。默认链路是 `Ctrl+Insert → Ctrl+C`；传统终端只用 `Ctrl+Insert`。
+
+#### Warp（REQ-029）
+
+Warp 的 Windows 终端渲染面使用 `Ctrl+Shift+C` 复制选区，内置 `warp.exe` 规则映射到 `SimulatedCopyMode.CtrlShiftCOnly`，并使用 120ms 稳定等待。Warp 的 GPU/WebView 剪贴板在实测中会出现：序号发生变化、`CF_UNICODETEXT` 可读，但 `GetClipboardOwner()` 返回空窗口，因此无法得到 owner PID。
+
+为兼容这一行为，`ClipboardCaptureInvocation.AllowOwnerlessResult` 只在 `CtrlShiftCOnly` 策略中开启。ownerless 结果仍需同时满足：
+
+1. 注入前前台窗口的 root HWND 与手势来源一致，且没有用户正在按下的修饰键；
+2. 复制键发送成功，剪贴板序号在超时内变化并稳定；
+3. 读取文本期间序号没有再次变化，且 owner 仍为空；
+4. 读取文本非空后，finally 仍按序号保护恢复原剪贴板。
+
+其他进程和其他复制键仍要求 owner PID 等于手势来源进程，不能通过 ownerless 路径。`Program --probe-process-policy <pid>` 可检查 Warp 进程解析到的模式；运行日志的 `CaptureDebug` 类别只记录策略、发送结果、序号、owner 和长度，不记录选中文本正文。
 
 ## 关键方法/类
 
@@ -62,6 +81,7 @@ WH_MOUSE_LL 钩子（原生线程 HookCallback）
 - [ ] 改手势判定：轴式（矩形），不用欧氏距离。
 - [ ] 改会话管理：每次 UI 写入前 generation 守卫；过期会话不复活。
 - [ ] 改取词：UIA 失败有剪贴板回退；高完整性进程安全降级。
+- [ ] 改进程兼容策略：新增 ownerless 例外必须绑定明确进程策略，并保留序号 / 目标窗口 / 恢复保护。
 
 ---
 
