@@ -127,6 +127,32 @@ public sealed class DibToPngConverterTests
         Assert.Null(result);
     }
 
+    [Fact]
+    public void Convert_MalformedHugeDimensions_ReturnsNullWithoutAllocating()
+    {
+        // A clipboard producer can advertise dimensions that do not fit in the
+        // payload. The converter must reject them before row-stride/pixel-size
+        // arithmetic wraps or attempts a giant allocation.
+        byte[] dib = new byte[HeaderSize];
+        WriteInt32LE(dib, 0, HeaderSize);
+        WriteInt32LE(dib, 4, int.MaxValue);
+        WriteInt32LE(dib, 8, int.MaxValue);
+        WriteInt16LE(dib, 12, 1);
+        WriteInt16LE(dib, 14, 32);
+        WriteInt32LE(dib, 16, 0);
+
+        Assert.Null(DibToPngConverter.ConvertDibToPng(dib));
+    }
+
+    [Fact]
+    public void Convert_IntMinHeight_ReturnsNullWithoutOverflow()
+    {
+        byte[] dib = BuildDib(width: 1, height: 1, bitCount: 32);
+        WriteInt32LE(dib, 8, int.MinValue);
+
+        Assert.Null(DibToPngConverter.ConvertDibToPng(dib));
+    }
+
     private static void WriteInt32LE(byte[] data, int offset, int value)
     {
         data[offset] = (byte)(value & 0xFF);

@@ -1,6 +1,8 @@
 using System.Diagnostics;
 using Avalonia;
+using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Infrastructure.Configuration;
+using SelectionAssistant.Infrastructure.Logging;
 using SelectionAssistant.Infrastructure.Translation;
 using SelectionAssistant.Platform.Abstractions;
 using SelectionAssistant.Platform.Abstractions.Secrets;
@@ -134,6 +136,44 @@ internal static class Program
         {
             string outPath = args.Length >= 6 ? args[5] : "probe-region.png";
             return ProbeSaveRegion(psrX, psrY, psrW, psrH, outPath);
+        }
+
+        // R28 diagnostic: exercises the complete Ocean Eyes save path without
+        // opening the selection overlay. It captures BGRA + PNG, builds the
+        // CF_DIB payload from the raw buffer, writes the PNG, and optionally
+        // places both formats on the clipboard. Usage:
+        //   --probe-ocean-eyes-save <x> <y> <w> <h> [out.png] [--copy]
+        // Exit 0 = all requested stages completed, 2 = clipboard rejected,
+        // 3 = capture/conversion/save error. The --copy switch deliberately
+        // changes the current clipboard and is intended for controlled QA.
+        if (args.Length >= 5 &&
+            args[0].Equals("--probe-ocean-eyes-save", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(args[1], out int poesX) && int.TryParse(args[2], out int poesY) &&
+            int.TryParse(args[3], out int poesW) && int.TryParse(args[4], out int poesH))
+        {
+            string outPath = args.Length >= 6 &&
+                !args[5].StartsWith("--", StringComparison.Ordinal)
+                ? args[5]
+                : "ocean-eyes-probe.png";
+            bool copy = args.Contains("--copy", StringComparer.OrdinalIgnoreCase);
+            return ProbeOceanEyesSave(poesX, poesY, poesW, poesH, outPath, copy);
+        }
+
+        // R28 diagnostic: exercises the Ocean Eyes clipboard write together
+        // with the same long-lived image listener used by the desktop app.
+        // The earlier save probe exits immediately after SetImageDibAndPng and
+        // therefore cannot observe the WM_CLIPBOARDUPDATE -> DIB -> PNG path
+        // that runs in ClipboardHistoryService. Usage:
+        //   --probe-ocean-eyes-history <x> <y> <w> <h>
+        // Exit 0 = image write + listener capture completed (or an oversized
+        // DIB was intentionally downgraded to PNG-only), 2 = write or
+        // listener did not produce an image entry, 3 = diagnostic error.
+        if (args.Length >= 5 &&
+            args[0].Equals("--probe-ocean-eyes-history", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(args[1], out int poehX) && int.TryParse(args[2], out int poehY) &&
+            int.TryParse(args[3], out int poehW) && int.TryParse(args[4], out int poehH))
+        {
+            return ProbeOceanEyesHistory(poehX, poehY, poehW, poehH);
         }
 
         // Writes an API key / secret to DPAPI-encrypted storage (§11.3). The
@@ -616,31 +656,190 @@ internal static class Program
     // produced by ScreenRegionCapture and writes the raw PNG bytes to disk.
     private static int ProbeSaveRegion(int x, int y, int w, int h, string outPath)
     {
-        string? dataUri = SelectionAssistant.Platform.Windows.Capture.ScreenRegionCapture
-            .CaptureAsDataUri(x, y, w, h);
-        if (string.IsNullOrEmpty(dataUri))
+        try
         {
-            Console.Error.WriteLine($"截图失败：CaptureAsDataUri({x},{y},{w},{h}) 返空。");
+            string? dataUri = SelectionAssistant.Platform.Windows.Capture.ScreenRegionCapture
+                .CaptureAsDataUri(x, y, w, h);
+            if (string.IsNullOrEmpty(dataUri))
+            {
+                Console.Error.WriteLine($"截图失败：CaptureAsDataUri({x},{y},{w},{h}) 返空。");
+                return 3;
+            }
+
+            // data:image/png;base64,<base64>
+            const string prefix = "data:image/png;base64,";
+            int idx = dataUri.IndexOf(prefix, StringComparison.Ordinal);
+            if (idx < 0)
+            {
+                Console.Error.WriteLine("data URI 前缀不对。");
+                return 3;
+            }
+
+            string base64 = dataUri[(idx + prefix.Length)..];
+            byte[] png = Convert.FromBase64String(base64);
+            string? directory = Path.GetDirectoryName(Path.GetFullPath(outPath));
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            File.WriteAllBytes(outPath, png);
+
+            Console.WriteLine($"Region : ({x},{y}) {w}x{h}");
+            Console.WriteLine($"Bytes  : {png.Length}");
+            Console.WriteLine($"Saved  : {Path.GetFullPath(outPath)}");
+            return 0;
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"截图探针出错：{exception.Message}");
             return 3;
         }
+    }
 
-        // data:image/png;base64,<base64>
-        const string prefix = "data:image/png;base64,";
-        int idx = dataUri.IndexOf(prefix, StringComparison.Ordinal);
-        if (idx < 0)
+    private static int ProbeOceanEyesSave(
+        int x, int y, int width, int height, string outPath, bool copyToClipboard)
+    {
+        try
         {
-            Console.Error.WriteLine("data URI 前缀不对。");
+            var captured = ScreenRegionCapture.CaptureAsPngAndBgra(x, y, width, height);
+            if (captured is null)
+            {
+                Console.Error.WriteLine("截图失败（BitBlt/GetDIBits 返回空）。");
+                return 3;
+            }
+
+            byte[] png = captured.Value.Png;
+            // SaveOceanEyesScreenshot receives an annotation-free clone from
+            // BurnAnnotationsIntoPng before it builds the DIB. Keep that same
+            // ownership boundary here so the probe exercises the real sizes.
+            byte[] finalBgra = (byte[])captured.Value.Bgra.Clone();
+            byte[]? dib = PngToDibConverter.ConvertBgraToDib(finalBgra, width, height);
+            // The production path intentionally falls back to PNG-only when
+            // the CF_DIB budget would be exceeded. Keep the diagnostic aligned
+            // with that behavior so a large but valid PNG can still be tested
+            // without manufacturing an oversized clipboard HGLOBAL.
+            long expectedDibBytes = 40L + (long)width * height * 4;
+            bool dibDowngradedToPngOnly = dib is null && expectedDibBytes > 32L * 1024 * 1024;
+            if (dib is null && !dibDowngradedToPngOnly)
+            {
+                Console.Error.WriteLine("BGRA→CF_DIB 转换失败。");
+                return 3;
+            }
+
+            string? directory = Path.GetDirectoryName(Path.GetFullPath(outPath));
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+            File.WriteAllBytes(outPath, png);
+
+            bool clipboardPlaced = true;
+            if (copyToClipboard)
+            {
+                using var clipboard = new Win32Clipboard();
+                clipboardPlaced = clipboard.SetImageDibAndPng(png, dib);
+            }
+
+            Console.WriteLine($"Region : ({x},{y}) {width}x{height}");
+            Console.WriteLine($"PNG    : {png.Length} bytes");
+            Console.WriteLine($"BGRA   : {finalBgra.Length} bytes");
+            Console.WriteLine($"DIB    : {(dib is null ? "skipped (PNG-only budget)" : $"{dib.Length} bytes")}");
+            Console.WriteLine($"Saved  : {Path.GetFullPath(outPath)}");
+            Console.WriteLine($"Copied : {(copyToClipboard ? clipboardPlaced : false)}");
+            return copyToClipboard && !clipboardPlaced ? 2 : 0;
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"Ocean Eyes 保存探针出错：{exception}");
             return 3;
         }
+    }
 
-        string base64 = dataUri[(idx + prefix.Length)..];
-        byte[] png = Convert.FromBase64String(base64);
-        File.WriteAllBytes(outPath, png);
+    private static int ProbeOceanEyesHistory(int x, int y, int width, int height)
+    {
+        string root = Path.Combine(
+            AppContext.BaseDirectory,
+            "probe-clipboard-history",
+            $"{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}");
 
-        Console.WriteLine($"Region : ({x},{y}) {w}x{h}");
-        Console.WriteLine($"Bytes  : {png.Length}");
-        Console.WriteLine($"Saved  : {Path.GetFullPath(outPath)}");
-        return 0;
+        try
+        {
+            Directory.CreateDirectory(root);
+            string historyPath = Path.Combine(root, "clipboard-history.json");
+            string tagsPath = Path.Combine(root, "clipboard-tags.json");
+            string iconsPath = Path.Combine(root, "clipboard-icons.json");
+            string imagesPath = Path.Combine(root, "images");
+            string archivePath = Path.Combine(root, "archive");
+            string logPath = Path.Combine(root, "probe.log");
+
+            var captured = ScreenRegionCapture.CaptureAsPngAndBgra(x, y, width, height);
+            if (captured is null)
+            {
+                Console.Error.WriteLine("截图失败（BitBlt/GetDIBits 返回空）。");
+                return 3;
+            }
+
+            byte[] png = captured.Value.Png;
+            byte[] finalBgra = (byte[])captured.Value.Bgra.Clone();
+            byte[]? dib = PngToDibConverter.ConvertBgraToDib(finalBgra, width, height);
+            // The production path intentionally falls back to PNG-only when
+            // the CF_DIB budget would be exceeded. Keep the diagnostic aligned
+            // with that behavior so a large but valid PNG can still be tested
+            // without manufacturing an oversized clipboard HGLOBAL.
+            long expectedDibBytes = 40L + (long)width * height * 4;
+            bool dibDowngradedToPngOnly = dib is null && expectedDibBytes > 32L * 1024 * 1024;
+            if (dib is null && !dibDowngradedToPngOnly)
+            {
+                Console.Error.WriteLine("BGRA→CF_DIB 转换失败。");
+                return 3;
+            }
+
+            // This is the production listener path, isolated to a throw-away
+            // store so the probe never mutates the user's clipboard history.
+            var settings = ClipboardHistorySettings.Default with
+            {
+                MaxEntries = 20,
+                MaxImageEntries = 5,
+            };
+            using var clipboard = new Win32Clipboard();
+            using var service = new ClipboardHistoryService(
+                clipboard,
+                historyPath,
+                tagsPath,
+                iconsPath,
+                imagesPath,
+                settings,
+                new RedactedLogger(logPath),
+                entryCipher: null,
+                archiveDirectory: archivePath);
+
+            bool placed = clipboard.SetImageDibAndPng(png, dib);
+            // WM_CLIPBOARDUPDATE is delivered on Win32Clipboard's STA message
+            // thread. Give the listener enough time to open the clipboard, run
+            // DIB→PNG conversion, and persist the disposable probe entry.
+            Thread.Sleep(TimeSpan.FromSeconds(2));
+
+            ClipboardEntry? image = service.Snapshot.FirstOrDefault(
+                entry => entry.Kind == ClipboardEntryKind.Image);
+            Console.WriteLine($"Region : ({x},{y}) {width}x{height}");
+            Console.WriteLine($"PNG    : {png.Length} bytes");
+            Console.WriteLine($"BGRA   : {finalBgra.Length} bytes");
+            Console.WriteLine($"DIB    : {(dib is null ? "skipped (PNG-only budget)" : $"{dib.Length} bytes")}");
+            Console.WriteLine($"Placed : {placed}");
+            Console.WriteLine($"History image: {(image is null ? "none" : image.ImageFileName ?? "(unnamed)")}");
+            Console.WriteLine($"Probe root: {root}");
+
+            // SetImageDibAndPng deliberately omits a DIB above the 32 MiB
+            // clipboard-history read budget. In that case the PNG is still a
+            // successful, crash-safe result; the listener cannot create an
+            // image entry because CF_DIB is intentionally absent.
+            return placed && (image is not null || dibDowngradedToPngOnly) ? 0 : 2;
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine($"Ocean Eyes 历史监听探针出错：{exception}");
+            return 3;
+        }
     }
 
     // R23 diagnostic: extracts the small icon from an exe and writes it as a PNG.
