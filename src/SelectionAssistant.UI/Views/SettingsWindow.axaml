@@ -498,6 +498,47 @@
             </StackPanel>
           </Border>
 
+          <!-- Launch-at-startup card. Toggles the HKCU\…\Run entry so BYH
+               starts on Windows login. Single switch + save button + status
+               line; the registry is the source of truth, so the toggle reflects
+               whatever App.axaml.cs calibrated on load (user may have disabled
+               it in Task Manager / Windows Settings, which we honor). -->
+          <Border Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="10">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                <StackPanel Spacing="3">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Startup_Title}"
+                             Classes="CardTitle"
+                             FontSize="{DynamicResource ByhFontSizeSubheading}"
+                             FontWeight="SemiBold" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_Startup_Subtitle}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                             TextWrapping="Wrap" />
+                </StackPanel>
+                <ToggleSwitch x:Name="LaunchAtStartupToggle"
+                              Grid.Column="1"
+                              OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                              OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
+                              IsChecked="False"
+                              VerticalAlignment="Center"
+                              AutomationProperties.AutomationId="BYH.Settings.Startup.Toggle" />
+              </Grid>
+              <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                <Button Content="{x:Static i18n:Strings.Common_Save}"
+                        Classes="Primary"
+                        Click="OnSaveStartupClick"
+                        AutomationProperties.AutomationId="BYH.Settings.Startup.Save" />
+                <TextBlock x:Name="StartupStatusText"
+                           Grid.Column="1"
+                           Classes="Muted"
+                           FontSize="{DynamicResource ByhFontSizeBody}"
+                           VerticalAlignment="Center"
+                           AutomationProperties.AutomationId="BYH.Settings.Startup.Status" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
           <!-- Personal Greeting card. REQ-027 — display name used by the
                phone greeting. Wrapped in a DashboardPanel shell. -->
           <Border Classes="DashboardPanel" Margin="24,14,24,0">

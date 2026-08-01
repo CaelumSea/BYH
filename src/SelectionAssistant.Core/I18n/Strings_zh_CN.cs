@@ -512,6 +512,13 @@ internal static partial class Strings_zh_CN
         ["Settings_Profile_StatusGreeting"] = "问候：Hi! {0}",
         ["Settings_Profile_StatusSaved"] = "已保存 · Hi! {0}",
 
+        // SettingsWindow — 开机自启卡片(通用区)
+        ["Settings_Startup_Title"] = "开机自启",
+        ["Settings_Startup_Subtitle"] = "登录 Windows 时自动启动 BYH。也可在任务管理器 → 启动里关闭。",
+        ["Settings_Startup_Enabled"] = "已启用。BYH 将在登录时自启。",
+        ["Settings_Startup_Disabled"] = "已关闭。",
+        ["Settings_Startup_EnableFailed"] = "启用失败——Run 键可能被组策略或杀毒软件拦截。",
+
         // SettingsWindow — 手机顶部问候
         ["Settings_Greeting_Prefix"] = "Hi!",
         ["Settings_Greeting_DefaultName"] = "朋友",

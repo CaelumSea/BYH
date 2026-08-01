@@ -511,6 +511,13 @@ internal static partial class Strings_en
         ["Settings_Profile_StatusGreeting"] = "Greeting: Hi! {0}",
         ["Settings_Profile_StatusSaved"] = "Saved · Hi! {0}",
 
+        // SettingsWindow — Launch-at-startup card (General section)
+        ["Settings_Startup_Title"] = "Launch at startup",
+        ["Settings_Startup_Subtitle"] = "Start BYH automatically when you sign in to Windows. You can also turn it off in Task Manager → Startup.",
+        ["Settings_Startup_Enabled"] = "Enabled. BYH will start on sign-in.",
+        ["Settings_Startup_Disabled"] = "Disabled.",
+        ["Settings_Startup_EnableFailed"] = "Enable failed — the Run key may be blocked by group policy or antivirus.",
+
         // SettingsWindow — phone kicker greeting
         ["Settings_Greeting_Prefix"] = "Hi!",
         ["Settings_Greeting_DefaultName"] = "there",
