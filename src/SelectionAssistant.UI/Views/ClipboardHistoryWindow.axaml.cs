@@ -77,6 +77,8 @@ public partial class ClipboardHistoryWindow : Window
     // as a double-click (matches the Windows default SM_CXDOUBLECLK ~4 px, with
     // a slightly larger 8 px tolerance — same value as PinnedScreenshotWindow).
     private const double DoubleClickPx = 8.0;
+    private const int MultiSelectLongPressMs = 500;
+    private const double MultiSelectLongPressMovePx = 8.0;
 
     // Full set of rows (display order: pinned first, then newest). App pushes a
     // fresh snapshot whenever history changes; we rebuild _allRows from it.
@@ -174,6 +176,18 @@ public partial class ClipboardHistoryWindow : Window
     private long _lastClickTicks;
     private PixelPoint _lastClickScreen;
 
+    // REQ-031: long-press multi-selection. The timer is armed only for a live
+    // row's left button; movement beyond the click tolerance cancels it so a
+    // drag/scroll gesture never unexpectedly enters edit mode.
+    private DispatcherTimer? _longPressTimer;
+    private Border? _longPressBorder;
+    private ClipboardHistoryEntryRow? _longPressRow;
+    private IPointer? _longPressPointer;
+    private Point _longPressStart;
+    private bool _longPressTriggered;
+    private bool _isMultiSelectMode;
+    private readonly HashSet<Guid> _multiSelectedIds = [];
+
     // R54 v1.2 v3: drag-to-reorder state for custom-tag nav buttons.
     //
     // PREVIOUS DESIGN (failed twice on real hardware): per-Button PointerPressed
@@ -216,6 +230,7 @@ public partial class ClipboardHistoryWindow : Window
 
         Opened += (_, _) =>
         {
+            ExitMultiSelectMode();
             SearchInput.Text = string.Empty;
             SearchInput.Focus();
             // Reset the click-pair anchor so a click just before the previous
@@ -227,7 +242,12 @@ public partial class ClipboardHistoryWindow : Window
 
         // R100 动画1: 关闭直接 Hide(瞬切)。用户要求"一次性弹出来", 不要缩回动画。
         // 只有出现时 scale 弹入(0.85→1.0), 关闭直接消失。
-        Deactivated += (_, _) => Hide();
+        Deactivated += (_, _) =>
+        {
+            CancelLongPressTracking();
+            ExitMultiSelectMode();
+            Hide();
+        };
         Closing += (sender, e) =>
         {
             if (!_allowClose)
@@ -290,6 +310,7 @@ public partial class ClipboardHistoryWindow : Window
         IReadOnlyList<ClipboardEntry> archive,
         bool maskSensitive)
     {
+        ExitMultiSelectMode();
         _maskSensitive = maskSensitive;
         _allRows.Clear();
         // R54 v2: rebuild the entry-tag autocomplete set from the incoming
@@ -491,6 +512,10 @@ public partial class ClipboardHistoryWindow : Window
 
     /// <summary>Delete a single entry. Arg = id. App re-pushes the snapshot.</summary>
     public event Action<Guid>? DeleteRequested;
+
+    /// <summary>Delete several live entries selected through long-press mode.
+    /// The App/service performs one persisted batch mutation and refresh.</summary>
+    public event Action<IReadOnlyList<Guid>>? BatchDeleteRequested;
 
     /// <summary>R54 v2: add a free-form annotation tag to an entry. Args =
     /// (entry id, tag text). App calls the service then re-pushes the snapshot
@@ -2154,6 +2179,11 @@ public partial class ClipboardHistoryWindow : Window
         {
             case Key.Escape:
                 e.Handled = true;
+                if (_isMultiSelectMode)
+                {
+                    ExitMultiSelectMode();
+                    return;
+                }
                 // Three-tier Esc: close popups first, then collapse any expanded
                 // rows, and only when nothing else is open/expanded does Esc hide
                 // the window. Without this, a single Esc while a full-text popup
@@ -2185,6 +2215,14 @@ public partial class ClipboardHistoryWindow : Window
 
             case Key.Enter:
                 e.Handled = true;
+                if (_isMultiSelectMode)
+                {
+                    if (CurrentSelectedRow is { IsArchived: false } selectedRow)
+                    {
+                        ToggleMultiSelection(selectedRow);
+                    }
+                    return;
+                }
                 if (CurrentSelectedRow is { } row)
                 {
                     PasteAndHide(row);
@@ -2217,8 +2255,18 @@ public partial class ClipboardHistoryWindow : Window
                 SelectNavTab(e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? -1 : +1);
                 return;
 
+            case Key.A when _isMultiSelectMode && e.KeyModifiers.HasFlag(KeyModifiers.Control):
+                e.Handled = true;
+                ToggleAllForMultiSelection();
+                return;
+
             case Key.Delete:
                 e.Handled = true;
+                if (_isMultiSelectMode)
+                {
+                    ConfirmMultiDelete();
+                    return;
+                }
                 if (CurrentSelectedRow is { } delRow)
                 {
                     DeleteRequested?.Invoke(delRow.Id);
@@ -2298,6 +2346,17 @@ public partial class ClipboardHistoryWindow : Window
         PointerPointProperties props = e.GetCurrentPoint(border).Properties;
         bool isRight = props.PointerUpdateKind == PointerUpdateKind.RightButtonPressed;
 
+        if (_isMultiSelectMode)
+        {
+            // Batch mode intentionally suppresses per-row context menus and the
+            // normal expand/paste interaction. Left release toggles membership.
+            if (isRight)
+            {
+                e.Handled = true;
+            }
+            return;
+        }
+
         // Select the row on any button press so the menu/keyboard acts on the
         // visible selection too.
         int index = IndexOfRow(row);
@@ -2319,8 +2378,28 @@ public partial class ClipboardHistoryWindow : Window
             return;
         }
 
+        if (props.PointerUpdateKind == PointerUpdateKind.LeftButtonPressed && !row.IsArchived)
+        {
+            BeginLongPressTracking(border, row, e);
+        }
         // Left button: selection already happened above. The double-click check
-        // happens in OnRowPointerReleased.
+        // happens in OnRowPointerReleased unless the long-press timer wins.
+    }
+
+    private void OnRowPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_longPressBorder is null || !ReferenceEquals(sender, _longPressBorder) ||
+            _longPressTriggered)
+        {
+            return;
+        }
+
+        Point current = e.GetPosition(_longPressBorder);
+        if (Math.Abs(current.X - _longPressStart.X) > MultiSelectLongPressMovePx ||
+            Math.Abs(current.Y - _longPressStart.Y) > MultiSelectLongPressMovePx)
+        {
+            CancelLongPressTracking();
+        }
     }
 
     private void OnRowPointerReleased(object? sender, PointerReleasedEventArgs e)
@@ -2333,6 +2412,24 @@ public partial class ClipboardHistoryWindow : Window
         if (e.GetCurrentPoint(this).Properties.PointerUpdateKind
             != PointerUpdateKind.LeftButtonReleased)
         {
+            return;
+        }
+
+        bool consumedByLongPress = _longPressTriggered && ReferenceEquals(row, _longPressRow);
+        CancelLongPressTracking();
+        if (consumedByLongPress)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        if (_isMultiSelectMode)
+        {
+            if (!row.IsArchived)
+            {
+                ToggleMultiSelection(row);
+            }
+            e.Handled = true;
             return;
         }
 
@@ -2387,6 +2484,171 @@ public partial class ClipboardHistoryWindow : Window
         _lastClickScreen = screenPos;
     }
 
+    private void BeginLongPressTracking(
+        Border border,
+        ClipboardHistoryEntryRow row,
+        PointerPressedEventArgs e)
+    {
+        CancelLongPressTracking();
+        _longPressBorder = border;
+        _longPressRow = row;
+        _longPressPointer = e.Pointer;
+        _longPressStart = e.GetPosition(border);
+        _longPressTriggered = false;
+        e.Pointer.Capture(border);
+
+        var timer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(MultiSelectLongPressMs),
+        };
+        timer.Tick += OnLongPressTimerTick;
+        _longPressTimer = timer;
+        timer.Start();
+    }
+
+    private void OnLongPressTimerTick(object? sender, EventArgs e)
+    {
+        _longPressTimer?.Stop();
+        if (_longPressRow is null || _longPressRow.IsArchived || !IsVisible)
+        {
+            CancelLongPressTracking();
+            return;
+        }
+
+        _longPressTriggered = true;
+        EnterMultiSelectMode(_longPressRow);
+    }
+
+    private void CancelLongPressTracking()
+    {
+        if (_longPressTimer is not null)
+        {
+            _longPressTimer.Stop();
+            _longPressTimer.Tick -= OnLongPressTimerTick;
+            _longPressTimer = null;
+        }
+
+        if (_longPressPointer?.Captured is not null)
+        {
+            _longPressPointer.Capture(null);
+        }
+
+        _longPressBorder = null;
+        _longPressRow = null;
+        _longPressPointer = null;
+        _longPressTriggered = false;
+    }
+
+    private void EnterMultiSelectMode(ClipboardHistoryEntryRow initialRow)
+    {
+        _isMultiSelectMode = true;
+        _multiSelectedIds.Clear();
+        _multiSelectedIds.Add(initialRow.Id);
+        _lastClickTicks = 0;
+
+        foreach (ClipboardHistoryEntryRow row in _allRows)
+        {
+            row.IsExpanded = false;
+            row.IsMultiSelectMode = !row.IsArchived;
+            row.IsMultiSelected = row.Id == initialRow.Id;
+        }
+
+        SearchInput.IsEnabled = false;
+        NavButtonsPanel.IsEnabled = false;
+        SettingsFooterButton.IsEnabled = false;
+        NormalFooter.IsVisible = false;
+        MultiSelectToolbar.IsVisible = true;
+        UpdateMultiSelectToolbar();
+    }
+
+    private void ExitMultiSelectMode()
+    {
+        CancelLongPressTracking();
+        _isMultiSelectMode = false;
+        _multiSelectedIds.Clear();
+        foreach (ClipboardHistoryEntryRow row in _allRows)
+        {
+            row.IsMultiSelectMode = false;
+            row.IsMultiSelected = false;
+        }
+
+        // Named controls are available after InitializeComponent; all callers
+        // occur during the initialized window lifetime.
+        SearchInput.IsEnabled = true;
+        NavButtonsPanel.IsEnabled = true;
+        SettingsFooterButton.IsEnabled = true;
+        NormalFooter.IsVisible = true;
+        MultiSelectToolbar.IsVisible = false;
+    }
+
+    private void ToggleMultiSelection(ClipboardHistoryEntryRow row)
+    {
+        if (!_isMultiSelectMode || row.IsArchived)
+        {
+            return;
+        }
+
+        if (!_multiSelectedIds.Add(row.Id))
+        {
+            _multiSelectedIds.Remove(row.Id);
+        }
+        row.IsMultiSelected = _multiSelectedIds.Contains(row.Id);
+        UpdateMultiSelectToolbar();
+    }
+
+    private void ToggleAllForMultiSelection()
+    {
+        if (!_isMultiSelectMode)
+        {
+            return;
+        }
+
+        ClipboardHistoryEntryRow[] selectableRows =
+            [.. _filteredPool.Where(row => !row.IsArchived)];
+        bool allSelected = selectableRows.Length > 0 &&
+            selectableRows.All(row => _multiSelectedIds.Contains(row.Id));
+
+        _multiSelectedIds.Clear();
+        if (!allSelected)
+        {
+            foreach (ClipboardHistoryEntryRow row in selectableRows)
+            {
+                _multiSelectedIds.Add(row.Id);
+            }
+        }
+
+        foreach (ClipboardHistoryEntryRow row in _allRows)
+        {
+            row.IsMultiSelected = _multiSelectedIds.Contains(row.Id);
+        }
+        UpdateMultiSelectToolbar();
+    }
+
+    private void UpdateMultiSelectToolbar()
+    {
+        MultiSelectCountText.Text = string.Format(
+            Strings.Clip_MultiSelectCount,
+            _multiSelectedIds.Count);
+        MultiDeleteButton.IsEnabled = _multiSelectedIds.Count > 0;
+        MultiDeleteButton.Content = string.Format(
+            Strings.Clip_MultiDeleteButton,
+            _multiSelectedIds.Count);
+        int selectableCount = _filteredPool.Count(row => !row.IsArchived);
+        bool allSelected = selectableCount > 0 && _multiSelectedIds.Count == selectableCount;
+        MultiSelectAllButton.Content = allSelected
+            ? Strings.Clip_MultiDeselectAll
+            : Strings.Common_SelectAll;
+    }
+
+    private void OnMultiSelectAllClick(object? sender, RoutedEventArgs e) =>
+        ToggleAllForMultiSelection();
+
+    private void OnMultiDeleteClick(object? sender, RoutedEventArgs e) =>
+        ConfirmMultiDelete();
+
+    private void OnMultiCancelClick(object? sender, RoutedEventArgs e) =>
+        ExitMultiSelectMode();
+
     // R54 v1.2: the active full-text popup (null when closed). One at a time.
     private Popup? _fullTextPopup;
 
@@ -2398,6 +2660,85 @@ public partial class ClipboardHistoryWindow : Window
     // R54 v2: the active ClearOlder confirmation popup (null when closed). Same
     // one-at-a-time discipline; closed by Esc, Cancel, Confirm, or light-dismiss.
     private Popup? _confirmPopup;
+
+    private void ConfirmMultiDelete()
+    {
+        if (!_isMultiSelectMode || _multiSelectedIds.Count == 0)
+        {
+            return;
+        }
+
+        _confirmPopup?.Close();
+        Guid[] ids = [.. _multiSelectedIds];
+        var message = new TextBlock
+        {
+            Text = string.Format(Strings.Clip_MultiDeleteConfirm, ids.Length),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = GetFontSize("ByhFontSizeBodyLarge"),
+            Margin = new Thickness(0, 0, 0, 10),
+        };
+        var deleteButton = new Button
+        {
+            Content = string.Format(Strings.Clip_MultiDeleteButton, ids.Length),
+            FontSize = GetFontSize("ByhFontSizeBodyLarge"),
+            Padding = new Thickness(16, 6),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+        };
+        deleteButton.Classes.Add("DangerQuiet");
+        deleteButton.Click += (_, _) =>
+        {
+            _confirmPopup?.Close();
+            ExitMultiSelectMode();
+            BatchDeleteRequested?.Invoke(ids);
+        };
+        var cancelButton = new Button
+        {
+            Content = Strings.Common_Cancel,
+            FontSize = GetFontSize("ByhFontSizeBodyLarge"),
+            Padding = new Thickness(16, 6),
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+        };
+        cancelButton.Click += (_, _) => _confirmPopup?.Close();
+
+        var card = new Border
+        {
+            Background = (IBrush?)Application.Current?.FindResource("ByhSurfaceBrush"),
+            BorderBrush = (IBrush?)Application.Current?.FindResource("ByhGoldBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(16),
+            Child = new StackPanel
+            {
+                Orientation = Orientation.Vertical,
+                Spacing = 8,
+                Children =
+                {
+                    message,
+                    new StackPanel
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 8,
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        Children = { cancelButton, deleteButton },
+                    },
+                },
+            },
+        };
+        card.SetValue(Border.BoxShadowProperty, Application.Current?.FindResource("ByhShadowMedium"));
+
+        var popup = new Popup
+        {
+            Child = card,
+            Placement = PlacementMode.Center,
+            PlacementTarget = this,
+            IsLightDismissEnabled = true,
+            WindowManagerAddShadowHint = false,
+        };
+        _confirmPopup = popup;
+        ((ISetLogicalParent)popup).SetParent(this);
+        AttachPopupEntrance(popup, card);
+        popup.Open();
+    }
 
     /// <summary>R54 v2: shows a confirmation popup before the destructive
     /// ClearOlderEntries. Queries the dry-run counts via

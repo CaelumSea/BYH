@@ -330,6 +330,10 @@ internal static partial class Strings_zh_CN
         ["Clip_FooterPaste"] = "双击粘贴",
         ["Clip_FooterMenu"] = "右键菜单",
         ["Clip_FooterClose"] = "Esc 关闭",
+        ["Clip_MultiSelectCount"] = "已选择 {0} 项",
+        ["Clip_MultiDeselectAll"] = "取消全选",
+        ["Clip_MultiDeleteConfirm"] = "删除选中的 {0} 条剪贴板记录？",
+        ["Clip_MultiDeleteButton"] = "删除 {0} 项",
         // Nav tab labels
         ["Clip_Tab_All"] = "📋 全部",
         ["Clip_Tab_Links"] = "🔗 链接",
