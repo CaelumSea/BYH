@@ -7,8 +7,8 @@
 ## 构建
 
 ```powershell
-Set-Location 'C:\dvr\gh-kb\selection-assistant'
-dotnet test SelectionAssistant.slnx -c Debug --nologo     # 162/162 通过
+Set-Location 'C:\dvr\gh-kb\MyProjects\BYH'
+dotnet test SelectionAssistant.slnx -c Release --nologo   # 当前 762/762 通过
 ```
 
 ## NativeAOT 发布
@@ -33,7 +33,7 @@ dotnet publish src\SelectionAssistant.App\SelectionAssistant.App.csproj `
 | 方式 | 路径 |
 |---|---|
 | 桌面快捷方式 | `桌面\BYH.lnk`（`create-launchers.ps1` 生成） |
-| 项目根脚本 | `selection-assistant\BYH.cmd`（双击运行） |
+| 项目根脚本 | `BYH.cmd`（双击运行） |
 | 直接 exe | `artifacts\publish\win-x64-nativeuia\BYH.exe` |
 | 托盘重启 | 托盘右键 → "重启 BYH"（`RequestRestart`：spawn 新进程 + 退出旧的） |
 
@@ -44,12 +44,22 @@ dotnet publish src\SelectionAssistant.App\SelectionAssistant.App.csproj `
 ```
 --open-settings                    启动后打开设置
 --probe-uia                        UIA 可用性
+--probe-bounds <x> <y>             UIA 元素边界
+--probe-uia-region <x> <y> <w> <h> UIA 框内文本扫描
 --probe-policy                     进程策略
+--probe-process-policy <pid>       指定进程的捕获策略
 --probe-translation                MyMemory 翻译
 --probe-translate-speed [text]     真实联网测速（需配置 Provider + 密钥）
 --probe-vision [x y w h]           R24 视觉 OCR 端到端（截图→OCR，需 vision.json + Provider + 密钥）
+--probe-ocr-raw <x> <y> <w> <h>    输出 OCR 原始响应（模型诊断）
+--probe-save-region <x> <y> <w> <h> 保存选区截图探针
+--probe-ocean-eyes-save ...        Ocean Eyes 保存/剪贴板探针
+--probe-ocean-eyes-history ...     Ocean Eyes 历史记录探针
 --probe-clipboard <hwnd> <pid> <text>   剪贴板回退
 --probe-capture <hwnd> <pid> <text>      取词
+--probe-icon-extract ...           启动器图标提取探针
+--probe-launcher-list              列出启动器条目
+--probe-launcher-run ...           启动器执行探针
 --set-secret <reference> <value>         写 DPAPI 密钥（不回显）
 ```
 
@@ -75,7 +85,7 @@ Program.Main(args)
           ├── quickToolsWindow 事件接线（Action/ManagePrompts）
           ├── toolbarWindow.Opened → new SelectionRuntime().Start()
           │     ├── 鼠标钩子 Start（原生线程）
-          │     ├── 读取 quick-tools.json；默认 Ctrl+Alt+Q + chord 关闭
+          │     ├── 读取 ocean-eyes.json（兼容旧 quick-tools.json 迁移）；默认 Ctrl+Alt+Q + chord 关闭
           │     ├── RegisterHotKey 专用线程 → Dispatcher → QuickTools.ShowAt
           │     ├── 可选 _chordDetector.ChordDetected → ChordTriggered
           │     └── toolbarWindow.PasteRequested → OnPasteRequested（Ctrl+V）

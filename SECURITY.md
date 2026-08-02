@@ -9,7 +9,7 @@ data could leak, **please do not open a public issue**.
 Instead, report it privately:
 
 - Open a **private security advisory** via the GitHub
-  ["Security" tab → "Report a vulnerability"](../../security/advisories/new),
+  ["Security" tab → "Report a vulnerability"](https://github.com/CaelumSea/BYH/security/advisories/new),
   **or**
 - Email the maintainer directly.
 

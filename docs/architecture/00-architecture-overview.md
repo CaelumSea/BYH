@@ -34,6 +34,7 @@ SelectionAssistant.App              ← 组合根 + 生命周期 + 五窗口接�
 | 选词不灵 / 鼠标钩子 / 手势判定 / 取词失败 | `01-selection-capture.md` |
 | 工具条/面板/弹窗的显示、定位、失焦、拖拽、chord 触发 | `02-windowing.md` |
 | Provider 配置 / 翻译流式 / SSE / 热切换 / 联网失败 | `03-translation-provider.md` |
+| 统一多模态模型 / 截图直译 / Vision Action | `10-multimodal-actions.md`（计划，未实现） |
 | 提示词预设 / 自定义功能（增删改）/ 翻译总结解释 | `04-prompt-templates.md` |
 | providers.json / prompt-templates.json / 密钥存储 / 原子写 | `05-configuration-persistence.md` |
 | 安全规则（密钥/重定向/钩子不吞事件/NativeAOT） | `06-security-invariants.md` |
@@ -76,6 +77,12 @@ SelectionAssistant.App              ← 组合根 + 生命周期 + 五窗口接�
 **QuickTools 链路**：键盘快捷键（默认 Ctrl+Alt+Q）→ 注册热键回调 → Dispatcher → QuickToolsWindow.ShowAt → 动态功能按钮。**chord 链路**（默认关）：左右键同按 → ChordDetector → ChordTriggered → Dispatcher → QuickToolsWindow.ShowAt。
 
 **主题链路**：`App.axaml` → `FluentTheme` → `UI/Themes/IvoryJade.axaml` → Views 通过 `DynamicResource` + 语义 Classes 消费。主题规则和不变量见 `08-theme-system.md`。
+
+## 当前 AI 边界与下一步
+
+当前为两条独立请求链：`OpenAiCompatibleVisionOcrClient` 负责“图片 → 文本”，`OpenAiCompatibleStreamingProvider` 负责“文本 → 翻译/解释/总结”。把两处配成同一模型只是配置复用，不会自动合并成一次请求。
+
+`REQ-036` 已派发、尚未实现：新增能力感知的多模态请求契约，让 Ocean Eyes 可在一次图像请求中直接翻译，但普通划词仍发纯文本，纯 OCR 和两段式回退继续保留。公开架构计划见 `10-multimodal-actions.md`。
 
 ---
 

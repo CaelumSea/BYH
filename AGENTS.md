@@ -13,7 +13,7 @@
 
 ```bash
 dotnet build SelectionAssistant.slnx -c Release      # 0 警告（CI /warnaserror）
-dotnet test SelectionAssistant.slnx                   # 当前 754 项
+dotnet test SelectionAssistant.slnx                   # 当前 762 项
 dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Release -r win-x64
 ```
 
@@ -46,7 +46,11 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 
 ## 当前状态与下一步
 
-**v0.1.0 已发布**（2026-07，git tag `v0.1.0`）。主线截至 2026-08-02 已完成 REQ-028–REQ-033 的后续改进：大尺寸截图路径防崩溃、Warp 选区捕获兼容、开机自启、剪贴板超长检索、长按多选与搜索 UI 延迟二次优化。DEFER 队列（详见 CHANGELOG）：
+**v0.1.0 已发布**（2026-07，git tag `v0.1.0`）。本地 `main` 截至 2026-08-02 已完成 REQ-028–REQ-035：大尺寸截图防崩溃、Warp 选区捕获兼容、开机自启、剪贴板超长检索与长按多选，以及 Custom Provider 草稿保存/模型发现循环修复。最新验证基线为 **762/762**（Core 606 / Providers 51 / Windows 105）。
+
+**下一项产品需求**：`REQ-036` “统一多模态模型与直接觉动作”，当前仅已派发、**尚未实现**。从 `TASK-053` 开始：先建立能力感知的多模态请求层，再接 Ocean Eyes 截图直译，最后对比直达与两段式链路。普通划词仍走纯文本，纯 OCR 与两段式回退必须保留。详见 [`docs/architecture/10-multimodal-actions.md`](docs/architecture/10-multimodal-actions.md)。`REQ-027` 的主题切换三个任务（TASK-030–032）仍在待办，不要误标已完成。
+
+DEFER 队列（详见 CHANGELOG）：
 
 - **M1/M2**：god-class 拆分（`ClipboardHistoryWindow.axaml.cs` ~3300 行 / `App.axaml.cs` ~2200 行）
 - **L3**：`AutomationProperties.Name` 无障碍全层补齐（需屏幕阅读器验证）

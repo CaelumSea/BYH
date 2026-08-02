@@ -55,6 +55,19 @@ RunActionAsync(actionId, text)（App）
 
 `SwitchToProvider(entry)`：Dispose 旧 provider → 新 provider 注入 session manager → 更新 label/reference。热切换后旧 provider 的迟到 chunk 被 generation 守卫丢弃。
 
+## 与 Vision 的现役边界
+
+翻译 Provider 和 Vision OCR 当前复用 Provider 配置/密钥存储，但运行时仍是两个 client、两次请求：
+
+```
+截图 → OpenAiCompatibleVisionOcrClient → 文本
+    → OpenAiCompatibleStreamingProvider → 翻译/解释/总结
+```
+
+仅把 OCR 与 Translation 的 model id 设成相同值，不会自动获得排版感知翻译，也不会减少 HTTP 往返。
+
+`REQ-036` 规划建立统一的多模态请求契约：首先支持 Ocean Eyes 截图直译，同时保留纯文本 Provider、纯 OCR 和两段式回退。该需求已派发、未实现，不得在 README 或 UI 中宣称已可用。详细合同见 `10-multimodal-actions.md`。
+
 ## 不变量 / 踩坑
 
 - **HTTP 默认禁重定向**；无 TLS 禁用选项。
