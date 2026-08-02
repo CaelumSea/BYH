@@ -281,7 +281,6 @@ public static partial class Strings
     public static string Settings_Provider_CustomName => Get(nameof(Settings_Provider_CustomName));
     public static string Settings_Provider_New => Get(nameof(Settings_Provider_New));
     public static string Settings_Provider_CustomDraftHint => Get(nameof(Settings_Provider_CustomDraftHint));
-    public static string Settings_Provider_SaveBeforeFetch => Get(nameof(Settings_Provider_SaveBeforeFetch));
     public static string Settings_Provider_SaveBeforeActivate => Get(nameof(Settings_Provider_SaveBeforeActivate));
     public static string Settings_Provider_Saving => Get(nameof(Settings_Provider_Saving));
     public static string Settings_Provider_SaveFailed => Get(nameof(Settings_Provider_SaveFailed));

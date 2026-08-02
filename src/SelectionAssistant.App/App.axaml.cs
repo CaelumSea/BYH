@@ -602,19 +602,23 @@ public partial class App : Application
 
     // ── R26: "Refresh Models" handler ──
     //
-    // The window raises FetchModelsRequested(providerId); we ask the runtime
-    // to GET {BaseUrl}/models + update the on-disk cache, then return the
-    // fresh list + timestamp + error to the window (which owns the UI state).
-    // Mirrors the existing "window raises event, App awaits runtime" pattern.
+    // The window raises a request containing the current form connection
+    // values. Existing providers may fall back to their saved DPAPI key; a
+    // Custom draft uses the entered key only for this one-shot request.
 
     private async Task<(IReadOnlyList<string> Models, DateTime FetchedAtUtc, string? Error)> OnFetchModelsRequested(
-        string providerId)
+        ProviderModelsFetchRequest request)
     {
         if (_runtime is null)
         {
             return (Array.Empty<string>(), DateTime.UtcNow, "runtime not initialized.");
         }
-        return await _runtime.FetchProviderModelsAsync(providerId, CancellationToken.None);
+        return await _runtime.FetchProviderModelsAsync(
+            request.ProviderId,
+            request.BaseUrlOverride,
+            request.ApiKeyOverride,
+            request.TimeoutSecondsOverride,
+            CancellationToken.None);
     }
 
     // ── Prompt template handlers (R1 global templates) ──

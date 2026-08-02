@@ -202,7 +202,6 @@ internal static partial class Strings_en
         ["Settings_Provider_CustomName"] = "Custom Provider",
         ["Settings_Provider_New"] = "New",
         ["Settings_Provider_CustomDraftHint"] = "New provider draft — complete the connection details, then save the profile.",
-        ["Settings_Provider_SaveBeforeFetch"] = "Save this provider before refreshing models.",
         ["Settings_Provider_SaveBeforeActivate"] = "Save this provider before setting it active.",
         ["Settings_Provider_Saving"] = "Saving…",
         ["Settings_Provider_SaveFailed"] = "Could not save the provider. Check the fields and try again.",

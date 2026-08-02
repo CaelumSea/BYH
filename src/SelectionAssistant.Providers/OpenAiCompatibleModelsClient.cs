@@ -22,6 +22,7 @@ public sealed class OpenAiCompatibleModelsClient : IDisposable
 {
     private readonly OpenAiCompatibleProviderOptions _options;
     private readonly ISecretStore _secretStore;
+    private readonly string? _apiKeyOverride;
     private readonly HttpClient _httpClient;
     private readonly bool _ownsClient;
     private int _disposed;
@@ -29,10 +30,12 @@ public sealed class OpenAiCompatibleModelsClient : IDisposable
     public OpenAiCompatibleModelsClient(
         OpenAiCompatibleProviderOptions options,
         ISecretStore secretStore,
-        HttpClient? httpClient = null)
+        HttpClient? httpClient = null,
+        string? apiKeyOverride = null)
     {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _secretStore = secretStore ?? throw new ArgumentNullException(nameof(secretStore));
+        _apiKeyOverride = string.IsNullOrWhiteSpace(apiKeyOverride) ? null : apiKeyOverride;
 
         if (httpClient is null)
         {
@@ -196,6 +199,15 @@ public sealed class OpenAiCompatibleModelsClient : IDisposable
 
     private async Task<string> ResolveApiKeyAsync(CancellationToken cancellationToken)
     {
+        // Settings can test a not-yet-saved Custom Provider. Keep the entered
+        // key only in this short-lived client; it is never written to config,
+        // the model cache, or logs. A blank override falls back to DPAPI for
+        // existing providers.
+        if (_apiKeyOverride is not null)
+        {
+            return _apiKeyOverride;
+        }
+
         if (string.IsNullOrEmpty(_options.ApiKeyReference))
         {
             throw new TranslationProviderException("未配置 API 密钥引用。");

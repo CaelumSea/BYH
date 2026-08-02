@@ -204,7 +204,6 @@ internal static partial class Strings_zh_CN
         ["Settings_Provider_CustomName"] = "自定义服务",
         ["Settings_Provider_New"] = "新建",
         ["Settings_Provider_CustomDraftHint"] = "新的服务草稿——填写连接信息后再保存配置。",
-        ["Settings_Provider_SaveBeforeFetch"] = "请先保存该服务，再拉取模型。",
         ["Settings_Provider_SaveBeforeActivate"] = "请先保存该服务，再设为当前服务。",
         ["Settings_Provider_Saving"] = "正在保存…",
         ["Settings_Provider_SaveFailed"] = "无法保存服务，请检查各项配置后重试。",

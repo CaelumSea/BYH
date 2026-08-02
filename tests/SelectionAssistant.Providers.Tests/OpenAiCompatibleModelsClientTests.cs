@@ -113,6 +113,23 @@ public sealed class OpenAiCompatibleModelsClientTests
     }
 
     [Fact]
+    public async Task ListModelsAsync_UsesEphemeralKeyOverride_WhenStoredKeyIsMissing()
+    {
+        var handler = new RecordingHandler((_, _) => Json("""{"data":[{"id":"draft-model"}]}"""));
+        using var client = new OpenAiCompatibleModelsClient(
+            Options(),
+            new MissingSecretStore(),
+            new HttpClient(handler),
+            apiKeyOverride: "draft-only-key");
+
+        IReadOnlyList<string> models = await client.ListModelsAsync(CancellationToken.None);
+
+        Assert.Equal(new[] { "draft-model" }, models);
+        Assert.Equal("Bearer", handler.LastRequest!.Headers.Authorization?.Scheme);
+        Assert.Equal("draft-only-key", handler.LastRequest.Headers.Authorization!.Parameter);
+    }
+
+    [Fact]
     public async Task ListModelsAsync_HitsCorrectUri_TrailingSlashAgnostic()
     {
         // baseUrl WITHOUT trailing slash.

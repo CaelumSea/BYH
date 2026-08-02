@@ -24,6 +24,18 @@ namespace SelectionAssistant.UI.Views;
 public sealed record ProviderOption(string Id, string DisplayLabel);
 
 /// <summary>
+/// One-shot model discovery input. Translation passes the connection values
+/// currently visible in the editor so a Custom draft can be tested before it
+/// is persisted. A null override keeps the saved value (used by Vision and by
+/// blank API-key fields on existing providers).
+/// </summary>
+public sealed record ProviderModelsFetchRequest(
+    string ProviderId,
+    string? BaseUrlOverride = null,
+    string? ApiKeyOverride = null,
+    int? TimeoutSecondsOverride = null);
+
+/// <summary>
 /// Privacy-safe aggregate counts derived from BYH's local redacted log.
 /// No selected text, filenames, prompts, or API data are carried into the UI.
 /// </summary>
@@ -305,15 +317,13 @@ public partial class SettingsWindow : Window
     public event Action<string>? DeleteProviderRequested;
 
     /// <summary>
-    /// R26: request to fetch the upstream model list for a provider via
-    /// <c>GET {BaseUrl}/models</c>. Arg = provider id. Returns the fetched
-    /// model ids, the UTC timestamp of the fetch, and an error string (null on
-    /// success). The window owns the UI state (button disable/restore, status
-    /// line, dropdown repopulate); the App-layer handler owns the network call
-    /// + cache write, mirroring the existing "window raises event, App awaits
-    /// runtime" convention.
+    /// R26/R35: request to fetch the upstream model list via
+    /// <c>GET {BaseUrl}/models</c>. The request can carry unsaved connection
+    /// overrides for a Custom draft. Returns the fetched model ids, UTC
+    /// timestamp, and an error string (null on success). The window owns the
+    /// UI state; the App layer owns the one-shot network call.
     /// </summary>
-    public event Func<string, Task<(IReadOnlyList<string> Models, DateTime FetchedAtUtc, string? Error)>>? FetchModelsRequested;
+    public event Func<ProviderModelsFetchRequest, Task<(IReadOnlyList<string> Models, DateTime FetchedAtUtc, string? Error)>>? FetchModelsRequested;
 
     /// <summary>Request to save a prompt template. Args = (actionId, newPrompt, thinkingEnabled, shortcut, newName). <paramref name="newName" /> is non-null only when editing a custom action whose name changed.</summary>
     public event Action<string, string, bool, string?, LocalizedName?>? PromptTemplateSaved;
@@ -1364,19 +1374,51 @@ public partial class SettingsWindow : Window
             _isFetchingTranslationModels = true;
         }
 
-        if (!isVision && string.Equals(providerId, _draftProviderId, StringComparison.OrdinalIgnoreCase))
-        {
-            statusText.Text = Strings.Settings_Provider_SaveBeforeFetch;
-            SetFeedbackTone(statusText, isError: true);
-            _isFetchingTranslationModels = false;
-            return;
-        }
-
         if (string.IsNullOrWhiteSpace(providerId) || FetchModelsRequested is null)
         {
             if (isVision) { _isFetchingVisionModels = false; } else { _isFetchingTranslationModels = false; }
             return;
         }
+
+        string? baseUrlOverride = null;
+        string? apiKeyOverride = null;
+        int? timeoutSecondsOverride = null;
+        if (!isVision)
+        {
+            // Model discovery intentionally validates only the endpoint. The
+            // Model field is the output of this operation and therefore cannot
+            // be a prerequisite for it.
+            baseUrlOverride = BaseUrlInput.Text?.Trim() ?? string.Empty;
+            try
+            {
+                ProviderProfileEntry.ValidateBaseUrl(baseUrlOverride);
+            }
+            catch (ArgumentException ex)
+            {
+                statusText.Text = string.Format(Strings.Settings_Provider_FetchFailed, ex.Message);
+                SetFeedbackTone(statusText, isError: true);
+                _isFetchingTranslationModels = false;
+                return;
+            }
+
+            apiKeyOverride = NormalizeInput(ApiKeyInput.Text);
+            if (string.Equals(providerId, _draftProviderId, StringComparison.OrdinalIgnoreCase) &&
+                apiKeyOverride is null)
+            {
+                statusText.Text = Strings.Settings_Key_EnterFirst;
+                SetFeedbackTone(statusText, isError: true);
+                _isFetchingTranslationModels = false;
+                return;
+            }
+
+            timeoutSecondsOverride = Math.Clamp((int)(TimeoutInput.Value ?? 60), 10, 300);
+        }
+
+        var request = new ProviderModelsFetchRequest(
+            providerId,
+            baseUrlOverride,
+            apiKeyOverride,
+            timeoutSecondsOverride);
 
         // Preserve the user's current selection/text so we can restore it after
         // the dropdown rebuild (the fetch may add/remove items).
@@ -1393,7 +1435,7 @@ public partial class SettingsWindow : Window
         string? error = null;
         try
         {
-            (models, fetchedAtUtc, error) = await FetchModelsRequested.Invoke(providerId);
+            (models, fetchedAtUtc, error) = await FetchModelsRequested.Invoke(request);
         }
         catch (Exception ex)
         {
