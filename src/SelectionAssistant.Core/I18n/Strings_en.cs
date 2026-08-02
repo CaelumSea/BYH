@@ -328,6 +328,10 @@ internal static partial class Strings_en
         ["Clip_FooterPaste"] = "Dbl-click Paste",
         ["Clip_FooterMenu"] = "Right-click Menu",
         ["Clip_FooterClose"] = "Esc Close",
+        ["Clip_MultiSelectCount"] = "{0} selected",
+        ["Clip_MultiDeselectAll"] = "Deselect all",
+        ["Clip_MultiDeleteConfirm"] = "Delete {0} selected clipboard entries?",
+        ["Clip_MultiDeleteButton"] = "Delete {0}",
         // Nav tab labels
         ["Clip_Tab_All"] = "📋 All",
         ["Clip_Tab_Links"] = "🔗 Links",

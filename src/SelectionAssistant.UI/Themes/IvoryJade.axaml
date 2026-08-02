@@ -825,6 +825,33 @@
   <Style Selector="Border.SpotlightRow.Active:pointerover">
     <Setter Property="Background" Value="#FFFCF7EA" />
   </Style>
+  <Style Selector="Border.SpotlightRow.MultiSelected">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSelectedBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPrimarySoftBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="inset 0 0 0 2 #FFF8F6EE" />
+  </Style>
+  <Style Selector="Border.SpotlightRow.MultiSelected:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSelectedBrush}" />
+  </Style>
+  <Style Selector="Border.MultiSelectIndicator">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.MultiSelectIndicator.Checked">
+    <Setter Property="Background" Value="{DynamicResource ByhPrimaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhPrimaryBrush}" />
+  </Style>
+  <Style Selector="Border.MultiSelectIndicator.Checked TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource ByhTextOnPrimaryBrush}" />
+  </Style>
+  <Style Selector="Border.MultiSelectToolbar">
+    <Setter Property="Background" Value="{DynamicResource ByhSurfaceSecondaryBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BoxShadow" Value="{DynamicResource ByhShadowSmall}" />
+  </Style>
   <!-- Name in Bold + deep bronze — bookish, pairs with the gold frame. -->
   <Style Selector="Border.SpotlightRow.Active TextBlock.SpotlightRowName">
     <Setter Property="FontWeight" Value="Bold" />

@@ -152,14 +152,30 @@
                   <Border Classes="SpotlightRow"
                           Classes.Active="{Binding IsSelected}"
                           Classes.Expanded="{Binding IsExpanded}"
+                          Classes.MultiSelected="{Binding IsMultiSelected}"
                           Background="Transparent"
                           Padding="8,6"
                           Margin="0,1"
                           CornerRadius="8"
                           PointerPressed="OnRowPointerPressed"
+                          PointerMoved="OnRowPointerMoved"
                           PointerReleased="OnRowPointerReleased">
-                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                      <StackPanel Grid.Column="0" Spacing="3">
+                    <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="8">
+                      <Border Grid.Column="0"
+                              Classes="MultiSelectIndicator"
+                              Classes.Checked="{Binding IsMultiSelected}"
+                              Width="20" Height="20"
+                              CornerRadius="10"
+                              VerticalAlignment="Center"
+                              IsVisible="{Binding IsMultiSelectMode}">
+                        <TextBlock Text="✓"
+                                   FontSize="12"
+                                   FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   IsVisible="{Binding IsMultiSelected}" />
+                      </Border>
+                      <StackPanel Grid.Column="1" Spacing="3">
                         <!-- R54 v2: image rows. Collapsed = 64×64 thumbnail + meta
                              (single click expands to a larger preview; double-click
                              pastes). Expanded = a row-width preview image above the
@@ -315,12 +331,12 @@
                           <TextBlock Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{Binding TimeLabel}" />
                         </StackPanel>
                       </StackPanel>
-                      <TextBlock Grid.Column="1"
+                      <TextBlock Grid.Column="2"
                                  FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                                  VerticalAlignment="Center"
                                  Text="❤"
                                  IsVisible="{Binding IsFavorite}" />
-                      <TextBlock Grid.Column="2"
+                      <TextBlock Grid.Column="3"
                                  FontSize="{DynamicResource ByhFontSizeBodyLarge}"
                                  VerticalAlignment="Center"
                                  Text="★"
@@ -342,26 +358,58 @@
           </Grid>
         </Border>
 
-        <!-- Footer: keycap hints. Settings button moved to the nav footer. -->
-        <StackPanel Grid.Row="3"
-                    Orientation="Horizontal"
-                    Spacing="6"
-                    Margin="0,4,0,0"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center">
-          <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterSelect}" />
+        <!-- Normal hints are replaced by a compact batch-action bar after a
+             500ms row long-press. -->
+        <Grid Grid.Row="3" Margin="0,4,0,0">
+          <StackPanel x:Name="NormalFooter"
+                      Orientation="Horizontal"
+                      Spacing="6"
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Center">
+            <Border Classes="Badge" Padding="6,2">
+              <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterSelect}" />
+            </Border>
+            <Border Classes="Badge" Padding="6,2">
+              <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterPaste}" />
+            </Border>
+            <Border Classes="Badge" Padding="6,2">
+              <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterMenu}" />
+            </Border>
+            <Border Classes="Badge" Padding="6,2">
+              <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterClose}" />
+            </Border>
+          </StackPanel>
+
+          <Border x:Name="MultiSelectToolbar"
+                  Classes="MultiSelectToolbar"
+                  IsVisible="False"
+                  Padding="8,5"
+                  CornerRadius="10">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="7">
+              <TextBlock x:Name="MultiSelectCountText"
+                         VerticalAlignment="Center"
+                         FontSize="{DynamicResource ByhFontSizeBodyLarge}"
+                         FontWeight="SemiBold" />
+              <Button x:Name="MultiSelectAllButton"
+                      Grid.Column="1"
+                      Classes="Secondary"
+                      Padding="10,4"
+                      Content="{x:Static i18n:Strings.Common_SelectAll}"
+                      Click="OnMultiSelectAllClick" />
+              <Button x:Name="MultiDeleteButton"
+                      Grid.Column="2"
+                      Classes="DangerQuiet"
+                      Padding="10,4"
+                      Content="{x:Static i18n:Strings.Common_Delete}"
+                      Click="OnMultiDeleteClick" />
+              <Button Grid.Column="3"
+                      Classes="Ghost"
+                      Padding="10,4"
+                      Content="{x:Static i18n:Strings.Common_Cancel}"
+                      Click="OnMultiCancelClick" />
+            </Grid>
           </Border>
-          <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterPaste}" />
-          </Border>
-          <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterMenu}" />
-          </Border>
-          <Border Classes="Badge" Padding="6,2">
-            <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterClose}" />
-          </Border>
-        </StackPanel>
+        </Grid>
       </Grid>
       </Grid>
 

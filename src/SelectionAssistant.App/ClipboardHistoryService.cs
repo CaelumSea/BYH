@@ -324,6 +324,48 @@ public sealed class ClipboardHistoryService : IDisposable
         return true;
     }
 
+    /// <summary>Removes several live entries in one locked mutation and one
+    /// history-file write. Unknown ids are ignored. Image files are deleted
+    /// after releasing the lock, matching <see cref="Delete(Guid)"/>.</summary>
+    public int DeleteMany(IReadOnlyCollection<Guid> ids)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        if (ids.Count == 0)
+        {
+            return 0;
+        }
+
+        var requested = new HashSet<Guid>(ids);
+        var imagesToDelete = new List<string?>();
+        int removed = 0;
+        lock (_gate)
+        {
+            for (int index = _entries.Count - 1; index >= 0; index--)
+            {
+                ClipboardEntry entry = _entries[index];
+                if (!requested.Contains(entry.Id))
+                {
+                    continue;
+                }
+
+                imagesToDelete.Add(entry.ImageFileName);
+                _entries.RemoveAt(index);
+                removed++;
+            }
+
+            if (removed > 0)
+            {
+                TryPersist();
+            }
+        }
+
+        foreach (string? imageFileName in imagesToDelete)
+        {
+            DeleteImageFile(imageFileName);
+        }
+        return removed;
+    }
+
     /// <summary>R54 v2: adds a free-form annotation tag (e.g. "AWS", "Stripe")
     /// to the entry with the given id. Independent of the custom-tag tab system
     /// — these tags are purely per-entry badges, never become nav tabs. Returns

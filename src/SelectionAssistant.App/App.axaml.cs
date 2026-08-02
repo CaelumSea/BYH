@@ -382,6 +382,7 @@ public partial class App : Application
             clipboardHistoryWindow.CopyRequested += OnClipboardHistoryCopyRequested;
             clipboardHistoryWindow.PinToggled += OnClipboardHistoryPinToggled;
             clipboardHistoryWindow.DeleteRequested += OnClipboardHistoryDeleteRequested;
+            clipboardHistoryWindow.BatchDeleteRequested += OnClipboardHistoryBatchDeleteRequested;
             // R54 v2: per-entry annotation tags (independent of custom-tag tabs).
             clipboardHistoryWindow.EntryTagAdded += OnClipboardHistoryEntryTagAdded;
             clipboardHistoryWindow.EntryTagRemoved += OnClipboardHistoryEntryTagRemoved;
@@ -1448,6 +1449,12 @@ public partial class App : Application
     private void OnClipboardHistoryDeleteRequested(Guid id)
     {
         _clipboardHistoryService?.Delete(id);
+        RefreshClipboardHistoryWindow();
+    }
+
+    private void OnClipboardHistoryBatchDeleteRequested(IReadOnlyList<Guid> ids)
+    {
+        _clipboardHistoryService?.DeleteMany(ids);
         RefreshClipboardHistoryWindow();
     }
 

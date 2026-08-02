@@ -266,6 +266,37 @@ public sealed class ClipboardHistoryEntryRow : INotifyPropertyChanged
     }
     private bool _isSelected;
 
+    /// <summary>True while the window is in long-press multi-select mode.
+    /// Archived rows remain false because historical entries are read-only.</summary>
+    public bool IsMultiSelectMode
+    {
+        get => _isMultiSelectMode;
+        set
+        {
+            if (_isMultiSelectMode != value)
+            {
+                _isMultiSelectMode = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+    private bool _isMultiSelectMode;
+
+    /// <summary>Whether this live row belongs to the current batch selection.</summary>
+    public bool IsMultiSelected
+    {
+        get => _isMultiSelected;
+        set
+        {
+            if (_isMultiSelected != value)
+            {
+                _isMultiSelected = value;
+                OnPropertyChanged();
+            }
+        }
+    }
+    private bool _isMultiSelected;
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
