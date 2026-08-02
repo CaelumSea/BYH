@@ -20,6 +20,7 @@ BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选�
 - **Warp 选区兼容**：为 `warp.exe` 增加受限的 `Ctrl+Shift+C` 捕获策略；仅在剪贴板序号变化、文本稳定且命中明确进程策略时接受 ownerless 结果。
 - **超长剪贴板搜索**：索引构建和查询移出 UI 线程；27 万字符级条目也不会在每次键入时同步扫描全文。
 - **长按多选**：长按剪贴板条目进入批量编辑，可选择全部、取消全选并批量删除；普通单击和右键菜单保持原行为。
+- **Custom Provider 草稿流程**：新建 Custom 时可先填 Base URL 与 API Key、直接刷新模型，再选模型保存；草稿刷新不写 Provider、模型缓存或密钥文件。
 
 ---
 
@@ -121,7 +122,7 @@ Clipboard     ← 剪贴板历史所有开关与上限
 # 编译检查（Windows）
 dotnet build SelectionAssistant.slnx -c Release
 
-# 测试（当前 752 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
+# 测试（当前 762 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
 dotnet test
 
 # NativeAOT 单文件发布（Windows，生成 BYH.exe，约 28MB）
@@ -173,6 +174,7 @@ src/
 - **M4**：剩余 ~46 处 `[DllImport]` → `[LibraryImport]` 迁移（hook / launcher / icon 高风险核心路径）
 - **L8**：`IManagedWindow` 公共接口（与 M1/M2 耦合）
 - 安装包 / 代码签名
+- **[REQ-036（已派发，未实现）](docs/architecture/10-multimodal-actions.md)**：让同一多模态 Provider/Model 按输入类型处理纯文本、OCR 和截图直译；保留纯 OCR 和“OCR → 文本动作”回退。
 
 ---
 

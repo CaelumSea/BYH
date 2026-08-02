@@ -115,7 +115,7 @@ UIA(TextPattern→选区→DocumentRange→Value) → 剪贴板(Ctrl+Insert/Ctrl
        → QuickTools.ShowOcrResult（文字进剪贴板 + 弹回面板，翻译/解释/复制直接可用）
 ```
 
-**默认模型**：`Qwen/Qwen3.5-4B` + `disableThinking=true`（<1s，干净准确）。之前用 `deepseek-ai/DeepSeek-OCR` 严重幻觉已弃。
+**配置口径**：源码/新建配置默认仍是 `Qwen/Qwen3.5-4B` + `disableThinking=true`；2026-07-24 针对 SiliconFlow 视觉通道的真机稳定性对比后，当前用户运行配置已切到 `nex-agi/Nex-N2-Pro`。接手时应同时检查 `VisionCaptureSettings.Default` 和 `%LOCALAPPDATA%\BYH\vision.json`，不要把源码默认值当成用户当前值。`deepseek-ai/DeepSeek-OCR` 因桌面截图幻觉已弃。
 
 ### 关键文件
 - `WindowsUiAutomationBackend.cs` — 轨道 A 三趟 + `GetElementBoundsAt`（UIA 预填，opt-in）+ 🆕 `GetTextsInRegion`（框内文字 BFS 扫描，opt-in）+ `FindSmallestContainingAncestor`（走祖先找最小容器）
@@ -127,13 +127,13 @@ UIA(TextPattern→选区→DocumentRange→Value) → 剪贴板(Ctrl+Insert/Ctrl
 - `App.axaml.cs` — overlay 构造 + `OnRegionOcrRequested`（按 `UiaPrefillEnabled` 决定是否接 live tracker）/`OnRegionSelected`/`RunRegionOcrAsync` + `WaitForCompositorSettleAsync`（3 帧 + 150ms）
 - `Program.cs` — `--probe-ocr-raw`（原始 body 诊断）+ 🆕 `--probe-uia-region`（UIA 框内扫描诊断）+ `--probe-bounds`/`--probe-save-region`/`--probe-vision`
 - `SelectionSessionManager.SessionCoreAsync` — **删除** phase 2（划词不再 OCR）；`ISelectionSessionView.ShowVisionPending` 已清
-- `vision.json` / `VisionCaptureStore.cs` / `VisionCaptureSettings.cs` — 视觉设置（enabled/providerId/model/ocrPrompt/uiaPrefillEnabled/disableThinking），默认 SiliconFlow + Qwen3.5-4B + 关思考
+- `vision.json` / `VisionCaptureStore.cs` / `VisionCaptureSettings.cs` — 视觉设置（enabled/providerId/model/ocrPrompt/uiaPrefillEnabled/disableThinking）；源码默认 SiliconFlow + Qwen3.5-4B + 关思考，用户实际值以 `%LOCALAPPDATA%\BYH\vision.json` 为准
 - 设置页"视觉识别"卡片（ToggleSwitch + Provider/模型下拉 + 提示词）
 
 ### 不变量 / 踩坑
-- **配置全在 UI**：设置页"+ 添加 Provider" → SiliconFlow（预设，自动生成 `secret://provider/siliconflow`）→ 填密钥。`vision.json` 默认 SiliconFlow + Qwen3.5-4B + 关思考，开箱即用。
-- **OCR Provider 必须和模型匹配**：`Qwen/Qwen3.5-4B` 在 SiliconFlow 上可用。视觉卡片 OCR Provider 选 **SiliconFlow**。
-- **DeepSeek-OCR 已弃**（第十二批）：`deepseek-ai/DeepSeek-OCR` 在桌面截图上严重幻觉（输出完全不相关内容如百度贴吧、菜谱）。换 `Qwen/Qwen3.5-4B`（关思考，<1s，干净准确）。如果用户 vision.json 还指向 DeepSeek-OCR，建议改。
+- **配置全在 UI**：设置页"+ 添加 Provider" → SiliconFlow（预设，自动生成 `secret://provider/siliconflow`）→ 填密钥。视觉卡片再选该 Provider 与实际可用的多模态模型。
+- **OCR Provider 必须和模型匹配**：不要只看 `/models` 列表；要用 BYH 真实 image_url 请求验证视觉通道。当前用户配置为 SiliconFlow + `nex-agi/Nex-N2-Pro`。
+- **DeepSeek-OCR 已弃**（第十二批）：`deepseek-ai/DeepSeek-OCR` 在桌面截图上严重幻觉（输出完全不相关内容如百度贴吧、菜谱）。Qwen3.5-4B 是随后的源码默认；后续因平台视觉通道时好时坏，用户运行配置又切到 Nex-N2-Pro。
 - **OCR client 不发 thinking 参数**：OCR 专项模型拒绝未知参数（SiliconFlow code 20015）。`OpenAiCompatibleVisionOcrClient.BuildRequestBody` 不发 `thinking`/`enable_thinking`。
 - **PNG chunk 顺序**：`WriteChunk` 按 spec `[length][type][data][CRC]`（曾写反导致全失败）。
 - **overlay 逻辑坐标→物理像素必须乘 RenderScaling**（方向与 chord 定位相反——chord 定位那个值本来就是物理像素，乘了是双重缩放；overlay 是 UI 逻辑坐标转物理，必须乘）。确认时 `_rectLeft * RenderScaling` 等。
@@ -148,7 +148,11 @@ UIA(TextPattern→选区→DocumentRange→Value) → 剪贴板(Ctrl+Insert/Ctrl
   - ❌ `SW_HIDE/SW_SHOW`（RunHidden）：能用但闪烁
   - ❌ `WS_EX_TRANSPARENT + WS_EX_LAYERED`：点击穿透，UI 卡死（Avalonia 用 `WS_EX_NOREDIRECTIONBITMAP` 不是 LAYERED，单独 TRANSPARENT 是 no-op，两个一起才生效但破坏事件路由）
   - ✅ `UIA_WindowVisibilityOverridden=2` prop（`MarkInvisibleToUia`）：让 UIA 跳过 overlay，不闪不卡。但只返大框不深入细节（教训 2）。
-- **画框场景 UIA 不可靠，默认走 OCR**（第十二批最重要教训）：UIA 的"框内即所得"在很多软件里不成立——UIA 树结构和视觉框不一致，祖先容器远大于画框，扫到框外内容。用户报"UIA 把软件其他部分放到剪贴板"。**结论**：画框默认必须走 OCR（框内即所得），UIA 改为可选开关。详见 handoff §3b 教训 3。
-- **OCR 多余文字优先怀疑模型**（第十一批踩坑，第十二批更新）：DeepSeek-OCR 在桌面截图上**严重幻觉**（不只是 markdown 包装，是完全不相关的内容）。`OpenAiCompatibleVisionOcrClient.CleanOcrText` 移除 `<think>` 块；`--probe-ocr-raw <x y w h>` 探针打印原始 SSE body。**最终解法**：换 `Qwen/Qwen3.5-4B`（关思考）。诊断多余文字永远先跑 `--probe-ocr-raw` 看原始 body。
+- **画框场景 UIA 不可靠，默认走 OCR**（第十二批最重要教训）：UIA 的"框内即所得"在很多软件里不成立——UIA 树结构和视觉框不一致，祖先容器远大于画框，扫到框外内容。用户报"UIA 把软件其他部分放到剪贴板"。**结论**：画框默认必须走 OCR（框内即所得），UIA 改为可选开关。历史过程见 `docs/BACKLOG-roadmap.md` 的 R24 记录。
+- **OCR 多余文字优先怀疑模型**：DeepSeek-OCR 在桌面截图上**严重幻觉**；Qwen3.5-4B 曾解决输出污染，但后来又暴露 SiliconFlow 视觉通道稳定性问题。`OpenAiCompatibleVisionOcrClient.CleanOcrText` 移除 `<think>` 块；`--probe-ocr-raw <x y w h>` 探针打印原始 SSE body。诊断时先看原始 body，再用真实请求对比候选模型，不只依赖模型列表或二手搜索。
+
+### REQ-036（已派发，未实现）
+
+下一步是在不删除本节 OCR 链路的前提下，增加“选区截图 → 直接翻译/解释/总结”的多模态动作。同一 Provider/Model/Secret 可按输入类型复用，但普通划词仍发纯文本；截图直达失败时保留“OCR → 文本动作”回退。详见 `10-multimodal-actions.md` 与本机 reqbase TASK-053–055。
 - **Qwen3.x 必须关思考**（第十二批踩坑）：混合推理模型开思考 9-14s，关思考 <1s。但纯 OCR 模型不认 `enable_thinking` 会报 HTTP 400。做成 per-model 可配开关（`VisionCaptureSettings.DisableThinking`）。
 - **截图捕获延迟加大**（第十一批调整）：`WaitForCompositorSettleAsync` 从 2 帧 + 80ms 加到 **3 帧 + 150ms**，覆盖慢驱动 / 后台 tab throttling / BitBlt round-trip。遮罩没消失干净 → OCR 拿到脏屏 → 乱码。
