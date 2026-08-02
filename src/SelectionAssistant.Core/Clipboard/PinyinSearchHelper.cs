@@ -113,7 +113,11 @@ public static class PinyinSearchHelper
             return string.Empty;
         }
 
-        var sb = new StringBuilder(text.Length);
+        // Most clipboard entries are predominantly ASCII. Reserving the full
+        // candidate length used to allocate a very large, mostly-unused buffer
+        // (for example a 279k-character terminal transcript) even when it had
+        // few or no CJK characters. Grow on demand instead.
+        var sb = new StringBuilder(Math.Min(text.Length, 256));
         foreach (char c in text)
         {
             if (PinyinInitialMap.TryGetValue(c, out char initial))
@@ -121,6 +125,42 @@ public static class PinyinSearchHelper
                 sb.Append(initial);
             }
         }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Extracts the exact sequence inspected by <see cref="MatchInitials"/>.
+    /// Matching a query as a subsequence of the returned string is equivalent
+    /// to running the legacy greedy scan, but the relatively expensive segment
+    /// discovery only needs to happen once when a search index is built.
+    /// </summary>
+    public static string ExtractSegmentInitials(string text)
+    {
+        if (string.IsNullOrEmpty(text))
+        {
+            return string.Empty;
+        }
+
+        var sb = new StringBuilder(Math.Min(text.Length, 256));
+        bool prevIsLower = false;
+
+        for (int index = 0; index < text.Length; index++)
+        {
+            char c = text[index];
+            bool isSep = c is ' ' or '-' or '.' or '_';
+            bool isCamel = prevIsLower && char.IsUpper(c);
+            bool isCjkBoundary = prevIsLower && IsCjk(c);
+            bool isLetterAfterCjk = index > 0 && IsCjk(text[index - 1]) &&
+                                    char.IsLetter(c) && !IsCjk(c);
+
+            if (index == 0 || isSep || isCamel || isCjkBoundary || isLetterAfterCjk)
+            {
+                sb.Append(c);
+            }
+
+            prevIsLower = isSep ? false : char.IsLower(c);
+        }
+
         return sb.ToString();
     }
 

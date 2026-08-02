@@ -81,7 +81,7 @@ public partial class ClipboardHistoryWindow : Window
     // Full set of rows (display order: pinned first, then newest). App pushes a
     // fresh snapshot whenever history changes; we rebuild _allRows from it.
     private readonly ObservableCollection<ClipboardHistoryEntryRow> _allRows = [];
-    private readonly ObservableCollection<ClipboardHistoryEntryRow> _filteredRows = [];
+    private readonly BulkObservableCollection<ClipboardHistoryEntryRow> _filteredRows = [];
 
     // Batch 123: incremental rendering. _filteredRows only holds the visible
     // slice (first InitialBatchSize rows, grown by LoadMoreBatchSize on scroll).
@@ -102,6 +102,21 @@ public partial class ClipboardHistoryWindow : Window
     // Trigger LoadMore when the distance to the bottom is within this fraction
     // of one viewport (0.85 = top 85% of viewport scrolled → load next batch).
     private const double LoadMoreThresholdRatio = 0.85;
+
+    // REQ-030: full-text search is indexed and evaluated off the UI thread.
+    // A short debounce collapses normal typing bursts; request/data generations
+    // ensure a late result can never overwrite a newer query or snapshot.
+    private const int SearchDebounceMs = 100;
+    private CancellationTokenSource? _searchIndexCancellation;
+    private CancellationTokenSource? _searchFilterCancellation;
+    private Task<SearchIndexSnapshot> _searchIndexTask =
+        Task.FromResult(SearchIndexSnapshot.Empty);
+    private int _searchDataVersion;
+    private long _searchRequestVersion;
+    private int _lastAppliedSearchDataVersion = -1;
+    private ClipboardTab _lastAppliedSearchTab = ClipboardTab.All;
+    private string? _lastAppliedCustomTag;
+    private string _lastAppliedSearchQuery = string.Empty;
 
     // Built-in tab ids. 全部 is always present; the group/pin/favorite tabs are
     // rebuilt on each snapshot to only show tabs that have matching entries.
@@ -305,6 +320,7 @@ public partial class ClipboardHistoryWindow : Window
         }
         _knownEntryTags = known;
         RebuildNav();
+        RebuildSearchIndex();
         ReapplyFilter();
         LoadThumbnails();
     }
@@ -449,6 +465,7 @@ public partial class ClipboardHistoryWindow : Window
                 : [];
         }
         RebuildNav();
+        RebuildSearchIndex();
         ReapplyFilter();
     }
 
@@ -559,7 +576,12 @@ public partial class ClipboardHistoryWindow : Window
     /// RequestPin).</summary>
     public event Action<string>? PinOnTopRequested;
 
-    public void PrepareForShutdown() => _allowClose = true;
+    public void PrepareForShutdown()
+    {
+        _allowClose = true;
+        _searchFilterCancellation?.Cancel();
+        _searchIndexCancellation?.Cancel();
+    }
 
     // ── Row construction ──
 
@@ -1798,11 +1820,14 @@ public partial class ClipboardHistoryWindow : Window
 
     // ── Search filter ──
 
-    private void OnSearchInputTextChanged(object? sender, TextChangedEventArgs e) => ReapplyFilter();
+    private void OnSearchInputTextChanged(object? sender, TextChangedEventArgs e) =>
+        ScheduleFilter(debounce: true);
 
-    private void ReapplyFilter()
-    {
-        IEnumerable<ClipboardHistoryEntryRow> pool = _activeTab switch
+    private void ReapplyFilter() => ScheduleFilter(debounce: false);
+
+    private IEnumerable<ClipboardHistoryEntryRow> GetTabPool(
+        ClipboardTab tab,
+        string? customTagName) => tab switch
         {
             ClipboardTab.Link => _allRows.Where(r => r.GroupLabel == GroupToLabel(ClipboardGroup.Link)),
             // R54 v2: Code tab also absorbs JSON entries (JSON folded into Code
@@ -1816,37 +1841,193 @@ public partial class ClipboardHistoryWindow : Window
             ClipboardTab.Sensitive => _allRows.Where(r => r.IsSensitive),
             ClipboardTab.Image => _allRows.Where(r => r.IsImage),
             ClipboardTab.Favorite => _allRows.Where(r => r.IsFavorite),
-            ClipboardTab.Custom when _activeCustomTagName is not null =>
-                _allRows.Where(r => r.HasCustomTag(_activeCustomTagName)),
+            ClipboardTab.Custom when customTagName is not null =>
+                _allRows.Where(r => r.HasCustomTag(customTagName)),
             _ => _allRows,
         };
 
-        string query = (SearchInput.Text ?? string.Empty).Trim();
+    /// <summary>
+    /// Captures immutable field references on the UI thread, then derives the
+    /// expensive pinyin/segment indexes on a worker. A rebuild is required when
+    /// entries or custom-tag assignments change because both are searchable.
+    /// </summary>
+    private void RebuildSearchIndex()
+    {
+        int dataVersion = ++_searchDataVersion;
+        _searchRequestVersion++;
+        _searchFilterCancellation?.Cancel();
 
-        List<ClipboardHistoryEntryRow> matches;
-        if (string.IsNullOrEmpty(query))
+        _searchIndexCancellation?.Cancel();
+        _searchIndexCancellation?.Dispose();
+        _searchIndexCancellation = new CancellationTokenSource();
+        CancellationToken cancellationToken = _searchIndexCancellation.Token;
+
+        SearchIndexSource[] sources = _allRows
+            .Select(row => new SearchIndexSource(
+                row.Id,
+                row.Text,
+                row.EntryTags.ToArray(),
+                row.CustomTags.ToArray(),
+                row.SourceLabel))
+            .ToArray();
+
+        _searchIndexTask = Task.Run(() =>
         {
-            // R103: empty query — show live entries only. Archived entries are
-            // historical and would clutter the default view (the live list is
-            // already capped at MaxEntries); they surface only when the user
-            // actively searches for something. The tab filter still applies on
-            // top, so e.g. switching to "Links" still shows only live Link rows.
-            matches = pool.Where(r => !r.IsArchived).ToList();
-        }
-        else
+            var indexes = new Dictionary<Guid, ClipboardSearchIndex>(sources.Length);
+            foreach (SearchIndexSource source in sources)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                indexes[source.Id] = new ClipboardSearchIndex(
+                    source.Text,
+                    source.EntryTags,
+                    source.CustomTags,
+                    source.Source);
+            }
+            return new SearchIndexSnapshot(dataVersion, indexes);
+        }, cancellationToken);
+
+        // A new data snapshot invalidates incremental narrowing state. The
+        // current query is re-scheduled by the caller immediately afterward.
+        _lastAppliedSearchDataVersion = -1;
+        _lastAppliedSearchQuery = string.Empty;
+    }
+
+    /// <summary>
+    /// Applies an empty query immediately; non-empty queries are debounced and
+    /// run on a worker against the precomputed index. If the user keeps typing,
+    /// canceled/stale requests are discarded before touching the collection.
+    /// </summary>
+    private void ScheduleFilter(bool debounce)
+    {
+        _searchFilterCancellation?.Cancel();
+        _searchFilterCancellation?.Dispose();
+        _searchFilterCancellation = new CancellationTokenSource();
+        CancellationToken cancellationToken = _searchFilterCancellation.Token;
+
+        long requestVersion = ++_searchRequestVersion;
+        int dataVersion = _searchDataVersion;
+        ClipboardTab tab = _activeTab;
+        string? customTagName = _activeCustomTagName;
+        ClipboardSearchQuery query = ClipboardSearchQuery.Parse(SearchInput.Text);
+        List<ClipboardHistoryEntryRow> tabPool = GetTabPool(tab, customTagName).ToList();
+
+        if (query.IsEmpty)
         {
-            // R103: with a query — search across BOTH live and archived entries
-            // in the active tab's pool. Archived matches appear AFTER live
-            // matches (stable OrderBy on IsArchived: false=0 sorts before
-            // true=1), so the most-recently-relevant results stay on top and
-            // archived hits read as "also found in history".
-            matches = pool
-                .Where(r => ClipboardSearchMatcher.IsMatch(
-                    r.Text, r.EntryTags, r.CustomTags, r.SourceLabel, query))
-                .OrderBy(r => r.IsArchived ? 1 : 0)
-                .ToList();
+            // R103: empty query shows live entries only; archives surface only
+            // during an active search. No index wait is needed for this path.
+            ApplyFilterResults(
+                tabPool.Where(row => !row.IsArchived).ToList(),
+                dataVersion,
+                tab,
+                customTagName,
+                query.NormalizedText);
+            return;
         }
 
+        // Adding characters/tokens can only narrow these match semantics. Reuse
+        // the last complete result set when possible; deletions/tab changes fall
+        // back to the full active-tab pool.
+        bool canNarrowPreviousResults =
+            _lastAppliedSearchDataVersion == dataVersion &&
+            _lastAppliedSearchTab == tab &&
+            string.Equals(_lastAppliedCustomTag, customTagName, StringComparison.Ordinal) &&
+            _lastAppliedSearchQuery.Length > 0 &&
+            query.NormalizedText.StartsWith(
+                _lastAppliedSearchQuery,
+                StringComparison.OrdinalIgnoreCase);
+        List<ClipboardHistoryEntryRow> candidates = canNarrowPreviousResults
+            ? [.. _filteredPool]
+            : tabPool;
+
+        Task<SearchIndexSnapshot> indexTask = _searchIndexTask;
+        _ = ApplyIndexedFilterAsync(
+            query,
+            candidates,
+            indexTask,
+            requestVersion,
+            dataVersion,
+            tab,
+            customTagName,
+            debounce,
+            cancellationToken);
+    }
+
+    private async Task ApplyIndexedFilterAsync(
+        ClipboardSearchQuery query,
+        IReadOnlyList<ClipboardHistoryEntryRow> candidates,
+        Task<SearchIndexSnapshot> indexTask,
+        long requestVersion,
+        int dataVersion,
+        ClipboardTab tab,
+        string? customTagName,
+        bool debounce,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (debounce)
+            {
+                await Task.Delay(SearchDebounceMs, cancellationToken).ConfigureAwait(false);
+            }
+
+            SearchIndexSnapshot snapshot = await indexTask
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
+            if (snapshot.DataVersion != dataVersion)
+            {
+                return;
+            }
+
+            List<ClipboardHistoryEntryRow> matches = await Task.Run(() =>
+            {
+                var result = new List<ClipboardHistoryEntryRow>();
+                foreach (ClipboardHistoryEntryRow row in candidates)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (snapshot.Indexes.TryGetValue(row.Id, out ClipboardSearchIndex? index) &&
+                        index.IsMatch(query))
+                    {
+                        result.Add(row);
+                    }
+                }
+
+                // Live matches remain ahead of archived matches, preserving the
+                // stable ordering of the previous synchronous implementation.
+                return result.OrderBy(row => row.IsArchived ? 1 : 0).ToList();
+            }, cancellationToken).ConfigureAwait(false);
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (cancellationToken.IsCancellationRequested ||
+                    requestVersion != _searchRequestVersion ||
+                    dataVersion != _searchDataVersion ||
+                    tab != _activeTab ||
+                    !string.Equals(customTagName, _activeCustomTagName, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                ApplyFilterResults(
+                    matches,
+                    dataVersion,
+                    tab,
+                    customTagName,
+                    query.NormalizedText);
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected when another keypress, tab change, or snapshot wins.
+        }
+    }
+
+    private void ApplyFilterResults(
+        IReadOnlyList<ClipboardHistoryEntryRow> matches,
+        int dataVersion,
+        ClipboardTab tab,
+        string? customTagName,
+        string normalizedQuery)
+    {
         // Batch 123: keep the full matched set in _filteredPool (cheap, no
         // controls) and only render the first slice in _filteredRows. The
         // remainder loads on scroll-to-bottom or arrow-past-edge (LoadMore).
@@ -1854,16 +2035,32 @@ public partial class ClipboardHistoryWindow : Window
         _filteredPool.AddRange(matches);
 
         _visibleCount = Math.Min(InitialBatchSize, _filteredPool.Count);
-
-        _filteredRows.Clear();
-        for (int i = 0; i < _visibleCount; i++)
-        {
-            _filteredRows.Add(_filteredPool[i]);
-        }
+        _filteredRows.ReplaceAll(_filteredPool.GetRange(0, _visibleCount));
         _selectedIndex = _filteredRows.Count > 0 ? 0 : -1;
         SyncRowSelection();
         UpdateCategoryHeader();
         UpdateLoadMoreFooter();
+
+        _lastAppliedSearchDataVersion = dataVersion;
+        _lastAppliedSearchTab = tab;
+        _lastAppliedCustomTag = customTagName;
+        _lastAppliedSearchQuery = normalizedQuery;
+    }
+
+    private sealed record SearchIndexSource(
+        Guid Id,
+        string Text,
+        string[] EntryTags,
+        string[] CustomTags,
+        string Source);
+
+    private sealed record SearchIndexSnapshot(
+        int DataVersion,
+        IReadOnlyDictionary<Guid, ClipboardSearchIndex> Indexes)
+    {
+        public static SearchIndexSnapshot Empty { get; } = new(
+            0,
+            new Dictionary<Guid, ClipboardSearchIndex>());
     }
 
     /// <summary>Batch 123: appends the next <see cref="LoadMoreBatchSize"/> rows
