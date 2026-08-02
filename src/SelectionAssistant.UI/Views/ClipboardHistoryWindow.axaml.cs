@@ -96,19 +96,27 @@ public partial class ClipboardHistoryWindow : Window
     // semantics are unchanged; only the rendered slice is windowed.
     private readonly List<ClipboardHistoryEntryRow> _filteredPool = [];
     private int _visibleCount;
-    // First batch — covers ~7-8 screenfuls at the default window height so the
-    // initial open feels complete but renders in a few ms, not hundreds.
-    private const int InitialBatchSize = 60;
+    // Keep the default view genuinely windowed. The previous value (60) built
+    // roughly 7-8 screenfuls of complex controls at once; clearing the final
+    // search character therefore blocked the UI while the full default list
+    // was restored. Sixteen rows cover about two screenfuls and keep a scroll
+    // runway without doing off-screen layout work.
+    private const int InitialBatchSize = 16;
+    // Search results change on every keystroke. Rendering fewer complex row
+    // templates keeps input responsive; more results continue loading on scroll.
+    private const int SearchInitialBatchSize = 12;
     // Each scroll-to-bottom or arrow-key-past-edge appends this many rows.
-    private const int LoadMoreBatchSize = 40;
+    private const int LoadMoreBatchSize = 16;
     // Trigger LoadMore when the distance to the bottom is within this fraction
     // of one viewport (0.85 = top 85% of viewport scrolled → load next batch).
     private const double LoadMoreThresholdRatio = 0.85;
 
-    // REQ-030: full-text search is indexed and evaluated off the UI thread.
-    // A short debounce collapses normal typing bursts; request/data generations
-    // ensure a late result can never overwrite a newer query or snapshot.
-    private const int SearchDebounceMs = 100;
+    // REQ-030/033: full-text search is indexed and evaluated off the UI thread.
+    // Small and normal histories search immediately. Only very large pools use
+    // one frame of debounce to collapse bursts; request/data generations ensure
+    // a late result can never overwrite a newer query or snapshot.
+    private const int SearchDebounceMs = 24;
+    private const int SearchDebounceEntryThreshold = 400;
     private CancellationTokenSource? _searchIndexCancellation;
     private CancellationTokenSource? _searchFilterCancellation;
     private Task<SearchIndexSnapshot> _searchIndexTask =
@@ -308,7 +316,8 @@ public partial class ClipboardHistoryWindow : Window
     public void SetEntries(
         IReadOnlyList<ClipboardEntry> entries,
         IReadOnlyList<ClipboardEntry> archive,
-        bool maskSensitive)
+        bool maskSensitive,
+        bool deferSearchRefreshUntilTags = false)
     {
         ExitMultiSelectMode();
         _maskSensitive = maskSensitive;
@@ -341,8 +350,11 @@ public partial class ClipboardHistoryWindow : Window
         }
         _knownEntryTags = known;
         RebuildNav();
-        RebuildSearchIndex();
-        ReapplyFilter();
+        if (!deferSearchRefreshUntilTags)
+        {
+            RebuildSearchIndex();
+            ReapplyFilter();
+        }
         LoadThumbnails();
     }
 
@@ -458,6 +470,24 @@ public partial class ClipboardHistoryWindow : Window
                 }
             });
         });
+    }
+
+    /// <summary>
+    /// Materializes the capped expanded body only when the user opens a text
+    /// row. Most clipboard rows are never expanded, so eagerly creating and
+    /// binding up to 20,000 characters per row wastes UI-thread time and memory.
+    /// </summary>
+    private void EnsureExpandedText(ClipboardHistoryEntryRow row)
+    {
+        if (row.IsImage || row.Text.Length == 0 || row.ExpandedText.Length > 0)
+        {
+            return;
+        }
+
+        bool reveal = _revealed.Contains(row.Id);
+        row.ExpandedText = reveal
+            ? ClipboardHistoryStore.BuildExpanded(row.Text, isSensitive: false, maskSensitive: false)
+            : ClipboardHistoryStore.BuildExpanded(row.Text, row.IsSensitive, _maskSensitive);
     }
 
     /// <summary>R54 v1.1/v1.2: pushes the current custom-tag list + per-entry tag
@@ -616,10 +646,6 @@ public partial class ClipboardHistoryWindow : Window
         string preview = reveal
             ? ClipboardHistoryStore.BuildPreview(entry.Text, isSensitive: false, maskSensitive: false)
             : ClipboardHistoryStore.BuildPreview(entry.Text, entry.IsSensitive, _maskSensitive);
-        string expanded = reveal
-            ? ClipboardHistoryStore.BuildExpanded(entry.Text, isSensitive: false, maskSensitive: false)
-            : ClipboardHistoryStore.BuildExpanded(entry.Text, entry.IsSensitive, _maskSensitive);
-
         // R54 v2: image entries get an "Image" badge + a thumbnail path; the
         // text preview is left empty (the thumbnail shows instead). Thumbnails
         // are decoded off-thread after the row is realized (LoadThumbnails).
@@ -646,7 +672,9 @@ public partial class ClipboardHistoryWindow : Window
             ImagePath = imagePath,
             Text = entry.Text,
             Preview = entry.Kind == ClipboardEntryKind.Image ? string.Empty : preview,
-            ExpandedText = entry.Kind == ClipboardEntryKind.Image ? string.Empty : expanded,
+            // Loaded on first expand by EnsureExpandedText. Keeping this empty
+            // also prevents hidden TextBlocks from binding large bodies.
+            ExpandedText = string.Empty,
             GroupLabel = groupLabel,
             AutoGroup = entry.Group,
             GroupOverride = entry.Kind == ClipboardEntryKind.Image ? null : entry.GroupOverride,
@@ -1990,7 +2018,7 @@ public partial class ClipboardHistoryWindow : Window
     {
         try
         {
-            if (debounce)
+            if (debounce && candidates.Count >= SearchDebounceEntryThreshold)
             {
                 await Task.Delay(SearchDebounceMs, cancellationToken).ConfigureAwait(false);
             }
@@ -2059,7 +2087,10 @@ public partial class ClipboardHistoryWindow : Window
         _filteredPool.Clear();
         _filteredPool.AddRange(matches);
 
-        _visibleCount = Math.Min(InitialBatchSize, _filteredPool.Count);
+        int initialBatchSize = normalizedQuery.Length > 0
+            ? SearchInitialBatchSize
+            : InitialBatchSize;
+        _visibleCount = Math.Min(initialBatchSize, _filteredPool.Count);
         _filteredRows.ReplaceAll(_filteredPool.GetRange(0, _visibleCount));
         _selectedIndex = _filteredRows.Count > 0 ? 0 : -1;
         SyncRowSelection();
@@ -2168,7 +2199,7 @@ public partial class ClipboardHistoryWindow : Window
             ClipboardTab.Custom when _activeCustomTagName is not null => "# " + _activeCustomTagName,
             _ => Strings.Clip_CategoryDefault,
         };
-        CategoryHeader.Text = string.Format(Strings.Clip_CategoryCount, tabName, _filteredRows.Count);
+        CategoryHeader.Text = string.Format(Strings.Clip_CategoryCount, tabName, _filteredPool.Count);
     }
 
     // ── Keyboard navigation ──
@@ -2479,6 +2510,10 @@ public partial class ClipboardHistoryWindow : Window
         // the full-text Popup is kept only as an explicit right-click "View full"
         // action, never auto-opened on single click). This keeps single-click =
         // expand, double-click = paste working uniformly.
+        if (!row.IsExpanded)
+        {
+            EnsureExpandedText(row);
+        }
         row.IsExpanded = !row.IsExpanded;
         _lastClickTicks = now;
         _lastClickScreen = screenPos;

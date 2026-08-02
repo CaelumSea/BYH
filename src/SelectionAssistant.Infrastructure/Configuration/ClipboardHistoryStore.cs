@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Platform.Abstractions.Secrets;
@@ -411,8 +412,75 @@ public static class ClipboardHistoryStore
             return new string('●', Math.Min(text.Length, 16));
         }
 
-        string firstLine = text.ReplaceLineEndings(" ").Trim();
-        return firstLine.Length <= 80 ? firstLine : firstLine[..77] + "…";
+        // Do not call ReplaceLineEndings over the complete clipboard body here.
+        // A row only displays 80 characters, while a terminal capture can be
+        // hundreds of thousands of characters. The old implementation created
+        // a body-sized temporary string on the UI thread for every refresh.
+        // Keep at most the 81 normalized characters needed to decide whether an
+        // ellipsis is required. We may still scan leading/trailing whitespace to
+        // preserve Trim semantics, but allocations remain O(preview length).
+        const int maximumLength = 80;
+        const int ellipsisPrefixLength = 77;
+        var preview = new StringBuilder(maximumLength + 1);
+        bool started = false;
+        int normalizedLength = 0;
+        int lastNonWhitespaceLength = 0;
+
+        for (int index = 0; index < text.Length; index++)
+        {
+            char current = text[index];
+            char normalized;
+            if (current == '\r')
+            {
+                normalized = ' ';
+                if (index + 1 < text.Length && text[index + 1] == '\n')
+                {
+                    index++;
+                }
+            }
+            else if (current is '\n' or '\f' or '\u0085' or '\u2028' or '\u2029')
+            {
+                normalized = ' ';
+            }
+            else
+            {
+                normalized = current;
+            }
+
+            if (!started)
+            {
+                if (char.IsWhiteSpace(normalized))
+                {
+                    continue;
+                }
+
+                started = true;
+            }
+
+            normalizedLength++;
+            if (preview.Length <= maximumLength)
+            {
+                preview.Append(normalized);
+            }
+
+            if (!char.IsWhiteSpace(normalized))
+            {
+                lastNonWhitespaceLength = normalizedLength;
+                if (lastNonWhitespaceLength > maximumLength)
+                {
+                    break;
+                }
+            }
+        }
+
+        if (!started || lastNonWhitespaceLength == 0)
+        {
+            return string.Empty;
+        }
+
+        return lastNonWhitespaceLength <= maximumLength
+            ? preview.ToString(0, lastNonWhitespaceLength)
+            : preview.ToString(0, ellipsisPrefixLength) + "…";
     }
 
     /// <summary>R54 v1.2: full multi-line text for the expanded row view.

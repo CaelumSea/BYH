@@ -1268,7 +1268,14 @@ public partial class App : Application
         // Direct field access after the null guard (same shape the original
         // SetEntries call used; the analyzer accepts it for the same reason).
         _clipboardHistoryWindow.SetImagesDirectory(_paths.ClipboardImagesDirectory);
-        _clipboardHistoryWindow.SetEntries(snapshot, archive, maskSensitive);
+        // Tags are applied immediately below and are part of the search index.
+        // Defer the refresh so opening the window builds the index and resets
+        // the result list once instead of doing the same expensive work twice.
+        _clipboardHistoryWindow.SetEntries(
+            snapshot,
+            archive,
+            maskSensitive,
+            deferSearchRefreshUntilTags: true);
         PushClipboardHistoryTags();
     }
 

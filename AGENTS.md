@@ -13,7 +13,7 @@
 
 ```bash
 dotnet build SelectionAssistant.slnx -c Release      # 0 警告（CI /warnaserror）
-dotnet test SelectionAssistant.slnx                   # 当前 752 项
+dotnet test SelectionAssistant.slnx                   # 当前 754 项
 dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Release -r win-x64
 ```
 
@@ -46,7 +46,7 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 
 ## 当前状态与下一步
 
-**v0.1.0 已发布**（2026-07，git tag `v0.1.0`）。主线截至 2026-08-02 已合并 REQ-028–REQ-031 的后续改进：大尺寸截图路径防崩溃、Warp 选区捕获兼容、开机自启、剪贴板超长检索与长按多选。DEFER 队列（详见 CHANGELOG）：
+**v0.1.0 已发布**（2026-07，git tag `v0.1.0`）。主线截至 2026-08-02 已完成 REQ-028–REQ-033 的后续改进：大尺寸截图路径防崩溃、Warp 选区捕获兼容、开机自启、剪贴板超长检索、长按多选与搜索 UI 延迟二次优化。DEFER 队列（详见 CHANGELOG）：
 
 - **M1/M2**：god-class 拆分（`ClipboardHistoryWindow.axaml.cs` ~3300 行 / `App.axaml.cs` ~2200 行）
 - **L3**：`AutomationProperties.Name` 无障碍全层补齐（需屏幕阅读器验证）

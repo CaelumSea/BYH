@@ -371,6 +371,33 @@ public sealed class ClipboardHistoryStoreTests
     }
 
     [Fact]
+    public void BuildPreview_FlattensSupportedLineEndingsAndTrimsWhitespace()
+    {
+        const string text = " \r\n\talpha\rbeta\ngamma\fdelta\u0085epsilon\u2028zeta\u2029eta  ";
+
+        string preview = ClipboardHistoryStore.BuildPreview(text, false, true);
+
+        Assert.Equal("alpha beta gamma delta epsilon zeta eta", preview);
+    }
+
+    [Fact]
+    public void BuildPreview_LongMultilineTextDoesNotAllocateBodySizedBuffer()
+    {
+        string longText = string.Concat(Enumerable.Repeat("line\r\n", 45_000));
+        Assert.True(longText.Length >= 270_000);
+
+        _ = ClipboardHistoryStore.BuildPreview("warmup\nline", false, true);
+        long allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+        string preview = ClipboardHistoryStore.BuildPreview(longText, false, true);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+
+        Assert.EndsWith("…", preview);
+        Assert.True(preview.Length <= 80);
+        Assert.True(allocated < 64 * 1024,
+            $"Preview creation allocated {allocated:N0} bytes for a long body.");
+    }
+
+    [Fact]
     public void Load_CorruptFile_ReturnsEmpty()
     {
         string path = TempPath();
