@@ -225,4 +225,31 @@ public sealed class ProviderConfigurationLoaderTests
         }
         finally { File.Delete(path); }
     }
+
+    [Theory]
+    [InlineData("https://api.example.com/v1")]
+    [InlineData("http://127.0.0.1:11434/v1")]
+    [InlineData("http://localhost:8080/v1")]
+    public void Validate_AcceptsAbsoluteHttpBaseUrls(string baseUrl)
+    {
+        var entry = new ProviderProfileEntry(
+            "custom-test", "Custom", baseUrl, "secret://provider/custom-test",
+            "test-model", "chat/completions", 60, 8000);
+
+        entry.Validate();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("https://")]
+    [InlineData("api.example.com/v1")]
+    [InlineData("file:///C:/provider")]
+    public void Validate_RejectsIncompleteOrNonHttpBaseUrls(string baseUrl)
+    {
+        var entry = new ProviderProfileEntry(
+            "custom-test", "Custom", baseUrl, "secret://provider/custom-test",
+            "test-model", "chat/completions", 60, 8000);
+
+        Assert.Throws<ArgumentException>(() => entry.Validate());
+    }
 }

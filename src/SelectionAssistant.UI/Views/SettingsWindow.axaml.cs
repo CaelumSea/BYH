@@ -24,6 +24,18 @@ namespace SelectionAssistant.UI.Views;
 public sealed record ProviderOption(string Id, string DisplayLabel);
 
 /// <summary>
+/// One-shot model discovery input. Translation passes the connection values
+/// currently visible in the editor so a Custom draft can be tested before it
+/// is persisted. A null override keeps the saved value (used by Vision and by
+/// blank API-key fields on existing providers).
+/// </summary>
+public sealed record ProviderModelsFetchRequest(
+    string ProviderId,
+    string? BaseUrlOverride = null,
+    string? ApiKeyOverride = null,
+    int? TimeoutSecondsOverride = null);
+
+/// <summary>
 /// Privacy-safe aggregate counts derived from BYH's local redacted log.
 /// No selected text, filenames, prompts, or API data are carried into the UI.
 /// </summary>
@@ -105,6 +117,11 @@ public partial class SettingsWindow : Window
     // back to the default provider (which lost the user's in-progress edit).
     // Null until the user picks/edits one; falls back to the default on first load.
     private string? _editingProviderId;
+
+    // Custom providers start as an in-memory draft. They are persisted only
+    // after the user supplies valid connection fields and clicks Save Profile,
+    // preventing orphan entries whose Base URL is just "https://".
+    private string? _draftProviderId;
 
     // R26: reentry guard for the "Refresh Models" buttons. The codebase has no
     // CancellationTokenSource convention — a simple bool flag mirrors the only
@@ -289,25 +306,24 @@ public partial class SettingsWindow : Window
     /// <summary>Request to add a provider from a preset. Arg = preset id.</summary>
     public event Action<string>? AddProviderFromPresetRequested;
 
-    /// <summary>Request to save an edited provider config. Arg = the full entry.</summary>
-    public event Action<ProviderProfileEntry>? SaveProviderRequested;
+    /// <summary>
+    /// Request to save a provider config. Args = (full entry, optional new API
+    /// key). The App layer adds when the id is new and updates otherwise, then
+    /// stores the optional key in DPAPI as one user-visible save operation.
+    /// </summary>
+    public event Action<ProviderProfileEntry, string?>? SaveProviderRequested;
 
     /// <summary>Request to delete a provider. Arg = provider id.</summary>
     public event Action<string>? DeleteProviderRequested;
 
     /// <summary>
-    /// R26: request to fetch the upstream model list for a provider via
-    /// <c>GET {BaseUrl}/models</c>. Arg = provider id. Returns the fetched
-    /// model ids, the UTC timestamp of the fetch, and an error string (null on
-    /// success). The window owns the UI state (button disable/restore, status
-    /// line, dropdown repopulate); the App-layer handler owns the network call
-    /// + cache write, mirroring the existing "window raises event, App awaits
-    /// runtime" convention.
+    /// R26/R35: request to fetch the upstream model list via
+    /// <c>GET {BaseUrl}/models</c>. The request can carry unsaved connection
+    /// overrides for a Custom draft. Returns the fetched model ids, UTC
+    /// timestamp, and an error string (null on success). The window owns the
+    /// UI state; the App layer owns the one-shot network call.
     /// </summary>
-    public event Func<string, Task<(IReadOnlyList<string> Models, DateTime FetchedAtUtc, string? Error)>>? FetchModelsRequested;
-
-    /// <summary>Request to save an API key. Args = (apiKeyReference, keyValue).</summary>
-    public event Action<string, string>? ApiKeySaveRequested;
+    public event Func<ProviderModelsFetchRequest, Task<(IReadOnlyList<string> Models, DateTime FetchedAtUtc, string? Error)>>? FetchModelsRequested;
 
     /// <summary>Request to save a prompt template. Args = (actionId, newPrompt, thinkingEnabled, shortcut, newName). <paramref name="newName" /> is non-null only when editing a custom action whose name changed.</summary>
     public event Action<string, string, bool, string?, LocalizedName?>? PromptTemplateSaved;
@@ -981,7 +997,23 @@ public partial class SettingsWindow : Window
         string? currentId,
         Func<string, Task<bool>> hasKeyChecker)
     {
+        ProviderProfileEntry? pendingDraft = _draftProviderId is null
+            ? null
+            : _providers.FirstOrDefault(p => p.Id == _draftProviderId);
+        bool draftWasPersisted = _draftProviderId is not null &&
+            providers.Any(p => string.Equals(p.Id, _draftProviderId, StringComparison.OrdinalIgnoreCase));
+
         _providers = [..providers];
+        if (draftWasPersisted)
+        {
+            _draftProviderId = null;
+        }
+        else if (pendingDraft is not null)
+        {
+            // A settings refresh unrelated to provider saving should not make
+            // the user's unsaved Custom draft disappear from the editor.
+            _providers.Add(pendingDraft);
+        }
         _currentProviderId = currentId;
         _hasKeyChecker = hasKeyChecker;
 
@@ -1006,9 +1038,29 @@ public partial class SettingsWindow : Window
         // form below, so repeating it in the dropdown made the label cramped
         // and redundant.
         _providerOptions.Clear();
-        foreach (ProviderProfileEntry p in providers)
+        Dictionary<string, int> providerNameCounts = _providers
+            .GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+        foreach (ProviderProfileEntry p in _providers)
         {
-            _providerOptions.Add(new ProviderOption(p.Id, p.Name));
+            string label;
+            if (p.Id == _draftProviderId)
+            {
+                label = $"{p.Name} · {Strings.Settings_Provider_New}";
+            }
+            else if (providerNameCounts[p.Name] > 1)
+            {
+                // Older versions could create several indistinguishable
+                // "Custom Provider" rows. Keep them operable by showing a
+                // short stable id suffix instead of silently collapsing them.
+                string suffix = p.Id.Length > 4 ? p.Id[^4..] : p.Id;
+                label = $"{p.Name} · {suffix}";
+            }
+            else
+            {
+                label = p.Name;
+            }
+            _providerOptions.Add(new ProviderOption(p.Id, label));
         }
 
         // Select a provider WITHOUT throwing away the user's in-progress edit.
@@ -1328,6 +1380,46 @@ public partial class SettingsWindow : Window
             return;
         }
 
+        string? baseUrlOverride = null;
+        string? apiKeyOverride = null;
+        int? timeoutSecondsOverride = null;
+        if (!isVision)
+        {
+            // Model discovery intentionally validates only the endpoint. The
+            // Model field is the output of this operation and therefore cannot
+            // be a prerequisite for it.
+            baseUrlOverride = BaseUrlInput.Text?.Trim() ?? string.Empty;
+            try
+            {
+                ProviderProfileEntry.ValidateBaseUrl(baseUrlOverride);
+            }
+            catch (ArgumentException ex)
+            {
+                statusText.Text = string.Format(Strings.Settings_Provider_FetchFailed, ex.Message);
+                SetFeedbackTone(statusText, isError: true);
+                _isFetchingTranslationModels = false;
+                return;
+            }
+
+            apiKeyOverride = NormalizeInput(ApiKeyInput.Text);
+            if (string.Equals(providerId, _draftProviderId, StringComparison.OrdinalIgnoreCase) &&
+                apiKeyOverride is null)
+            {
+                statusText.Text = Strings.Settings_Key_EnterFirst;
+                SetFeedbackTone(statusText, isError: true);
+                _isFetchingTranslationModels = false;
+                return;
+            }
+
+            timeoutSecondsOverride = Math.Clamp((int)(TimeoutInput.Value ?? 60), 10, 300);
+        }
+
+        var request = new ProviderModelsFetchRequest(
+            providerId,
+            baseUrlOverride,
+            apiKeyOverride,
+            timeoutSecondsOverride);
+
         // Preserve the user's current selection/text so we can restore it after
         // the dropdown rebuild (the fetch may add/remove items).
         string currentModel = (modelCombo.SelectedItem as string ?? modelCombo.Text)?.Trim() ?? string.Empty;
@@ -1343,7 +1435,7 @@ public partial class SettingsWindow : Window
         string? error = null;
         try
         {
-            (models, fetchedAtUtc, error) = await FetchModelsRequested.Invoke(providerId);
+            (models, fetchedAtUtc, error) = await FetchModelsRequested.Invoke(request);
         }
         catch (Exception ex)
         {
@@ -1752,11 +1844,16 @@ public partial class SettingsWindow : Window
             BaseUrlInput.Text = string.Empty;
             ModelInput.Items.Clear();
             ModelInput.Text = string.Empty;
+            ChatPathInput.Text = string.Empty;
+            SystemPromptInput.Text = string.Empty;
+            TimeoutInput.Value = 60;
             ModelFetchStatus.Text = Strings.Settings_Provider_LastFetched_Never;
             SetFeedbackTone(ModelFetchStatus, isError: false);
             ApiKeyInput.Text = string.Empty;
             ApiKeyStatusText.Text = Strings.Settings_Status_NoProvider;
             SetFeedbackTone(ApiKeyStatusText, isError: true);
+            ProviderSaveStatusText.Text = string.Empty;
+            SetFeedbackTone(ProviderSaveStatusText, isError: false);
             return;
         }
 
@@ -1776,8 +1873,19 @@ public partial class SettingsWindow : Window
         TimeoutInput.Value = entry.TimeoutSeconds;
         ApiKeyInput.Text = string.Empty;
 
+        bool isDraft = string.Equals(entry.Id, _draftProviderId, StringComparison.OrdinalIgnoreCase);
+        ProviderSaveStatusText.Text = isDraft
+            ? Strings.Settings_Provider_CustomDraftHint
+            : string.Empty;
+        SetFeedbackTone(ProviderSaveStatusText, isError: false);
+
         // Check key status for this provider.
-        if (!string.IsNullOrEmpty(entry.ApiKeyReference) && _hasKeyChecker is not null)
+        if (isDraft)
+        {
+            ApiKeyStatusText.Text = Strings.Settings_Key_NotSet;
+            SetFeedbackTone(ApiKeyStatusText, isError: false);
+        }
+        else if (!string.IsNullOrEmpty(entry.ApiKeyReference) && _hasKeyChecker is not null)
         {
             bool hasKey = await _hasKeyChecker(entry.ApiKeyReference);
             ApiKeyStatusText.Text = hasKey ? Strings.Settings_Key_Saved : Strings.Settings_Key_NotSet;
@@ -1855,32 +1963,69 @@ public partial class SettingsWindow : Window
         menu.Items.Add(new Separator());
 
         var custom = new MenuItem { Header = Strings.Settings_Key_Custom };
-        custom.Click += (_, _) => AddProviderFromPresetRequested?.Invoke(ProviderPresets.CustomPresetId);
+        custom.Click += (_, _) => BeginCustomProviderDraft();
         menu.Items.Add(custom);
 
         menu.Open(this);
     }
 
-    private void OnSaveKeyClick(object? sender, RoutedEventArgs e)
+    private void BeginCustomProviderDraft()
     {
-        ProviderProfileEntry? entry = GetSelectedProvider();
-        if (entry is null || string.IsNullOrEmpty(entry.ApiKeyReference))
+        // Keep at most one unsaved draft. Repeatedly choosing Custom replaces
+        // the untouched draft instead of filling providers.json with several
+        // indistinguishable placeholder rows.
+        if (_draftProviderId is not null)
         {
-            ApiKeyStatusText.Text = Strings.Settings_Key_NotRequired_Long;
-            SetFeedbackTone(ApiKeyStatusText, isError: false);
-            return;
+            _providers.RemoveAll(p => p.Id == _draftProviderId);
+            ProviderOption? oldOption = _providerOptions.FirstOrDefault(o => o.Id == _draftProviderId);
+            if (oldOption is not null)
+            {
+                _providerOptions.Remove(oldOption);
+            }
         }
 
-        string key = ApiKeyInput.Text?.Trim() ?? string.Empty;
-        if (string.IsNullOrEmpty(key))
+        string id = "custom-" + Guid.NewGuid().ToString("N")[..8];
+        string name = BuildUniqueCustomProviderName();
+        var draft = new ProviderProfileEntry(
+            Id: id,
+            Name: name,
+            BaseUrl: string.Empty,
+            ApiKeyReference: ProviderPresets.BuildSecretReference(id),
+            DefaultModel: string.Empty,
+            ChatCompletionsPath: "chat/completions",
+            TimeoutSeconds: 60,
+            MaxSourceCharacters: 8000);
+
+        _draftProviderId = id;
+        _editingProviderId = id;
+        _providers.Add(draft);
+        _providerOptions.Add(new ProviderOption(id, $"{name} · {Strings.Settings_Provider_New}"));
+
+        ShowSettingsPage(SettingsPage.Provider);
+        ProviderComboBox.SelectedIndex = _providerOptions.Count - 1;
+        EditFormBorder.BringIntoView();
+        BaseUrlInput.Focus();
+    }
+
+    private string BuildUniqueCustomProviderName()
+    {
+        string baseName = Strings.Settings_Provider_CustomName;
+        HashSet<string> used = _providers
+            .Select(p => p.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!used.Contains(baseName))
         {
-            ApiKeyStatusText.Text = Strings.Settings_Key_EnterFirst;
-            SetFeedbackTone(ApiKeyStatusText, isError: true);
-            return;
+            return baseName;
         }
 
-        ApiKeySaveRequested?.Invoke(entry.ApiKeyReference, key);
-        ApiKeyInput.Text = string.Empty;
+        for (int suffix = 2; ; suffix++)
+        {
+            string candidate = $"{baseName} {suffix}";
+            if (!used.Contains(candidate))
+            {
+                return candidate;
+            }
+        }
     }
 
     private void OnToggleVisibilityClick(object? sender, RoutedEventArgs e)
@@ -1929,18 +2074,26 @@ public partial class SettingsWindow : Window
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
-            ApiKeyStatusText.Text = ex.Message;
-            SetFeedbackTone(ApiKeyStatusText, isError: true);
+            ProviderSaveStatusText.Text = ex.Message;
+            SetFeedbackTone(ProviderSaveStatusText, isError: true);
             return;
         }
 
-        SaveProviderRequested?.Invoke(updated);
+        ProviderSaveStatusText.Text = Strings.Settings_Provider_Saving;
+        SetFeedbackTone(ProviderSaveStatusText, isError: false);
+        SaveProviderRequested?.Invoke(updated, NormalizeInput(ApiKeyInput.Text));
     }
 
     private void OnSetActiveClick(object? sender, RoutedEventArgs e)
     {
         if (GetSelectedProvider() is { } entry)
         {
+            if (string.Equals(entry.Id, _draftProviderId, StringComparison.OrdinalIgnoreCase))
+            {
+                ProviderSaveStatusText.Text = Strings.Settings_Provider_SaveBeforeActivate;
+                SetFeedbackTone(ProviderSaveStatusText, isError: true);
+                return;
+            }
             SetActiveProviderRequested?.Invoke(entry.Id);
         }
     }
@@ -1949,8 +2102,47 @@ public partial class SettingsWindow : Window
     {
         if (GetSelectedProvider() is { } entry)
         {
+            if (string.Equals(entry.Id, _draftProviderId, StringComparison.OrdinalIgnoreCase))
+            {
+                _providers.RemoveAll(p => p.Id == entry.Id);
+                ProviderOption? option = _providerOptions.FirstOrDefault(o => o.Id == entry.Id);
+                if (option is not null)
+                {
+                    _providerOptions.Remove(option);
+                }
+                _draftProviderId = null;
+                _editingProviderId = _currentProviderId;
+                ProviderOption? fallback = _currentProviderId is null
+                    ? _providerOptions.FirstOrDefault()
+                    : _providerOptions.FirstOrDefault(o => o.Id == _currentProviderId)
+                        ?? _providerOptions.FirstOrDefault();
+                ProviderComboBox.SelectedIndex = fallback is null
+                    ? -1
+                    : _providerOptions.IndexOf(fallback);
+                if (fallback is null)
+                {
+                    _ = LoadSelectedProviderIntoForm();
+                }
+                return;
+            }
             DeleteProviderRequested?.Invoke(entry.Id);
         }
+    }
+
+    /// <summary>Displays the result of the App-layer add/update + key save.</summary>
+    public void SetProviderSaveResult(string providerId, bool succeeded, bool keySaveFailed)
+    {
+        if (!string.Equals(providerId, _editingProviderId, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        ProviderSaveStatusText.Text = !succeeded
+            ? Strings.Settings_Provider_SaveFailed
+            : keySaveFailed
+                ? Strings.Settings_Provider_SavedKeyFailed
+                : Strings.Settings_Provider_Saved;
+        SetFeedbackTone(ProviderSaveStatusText, isError: !succeeded || keySaveFailed);
     }
 
     // ── Existing handlers ──

@@ -41,10 +41,7 @@ public sealed record ProviderProfileEntry(
         {
             throw new ArgumentException("Provider name must not be empty.", nameof(Name));
         }
-        if (string.IsNullOrWhiteSpace(BaseUrl))
-        {
-            throw new ArgumentException("Provider BaseUrl must not be empty.", nameof(BaseUrl));
-        }
+        ValidateBaseUrl(BaseUrl);
         if (string.IsNullOrWhiteSpace(DefaultModel))
         {
             throw new ArgumentException("Provider default model must not be empty.", nameof(DefaultModel));
@@ -64,6 +61,27 @@ public sealed record ProviderProfileEntry(
             throw new ArgumentOutOfRangeException(
                 nameof(MaxSourceCharacters),
                 "MaxSourceCharacters must be between 1000 and 1,000,000.");
+        }
+    }
+
+    /// <summary>
+    /// Validates only the connection endpoint. Model discovery uses this before
+    /// a provider has a selected model, so it must not require the rest of a
+    /// complete <see cref="ProviderProfileEntry" />.
+    /// </summary>
+    public static void ValidateBaseUrl(string? baseUrl)
+    {
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            throw new ArgumentException("Provider BaseUrl must not be empty.", nameof(BaseUrl));
+        }
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out Uri? baseUri) ||
+            (baseUri.Scheme != Uri.UriSchemeHttp && baseUri.Scheme != Uri.UriSchemeHttps) ||
+            string.IsNullOrWhiteSpace(baseUri.Host))
+        {
+            throw new ArgumentException(
+                "Provider BaseUrl must be a valid absolute HTTP(S) URL.",
+                nameof(BaseUrl));
         }
     }
 }

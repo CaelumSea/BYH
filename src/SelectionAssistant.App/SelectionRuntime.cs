@@ -1909,56 +1909,84 @@ internal sealed class SelectionRuntime : IDisposable
         _providerConfig.FindById(providerId);
 
     /// <summary>
-    /// R26: fetches the upstream model list for a provider via
-    /// <c>GET {BaseUrl}/models</c>, updates the on-disk cache, and returns the
-    /// fresh list + UTC timestamp. Returns (empty, now, error) on failure
-    /// instead of throwing — the caller (settings UI) surfaces the error in
-    /// the status line and keeps the last-known cached list intact.
+    /// R26/R35: fetches the upstream model list via
+    /// <c>GET {BaseUrl}/models</c>. Optional overrides come from the current
+    /// Settings form, allowing model discovery before a Custom draft has been
+    /// persisted. The API-key override stays in memory for this call only.
+    /// Persisted providers still update the on-disk model cache; drafts do not.
     /// </summary>
     public async Task<(IReadOnlyList<string> Models, DateTime FetchedAtUtc, string? Error)> FetchProviderModelsAsync(
         string providerId,
+        string? baseUrlOverride,
+        string? apiKeyOverride,
+        int? timeoutSecondsOverride,
         CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(providerId);
 
         ProviderProfileEntry? entry = _providerConfig.FindById(providerId);
-        if (entry is null)
+        if (entry is null && baseUrlOverride is null)
         {
             return (Array.Empty<string>(), DateTime.UtcNow, $"provider '{providerId}' not found.");
         }
 
+        string baseUrl = baseUrlOverride ?? entry!.BaseUrl;
+        try
+        {
+            ProviderProfileEntry.ValidateBaseUrl(baseUrl);
+        }
+        catch (ArgumentException ex)
+        {
+            return (Array.Empty<string>(), DateTime.UtcNow, ex.Message);
+        }
+
+        int timeoutSeconds = Math.Clamp(
+            timeoutSecondsOverride ?? entry?.TimeoutSeconds ?? 60,
+            10,
+            300);
+
         var options = new OpenAiCompatibleProviderOptions
         {
-            Id = entry.Id,
-            DisplayName = entry.Name,
-            BaseUrl = entry.BaseUrl,
-            ApiKeyReference = entry.ApiKeyReference,
-            DefaultModel = entry.DefaultModel,
-            ChatCompletionsPath = entry.ChatCompletionsPath,
-            Timeout = TimeSpan.FromSeconds(entry.TimeoutSeconds),
-            MaxSourceCharacters = entry.MaxSourceCharacters,
+            Id = providerId,
+            DisplayName = entry?.Name ?? "Custom Provider",
+            BaseUrl = baseUrl,
+            ApiKeyReference = entry?.ApiKeyReference ?? ProviderPresets.BuildSecretReference(providerId),
+            // GET /models does not consume DefaultModel. Keep it empty for an
+            // unsaved draft instead of inventing a value the user never chose.
+            DefaultModel = entry?.DefaultModel ?? string.Empty,
+            ChatCompletionsPath = entry?.ChatCompletionsPath ?? "chat/completions",
+            Timeout = TimeSpan.FromSeconds(timeoutSeconds),
+            MaxSourceCharacters = entry?.MaxSourceCharacters ?? 8000,
         };
 
-        using var client = new OpenAiCompatibleModelsClient(options, _secretStore);
+        using var client = new OpenAiCompatibleModelsClient(
+            options,
+            _secretStore,
+            apiKeyOverride: apiKeyOverride);
         try
         {
             IReadOnlyList<string> models = await client.ListModelsAsync(cancellationToken).ConfigureAwait(false);
             DateTime fetchedAtUtc = DateTime.UtcNow;
 
             // Update the on-disk cache (best-effort — a cache write failure
-            // must not mask a successful fetch).
-            try
+            // must not mask a successful fetch). A draft deliberately skips
+            // this so Refresh Models has no persistent side effects.
+            if (entry is not null)
             {
-                ModelsCache existing = ModelsCacheStore.LoadIfExists(_paths.ModelsCacheFile);
-                ModelsCache updated = existing.With(new ModelsCacheEntry(providerId, fetchedAtUtc, models));
-                ModelsCacheStore.Save(updated, _paths.ModelsCacheFile);
-            }
-            catch (ProviderConfigurationException ex)
-            {
-                _logger.Error("Translation", $"Fetched models for '{providerId}' but failed to persist cache.", ex);
+                try
+                {
+                    ModelsCache existing = ModelsCacheStore.LoadIfExists(_paths.ModelsCacheFile);
+                    ModelsCache updated = existing.With(new ModelsCacheEntry(providerId, fetchedAtUtc, models));
+                    ModelsCacheStore.Save(updated, _paths.ModelsCacheFile);
+                }
+                catch (ProviderConfigurationException ex)
+                {
+                    _logger.Error("Translation", $"Fetched models for '{providerId}' but failed to persist cache.", ex);
+                }
             }
 
-            _logger.Info("Translation", $"Fetched {models.Count} models for '{providerId}'.");
+            string source = entry is null ? "draft" : "provider";
+            _logger.Info("Translation", $"Fetched {models.Count} models for {source} '{providerId}'.");
             return (models, fetchedAtUtc, null);
         }
         catch (TranslationProviderException ex)
@@ -2195,6 +2223,7 @@ internal sealed class SelectionRuntime : IDisposable
     {
         try
         {
+            entry.Validate();
             if (_providerConfig.FindById(entry.Id) is not null)
             {
                 _logger.Error("Translation", $"Provider '{entry.Id}' already exists.");
@@ -2216,6 +2245,7 @@ internal sealed class SelectionRuntime : IDisposable
     {
         try
         {
+            entry.Validate();
             int index = _providerConfig.Providers.FindIndex(
                 p => string.Equals(p.Id, entry.Id, StringComparison.OrdinalIgnoreCase));
             if (index < 0)

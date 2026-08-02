@@ -278,6 +278,14 @@ public static partial class Strings
     public static string Settings_Provider_SystemPrompt => Get(nameof(Settings_Provider_SystemPrompt));
     public static string Settings_Provider_ApiKey => Get(nameof(Settings_Provider_ApiKey));
     public static string Settings_Provider_ApiKey_Hint => Get(nameof(Settings_Provider_ApiKey_Hint));
+    public static string Settings_Provider_CustomName => Get(nameof(Settings_Provider_CustomName));
+    public static string Settings_Provider_New => Get(nameof(Settings_Provider_New));
+    public static string Settings_Provider_CustomDraftHint => Get(nameof(Settings_Provider_CustomDraftHint));
+    public static string Settings_Provider_SaveBeforeActivate => Get(nameof(Settings_Provider_SaveBeforeActivate));
+    public static string Settings_Provider_Saving => Get(nameof(Settings_Provider_Saving));
+    public static string Settings_Provider_SaveFailed => Get(nameof(Settings_Provider_SaveFailed));
+    public static string Settings_Provider_Saved => Get(nameof(Settings_Provider_Saved));
+    public static string Settings_Provider_SavedKeyFailed => Get(nameof(Settings_Provider_SavedKeyFailed));
     public static string Settings_Show => Get(nameof(Settings_Show));
     public static string Settings_SaveKey => Get(nameof(Settings_SaveKey));
     public static string Settings_Provider_Timeout => Get(nameof(Settings_Provider_Timeout));
