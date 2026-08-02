@@ -101,7 +101,7 @@ public partial class ClipboardHistoryWindow : Window
     private const int InitialBatchSize = 60;
     // Search results change on every keystroke. Rendering fewer complex row
     // templates keeps input responsive; more results continue loading on scroll.
-    private const int SearchInitialBatchSize = 24;
+    private const int SearchInitialBatchSize = 12;
     // Each scroll-to-bottom or arrow-key-past-edge appends this many rows.
     private const int LoadMoreBatchSize = 40;
     // Trigger LoadMore when the distance to the bottom is within this fraction
@@ -2196,7 +2196,7 @@ public partial class ClipboardHistoryWindow : Window
             ClipboardTab.Custom when _activeCustomTagName is not null => "# " + _activeCustomTagName,
             _ => Strings.Clip_CategoryDefault,
         };
-        CategoryHeader.Text = string.Format(Strings.Clip_CategoryCount, tabName, _filteredRows.Count);
+        CategoryHeader.Text = string.Format(Strings.Clip_CategoryCount, tabName, _filteredPool.Count);
     }
 
     // ── Keyboard navigation ──
