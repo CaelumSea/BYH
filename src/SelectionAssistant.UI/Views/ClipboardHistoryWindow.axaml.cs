@@ -96,14 +96,17 @@ public partial class ClipboardHistoryWindow : Window
     // semantics are unchanged; only the rendered slice is windowed.
     private readonly List<ClipboardHistoryEntryRow> _filteredPool = [];
     private int _visibleCount;
-    // First batch — covers ~7-8 screenfuls at the default window height so the
-    // initial open feels complete but renders in a few ms, not hundreds.
-    private const int InitialBatchSize = 60;
+    // Keep the default view genuinely windowed. The previous value (60) built
+    // roughly 7-8 screenfuls of complex controls at once; clearing the final
+    // search character therefore blocked the UI while the full default list
+    // was restored. Sixteen rows cover about two screenfuls and keep a scroll
+    // runway without doing off-screen layout work.
+    private const int InitialBatchSize = 16;
     // Search results change on every keystroke. Rendering fewer complex row
     // templates keeps input responsive; more results continue loading on scroll.
     private const int SearchInitialBatchSize = 12;
     // Each scroll-to-bottom or arrow-key-past-edge appends this many rows.
-    private const int LoadMoreBatchSize = 40;
+    private const int LoadMoreBatchSize = 16;
     // Trigger LoadMore when the distance to the bottom is within this fraction
     // of one viewport (0.85 = top 85% of viewport scrolled → load next batch).
     private const double LoadMoreThresholdRatio = 0.85;
