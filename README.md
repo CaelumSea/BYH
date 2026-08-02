@@ -2,13 +2,24 @@
 
 > Context-aware selection assistant. 选词即用，不离开当前上下文。
 >
-> Status: **v0.1.0 + post-release fixes (2026-08-01)** · NativeAOT single-binary · Windows 10+ · .NET 10 · [MIT License](#license)
+> Status: **v0.1.0 + post-release updates (2026-08-02)** · NativeAOT single-binary · Windows 10+ · .NET 10 · [MIT License](#license)
 
 BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选的内容——**一个工具搞定截图 OCR、即时翻译、剪贴板历史、启动器、提示词模板**，全程不离开当前窗口。
+
+![BYH Ivory Jade 设置中心 Dashboard](docs/screenshots/byh-settings-dashboard.png)
+
+<p align="center"><sub>Ivory Jade 设置中心 · Dashboard、模块频率、模型路由与手机式状态卡（当前 main 实机截图）</sub></p>
 
 **隐私优先**：所有配置和用户数据只落在本地系统配置目录（`%LOCALAPPDATA%\BYH\`），API 密钥走系统级加密（DPAPI），除你主动调用 LLM provider 外不上传任何第三方服务。
 
 > **平台定位**：BYH 是 **Windows 专属**工具——核心能力（全局快捷键、UIA 文本捕获、低级 hook、DPAPI）深度依赖 Win32。`Platform.Abstractions` 作为 Windows 内部的解耦设计保留，Core/Providers 保持平台无关（由 macOS CI 守护）。
+
+## 最近更新 · 2026-08-02
+
+- **大区域截图稳定性**：补齐 BGRA / DIB / PNG 尺寸上限与 checked 算术，异常尺寸安全失败，不再带崩后台进程。
+- **Warp 选区兼容**：为 `warp.exe` 增加受限的 `Ctrl+Shift+C` 捕获策略；仅在剪贴板序号变化、文本稳定且命中明确进程策略时接受 ownerless 结果。
+- **超长剪贴板搜索**：索引构建和查询移出 UI 线程；27 万字符级条目也不会在每次键入时同步扫描全文。
+- **长按多选**：长按剪贴板条目进入批量编辑，可选择全部、取消全选并批量删除；普通单击和右键菜单保持原行为。
 
 ---
 
@@ -18,7 +29,7 @@ BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选�
 |---|---|---|
 | 📸 **Ocean Eyes** 区域截图 OCR | `Ctrl+Alt+Q` | 拖框选屏幕区域 → 截图 → OCR 文字识别。截图自动保存到配置目录，可贴图钉在桌面、UIA 辅助自动框选元素、识别结果可翻译/编辑/复制。 |
 | 🚀 **Spotlight 启动器** | `Ctrl+Alt+Space` | 全局快速搜索面板，一键启动配置的应用 / 网页 / 命令。支持自定义图标、URL、启动参数。 |
-| 📋 **剪贴板历史** | `Ctrl+Alt+V` | 本地剪贴板管理弹窗：文本 + 图片、自动分类、手动归类、置顶、标签、自定义分组 tab、全文搜索、按月归档。敏感条目（密码类）DPAPI 加密掩码，不会明文展示。 |
+| 📋 **剪贴板历史** | `Ctrl+Alt+V` | 本地剪贴板管理弹窗：文本 + 图片、自动分类、手动归类、置顶、标签、自定义分组 tab、后台全文索引、长按多选与批量删除、按月归档。敏感条目（密码类）DPAPI 加密掩码，不会明文展示。 |
 | 🔤 **选词工具栏** | 选中文字自动浮出 | 在任意应用选中文字即弹出工具栏，一键执行翻译 / 总结 / 解释 / 自定义提示词。结果窗口支持多模型同时对比、自定义动作、双语标题。 |
 | 🎛️ **托盘与设置** | 托盘右键 | 统一设置中心（Dashboard / 通用 / 翻译 / 动作 / 视觉 / 启动器 / 剪贴板七页），所有改动即时保存。托盘菜单直达设置、配置目录、截图画廊、重启、退出。 |
 
@@ -110,7 +121,7 @@ Clipboard     ← 剪贴板历史所有开关与上限
 # 编译检查（Windows）
 dotnet build SelectionAssistant.slnx -c Release
 
-# 测试（当前 736 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
+# 测试（当前 752 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
 dotnet test
 
 # NativeAOT 单文件发布（Windows，生成 BYH.exe，约 28MB）
@@ -157,7 +168,7 @@ src/
 
 详见 `docs/AUDIT-findings.md` 和 `docs/BACKLOG-roadmap.md`。v0.1.0 之后排期中的硬骨头：
 
-- **M1/M2**：`ClipboardHistoryWindow.axaml.cs`（~2940 行）和 `App.axaml.cs`（~2240 行）的 god-class 拆分
+- **M1/M2**：`ClipboardHistoryWindow.axaml.cs`（~3300 行）和 `App.axaml.cs`（~2200 行）的 god-class 拆分
 - **L3**：无障碍 `AutomationProperties.Name` 全层补齐（需屏幕阅读器验证）
 - **M4**：剩余 ~46 处 `[DllImport]` → `[LibraryImport]` 迁移（hook / launcher / icon 高风险核心路径）
 - **L8**：`IManagedWindow` 公共接口（与 M1/M2 耦合）

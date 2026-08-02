@@ -15,6 +15,11 @@
 ### 新增
 
 - **开机自启选项（设置 → 通用）。** 新增「开机自启」开关：开启后写入 `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`（用户级注册表，无需管理员），登录 Windows 时自动拉起 BYH。注册表为真相源——若用户在任务管理器 / Windows 设置里手动禁用，启动时以注册表为准回写 `startup-options.json`，开关显示与实际一致。组策略或杀毒软件拦截写入时优雅降级，提示「启用失败」而非崩溃。新增 `IAutoStartManager` 平台抽象 + `WindowsRunAutoStartManager` 实现，沿用了 Ocean Eyes / 剪贴板历史的设置流水线（record → store → App 接线 → 设置卡片 + i18n）。
+- **剪贴板长按多选（REQ-031）。** 长按条目进入批量编辑状态，支持逐项选择、选择全部、取消全选和批量删除；普通单击、双击与右键菜单保持原行为。
+
+### 性能
+
+- **剪贴板超长内容检索（REQ-030）。** 将搜索索引构建和查询移出 UI 线程，加入查询版本取消与按需正文匹配；27 万字符级条目不再随每次键入同步扫描全文。
 
 ### 兼容性
 
@@ -29,6 +34,7 @@
 
 - 2026-08-01 主线合并后的全量测试：**736/736 通过**（Core 581、Windows Integration 105、Providers 50）；Release build 0 warning / 0 error；REQ-029 NativeAOT QA 发布成功。Warp 真机日志在 20:34–21:08 多次确认 `source=SimulatedCopyCtrlShiftC`、`ownerless=True`，成功捕获 5–1636 字符。
 - 2026-08-02 将当前 `main` 重新 NativeAOT 发布并同步到 `artifacts/publish/win-x64-nativeuia`；正式实例从该路径重启，Warp 进程策略探针确认 `CtrlShiftCOnly`、稳定等待 120ms，用户随后确认正式版本真机测试正常。
+- 2026-08-02 合并 REQ-030 / REQ-031 后全量测试：**752/752 通过**（Core 597、Windows Integration 105、Providers 50）；Release build 0 warning / 0 error；NativeAOT 正式产物 SHA-256 `3787A04A0C91FE8A02FE335C6071DE545DCA6000678E38CEDED2A9F6DD30CE17`。
 
 ---
 

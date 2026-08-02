@@ -13,7 +13,7 @@
 
 ```bash
 dotnet build SelectionAssistant.slnx -c Release      # 0 警告（CI /warnaserror）
-dotnet test SelectionAssistant.slnx                   # 当前 736 项
+dotnet test SelectionAssistant.slnx                   # 当前 752 项
 dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Release -r win-x64
 ```
 
@@ -46,9 +46,9 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 
 ## 当前状态与下一步
 
-**v0.1.0 已发布**（2026-07，git tag `v0.1.0`）。主线在 2026-08-01 合并了 REQ-028/REQ-029 的后续修复：大尺寸截图路径防崩溃、Warp 选区捕获兼容、开机自启设置。DEFER 队列（详见 CHANGELOG）：
+**v0.1.0 已发布**（2026-07，git tag `v0.1.0`）。主线截至 2026-08-02 已合并 REQ-028–REQ-031 的后续改进：大尺寸截图路径防崩溃、Warp 选区捕获兼容、开机自启、剪贴板超长检索与长按多选。DEFER 队列（详见 CHANGELOG）：
 
-- **M1/M2**：god-class 拆分（`ClipboardHistoryWindow.axaml.cs` ~2940 行 / `App.axaml.cs` ~2240 行）
+- **M1/M2**：god-class 拆分（`ClipboardHistoryWindow.axaml.cs` ~3300 行 / `App.axaml.cs` ~2200 行）
 - **L3**：`AutomationProperties.Name` 无障碍全层补齐（需屏幕阅读器验证）
 - **M4**：剩余 46 处 `[DllImport]` → `[LibraryImport]`（高风险核心路径）
 - **macOS**：已取消移植计划。BYH 是 Windows 专属工具，Mac 同类需求由独立项目专项开发。
