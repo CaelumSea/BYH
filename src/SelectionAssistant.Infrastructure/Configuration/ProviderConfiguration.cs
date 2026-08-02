@@ -45,6 +45,14 @@ public sealed record ProviderProfileEntry(
         {
             throw new ArgumentException("Provider BaseUrl must not be empty.", nameof(BaseUrl));
         }
+        if (!Uri.TryCreate(BaseUrl, UriKind.Absolute, out Uri? baseUri) ||
+            (baseUri.Scheme != Uri.UriSchemeHttp && baseUri.Scheme != Uri.UriSchemeHttps) ||
+            string.IsNullOrWhiteSpace(baseUri.Host))
+        {
+            throw new ArgumentException(
+                "Provider BaseUrl must be a valid absolute HTTP(S) URL.",
+                nameof(BaseUrl));
+        }
         if (string.IsNullOrWhiteSpace(DefaultModel))
         {
             throw new ArgumentException("Provider default model must not be empty.", nameof(DefaultModel));

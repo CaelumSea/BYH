@@ -2195,6 +2195,7 @@ internal sealed class SelectionRuntime : IDisposable
     {
         try
         {
+            entry.Validate();
             if (_providerConfig.FindById(entry.Id) is not null)
             {
                 _logger.Error("Translation", $"Provider '{entry.Id}' already exists.");
@@ -2216,6 +2217,7 @@ internal sealed class SelectionRuntime : IDisposable
     {
         try
         {
+            entry.Validate();
             int index = _providerConfig.Providers.FindIndex(
                 p => string.Equals(p.Id, entry.Id, StringComparison.OrdinalIgnoreCase));
             if (index < 0)

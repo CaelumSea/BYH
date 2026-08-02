@@ -342,7 +342,6 @@ public partial class App : Application
             settingsWindow.AddProviderFromPresetRequested += OnAddProviderFromPreset;
             settingsWindow.SaveProviderRequested += OnSaveProvider;
             settingsWindow.DeleteProviderRequested += OnDeleteProvider;
-            settingsWindow.ApiKeySaveRequested += OnApiKeySaveRequested;
             settingsWindow.FetchModelsRequested += OnFetchModelsRequested;
         settingsWindow.PromptTemplateSaved += OnPromptTemplateSaved;
         settingsWindow.PromptTemplateReset += OnPromptTemplateReset;
@@ -531,40 +530,32 @@ public partial class App : Application
     {
         if (_runtime is null) return;
 
-        string addedId;
-        if (presetId == SelectionAssistant.Core.Translation.ProviderPresets.CustomPresetId)
-        {
-            // Add a blank custom provider the user can edit.
-            addedId = "custom-" + Guid.NewGuid().ToString("N")[..8];
-            var entry = new ProviderProfileEntry(
-                Id: addedId,
-                Name: "Custom Provider",
-                BaseUrl: "https://",
-                ApiKeyReference: SelectionAssistant.Core.Translation.ProviderPresets.BuildSecretReference(addedId),
-                DefaultModel: "gpt-4o-mini",
-                ChatCompletionsPath: "chat/completions",
-                TimeoutSeconds: 60,
-                MaxSourceCharacters: 8000);
-            await _runtime.AddProviderAsync(entry);
-        }
-        else
-        {
-            // Find the preset and create an entry from it.
-            var preset = SelectionAssistant.Core.Translation.ProviderPresets.BuiltIn
-                .FirstOrDefault(p => p.Id == presetId);
-            if (preset is null) return;
-            addedId = preset.Id;
+        // Custom is now an in-window draft and reaches this layer only when
+        // Save Profile is clicked. This event remains for ready-made presets.
+        var preset = SelectionAssistant.Core.Translation.ProviderPresets.BuiltIn
+            .FirstOrDefault(p => p.Id == presetId);
+        if (preset is null) return;
 
-            var entry = new ProviderProfileEntry(
-                Id: preset.Id,
-                Name: preset.Name,
-                BaseUrl: preset.BaseUrl,
-                ApiKeyReference: SelectionAssistant.Core.Translation.ProviderPresets.BuildSecretReference(preset.Id),
-                DefaultModel: preset.DefaultModel,
-                ChatCompletionsPath: preset.ChatCompletionsPath,
-                TimeoutSeconds: 60,
-                MaxSourceCharacters: 8000);
-            await _runtime.AddProviderAsync(entry);
+        string addedId = preset.Id;
+        var entry = new ProviderProfileEntry(
+            Id: preset.Id,
+            Name: preset.Name,
+            BaseUrl: preset.BaseUrl,
+            ApiKeyReference: SelectionAssistant.Core.Translation.ProviderPresets.BuildSecretReference(preset.Id),
+            DefaultModel: preset.DefaultModel,
+            ChatCompletionsPath: preset.ChatCompletionsPath,
+            TimeoutSeconds: 60,
+            MaxSourceCharacters: 8000);
+        bool added = await _runtime.AddProviderAsync(entry);
+        if (!added)
+        {
+            // Selecting a preset that already exists should still take the user
+            // to that profile instead of looking like the menu click did nothing.
+            if (_runtime.GetProviderEntry(addedId) is not null)
+            {
+                _settingsWindow?.SelectProviderForEditing(addedId);
+            }
+            return;
         }
 
         await RefreshSettingsAsync();
@@ -578,24 +569,34 @@ public partial class App : Application
         }
     }
 
-    private async void OnSaveProvider(ProviderProfileEntry entry)
+    private async void OnSaveProvider(ProviderProfileEntry entry, string? newApiKey)
     {
         if (_runtime is null) return;
-        await _runtime.UpdateProviderAsync(entry);
+
+        bool profileSaved = _runtime.GetProviderEntry(entry.Id) is null
+            ? await _runtime.AddProviderAsync(entry)
+            : await _runtime.UpdateProviderAsync(entry);
+        if (!profileSaved)
+        {
+            _settingsWindow?.SetProviderSaveResult(entry.Id, succeeded: false, keySaveFailed: false);
+            return;
+        }
+
+        bool keySaveFailed = false;
+        if (!string.IsNullOrWhiteSpace(newApiKey) && !string.IsNullOrWhiteSpace(entry.ApiKeyReference))
+        {
+            keySaveFailed = !await _runtime.SaveApiKeyAsync(entry.ApiKeyReference, newApiKey);
+        }
+
         await RefreshSettingsAsync();
+        _settingsWindow?.SelectProviderForEditing(entry.Id);
+        _settingsWindow?.SetProviderSaveResult(entry.Id, succeeded: true, keySaveFailed);
     }
 
     private async void OnDeleteProvider(string providerId)
     {
         if (_runtime is null) return;
         await _runtime.DeleteProviderAsync(providerId);
-        await RefreshSettingsAsync();
-    }
-
-    private async void OnApiKeySaveRequested(string apiKeyReference, string keyValue)
-    {
-        if (_runtime is null) return;
-        await _runtime.SaveApiKeyAsync(apiKeyReference, keyValue);
         await RefreshSettingsAsync();
     }
 

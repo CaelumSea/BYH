@@ -803,6 +803,7 @@
                 </StackPanel>
                 <Button Grid.Column="1"
                         Content="{x:Static i18n:Strings.Settings_AddProvider}"
+                        AutomationProperties.AutomationId="BYH.Settings.Provider.Add"
                         Click="OnAddProviderClick" />
               </Grid>
 
@@ -814,6 +815,7 @@
                 <Border Classes="InnerCard" Padding="12">
                   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
                     <ComboBox x:Name="ProviderComboBox"
+                              AutomationProperties.AutomationId="BYH.Settings.Provider.Selector"
                               HorizontalAlignment="Stretch"
                               SelectionChanged="OnProviderSelectionChanged">
                       <ComboBox.ItemTemplate>
@@ -832,14 +834,16 @@
               </StackPanel>
 
               <Border Classes="InnerCard" Padding="14">
-                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="14" RowSpacing="12">
+                <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="14" RowSpacing="14">
                   <StackPanel Grid.Row="0" Grid.Column="0" Spacing="6">
                     <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_Name}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
-                    <TextBox x:Name="NameInput" />
+                    <TextBox x:Name="NameInput"
+                             AutomationProperties.AutomationId="BYH.Settings.Provider.Name" />
                   </StackPanel>
                   <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6">
                     <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_Model}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
                     <ComboBox x:Name="ModelInput"
+                              AutomationProperties.AutomationId="BYH.Settings.Provider.Model"
                               HorizontalAlignment="Stretch"
                               IsEditable="True" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
@@ -852,53 +856,50 @@
                                  TextTrimming="CharacterEllipsis" />
                       <Button x:Name="FetchModelsButton"
                               Grid.Column="1"
+                              AutomationProperties.AutomationId="BYH.Settings.Provider.FetchModels"
                               Content="{x:Static i18n:Strings.Settings_Provider_FetchModels}"
                               Click="OnFetchModelsClick" />
                     </Grid>
                   </StackPanel>
                   <StackPanel Grid.Row="1" Grid.Column="0" Spacing="6">
                     <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_BaseUrl}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
-                    <TextBox x:Name="BaseUrlInput" />
+                    <TextBox x:Name="BaseUrlInput"
+                             AutomationProperties.AutomationId="BYH.Settings.Provider.BaseUrl" />
                   </StackPanel>
                   <StackPanel Grid.Row="1" Grid.Column="1" Spacing="6">
                     <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_ChatPath}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
-                    <TextBox x:Name="ChatPathInput" PlaceholderText="chat/completions" />
+                    <TextBox x:Name="ChatPathInput"
+                             AutomationProperties.AutomationId="BYH.Settings.Provider.ChatPath"
+                             PlaceholderText="chat/completions" />
+                  </StackPanel>
+
+                  <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Spacing="7" Margin="0,2,0,0">
+                    <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_ApiKey}"
+                                 FontSize="{DynamicResource ByhFontSizeBody}"
+                                 FontWeight="SemiBold" />
+                      <TextBlock Grid.Column="1"
+                                 Text="{x:Static i18n:Strings.Settings_Provider_ApiKey_Hint}"
+                                 Classes="Muted"
+                                 FontSize="{DynamicResource ByhFontSizeCaption}"
+                                 VerticalAlignment="Center" />
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                      <TextBox x:Name="ApiKeyInput"
+                               AutomationProperties.AutomationId="BYH.Settings.Provider.ApiKey"
+                               PlaceholderText="sk-..."
+                               PasswordChar="•" />
+                      <Button Grid.Column="1"
+                              Content="{x:Static i18n:Strings.Settings_Show}"
+                              Click="OnToggleVisibilityClick" />
+                    </Grid>
+                    <TextBlock x:Name="ApiKeyStatusText"
+                               AutomationProperties.AutomationId="BYH.Settings.Provider.ApiKeyStatus"
+                               Classes="Muted"
+                               Text="{x:Static i18n:Strings.Settings_Key_NotSet}"
+                               FontSize="{DynamicResource ByhFontSizeBodySmall}" />
                   </StackPanel>
                 </Grid>
-              </Border>
-
-              <StackPanel Spacing="6">
-                <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_SystemPrompt}"
-                           Classes="Muted"
-                           FontSize="{DynamicResource ByhFontSizeBodySmall}" />
-                <Border Classes="InnerCard" Padding="12">
-                  <TextBox x:Name="SystemPromptInput"
-                           AcceptsReturn="True"
-                           TextWrapping="Wrap"
-                           Height="78" />
-                </Border>
-              </StackPanel>
-
-              <Border Classes="InnerCard" Padding="14">
-                <StackPanel Spacing="7">
-                  <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_ApiKey}"
-                             FontSize="{DynamicResource ByhFontSizeBody}"
-                             FontWeight="SemiBold" />
-                  <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_ApiKey_Hint}"
-                             Classes="Muted"
-                             FontSize="{DynamicResource ByhFontSizeCaption}" />
-                  <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
-                    <TextBox x:Name="ApiKeyInput"
-                             PlaceholderText="sk-..."
-                             PasswordChar="•" />
-                    <Button Grid.Column="1" Content="{x:Static i18n:Strings.Settings_Show}" Click="OnToggleVisibilityClick" />
-                    <Button Grid.Column="2" Content="{x:Static i18n:Strings.Settings_SaveKey}" Classes="Primary" Click="OnSaveKeyClick" />
-                  </Grid>
-                  <TextBlock x:Name="ApiKeyStatusText"
-                             Classes="Muted"
-                             Text="{x:Static i18n:Strings.Settings_Key_NotSet}"
-                             FontSize="{DynamicResource ByhFontSizeBodySmall}" />
-                </StackPanel>
               </Border>
 
               <Grid ColumnDefinitions="150,*" ColumnSpacing="16">
@@ -911,16 +912,41 @@
                                    Value="60" />
                   </Border>
                 </StackPanel>
+              </Grid>
+
+              <StackPanel Spacing="6">
+                <TextBlock Text="{x:Static i18n:Strings.Settings_Provider_SystemPrompt}"
+                           Classes="Muted"
+                           FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                <Border Classes="InnerCard" Padding="12">
+                  <TextBox x:Name="SystemPromptInput"
+                           AutomationProperties.AutomationId="BYH.Settings.Provider.SystemPrompt"
+                           AcceptsReturn="True"
+                           TextWrapping="Wrap"
+                           Height="78" />
+                </Border>
+              </StackPanel>
+
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <TextBlock x:Name="ProviderSaveStatusText"
+                           AutomationProperties.AutomationId="BYH.Settings.Provider.SaveStatus"
+                           Classes="Muted"
+                           FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal"
                             HorizontalAlignment="Right"
-                            VerticalAlignment="Bottom"
                             Spacing="8">
                   <Button Content="{x:Static i18n:Strings.Common_Delete}"
+                          AutomationProperties.AutomationId="BYH.Settings.Provider.Delete"
                           Classes="DangerQuiet"
                           Click="OnDeleteProviderClick" />
-                  <Button Content="{x:Static i18n:Strings.Settings_SetActive}" Click="OnSetActiveClick" />
+                  <Button Content="{x:Static i18n:Strings.Settings_SetActive}"
+                          AutomationProperties.AutomationId="BYH.Settings.Provider.SetActive"
+                          Click="OnSetActiveClick" />
                   <Button Content="{x:Static i18n:Strings.Settings_SaveProfile}"
+                          AutomationProperties.AutomationId="BYH.Settings.Provider.Save"
                           Classes="Primary"
                           Click="OnSaveProviderClick" />
                 </StackPanel>
