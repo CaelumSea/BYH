@@ -1364,6 +1364,11 @@ internal sealed class SelectionRuntime : IDisposable
                 nint handle = window.NativeHandle
                     ?? throw new InvalidOperationException(
                         "Pinned screenshot HWND is not available after construction.");
+                // Hide from UIA for the window's whole lifetime: a pinned image
+                // has no UIA-useful content, and leaving it visible makes
+                // ElementFromPoint walk Avalonia's peer tree (~hundreds of ms)
+                // whenever the cursor is over it — the OE overlay freezes.
+                MarkWindowInvisibleToUia(handle);
                 var host = new NoActivateWindowHost(handle);
 
                 // Wire the three context-menu / close-button events. Each
@@ -1452,6 +1457,8 @@ internal sealed class SelectionRuntime : IDisposable
                     nint handle = window.NativeHandle
                         ?? throw new InvalidOperationException(
                             "Pinned screenshot HWND is not available after construction.");
+                    // Hide from UIA (see the other pin site / MarkWindowInvisibleToUia).
+                    MarkWindowInvisibleToUia(handle);
                     var host = new NoActivateWindowHost(handle);
 
                     window.RequestCopy += () => CopyPinnedToClipboard(window);
@@ -4044,6 +4051,43 @@ internal sealed class SelectionRuntime : IDisposable
 
     [DllImport("user32.dll")]
     private static extern short GetKeyState(int nVirtKey);
+
+    // ── UIA invisibility for pinned screenshot windows ─────────────────
+    // SetProp("UIA_WindowVisibilityOverridden", 2) tells UI Automation to
+    // treat the window as invisible: ElementFromPoint skips it and returns
+    // whatever is below. RegionSelectOverlay uses the identical call (see
+    // RegionSelectOverlay.MarkInvisibleToUia) so its full-screen cover does
+    // not mask the desktop during OE live tracking.
+    //
+    // Why pinned windows need this: a pinned screenshot is a frameless Avalonia
+    // window over a pure-image surface. When the cursor is over it, UIA's
+    // ElementFromPoint (polled at ~25 Hz by the OE overlay's live tracker, and
+    // on every selection probe) must walk Avalonia's on-demand automation-peer
+    // tree — hundreds of peers — which jumps from <30 ms to several hundred ms
+    // per query. The UI thread blocks on GetElementBoundsAt's done.Wait, the
+    // overlay/input freezes for a few seconds, and the user sees "画选框时整个
+    // 画面卡住". Marking the HWND UIA-invisible makes ElementFromPoint punch
+    // through to the desktop element underneath, restoring the <30 ms query.
+    // Pinned windows are images — there is never anything UIA-useful inside them
+    // — so hiding them from UIA has no functional cost.
+    [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetProp(nint hWnd, string lpString, nint hData);
+
+    /// <summary>
+    /// Marks the given HWND invisible to UI Automation so ElementFromPoint skips
+    /// it. Idempotent (SetProp overwrites). No-op if <paramref name="handle"/>
+    /// is zero. See the SetProp declaration above for why pinned screenshot
+    /// windows are marked this way for their whole lifetime.
+    /// </summary>
+    private static void MarkWindowInvisibleToUia(nint handle)
+    {
+        if (handle == 0)
+        {
+            return;
+        }
+        SetProp(handle, "UIA_WindowVisibilityOverridden", (nint)2);
+    }
 
     private sealed class ToolbarSessionView : ISelectionSessionView
     {
