@@ -402,15 +402,22 @@ internal sealed class SelectionRuntime : IDisposable
     /// <summary>
     /// Injects the shared long-lived <see cref="Win32Clipboard"/> owned by
     /// <c>ClipboardHistoryService</c>. After this call, all clipboard writes
-    /// (Enter-to-save, gallery copy, pinned copy) and the text fallback read
-    /// reuse this instance instead of allocating a throwaway Win32Clipboard per
-    /// call. See <see cref="_sharedClipboard"/> for why throwaway instances
-    /// were unsafe. Set once during startup; idempotent if called again.
+    /// (Enter-to-save, gallery copy, pinned copy) reuse this instance instead of
+    /// allocating a throwaway Win32Clipboard per call, AND the text-capture
+    /// chain (<see cref="_textCapture"/>) is rebuilt around the same instance so
+    /// there is exactly one clipboard-format-listener thread in the process. See
+    /// <see cref="_sharedClipboard"/> for why a second listener (the capture's
+    /// own instance) raced the first and caused 0xc0000409 crashes on the Ocean
+    /// Eyes text path. Set once during startup; idempotent if called again.
     /// </summary>
     public void SetSharedClipboard(Win32Clipboard clipboard)
     {
         ArgumentNullException.ThrowIfNull(clipboard);
         _sharedClipboard = clipboard;
+        // Propagate to the text-capture chain so its Win32ClipboardCapture
+        // stops using its private Win32Clipboard (a second listener thread) and
+        // shares the one process-wide instance instead.
+        _textCapture?.SetSharedClipboard(clipboard);
     }
 
     /// <summary>

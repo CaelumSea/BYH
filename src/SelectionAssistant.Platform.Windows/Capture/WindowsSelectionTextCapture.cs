@@ -25,9 +25,19 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
 
     private readonly IProcessCapturePolicyProvider _policyProvider;
     private readonly ISelectionTextCapture _accessibilityCapture;
-    private readonly IConfiguredClipboardCapture _clipboardCapture;
+    // Reassignable via SetSharedClipboard: when the process-wide Win32Clipboard
+    // is injected, this wrapper is rebuilt around it WITHOUT taking ownership
+    // (the shared instance is owned by ClipboardHistoryService). Guarded by
+    // _captureRebuildGate so the swap can't race an in-flight CaptureAsync.
+    private IConfiguredClipboardCapture _clipboardCapture;
     private readonly IDisposable[] _ownedDependencies;
     private readonly Action<string>? _diagnosticSink;
+    private readonly object _captureRebuildGate = new();
+    // The self-owned Win32Clipboard created in the 2-arg ctor, disposed when
+    // SetSharedClipboard swaps in the shared instance and on Dispose. Null once
+    // ownership moves to the shared instance. Win32ClipboardCapture itself does
+    // not dispose its injected clipboard, so this layer must.
+    private Win32Clipboard? _ownedClipboard;
     private int _disposed;
 
     // R24 track B: the optional screenshot→OCR tier (Tier 4). Null when vision
@@ -58,6 +68,7 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
         _accessibilityCapture = accessibility;
         _clipboardCapture = clipboardCapture;
         _ownedDependencies = [clipboardCapture, clipboard, accessibility];
+        _ownedClipboard = clipboard;
     }
 
     public WindowsSelectionTextCapture(
@@ -71,6 +82,57 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
         _clipboardCapture = clipboardCapture ?? throw new ArgumentNullException(nameof(clipboardCapture));
         _diagnosticSink = diagnosticSink;
         _ownedDependencies = [];
+    }
+
+    /// <summary>
+    /// Rebuilds the internal <see cref="Win32ClipboardCapture"/> around the
+    /// process-wide shared <see cref="Win32Clipboard"/> owned by
+    /// <c>ClipboardHistoryService</c>. Each <see cref="Win32Clipboard"/> runs its
+    /// own message thread + clipboard-format-listener window, so a second
+    /// instance here raced the history service's listener on every clipboard
+    /// change (Ctrl+C send + concurrent WM_CLIPBOARDUPDATE backup read) — the
+    /// same dispose/callback stack corruption that caused the 0xc0000409 crashes
+    /// on the screenshot-save path. Collapsing to one instance removes the race.
+    /// The previously self-owned wrapper and its private clipboard are disposed;
+    /// the shared instance is NOT owned here and will not be disposed by this
+    /// capture's <see cref="Dispose"/>. Idempotent; safe to call again with a
+    /// different shared instance. Call once during startup before any capture.
+    /// </summary>
+    public void SetSharedClipboard(Win32Clipboard clipboard)
+    {
+        ArgumentNullException.ThrowIfNull(clipboard);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+
+        // Swap under the rebuild gate so an in-flight CaptureAsync on the UI/STA
+        // thread can't dereference a wrapper mid-swap. CaptureAsync itself does
+        // not hold this gate (it would serialize captures); it reads
+        // _clipboardCapture once into a local at entry, so a swap only takes
+        // effect on the next capture.
+        lock (_captureRebuildGate)
+        {
+            var rebuilt = new Win32ClipboardCapture(
+                clipboard,
+                new SendInputHelper(),
+                diagnosticSink: _diagnosticSink);
+
+            IConfiguredClipboardCapture oldWrapper = _clipboardCapture;
+            Win32Clipboard? oldClipboard = _ownedClipboard;
+            _clipboardCapture = rebuilt;
+            _ownedClipboard = null;
+
+            // Dispose the OLD self-owned wrapper + its private clipboard ONLY.
+            // The injected shared instance is owned by ClipboardHistoryService
+            // and must NOT be disposed here. Win32ClipboardCapture.Dispose does
+            // not touch its injected clipboard, so the old private clipboard is
+            // torn down explicitly to release its message thread + listener
+            // window (otherwise a second WM_CLIPBOARDUPDATE listener would keep
+            // running, defeating the whole point of the swap).
+            if (oldWrapper is IDisposable oldDisposable)
+            {
+                oldDisposable.Dispose();
+            }
+            oldClipboard?.Dispose();
+        }
     }
 
     /// <summary>
@@ -212,6 +274,13 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
             return;
         }
 
+        // _ownedDependencies only ever holds the 2-arg-ctor objects (the
+        // self-owned wrapper + its private clipboard + accessibility capture).
+        // After SetSharedClipboard swaps in the process-wide clipboard, that
+        // private clipboard has already been disposed there and the shared
+        // instance is NEVER added here — so iterating is safe: at worst it
+        // re-disposes already-disposed (idempotent) objects. The shared
+        // Win32Clipboard remains owned by ClipboardHistoryService.
         foreach (IDisposable dependency in _ownedDependencies)
         {
             dependency.Dispose();
