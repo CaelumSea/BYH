@@ -48,14 +48,14 @@
     <TrimMode>full</TrimMode>
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
     <DynamicLoading>false</DynamicLoading>
-    <!-- Keep native PDB symbols so WER minidumps from field crashes can be
-         resolved to function names + offsets in WinDbg/cdb. The 2026-08-03
-         0xc0000409 crash couldn't be symbolicated because symbols were stripped
-         (StripSymbols=true). PDBs stay beside the exe (~10-20 MB) and do NOT
-         bloat BYH.exe itself; the deliberate-delete target below is disabled
-         while we diagnose the capture/clipboard crash family. Revert to
-         StripSymbols=true once the crash is resolved. -->
-    <StripSymbols>false</StripSymbols>
+    <!-- Strip native symbols from the AOT image. The 2026-08-03 crash
+         diagnosis temporarily set this to false so WER minidumps could be
+         symbolicated; both the screenshot-save crash (e519b12) and the
+         memory regression (69ce642) are now resolved and field-stable, so
+         symbols are stripped again to keep the exe lean. If a new crash
+         family appears, flip back to false to capture symbols, then revert
+         once root-caused. -->
+    <StripSymbols>true</StripSymbols>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
     <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
@@ -81,9 +81,11 @@
     <ProjectReference Include="..\SelectionAssistant.Infrastructure\SelectionAssistant.Infrastructure.csproj" />
   </ItemGroup>
 
-  <!-- Disabled while StripSymbols=false so native PDBs reach the publish dir
-       for crash dump symbolication. Re-enable (flip condition to true) once the
-       capture/clipboard crash family is resolved. -->
+  <!-- Deletes any .pdb files that reach the publish dir after Release
+       publishing. With StripSymbols=true the native image has no embedded
+       symbols, so the leftover managed .pdbs are pure diagnostic ballast for a
+       shipped build. The condition keeps this inactive if StripSymbols is ever
+       flipped back to false for crash diagnosis. -->
   <Target Name="RemovePublishedDebugSymbols"
           AfterTargets="Publish"
           Condition="'$(Configuration)' == 'Release' AND '$(StripSymbols)' == 'true'">
