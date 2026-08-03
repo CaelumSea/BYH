@@ -2217,53 +2217,68 @@ internal sealed class SelectionRuntime : IDisposable
             return null;
         }
 
-        // Hide the toolbar (WS_EX_TOPMOST) before the BitBlt so it isn't
-        // captured into the screenshot and obscure the text the user wants
-        // OCR'd. The toolbar is shown again the moment the capture returns —
-        // OCR itself is a network round-trip (~1s), during which the toolbar
-        // SHOULD stay visible (the user is waiting on it). Only the capture
-        // frame needs a clear screen. Run on the UI thread because window
-        // visibility is UI-thread state.
-        //
-        // CRITICAL: also park the OE overlay (_annotationOverlay, i.e. the
-        // RegionSelectOverlay) off-screen via HideForCapture. After Confirm the
-        // overlay stays visible (locked on the confirmed rect) alongside the
-        // toolbar, and THIS lazy-OCR re-capture BitBlts the screen again. If the
-        // overlay is still on-screen its hint text / dim mask / handles are read
-        // by BitBlt and leak into the OCR result ("OCR 多余文字"). HideForCapture
-        // moves the HWND off-screen synchronously (SetWindowPos), so the BitBlt
-        // on the very next line cannot include it regardless of compositor
-        // timing. RestoreAfterCapture moves it back; both are no-ops if the
-        // overlay is null or not showing.
-        bool toolbarWasVisible = _toolbarVisible;
-        RegionSelectOverlay? overlayForCapture = _annotationOverlay;
-        bool overlayParked = false;
-        if (toolbarWasVisible)
-        {
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                overlayForCapture?.HideForCapture();
-                overlayParked = true;
-                _windowHost.Hide();
-            });
-        }
+        // Reuse the clean PNG captured at Confirm time (RunOceanEyesCaptureAsync
+        // in App.axaml.cs) instead of BitBlting the same region again. The first
+        // capture already stored a clean PNG (no overlay/hint text) into
+        // _oceanEyesPng with _oceanEyesRect == (x,y,width,height). Re-BitBlting
+        // here would require temporarily hiding the toolbar AND parking the OE
+        // overlay off-screen — and parking the overlay makes its dim mask
+        // (#B3000000, 70% black) vanish for one frame, so the whole screen
+        // flashes bright-then-dark ("白光闪烁") right as the user triggers an
+        // action. Reusing the cached PNG does ZERO screen reads and ZERO window
+        // manipulation: no flash, no capture race, no hint-text leak. We match
+        // on all four coordinates so a stale cache from a different region can
+        // never be served.
+        byte[]? cachedPng = _oceanEyesPng;
+        bool cacheMatches = cachedPng is { Length: > 0 }
+            && _oceanEyesRect.X == x
+            && _oceanEyesRect.Y == y
+            && _oceanEyesRect.W == width
+            && _oceanEyesRect.H == height;
+
         string? dataUri;
-        try
+        if (cacheMatches)
         {
-            dataUri = ScreenRegionCapture.CaptureAsDataUri(x, y, width, height);
+            dataUri = "data:image/png;base64," + Convert.ToBase64String(cachedPng!);
         }
-        finally
+        else
         {
+            // Fallback: no matching cached PNG (a caller outside the Ocean Eyes
+            // flow, or the cache was cleared). BitBlt the region live, hiding
+            // the toolbar + parking the overlay off-screen first so neither is
+            // captured. This path retains the white-flash trade-off but is
+            // unreachable from the current Ocean Eyes flow (the only caller,
+            // EnsureOceanEyesOcrAsync, always passes _oceanEyesRect, which
+            // matches the cache). Kept to honour the public method's contract.
+            bool toolbarWasVisible = _toolbarVisible;
+            RegionSelectOverlay? overlayForCapture = _annotationOverlay;
+            bool overlayParked = false;
             if (toolbarWasVisible)
             {
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    _windowHost.ShowAtCurrentPosition();
-                    if (overlayParked)
-                    {
-                        overlayForCapture?.RestoreAfterCapture();
-                    }
+                    overlayForCapture?.HideForCapture();
+                    overlayParked = true;
+                    _windowHost.Hide();
                 });
+            }
+            try
+            {
+                dataUri = ScreenRegionCapture.CaptureAsDataUri(x, y, width, height);
+            }
+            finally
+            {
+                if (toolbarWasVisible)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        _windowHost.ShowAtCurrentPosition();
+                        if (overlayParked)
+                        {
+                            overlayForCapture?.RestoreAfterCapture();
+                        }
+                    });
+                }
             }
         }
         if (string.IsNullOrEmpty(dataUri))
