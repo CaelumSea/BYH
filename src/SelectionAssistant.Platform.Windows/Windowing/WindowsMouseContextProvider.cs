@@ -7,6 +7,17 @@ public sealed partial class WindowsMouseContextProvider
 {
     private const uint GaRoot = 2;
 
+    // Cached once: the process id never changes during the run. When the cursor
+    // is over a BYH-owned window (toolbar, result window, pinned screenshot /
+    // sticker, gallery, settings, region overlay) WindowFromPoint resolves to a
+    // HWND whose root belongs to this process. Returning Empty there stops the
+    // selection runtime from launching a capture chain against BYH itself —
+    // which otherwise ran UIA (empty, on a pure-image window) plus the full
+    // Ctrl+Insert/Ctrl+C chord chain (~1s of timeouts) on every selection that
+    // started over a sticker, producing the reported lag, and historically the
+    // second-listener clipboard crash. Selections always target other apps.
+    private static readonly uint CurrentProcessId = (uint)Environment.ProcessId;
+
     public WindowsWindowContext GetContext(int x, int y)
     {
         nint childWindow = WindowFromPoint(new NativePoint(x, y));
@@ -22,6 +33,11 @@ public sealed partial class WindowsMouseContextProvider
         }
 
         GetWindowThreadProcessId(rootWindow, out uint processId);
+        if (processId == CurrentProcessId)
+        {
+            return WindowsWindowContext.Empty;
+        }
+
         return new WindowsWindowContext(rootWindow, processId);
     }
 
