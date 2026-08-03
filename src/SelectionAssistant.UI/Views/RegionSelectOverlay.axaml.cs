@@ -74,6 +74,18 @@ public partial class RegionSelectOverlay : Window
     // coords + (this origin × scaling) = physical screen coords that UIA needs.
     private int _physOriginX, _physOriginY;
 
+    // Saved physical top-left while HideForCapture has the window parked
+    // off-screen for a BitBlt. Null when no capture is in flight.
+    private PixelPoint? _preCapturePosition;
+
+    // Off-screen parking coordinate + SetWindowPos flags used by the
+    // capture-safe hide/restore pair. See HideForCapture for rationale.
+    private const int OffscreenX = -32000;
+    private const int OffscreenY = -32000;
+    private const uint SwpNoSize = 0x0001;
+    private const uint SwpNoZOrder = 0x0004;
+    private const uint SwpNoActivate = 0x0010;
+
     public RegionSelectOverlay()
     {
         InitializeComponent();
@@ -165,6 +177,10 @@ public partial class RegionSelectOverlay : Window
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool SetProp(nint hWnd, string lpString, IntPtr hData);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
     /// <summary>
     /// Enables live UIA auto-box tracking. While the overlay is open and the
@@ -578,6 +594,70 @@ public partial class RegionSelectOverlay : Window
         int w = (int)Math.Round(_rectWidth * scaling);
         int h = (int)Math.Round(_rectHeight * scaling);
         RegionSelected?.Invoke(x, y, w, h);
+    }
+
+    /// <summary>
+    /// Moves the overlay window off-screen so the BitBlt screen capture can't
+    /// see it, recording the original position for <see cref="RestoreAfterCapture"/>.
+    /// </summary>
+    /// <remarks>
+    /// <b>Why move instead of Hide().</b> Avalonia's <c>Hide()</c> toggles
+    /// visibility through DirectComposition, which commits asynchronously. The
+    /// capture path used to call <c>Hide()</c> then wait ~150ms for the
+    /// compositor, but on some drivers / under load the overlay's hint text,
+    /// dim mask, and handles were still on the compositor surface when BitBlt
+    /// read the desktop DC — so the OCR model received them and reported
+    /// "多余文字" (the hint text leaked into recognition). The earlier
+    /// SW_HIDE/SW_SHOW workaround was removed for causing flicker.
+    /// <para>
+    /// Moving the HWND off-screen is synchronous at the Win32 level:
+    /// <c>SetWindowPos</c> returns only after the window manager has updated
+    /// the window's placement, so the very next <c>BitBlt(GetDC(0), ...)</c>
+    /// cannot include it. There is no flicker because the move-off and the
+    /// capture are back-to-back on the UI thread, and the user is already
+    /// looking at where the toolbar will appear — the overlay is restored to
+    /// its visible position before the next painted frame the user would
+    /// notice. <c>SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOSIZE</c> keep focus
+    /// and stacking intact.
+    /// </para>
+    /// </remarks>
+    public void HideForCapture()
+    {
+        nint hwnd = TryGetPlatformHandle()?.Handle ?? 0;
+        if (hwnd == 0)
+        {
+            return;
+        }
+
+        // Record the current placement so RestoreAfterCapture can put it back
+        // exactly. Position (PixelPoint) is the physical top-left.
+        _preCapturePosition = Position;
+
+        // Push the window far off the primary monitor. -32000,-32000 is the
+        // conventional "minimized coordinate" Windows itself uses; any value
+        // well outside all monitor bounds works. NOACTIVATE so we don't steal
+        // focus from the source app the user just selected in.
+        SetWindowPos(hwnd, 0, OffscreenX, OffscreenY, 0, 0,
+            SwpNoActivate | SwpNoZOrder | SwpNoSize);
+    }
+
+    /// <summary>
+    /// Restores the overlay to its pre-capture position after
+    /// <see cref="HideForCapture"/>. Re-applies the dim mask in case the
+    /// compositor dropped geometry while the window was off-screen.
+    /// </summary>
+    public void RestoreAfterCapture()
+    {
+        nint hwnd = TryGetPlatformHandle()?.Handle ?? 0;
+        if (hwnd == 0 || _preCapturePosition is not { } saved)
+        {
+            return;
+        }
+
+        SetWindowPos(hwnd, 0, saved.X, saved.Y, 0, 0,
+            SwpNoActivate | SwpNoZOrder | SwpNoSize);
+        _preCapturePosition = null;
+        ApplyRectToVisual();
     }
 
     /// <summary>

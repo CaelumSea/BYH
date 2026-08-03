@@ -1909,35 +1909,53 @@ public partial class App : Application
                 return;
             }
 
-            // R42: overlay is visible + locked after Confirm(). Hide it so the
-            // BitBlt capture doesn't include dim mask, dashed border, or handles.
-            _regionOverlay.Hide();
-            await WaitForCompositorSettleAsync().ConfigureAwait(true);
-
-            var captured = ScreenRegionCapture.CaptureAsPngAndBgra(x, y, w, h);
-            if (captured is null)
+            // R42: overlay is visible + locked after Confirm(). Move it off-screen
+            // for the BitBlt capture so the dim mask, dashed border, handles, and
+            // the top-left hint text are never read by BitBlt. We use
+            // SetWindowPos (synchronous at the Win32 level) instead of Hide()
+            // because Avalonia's visibility toggle commits asynchronously through
+            // DirectComposition and on some drivers the overlay was still on the
+            // compositor surface when BitBlt ran — the hint text leaked into OCR.
+            _regionOverlay.HideForCapture();
+            try
             {
-                // Capture failed — clean up the overlay entirely.
-                _regionOverlay.Cancel();
-                return;
+                // A short pump so any in-flight paint from the move drains; the
+                // move itself is already applied, this only guards the DWM queue.
+                await WaitForCompositorSettleAsync().ConfigureAwait(true);
+
+                var captured = ScreenRegionCapture.CaptureAsPngAndBgra(x, y, w, h);
+                if (captured is null)
+                {
+                    // Capture failed — clean up the overlay entirely.
+                    _regionOverlay.Cancel();
+                    return;
+                }
+                byte[] png = captured.Value.Png;
+                byte[] bgra = captured.Value.Bgra;
+
+                // R42: restore the overlay in its confirmed/locked state so the user
+                // still sees the selected region while the toolbar appears.
+                _regionOverlay.RestoreAfterCapture();
+
+                int anchorX = x + w;   // right edge of the drawn region
+                int anchorY = y;       // top edge
+
+                // R41: Show the toolbar in "未识别" state with buttons disabled. OCR
+                // does NOT run here — it's deferred to the first F/J/Z/R/C press via
+                // SelectionRuntime.EnsureOceanEyesOcrAsync. The rect is passed so the
+                // runtime knows where to OCR when the user triggers it.
+                // R48: also passes the raw BGRA buffer so annotation burn-in skips
+                // the lossy Avalonia.Bitmap decode (which throws on some PNGs in 12).
+                _runtime.ShowToolbarForOceanEyes(anchorX, anchorY, png, bgra, x, y, w, h);
             }
-            byte[] png = captured.Value.Png;
-            byte[] bgra = captured.Value.Bgra;
-
-            // R42: restore the overlay in its confirmed/locked state so the user
-            // still sees the selected region while the toolbar appears.
-            _regionOverlay.ShowConfirmed();
-
-            int anchorX = x + w;   // right edge of the drawn region
-            int anchorY = y;       // top edge
-
-            // R41: Show the toolbar in "未识别" state with buttons disabled. OCR
-            // does NOT run here — it's deferred to the first F/J/Z/R/C press via
-            // SelectionRuntime.EnsureOceanEyesOcrAsync. The rect is passed so the
-            // runtime knows where to OCR when the user triggers it.
-            // R48: also passes the raw BGRA buffer so annotation burn-in skips
-            // the lossy Avalonia.Bitmap decode (which throws on some PNGs in 12).
-            _runtime.ShowToolbarForOceanEyes(anchorX, anchorY, png, bgra, x, y, w, h);
+            finally
+            {
+                // If anything between HideForCapture and RestoreAfterCapture threw
+                // (or the early-return null-capture path ran), make sure the overlay
+                // is back on-screen + visible so the user isn't left with an
+                // invisible locked overlay. RestoreAfterCapture is idempotent.
+                _regionOverlay.RestoreAfterCapture();
+            }
         }
         finally
         {
