@@ -26,10 +26,30 @@ public static class DibToPngConverter
     /// pixel dimensions. Returns null for truncated data, unsupported
     /// compression, unsupported bit depths, or a payload that is too small to
     /// hold the declared pixels (never throws).</summary>
+    /// <remarks>Convenience overload for non-pooled byte arrays. Equivalent to
+    /// <see cref="ConvertDibToPng(byte[], int)"/> with <c>length = dib.Length</c>.</remarks>
     public static (byte[] Png, int Width, int Height)? ConvertDibToPng(byte[] dib)
     {
         ArgumentNullException.ThrowIfNull(dib);
-        if (dib.Length < BitmapInfoHeaderSize || dib.Length > MaxDibBytes)
+        return ConvertDibToPng(dib, dib.Length);
+    }
+
+    /// <summary>Converts a <c>CF_DIB</c> byte payload to PNG bytes plus the
+    /// pixel dimensions. Returns null for truncated data, unsupported
+    /// compression, unsupported bit depths, or a payload that is too small to
+    /// hold the declared pixels (never throws).</summary>
+    /// <param name="length">The number of valid bytes in <paramref name="dib"/>.
+    /// P2: when <paramref name="dib"/> is an oversized ArrayPool rental, only
+    /// the first <paramref name="length"/> bytes are the real DIB; reading
+    /// <c>dib.Length</c> would read garbage padding.</param>
+    public static (byte[] Png, int Width, int Height)? ConvertDibToPng(byte[] dib, int length)
+    {
+        ArgumentNullException.ThrowIfNull(dib);
+        if ((uint)length > (uint)dib.Length)
+        {
+            return null;
+        }
+        if (length < BitmapInfoHeaderSize || length > MaxDibBytes)
         {
             return null;
         }
@@ -85,7 +105,7 @@ public static class DibToPngConverter
         }
 
         long expectedBytesLong = BitmapInfoHeaderSize + rowStrideLong * absHeight;
-        if (expectedBytesLong > dib.Length || expectedBytesLong > MaxDibBytes)
+        if (expectedBytesLong > length || expectedBytesLong > MaxDibBytes)
         {
             return null;
         }

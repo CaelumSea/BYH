@@ -1123,6 +1123,21 @@ internal static class Program
         AppBuilder.Configure<App>()
             .UsePlatformDetect()
             .WithInterFont()
+            // Cap Skia's GPU texture/resource cache. Avalonia's default is
+            // 1024*600*4*12 ≈ 28 MB of video memory for cached textures and Skia
+            // resources. BYH is a tray tool that creates many short-lived
+            // transparent windows (stickers, toolbar, region overlay, result
+            // popups) plus a gallery of decoded screenshots; over a long session
+            // the GPU texture cache + per-window surfaces were the dominant
+            // contributor to a 932 MB working set (atidxx64.dll ~31 MB + ANGLE
+            // EGL surfaces + Skia GPU caches). 16 MB is still ample for the few
+            // simultaneously-visible windows while bounding the growth from
+            // surfaces that linger after a window is hidden. Visual quality is
+            // unchanged — this only caps the cache, not what gets rendered.
+            .With(new SkiaOptions
+            {
+                MaxGpuResourceSizeBytes = 1024 * 1024 * 16, // 16 MB (default ~28 MB)
+            })
             .LogToTrace();
 
     private static int ProbeUiAutomationOnMtaThread()

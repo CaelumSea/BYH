@@ -1033,13 +1033,22 @@ public sealed class ClipboardHistoryService : IDisposable
     /// </summary>
     private ClipboardEntry? TryCaptureImage(string? sourceProcessName)
     {
-        byte[]? dib = _clipboard.GetImageDib();
-        if (dib is null || dib.Length == 0)
+        // P2 memory: read the CF_DIB via the ArrayPool-backed path so the
+        // up-to-32 MB buffer is rented (not `new byte[]`), then returned by the
+        // `using` below once we've copied the bytes into the PNG + written the
+        // .dib file. Without this every clipboard-image change allocated a
+        // fresh LOH byte[] (NativeAOT LOH never compacts / returns to OS),
+        // which was the second source of idle private-bytes growth after the
+        // Backup() path. Payload.Length is the valid byte count; Buffer may be
+        // an oversized pool rental, so all consumers use the length.
+        using ImageDibPayload dib = _clipboard.GetImageDibPooled();
+        if (dib.IsEmpty)
         {
             return null;
         }
 
-        (byte[] png, int width, int height)? converted = DibToPngConverter.ConvertDibToPng(dib);
+        (byte[] png, int width, int height)? converted =
+            DibToPngConverter.ConvertDibToPng(dib.Buffer, dib.Length);
         if (converted is null)
         {
             _logger.Info("ClipboardHistory", "Image capture skipped: unsupported DIB format.");
@@ -1071,9 +1080,11 @@ public sealed class ClipboardHistoryService : IDisposable
             // DIB avoids a lossy PNG→DIB re-encode and restores the exact bytes
             // the source app put up. We still keep the PNG too (used for the
             // thumbnail decode + any PNG-preferring consumer).
+            // P2: write only dib.Length bytes (Buffer may be an oversized pool
+            // rental; writing the whole array would persist garbage padding).
             if (!File.Exists(dibPath))
             {
-                File.WriteAllBytes(dibPath, dib);
+                WriteAllBytes(dibPath, dib.Buffer, dib.Length);
             }
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -1092,6 +1103,19 @@ public sealed class ClipboardHistoryService : IDisposable
             Group = ClipboardGroup.Text, // images are not Smart-auto-grouped
             IsSensitive = false,
         };
+    }
+
+    /// <summary>P2: writes the first <paramref name="length"/> bytes of
+    /// <paramref name="buffer"/> to <paramref name="path"/>. Used by
+    /// <see cref="TryCaptureImage"/> where <paramref name="buffer"/> may be an
+    /// oversized ArrayPool rental (the valid payload is
+    /// <paramref name="length"/>, not buffer.Length). Equivalent to
+    /// <see cref="File.WriteAllBytes(string, byte[])"/> but length-bounded.</summary>
+    private static void WriteAllBytes(string path, byte[] buffer, int length)
+    {
+        using var stream = new FileStream(path, FileMode.Create, FileAccess.Write,
+            FileShare.None, bufferSize: 81920, useAsync: false);
+        stream.Write(buffer, 0, length);
     }
 
     /// <summary>

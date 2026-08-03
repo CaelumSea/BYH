@@ -255,6 +255,16 @@ public partial class ClipboardHistoryWindow : Window
             CancelLongPressTracking();
             ExitMultiSelectMode();
             Hide();
+            // P1 memory: the window is hidden now. Drop every row model + decoded
+            // bitmap so a long session doesn't keep hundreds of MB of native WIC
+            // pixel buffers alive while the popup is closed. Safe because
+            // RefreshClipboardHistoryWindow (App) repopulates _allRows on every
+            // open before Show(), so next activation rebuilds from the service
+            // snapshot. Synchronous (no dispatch) — Hide() just flips visibility,
+            // it does not touch the row collections, and staying synchronous
+            // avoids a reopen race where a deferred UnloadRows could clear rows
+            // that a fresh SetEntries just pushed.
+            UnloadRows();
         };
         Closing += (sender, e) =>
         {
@@ -321,6 +331,15 @@ public partial class ClipboardHistoryWindow : Window
     {
         ExitMultiSelectMode();
         _maskSensitive = maskSensitive;
+        // Dispose the decoded bitmaps (Thumbnail/FullBitmap) of the rows we are
+        // about to drop, otherwise the native WIC pixel buffers behind them only
+        // get reclaimed by GC finalization — late and unpredictable. A handful
+        // of expanded screenshots (8–33 MB each decoded) is the main driver of
+        // high working set over a long session. Safe to call before Clear()
+        // because the rows are about to be replaced wholesale; the still-in-flight
+        // LoadThumbnails worker matches by Id and disposes its own decoded thumb
+        // if the target row is gone (LoadThumbnails post callback).
+        ReleaseAllRowBitmaps();
         _allRows.Clear();
         // R54 v2: rebuild the entry-tag autocomplete set from the incoming
         // snapshot (union of every entry's tags). Pure projection — the store
@@ -636,6 +655,40 @@ public partial class ClipboardHistoryWindow : Window
         _allowClose = true;
         _searchFilterCancellation?.Cancel();
         _searchIndexCancellation?.Cancel();
+        // Drop the decoded bitmaps + the row models so nothing large is pinned
+        // while the window is torn down for app exit.
+        UnloadRows();
+    }
+
+    /// <summary>Disposes the <see cref="ClipboardHistoryEntryRow.Thumbnail"/> and
+    /// <see cref="ClipboardHistoryEntryRow.FullBitmap"/> of every row in
+    /// <c>_allRows</c>. Pure resource release — does not mutate the collections.
+    /// Used by <see cref="SetEntries"/> (before the rebuild) and by
+    /// <see cref="UnloadRows"/>/<see cref="PrepareForShutdown"/>.</summary>
+    private void ReleaseAllRowBitmaps()
+    {
+        // _allRows is the canonical set; _filteredRows/_filteredPool reference
+        // the same row instances, so releasing via _allRows covers all three.
+        foreach (ClipboardHistoryEntryRow row in _allRows)
+        {
+            row.ReleaseBitmaps();
+        }
+    }
+
+    /// <summary>P1 memory: drops every row model + decoded bitmap when the
+    /// history window is hidden so a long session does not keep hundreds of MB
+    /// of native pixel buffers alive while the popup is closed. Idempotent and
+    /// safe to call repeatedly — <see cref="RefreshClipboardHistoryWindow"/>
+    /// (App.axaml.cs) repopulates <c>_allRows</c> on every open, so an empty
+    /// window simply rebuilds on next show. Also called from
+    /// <see cref="PrepareForShutdown"/> at app exit.</summary>
+    private void UnloadRows()
+    {
+        ReleaseAllRowBitmaps();
+        _allRows.Clear();
+        _filteredRows.Clear();
+        _filteredPool.Clear();
+        _visibleCount = 0;
     }
 
     // ── Row construction ──

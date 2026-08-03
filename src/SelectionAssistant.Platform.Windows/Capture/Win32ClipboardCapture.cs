@@ -258,6 +258,14 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
             {
                 RestoreOriginalClipboard(snapshot, expectedSequence);
             }
+
+            // P2 memory: release the ArrayPool-rented CF_DIB buffer now that
+            // Restore (if it ran) has copied the bytes into a fresh HGLOBAL, or
+            // the capture was abandoned (NoCapture). Without this the rented
+            // buffer (up to MaxDibBytes = 32 MB) waits for GC, defeating the
+            // whole point of pooling on NativeAOT's non-compacting LOH. Restore
+            // completes synchronously above, so the buffer is no longer needed.
+            snapshot.Dispose();
         }
     }
 

@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -98,20 +99,41 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
                 string? text = IsClipboardFormatAvailable(CfUnicodeText)
                     ? TryReadUnicodeText(MaxTextBytes)
                     : null;
-                byte[]? dib = IsClipboardFormatAvailable(CfDib)
-                    ? TryReadGlobalBytes(CfDib, MaxDibBytes)
-                    : null;
+                // P2 memory: rent the CF_DIB buffer from ArrayPool instead of
+                // `new byte[]`. A screen-shot CF_DIB can be up to MaxDibBytes
+                // (32 MB); the selection-capture path calls Backup() on every
+                // Ctrl+Insert/Ctrl+C probe (logs show ~9 probes/30s bursts), and
+                // each `new byte[]` lands on the NativeAOT large-object heap,
+                // which does NOT compact and does NOT return committed memory to
+                // the OS — so private bytes climbed to 660 MB on an otherwise
+                // idle process. Renting keeps the same buffer circulating in the
+                // pool across probes. The rented buffer is owned by the returned
+                // snapshot; Restore() copies the first dibLen bytes into a fresh
+                // HGLOBAL, after which the snapshot must be Dispose()d by
+                // Win32ClipboardCapture to return the buffer.
+                // Privacy: Return(..., clearArray: true) zeroes the buffer before
+                // it re-enters the pool — without this, stale clipboard screenshot
+                // bytes could be read by the next borrower that over-reads past
+                // its logical length. Clearing costs ~one memset of dibLen (the
+                // same data we just copied), negligible vs. the GDI read.
+                (byte[]? dib, int dibLen) = IsClipboardFormatAvailable(CfDib)
+                    ? TryReadGlobalBytesPooled(CfDib, MaxDibBytes)
+                    : (null, 0);
                 string[]? files = IsClipboardFormatAvailable(CfHDrop)
                     ? TryReadFiles()
                     : null;
 
                 return new ClipboardSnapshot(
-                    sequence,
-                    text,
-                    dib,
-                    files,
-                    BackupSucceeded: true,
-                    WasEmpty: wasEmpty);
+                    sequenceNumber: sequence,
+                    text: text,
+                    imageDib: dib,
+                    imageDibLength: dibLen,
+                    files: files,
+                    backupSucceeded: true,
+                    wasEmpty: wasEmpty,
+                    disposeHook: dib is null
+                        ? null
+                        : () => ArrayPool<byte>.Shared.Return(dib, clearArray: true));
             },
             out ClipboardSnapshot? snapshot)
             ? snapshot!
@@ -147,6 +169,43 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
             out byte[]? dib)
             ? dib
             : null;
+    }
+
+    /// <summary>P2 memory: ArrayPool-backed variant of <see cref="GetImageDib"/>.
+    /// Returns a pooled payload whose <see cref="ImageDibPayload.Buffer"/> may be
+    /// larger than <see cref="ImageDibPayload.Length"/> (ArrayPool rounds up to a
+    /// bucket); the caller must read only <see cref="ImageDibPayload.Length"/>
+    /// bytes and <c>Dispose</c> the payload (ideally via <c>using</c>) so the
+    /// buffer returns to the pool instead of landing on the NativeAOT LOH. The
+    /// clipboard-history image path (<c>ClipboardHistoryService.TryCaptureImage</c>)
+    /// fires on every clipboard image change; pooling the up-to-32 MB CF_DIB read
+    /// there mirrors the Backup() fix and closes the second LOH-churn source.
+    /// Returns an empty payload (<see cref="ImageDibPayload.IsEmpty"/> true) when
+    /// the clipboard holds no image or the read fails.</summary>
+    public ImageDibPayload GetImageDibPooled()
+    {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+        bool ok = TryWithOpenClipboard(
+            () =>
+            {
+                if (!IsClipboardFormatAvailable(CfDib))
+                {
+                    return (null, 0);
+                }
+                return TryReadGlobalBytesPooled(CfDib, MaxDibBytes);
+            },
+            out (byte[]? Buffer, int Length) result);
+        if (!ok || result.Buffer is null || result.Length == 0)
+        {
+            return ImageDibPayload.Empty;
+        }
+        // Capture the rented buffer into a local so the dispose closure can't
+        // be confused by later reassignment; clearArray:true zeroes the bytes
+        // (privacy: stale clipboard screenshot must not leak to the next
+        // borrower that over-reads past Length).
+        byte[] buffer = result.Buffer;
+        return new ImageDibPayload(buffer, result.Length,
+            () => ArrayPool<byte>.Shared.Return(buffer, clearArray: true));
     }
 
     public bool Restore(ClipboardSnapshot snapshot, uint expectedSequence)
@@ -675,6 +734,57 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
         }
     }
 
+    /// <summary>P2 memory: ArrayPool-backed variant of
+    /// <see cref="TryReadGlobalBytes"/>. Returns the rented buffer (which may be
+    /// larger than <paramref name="maxBytes"/> or the actual payload — ArrayPool
+    /// rounds up to a bucket) plus the actual byte count read. The caller owns
+    /// the buffer and must <c>ArrayPool.Return</c> it. Used by <see cref="Backup"/>
+    /// so the CF_DIB (up to 32 MB) is not allocated on the NativeAOT large-object
+    /// heap on every selection probe. Returns (null, 0) on any failure.</summary>
+    private static (byte[]? buffer, int length) TryReadGlobalBytesPooled(
+        uint format, int maxBytes)
+    {
+        nint memory = GetClipboardData(format);
+        if (memory == 0)
+        {
+            return (null, 0);
+        }
+
+        nuint byteCount = GlobalSize(memory);
+        if (byteCount == 0 || byteCount > (nuint)maxBytes)
+        {
+            return (null, 0);
+        }
+
+        nint pointer = GlobalLock(memory);
+        if (pointer == 0)
+        {
+            return (null, 0);
+        }
+
+        try
+        {
+            int len = checked((int)byteCount);
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(len);
+            try
+            {
+                Marshal.Copy(pointer, buffer, 0, len);
+                return (buffer, len);
+            }
+            catch
+            {
+                // Privacy: clear on the failure path too — a partial Marshal.Copy
+                // may have written clipboard bytes before throwing.
+                ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
+                throw;
+            }
+        }
+        finally
+        {
+            GlobalUnlock(memory);
+        }
+    }
+
     private static string[]? TryReadFiles()
     {
         nint dropHandle = GetClipboardData(CfHDrop);
@@ -722,9 +832,13 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
                     AllocateGlobal(Encoding.Unicode.GetBytes(snapshot.Text + '\0'))));
             }
 
-            if (snapshot.ImageDib is not null)
+            if (snapshot.ImageDib is not null && snapshot.ImageDibLength > 0)
             {
-                allocations.Add(new OwnedClipboardMemory(CfDib, AllocateGlobal(snapshot.ImageDib)));
+                // P2: copy only the valid prefix (ImageDibLength). The buffer may
+                // be an oversized ArrayPool rental; copying the whole array would
+                // write garbage padding into the restored CF_DIB and waste HGLOBAL.
+                allocations.Add(new OwnedClipboardMemory(CfDib,
+                    AllocateGlobal(snapshot.ImageDib, snapshot.ImageDibLength)));
             }
 
             if (snapshot.Files is not null)
@@ -763,6 +877,44 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
         try
         {
             Marshal.Copy(bytes, 0, pointer, bytes.Length);
+        }
+        finally
+        {
+            GlobalUnlock(memory);
+        }
+
+        return memory;
+    }
+
+    /// <summary>P2: allocates a GlobalAlloc HGLOBAL of exactly
+    /// <paramref name="length"/> bytes and copies the first
+    /// <paramref name="length"/> bytes of <paramref name="bytes"/> into it. Used
+    /// by Restore when <paramref name="bytes"/> is an oversized ArrayPool rental
+    /// (the valid payload is <paramref name="length"/>, not bytes.Length).</summary>
+    private static nint AllocateGlobal(byte[] bytes, int length)
+    {
+        ArgumentNullException.ThrowIfNull(bytes);
+        if ((uint)length > (uint)bytes.Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(length));
+        }
+
+        nint memory = GlobalAlloc(GmemMoveable | GmemZeroInit, checked((nuint)length));
+        if (memory == 0)
+        {
+            throw new OutOfMemoryException("GlobalAlloc failed for clipboard data.");
+        }
+
+        nint pointer = GlobalLock(memory);
+        if (pointer == 0)
+        {
+            GlobalFree(memory);
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "GlobalLock failed for clipboard data.");
+        }
+
+        try
+        {
+            Marshal.Copy(bytes, 0, pointer, length);
         }
         finally
         {
@@ -1092,4 +1244,50 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
     [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16, EntryPoint = "UnregisterClassW")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static partial bool UnregisterClass(string className, nint instance);
+}
+
+/// <summary>P2 memory: the pooled result of <see cref="Win32Clipboard.GetImageDibPooled"/>.
+/// <see cref="Buffer"/> is an ArrayPool rental that may be larger than
+/// <see cref="Length"/> (bucket rounding); read only <see cref="Length"/> bytes.
+/// Dispose (via <c>using</c>) returns the buffer to the pool, clearing it first
+/// (privacy). The default value is an empty payload (no buffer, no-op Dispose).
+/// </summary>
+public sealed class ImageDibPayload : IDisposable
+{
+    private Action? _disposeHook;
+
+    /// <summary>Singleton empty payload: no buffer, IsEmpty true, Dispose no-op.
+    /// Returned by <see cref="Win32Clipboard.GetImageDibPooled"/> on failure /
+    /// no-image so callers never get null.</summary>
+    public static ImageDibPayload Empty { get; } = new();
+
+    private ImageDibPayload()
+    {
+        Buffer = null!;
+        Length = 0;
+        _disposeHook = null;
+    }
+
+    /// <summary>Internal ctor used by <see cref="Win32Clipboard.GetImageDibPooled"/>.</summary>
+    internal ImageDibPayload(byte[] buffer, int length, Action disposeHook)
+    {
+        Buffer = buffer;
+        Length = length;
+        _disposeHook = disposeHook;
+    }
+
+    /// <summary>The rented CF_DIB buffer. Read only <see cref="Length"/> bytes.</summary>
+    public byte[] Buffer { get; }
+
+    /// <summary>The number of valid DIB bytes in <see cref="Buffer"/>.</summary>
+    public int Length { get; }
+
+    /// <summary>True when the clipboard had no image / the read failed.</summary>
+    public bool IsEmpty => Buffer is null || Length == 0;
+
+    /// <summary>Convenience: a <see cref="ReadOnlySpan{T}"/> over the valid bytes.</summary>
+    public ReadOnlySpan<byte> Span => Buffer.AsSpan(0, Length);
+
+    /// <summary>Returns the buffer to the pool (clears it). Idempotent.</summary>
+    public void Dispose() => Interlocked.Exchange(ref _disposeHook, null)?.Invoke();
 }

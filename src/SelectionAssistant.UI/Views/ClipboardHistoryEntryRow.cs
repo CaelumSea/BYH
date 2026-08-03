@@ -14,7 +14,7 @@ namespace SelectionAssistant.UI.Views;
 /// data-bind <c>Classes.Active</c> to <see cref="IsSelected"/> (same machinery
 /// as the Spotlight panel — see <see cref="LauncherEntryRow"/> docs).
 /// </summary>
-public sealed class ClipboardHistoryEntryRow : INotifyPropertyChanged
+public sealed partial class ClipboardHistoryEntryRow : INotifyPropertyChanged
 {
     /// <summary>Stable id (matches <see cref="ClipboardEntry.Id"/>).</summary>
     public Guid Id { get; init; }
@@ -296,6 +296,33 @@ public sealed class ClipboardHistoryEntryRow : INotifyPropertyChanged
         }
     }
     private bool _isMultiSelected;
+
+    /// <summary>Disposes the decoded <see cref="Thumbnail"/> and
+    /// <see cref="FullBitmap"/> bitmaps (releases the native WIC pixel buffer
+    /// backing each) and nulls both fields. Idempotent. Call when the row is
+    /// about to leave the live set — a snapshot refresh
+    /// (<see cref="ClipboardHistoryWindow.SetEntries"/> rebuilds
+    /// <c>_allRows</c>) or the history window is being hidden/unloaded. Without
+    /// this the native pixel buffers behind a decoded <see cref="Bitmap"/> only
+    /// get reclaimed by GC finalization, which is late and unpredictable; a
+    /// handful of expanded screenshots (8–33 MB each decoded) is the main driver
+    /// of high working set. Must run on the UI thread, same as the property
+    /// setters — Avalonia <see cref="Bitmap"/> is not thread-safe.</summary>
+    public void ReleaseBitmaps()
+    {
+        if (_thumbnail is not null)
+        {
+            _thumbnail.Dispose();
+            _thumbnail = null;
+            OnPropertyChanged(nameof(Thumbnail));
+        }
+        if (_fullBitmap is not null)
+        {
+            _fullBitmap.Dispose();
+            _fullBitmap = null;
+            OnPropertyChanged(nameof(FullBitmap));
+        }
+    }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
