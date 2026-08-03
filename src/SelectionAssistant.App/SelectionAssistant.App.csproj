@@ -48,7 +48,14 @@
     <TrimMode>full</TrimMode>
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
     <DynamicLoading>false</DynamicLoading>
-    <StripSymbols>true</StripSymbols>
+    <!-- Keep native PDB symbols so WER minidumps from field crashes can be
+         resolved to function names + offsets in WinDbg/cdb. The 2026-08-03
+         0xc0000409 crash couldn't be symbolicated because symbols were stripped
+         (StripSymbols=true). PDBs stay beside the exe (~10-20 MB) and do NOT
+         bloat BYH.exe itself; the deliberate-delete target below is disabled
+         while we diagnose the capture/clipboard crash family. Revert to
+         StripSymbols=true once the crash is resolved. -->
+    <StripSymbols>false</StripSymbols>
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
     <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
@@ -74,9 +81,12 @@
     <ProjectReference Include="..\SelectionAssistant.Infrastructure\SelectionAssistant.Infrastructure.csproj" />
   </ItemGroup>
 
+  <!-- Disabled while StripSymbols=false so native PDBs reach the publish dir
+       for crash dump symbolication. Re-enable (flip condition to true) once the
+       capture/clipboard crash family is resolved. -->
   <Target Name="RemovePublishedDebugSymbols"
           AfterTargets="Publish"
-          Condition="'$(Configuration)' == 'Release'">
+          Condition="'$(Configuration)' == 'Release' AND '$(StripSymbols)' == 'true'">
     <ItemGroup>
       <PublishedDebugSymbols Include="$(PublishDir)**\*.pdb" />
     </ItemGroup>

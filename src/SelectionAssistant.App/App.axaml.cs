@@ -64,6 +64,15 @@ public partial class App : Application
     // (QuickToolsWindow) is retired; Ctrl+Alt+Q now enters this overlay
     // directly and the OCR text flows into the shared ToolbarWindow.
     private RegionSelectOverlay? _regionOverlay;
+    // Ocean Eyes capture reentry guard. OnRegionSelected is async void and
+    // RunOceanEyesCaptureAsync awaits WaitForCompositorSettleAsync (3 dispatcher
+    // yields + 150 ms Task.Delay) before BitBlt-ing. During that pump window a
+    // second Confirm (Enter), global hotkey, or chord can re-enter and start a
+    // second capture session that overwrites the first's _oceanEyesPng/_oceanEyesBgra
+    // state and interleaves another capture. The CAS sets 1 on entry and the
+    // RunOceanEyesCaptureAsync finally resets it to 0 on every exit path, so any
+    // reentry during the settle window is silently swallowed.
+    private int _oceanEyesCaptureInProgress;
     private WindowsGlobalHotKey? _oceanEyesHotKey;
     private OceanEyesTriggerSettings _oceanEyesTrigger = OceanEyesTriggerSettings.Default;
     private string? _oceanEyesLoadWarning;
@@ -452,6 +461,18 @@ public partial class App : Application
                 try
                 {
                     var clipboard = new Win32Clipboard();
+                    // Share this long-lived instance with the runtime so its
+                    // copy paths (Enter-to-save, gallery copy, pinned copy)
+                    // reuse it instead of allocating throwaway Win32Clipboard
+                    // instances. Throwaway instances shared the static
+                    // SharedWindowProcedure + Instances map with this listener
+                    // instance, and disposing them while WM_CLIPBOARDUPDATE was
+                    // in flight corrupted the stack (0xc0000409). Inject before
+                    // constructing the service: even if the service ctor throws
+                    // below, the runtime still gets a usable clipboard. _runtime
+                    // is non-null here (assigned at line ~442; the surrounding
+                    // code dereferences it directly — _runtime.Start, etc.).
+                    _runtime.SetSharedClipboard(clipboard);
                     // R54 v2 Phase 2: encrypt sensitive entries' text in the
                     // persisted JSON via DPAPI (CurrentUser scope). Constructed
                     // unconditionally — if construction itself ever fails it
@@ -1861,6 +1882,15 @@ public partial class App : Application
             return;
         }
 
+        // Swallow reentry during the in-flight capture (see
+        // _oceanEyesCaptureInProgress). A second Confirm/hotkey/chord that
+        // arrives while the first session is still settling+capturing is
+        // dropped here rather than opening a second overlay session.
+        if (Interlocked.CompareExchange(ref _oceanEyesCaptureInProgress, 1, 0) != 0)
+        {
+            return;
+        }
+
         _ = RunOceanEyesCaptureAsync(x, y, w, h);
     }
 
@@ -1872,40 +1902,50 @@ public partial class App : Application
     /// </summary>
     private async Task RunOceanEyesCaptureAsync(int x, int y, int w, int h)
     {
-        if (_runtime is null || _regionOverlay is null)
+        try
         {
-            return;
+            if (_runtime is null || _regionOverlay is null)
+            {
+                return;
+            }
+
+            // R42: overlay is visible + locked after Confirm(). Hide it so the
+            // BitBlt capture doesn't include dim mask, dashed border, or handles.
+            _regionOverlay.Hide();
+            await WaitForCompositorSettleAsync().ConfigureAwait(true);
+
+            var captured = ScreenRegionCapture.CaptureAsPngAndBgra(x, y, w, h);
+            if (captured is null)
+            {
+                // Capture failed — clean up the overlay entirely.
+                _regionOverlay.Cancel();
+                return;
+            }
+            byte[] png = captured.Value.Png;
+            byte[] bgra = captured.Value.Bgra;
+
+            // R42: restore the overlay in its confirmed/locked state so the user
+            // still sees the selected region while the toolbar appears.
+            _regionOverlay.ShowConfirmed();
+
+            int anchorX = x + w;   // right edge of the drawn region
+            int anchorY = y;       // top edge
+
+            // R41: Show the toolbar in "未识别" state with buttons disabled. OCR
+            // does NOT run here — it's deferred to the first F/J/Z/R/C press via
+            // SelectionRuntime.EnsureOceanEyesOcrAsync. The rect is passed so the
+            // runtime knows where to OCR when the user triggers it.
+            // R48: also passes the raw BGRA buffer so annotation burn-in skips
+            // the lossy Avalonia.Bitmap decode (which throws on some PNGs in 12).
+            _runtime.ShowToolbarForOceanEyes(anchorX, anchorY, png, bgra, x, y, w, h);
         }
-
-        // R42: overlay is visible + locked after Confirm(). Hide it so the
-        // BitBlt capture doesn't include dim mask, dashed border, or handles.
-        _regionOverlay.Hide();
-        await WaitForCompositorSettleAsync().ConfigureAwait(true);
-
-        var captured = ScreenRegionCapture.CaptureAsPngAndBgra(x, y, w, h);
-        if (captured is null)
+        finally
         {
-            // Capture failed — clean up the overlay entirely.
-            _regionOverlay.Cancel();
-            return;
+            // Release the reentry guard on every exit path (normal completion,
+            // null-runtime/overlay early return, capture-failed Cancel, and any
+            // exception). Paired with the CAS in OnRegionSelected.
+            Interlocked.Exchange(ref _oceanEyesCaptureInProgress, 0);
         }
-        byte[] png = captured.Value.Png;
-        byte[] bgra = captured.Value.Bgra;
-
-        // R42: restore the overlay in its confirmed/locked state so the user
-        // still sees the selected region while the toolbar appears.
-        _regionOverlay.ShowConfirmed();
-
-        int anchorX = x + w;   // right edge of the drawn region
-        int anchorY = y;       // top edge
-
-        // R41: Show the toolbar in "未识别" state with buttons disabled. OCR
-        // does NOT run here — it's deferred to the first F/J/Z/R/C press via
-        // SelectionRuntime.EnsureOceanEyesOcrAsync. The rect is passed so the
-        // runtime knows where to OCR when the user triggers it.
-        // R48: also passes the raw BGRA buffer so annotation burn-in skips
-        // the lossy Avalonia.Bitmap decode (which throws on some PNGs in 12).
-        _runtime.ShowToolbarForOceanEyes(anchorX, anchorY, png, bgra, x, y, w, h);
     }
 
     /// <summary>

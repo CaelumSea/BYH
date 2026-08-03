@@ -77,6 +77,20 @@ internal sealed class SelectionRuntime : IDisposable
     private int _mouseChordEnabled;
     private int _disposed;
 
+    // Shared Win32Clipboard injected by App (the same long-lived instance
+    // ClipboardHistoryService holds). Reusing it instead of creating a throwaway
+    // new Win32Clipboard() on every copy/save eliminates the dispose/callback
+    // race that caused 0xc0000409 crashes: each throwaway instance shared the
+    // static SharedWindowProcedure + Instances map with the long-lived listener
+    // instance, and disposing the throwaway while the listener handled
+    // WM_CLIPBOARDUPDATE corrupted the stack. The instance-level _clipboardGate
+    // inside Win32Clipboard serializes all cross-thread access to this shared
+    // instance (Task.Run writer + STA listener reader), which is exactly the
+    // mutual exclusion the throwaway-per-call design lacked. Null until App
+    // calls SetSharedClipboard; GetClipboardForWrite falls back to a temporary
+    // instance in that window so the copy paths still work during early startup.
+    private volatile Win32Clipboard? _sharedClipboard;
+
     // R40 Ocean Eyes: when the user completes a region box, we capture the PNG
     // bytes once (before showing the toolbar so the toolbar isn't in the shot),
     // then show the SAME ToolbarWindow that the selection flow uses — the
@@ -386,6 +400,35 @@ internal sealed class SelectionRuntime : IDisposable
         Volatile.Write(ref _mouseChordEnabled, enabled ? 1 : 0);
 
     /// <summary>
+    /// Injects the shared long-lived <see cref="Win32Clipboard"/> owned by
+    /// <c>ClipboardHistoryService</c>. After this call, all clipboard writes
+    /// (Enter-to-save, gallery copy, pinned copy) and the text fallback read
+    /// reuse this instance instead of allocating a throwaway Win32Clipboard per
+    /// call. See <see cref="_sharedClipboard"/> for why throwaway instances
+    /// were unsafe. Set once during startup; idempotent if called again.
+    /// </summary>
+    public void SetSharedClipboard(Win32Clipboard clipboard)
+    {
+        ArgumentNullException.ThrowIfNull(clipboard);
+        _sharedClipboard = clipboard;
+    }
+
+    /// <summary>
+    /// Returns a clipboard to use for a single write/read, plus whether the
+    /// caller owns (and must Dispose) the returned instance. When the shared
+    /// long-lived instance is available it is returned with ownsInstance=false
+    /// (the caller must NOT dispose it — ClipboardHistoryService owns it). When
+    /// no shared instance has been injected yet (early startup or the history
+    /// service failed to construct), a throwaway instance is allocated and the
+    /// caller disposes it via the returned <paramref name="ownsInstance"/> flag.
+    /// </summary>
+    private (Win32Clipboard clipboard, bool ownsInstance) GetClipboardForWrite()
+    {
+        Win32Clipboard? shared = _sharedClipboard;
+        return shared is not null ? (shared, false) : (new Win32Clipboard(), true);
+    }
+
+    /// <summary>
     /// R37: replaces the user-configurable toolbar built-in shortcut keys
     /// (Prompt/Copy). Applied immediately — the next key press on the
     /// toolbar will use the new bindings. Reference swap is atomic, so this is
@@ -644,18 +687,33 @@ internal sealed class SelectionRuntime : IDisposable
                     byte[]? clipDib = finalBgra is not null
                         ? PngToDibConverter.ConvertBgraToDib(finalBgra, dibW, dibH)
                         : PngToDibConverter.ConvertPngToDib(clipPng);
+                    byte[] clipboardPng = clipPng;
+                    byte[]? clipboardDib = clipDib;
                     _ = Task.Run(() =>
                     {
+                        // Reuse the shared long-lived Win32Clipboard when
+                        // available (see _sharedClipboard). Falls back to a
+                        // throwaway only during the brief startup window before
+                        // App injects the shared instance, or if the clipboard
+                        // history service failed to construct.
+                        string dibInfo = clipboardDib is null ? "no DIB" : $"{clipboardDib.Length} DIB";
+                        var (clipboard, ownsInstance) = GetClipboardForWrite();
                         try
                         {
-                            using var clipboard = new Win32Clipboard();
-                            clipboard.SetImageDibAndPng(clipPng, clipDib);
-                            string dibInfo = clipDib is null ? " (DIB convert failed, PNG only)" : $", {clipDib.Length} DIB";
-                            _logger.Info("OceanEyes", $"Copied {clipPng.Length} PNG bytes{dibInfo} to clipboard.");
+                            bool placed = clipboard.SetImageDibAndPng(clipboardPng, clipboardDib);
+                            _logger.Info("OceanEyes",
+                                $"Copied {clipboardPng.Length} PNG bytes, {dibInfo} to clipboard (placed={placed}, shared={!ownsInstance}).");
                         }
                         catch (Exception exception)
                         {
                             _logger.Error("OceanEyes", "Clipboard copy failed.", exception);
+                        }
+                        finally
+                        {
+                            if (ownsInstance)
+                            {
+                                clipboard.Dispose();
+                            }
                         }
                     });
                 }
@@ -1509,9 +1567,19 @@ internal sealed class SelectionRuntime : IDisposable
                     return;
                 }
                 byte[] png = File.ReadAllBytes(filePath);
-                using var cb = new Win32Clipboard();
-                cb.SetPng(png);
-                _logger.Info("OceanEyes", $"Gallery: copied {filePath} ({png.Length} bytes) to clipboard.");
+                var (cb, ownsClipboard) = GetClipboardForWrite();
+                try
+                {
+                    cb.SetPng(png);
+                    _logger.Info("OceanEyes", $"Gallery: copied {filePath} ({png.Length} bytes) to clipboard.");
+                }
+                finally
+                {
+                    if (ownsClipboard)
+                    {
+                        cb.Dispose();
+                    }
+                }
             }
             catch (Exception exception)
             {
@@ -1571,10 +1639,20 @@ internal sealed class SelectionRuntime : IDisposable
         {
             try
             {
-                using var clipboard = new Win32Clipboard();
-                clipboard.SetPng(png);
-                _logger.Info("OceanEyes", $"Copied pinned PNG ({png.Length} bytes) to clipboard.");
-                Dispatcher.UIThread.Post(() => _toolbarWindow.SetDiagnosticStatus(Strings.Runtime_Status_PinnedCopied));
+                var (clipboard, ownsClipboard) = GetClipboardForWrite();
+                try
+                {
+                    clipboard.SetPng(png);
+                    _logger.Info("OceanEyes", $"Copied pinned PNG ({png.Length} bytes) to clipboard.");
+                    Dispatcher.UIThread.Post(() => _toolbarWindow.SetDiagnosticStatus(Strings.Runtime_Status_PinnedCopied));
+                }
+                finally
+                {
+                    if (ownsClipboard)
+                    {
+                        clipboard.Dispose();
+                    }
+                }
             }
             catch (Exception exception)
             {
@@ -1735,9 +1813,19 @@ internal sealed class SelectionRuntime : IDisposable
         // app whose capture policy is off, then Ctrl+C'd).
         try
         {
-            using var clipboard = new Win32Clipboard();
-            string? clip = clipboard.GetText();
-            return string.IsNullOrWhiteSpace(clip) ? null : clip.Trim();
+            var (clipboard, ownsClipboard) = GetClipboardForWrite();
+            try
+            {
+                string? clip = clipboard.GetText();
+                return string.IsNullOrWhiteSpace(clip) ? null : clip.Trim();
+            }
+            finally
+            {
+                if (ownsClipboard)
+                {
+                    clipboard.Dispose();
+                }
+            }
         }
         catch
         {

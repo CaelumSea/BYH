@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Globalization;
+using System.Text;
 using Avalonia;
 using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Infrastructure.Configuration;
@@ -18,6 +20,17 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        // Last-resort managed-exception capture. Records unhandled exceptions
+        // and unobserved task exceptions to crash.log alongside the rolling
+        // BYH.log. This does NOT survive native FailFast (0xc0000409 etc.) —
+        // those bypass managed handlers entirely and are captured by Windows
+        // Error Reporting. Its value is: (a) catching async void / fire-and-
+        // forget Task exceptions that would otherwise vanish, and (b) leaving
+        // managed-layer evidence when a non-fatal exception precedes a later
+        // crash. The handler itself must never throw.
+        AppDomain.CurrentDomain.UnhandledException += OnManagedCrash;
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+
         if (args.Contains("--probe-uia", StringComparer.OrdinalIgnoreCase))
         {
             return ProbeUiAutomationOnMtaThread();
@@ -287,6 +300,56 @@ internal static class Program
         catch (ObjectDisposedException) { /* already gone; ignore */ }
         s_singleInstance?.Dispose();
         s_singleInstance = null;
+    }
+
+    /// <summary>
+    /// Records a managed unhandled exception to <c>logs/crash.log</c>. Paired
+    /// with <see cref="OnUnobservedTaskException"/>; both are registered at the
+    /// top of <see cref="Main"/>. The handler swallows all errors of its own —
+    /// a crash logger must never become a second crash source. See the Main
+    /// remark for why this cannot catch native FailFast (0xc0000409).
+    /// </summary>
+    private static void OnManagedCrash(object? sender, UnhandledExceptionEventArgs e)
+    {
+        WriteCrashRecord("UnhandledException", e.ExceptionObject as Exception, isTerminating: e.IsTerminating);
+    }
+
+    /// <summary>
+    /// Records an unobserved task exception (fire-and-forget <c>Task.Run</c> /
+    /// async void) to <c>logs/crash.log</c>. Marks the exception observed so
+    /// the finalizer does not re-escalate it.
+    /// </summary>
+    private static void OnUnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
+    {
+        WriteCrashRecord("UnobservedTaskException", e.Exception, isTerminating: false);
+        e.SetObserved();
+    }
+
+    private static void WriteCrashRecord(string source, Exception? exception, bool isTerminating)
+    {
+        // Build the record from simple primitives only (no reflection) so this
+        // stays NativeAOT- and trimming-safe. Exception.ToString already
+        // includes the type, message, and stack trace; we never log raw
+        // selected text or credentials here — only framework exception text.
+        string timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture);
+        string body = exception is null ? "(no exception object)" : exception.ToString();
+        string threadId = Environment.CurrentManagedThreadId.ToString(CultureInfo.InvariantCulture);
+        string record =
+            $"==== {timestamp} pid={Environment.ProcessId} tid={threadId} " +
+            $"source={source} terminating={isTerminating} ====" + Environment.NewLine +
+            body + Environment.NewLine + Environment.NewLine;
+
+        try
+        {
+            string logDirectory = ByhApplicationPaths.CreateDefault().LogsDirectory;
+            Directory.CreateDirectory(logDirectory);
+            string crashPath = Path.Combine(logDirectory, "crash.log");
+            File.AppendAllText(crashPath, record, Encoding.UTF8);
+        }
+        catch
+        {
+            // Best-effort: never rethrow from the crash handler.
+        }
     }
 
     private static int SetSecret(string reference, string value)

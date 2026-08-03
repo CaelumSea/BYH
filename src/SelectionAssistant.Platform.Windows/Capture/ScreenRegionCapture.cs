@@ -18,6 +18,21 @@ public static class ScreenRegionCapture
 {
     private const int Srccopy = 0x00CC0020;
 
+    // Serializes every GDI capture. CaptureRawBgra has three concurrent entry
+    // points with no natural mutual exclusion: the UI-thread Ocean Eyes main
+    // capture (App.axaml.cs), the UI-thread 30 Hz color-picker loupe sampling
+    // (SelectionRuntime.SampleCursorRegion), and a ThreadPool lazy-OCR capture
+    // (SelectionRuntime.CaptureAndRecognizeRegionAsync via Task.Run). GDI calls
+    // themselves are thread-safe, but interleaved BitBlt/GetDIBits on the live
+    // screen DC under NativeAOT corrupted the heap intermittently and surfaced
+    // as 0xc0000409 (STATUS_STACK_BUFFER_OVERRUN FailFast) — see the 2026-08-03
+    // crash investigation. A process-wide lock forces all captures to run one
+    // at a time, which is cheap because each capture is sub-millisecond for the
+    // loupe's 15x15 and tens of ms for a full-screen BitBlt. Hold periods never
+    // overlap with the OCR network round-trip (that runs after the lock is
+    // released), so this does not serialize network work.
+    private static readonly object _gdiGate = new();
+
     // Keep one capture from allocating an unbounded native bitmap and several
     // equally large managed buffers (BGRA + PNG raw scanlines + compression
     // workspace). A 4K frame is ~33 MB and remains below this ceiling; larger
@@ -63,59 +78,66 @@ public static class ScreenRegionCapture
     /// </summary>
     public static byte[]? CaptureRawBgra(int x, int y, int width, int height)
     {
+        // Serialize against the other two capture entry points (see _gdiGate).
+        // The pre-check is outside the lock so oversized/empty regions reject
+        // instantly without contending; the real GDI work happens under the
+        // lock so concurrent captures never interleave BitBlt/GetDIBits.
         if (!TryGetPixelBufferLength(width, height, out _))
         {
             return null;
         }
 
-        nint screenDc = GetDC(0);
-        if (screenDc == 0)
+        lock (_gdiGate)
         {
-            return null;
-        }
-
-        nint memoryDc = CreateCompatibleDC(screenDc);
-        nint bitmap = CreateCompatibleBitmap(screenDc, width, height);
-        nint oldBitmap = 0;
-
-        try
-        {
-            if (memoryDc == 0 || bitmap == 0)
+            nint screenDc = GetDC(0);
+            if (screenDc == 0)
             {
                 return null;
             }
 
-            oldBitmap = SelectObject(memoryDc, bitmap);
-            if (oldBitmap == 0)
-            {
-                return null;
-            }
+            nint memoryDc = CreateCompatibleDC(screenDc);
+            nint bitmap = CreateCompatibleBitmap(screenDc, width, height);
+            nint oldBitmap = 0;
 
-            if (!BitBlt(memoryDc, 0, 0, width, height, screenDc, x, y, Srccopy))
+            try
             {
-                return null;
-            }
+                if (memoryDc == 0 || bitmap == 0)
+                {
+                    return null;
+                }
 
-            return ReadBitmapBits(memoryDc, bitmap, width, height);
-        }
-        finally
-        {
-            if (oldBitmap != 0 && memoryDc != 0)
+                oldBitmap = SelectObject(memoryDc, bitmap);
+                if (oldBitmap == 0)
+                {
+                    return null;
+                }
+
+                if (!BitBlt(memoryDc, 0, 0, width, height, screenDc, x, y, Srccopy))
+                {
+                    return null;
+                }
+
+                return ReadBitmapBits(memoryDc, bitmap, width, height);
+            }
+            finally
             {
-                SelectObject(memoryDc, oldBitmap);
-            }
+                if (oldBitmap != 0 && memoryDc != 0)
+                {
+                    SelectObject(memoryDc, oldBitmap);
+                }
 
-            if (bitmap != 0)
-            {
-                DeleteObject(bitmap);
-            }
+                if (bitmap != 0)
+                {
+                    DeleteObject(bitmap);
+                }
 
-            if (memoryDc != 0)
-            {
-                DeleteDC(memoryDc);
-            }
+                if (memoryDc != 0)
+                {
+                    DeleteDC(memoryDc);
+                }
 
-            ReleaseDC(0, screenDc);
+                ReleaseDC(0, screenDc);
+            }
         }
     }
 
