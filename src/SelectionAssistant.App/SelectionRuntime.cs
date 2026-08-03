@@ -2224,10 +2224,28 @@ internal sealed class SelectionRuntime : IDisposable
         // SHOULD stay visible (the user is waiting on it). Only the capture
         // frame needs a clear screen. Run on the UI thread because window
         // visibility is UI-thread state.
+        //
+        // CRITICAL: also park the OE overlay (_annotationOverlay, i.e. the
+        // RegionSelectOverlay) off-screen via HideForCapture. After Confirm the
+        // overlay stays visible (locked on the confirmed rect) alongside the
+        // toolbar, and THIS lazy-OCR re-capture BitBlts the screen again. If the
+        // overlay is still on-screen its hint text / dim mask / handles are read
+        // by BitBlt and leak into the OCR result ("OCR 多余文字"). HideForCapture
+        // moves the HWND off-screen synchronously (SetWindowPos), so the BitBlt
+        // on the very next line cannot include it regardless of compositor
+        // timing. RestoreAfterCapture moves it back; both are no-ops if the
+        // overlay is null or not showing.
         bool toolbarWasVisible = _toolbarVisible;
+        RegionSelectOverlay? overlayForCapture = _annotationOverlay;
+        bool overlayParked = false;
         if (toolbarWasVisible)
         {
-            await Dispatcher.UIThread.InvokeAsync(() => _windowHost.Hide());
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                overlayForCapture?.HideForCapture();
+                overlayParked = true;
+                _windowHost.Hide();
+            });
         }
         string? dataUri;
         try
@@ -2238,7 +2256,14 @@ internal sealed class SelectionRuntime : IDisposable
         {
             if (toolbarWasVisible)
             {
-                await Dispatcher.UIThread.InvokeAsync(() => _windowHost.ShowAtCurrentPosition());
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    _windowHost.ShowAtCurrentPosition();
+                    if (overlayParked)
+                    {
+                        overlayForCapture?.RestoreAfterCapture();
+                    }
+                });
             }
         }
         if (string.IsNullOrEmpty(dataUri))
