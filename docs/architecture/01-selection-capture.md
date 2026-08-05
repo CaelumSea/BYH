@@ -60,6 +60,12 @@ Warp 的 Windows 终端渲染面使用 `Ctrl+Shift+C` 复制选区，内置 `war
 
 其他进程和其他复制键仍要求 owner PID 等于手势来源进程，不能通过 ownerless 路径。`Program --probe-process-policy <pid>` 可检查 Warp 进程解析到的模式；运行日志的 `CaptureDebug` 类别只记录策略、发送结果、序号、owner 和长度，不记录选中文本正文。
 
+**共享监听不变量（REQ-037）**：剪贴板历史服务与划词捕获共用同一个长生命周期的
+`Win32Clipboard`。历史服务保留 legacy 订阅；每次模拟复制由
+`IScopedClipboardChangeAccess.SubscribeChangesScoped` 获取可释放的临时订阅，完成后只移除
+自己的回调。不要让捕获路径再次调用单订阅的 `SubscribeChanges`，否则会在发送复制键之前
+抛出“已有订阅”，异常会被降级为空捕获，表现为 Warp 适配突然失效。
+
 ## 关键方法/类
 
 - `LowLevelMouseHook.HookCallback` — **绝不在回调里碰 UI**；只投射事件后立即 CallNextHookEx。

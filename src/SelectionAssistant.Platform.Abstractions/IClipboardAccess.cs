@@ -30,6 +30,18 @@ public interface IClipboardAccess
     void UnsubscribeChanges();
 }
 
+/// <summary>
+/// Optional scoped subscription support for clipboard implementations that
+/// are shared by more than one service. The legacy <see cref="IClipboardAccess" />
+/// contract keeps one long-lived subscription; this companion contract lets a
+/// short-lived capture observer subscribe and dispose only its own callback.
+/// </summary>
+public interface IScopedClipboardChangeAccess
+{
+    /// <summary>Registers a callback and returns a lease that removes only it.</summary>
+    IDisposable SubscribeChangesScoped(Action onChanged);
+}
+
 /// <summary>剪贴板快照(最佳努力,非全格式)。</summary>
 /// <remarks>
 /// <b>内存(P2):</b>当 <see cref="ImageDib"/> 是从 <c>ArrayPool&lt;byte&gt;</c> 租来的

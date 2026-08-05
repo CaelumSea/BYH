@@ -145,6 +145,26 @@ public sealed class Win32ClipboardCaptureTests
     }
 
     [Fact]
+    public async Task ScopedCaptureSubscription_PreservesLongLivedClipboardListener()
+    {
+        var clipboard = new FakeClipboard(text: "original");
+        int historyNotifications = 0;
+        clipboard.SubscribeChanges(() => historyNotifications++);
+
+        var input = SourceCopyingInput(clipboard, "selected");
+        using var capture = CreateCapture(clipboard, input);
+
+        CaptureResult result = await capture.CaptureAsync(Gesture(), CancellationToken.None);
+
+        Assert.Equal("selected", result.Text);
+        int notificationsAfterCapture = historyNotifications;
+
+        clipboard.Write("later", ownerProcessId: 99);
+
+        Assert.Equal(notificationsAfterCapture + 1, historyNotifications);
+    }
+
+    [Fact]
     public async Task UserCopiesDuringCapture_UserContentWinsAndIsNotReportedAsSelection()
     {
         var clipboard = new FakeClipboard(text: "original");
@@ -333,6 +353,19 @@ public sealed class Win32ClipboardCaptureTests
         Assert.True(clipboard.GetSequenceNumber() >= 0);
     }
 
+    [Fact]
+    public void NativeClipboard_AllowsScopedListenerAlongsideLongLivedListener()
+    {
+        using var clipboard = new Win32Clipboard();
+        clipboard.SubscribeChanges(() => { });
+        using IDisposable scoped = clipboard.SubscribeChangesScoped(() => { });
+
+        scoped.Dispose();
+        clipboard.UnsubscribeChanges();
+
+        Assert.True(clipboard.GetSequenceNumber() >= 0);
+    }
+
     private static Win32ClipboardCapture CreateCapture(
         FakeClipboard clipboard,
         FakeInput input) =>
@@ -380,10 +413,11 @@ public sealed class Win32ClipboardCaptureTests
         }
     }
 
-    private sealed class FakeClipboard : IClipboardAccess
+    private sealed class FakeClipboard : IClipboardAccess, IScopedClipboardChangeAccess
     {
         private readonly object _gate = new();
         private Action? _onChanged;
+        private readonly List<Action> _scopedCallbacks = [];
         private uint _sequence = 10;
         private uint? _ownerProcessId;
 
@@ -534,6 +568,24 @@ public sealed class Win32ClipboardCaptureTests
             }
         }
 
+        public IDisposable SubscribeChangesScoped(Action onChanged)
+        {
+            lock (_gate)
+            {
+                _scopedCallbacks.Add(onChanged);
+            }
+
+            return new CallbackLease(this, onChanged);
+        }
+
+        private void UnsubscribeScoped(Action callback)
+        {
+            lock (_gate)
+            {
+                _scopedCallbacks.Remove(callback);
+            }
+        }
+
         public async Task WriteAfterAsync(string? text, uint? ownerProcessId, int delayMs)
         {
             await Task.Delay(delayMs);
@@ -542,7 +594,7 @@ public sealed class Win32ClipboardCaptureTests
 
         public void Write(string? text, uint? ownerProcessId)
         {
-            Action? callback;
+            Action[] callbacks;
             lock (_gate)
             {
                 Text = text;
@@ -551,10 +603,35 @@ public sealed class Win32ClipboardCaptureTests
                 WasEmpty = text is null;
                 _ownerProcessId = ownerProcessId;
                 _sequence++;
-                callback = _onChanged;
+                int legacyCount = _onChanged is null ? 0 : 1;
+                callbacks = new Action[legacyCount + _scopedCallbacks.Count];
+                int index = 0;
+                if (_onChanged is { } legacyCallback)
+                {
+                    callbacks[index++] = legacyCallback;
+                }
+
+                _scopedCallbacks.CopyTo(callbacks, index);
             }
 
-            callback?.Invoke();
+            foreach (Action callback in callbacks)
+            {
+                callback();
+            }
+        }
+
+        private sealed class CallbackLease : IDisposable
+        {
+            private FakeClipboard? _owner;
+            private readonly Action _callback;
+
+            public CallbackLease(FakeClipboard owner, Action callback)
+            {
+                _owner = owner;
+                _callback = callback;
+            }
+
+            public void Dispose() => Interlocked.Exchange(ref _owner, null)?.UnsubscribeScoped(_callback);
         }
     }
 }

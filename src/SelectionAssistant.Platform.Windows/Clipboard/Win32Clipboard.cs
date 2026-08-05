@@ -13,7 +13,7 @@ namespace SelectionAssistant.Platform.Windows.Clipboard;
 /// message-only window for WM_CLIPBOARDUPDATE. Only safely materialized formats
 /// are included in snapshots.
 /// </summary>
-public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposable
+public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IScopedClipboardChangeAccess, IDisposable
 {
     private const uint CfDib = 8;
     private const uint CfUnicodeText = 13;
@@ -38,7 +38,14 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
     private readonly Thread _messageThread;
     private readonly TimeSpan _openTimeout;
     private readonly string _windowClassName = $"BYH.Clipboard.{Environment.ProcessId}.{Guid.NewGuid():N}";
+    // The history service owns the legacy subscription for the lifetime of the
+    // process. Selection capture observers are short-lived, so they use the
+    // scoped dictionary below and dispose only their own callback. Both kinds
+    // share one native AddClipboardFormatListener registration.
     private Action? _changeCallback;
+    private Dictionary<long, Action>? _scopedChangeCallbacks;
+    private long _nextScopedSubscriptionId;
+    private bool _listenerRegistered;
     private Exception? _startupFailure;
     private nint _windowHandle;
     private ushort _windowClassAtom;
@@ -610,11 +617,46 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
             }
 
             _changeCallback = onChanged;
-            if (!AddClipboardFormatListener(_windowHandle))
+            try
+            {
+                EnsureListenerRegisteredLocked();
+            }
+            catch
             {
                 _changeCallback = null;
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "AddClipboardFormatListener failed.");
+                throw;
             }
+        }
+    }
+
+    /// <summary>
+    /// Registers a short-lived callback without replacing the long-lived
+    /// subscription owned by clipboard history. The returned lease removes
+    /// only this callback, which makes the shared clipboard safe for capture
+    /// probes that start and stop around every selection.
+    /// </summary>
+    public IDisposable SubscribeChangesScoped(Action onChanged)
+    {
+        ArgumentNullException.ThrowIfNull(onChanged);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+
+        lock (_subscriptionGate)
+        {
+            _scopedChangeCallbacks ??= new Dictionary<long, Action>();
+            long id = ++_nextScopedSubscriptionId;
+            _scopedChangeCallbacks.Add(id, onChanged);
+
+            try
+            {
+                EnsureListenerRegisteredLocked();
+            }
+            catch
+            {
+                _scopedChangeCallbacks.Remove(id);
+                throw;
+            }
+
+            return new ScopedSubscription(this, id);
         }
     }
 
@@ -628,7 +670,53 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
             }
 
             _changeCallback = null;
+            RemoveListenerIfUnusedLocked();
+        }
+    }
+
+    private void UnsubscribeScoped(long id)
+    {
+        lock (_subscriptionGate)
+        {
+            if (_scopedChangeCallbacks is null ||
+                !_scopedChangeCallbacks.Remove(id))
+            {
+                return;
+            }
+
+            RemoveListenerIfUnusedLocked();
+        }
+    }
+
+    private void EnsureListenerRegisteredLocked()
+    {
+        if (_listenerRegistered)
+        {
+            return;
+        }
+
+        if (!AddClipboardFormatListener(_windowHandle))
+        {
+            throw new Win32Exception(
+                Marshal.GetLastWin32Error(),
+                "AddClipboardFormatListener failed.");
+        }
+
+        _listenerRegistered = true;
+    }
+
+    private void RemoveListenerIfUnusedLocked()
+    {
+        if (_changeCallback is not null ||
+            (_scopedChangeCallbacks is not null && _scopedChangeCallbacks.Count > 0))
+        {
+            return;
+        }
+
+        if (_listenerRegistered)
+        {
             RemoveClipboardFormatListener(_windowHandle);
+            _listenerRegistered = false;
         }
     }
 
@@ -1005,19 +1093,41 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
 
     private void RaiseClipboardChanged()
     {
-        Action? callback;
+        Action[] callbacks;
         lock (_subscriptionGate)
         {
-            callback = _changeCallback;
+            int scopedCount = _scopedChangeCallbacks?.Count ?? 0;
+            if (_changeCallback is null && scopedCount == 0)
+            {
+                return;
+            }
+
+            callbacks = new Action[(_changeCallback is null ? 0 : 1) + scopedCount];
+            int index = 0;
+            if (_changeCallback is { } legacyCallback)
+            {
+                callbacks[index++] = legacyCallback;
+            }
+
+            if (_scopedChangeCallbacks is not null)
+            {
+                foreach (Action scopedCallback in _scopedChangeCallbacks.Values)
+                {
+                    callbacks[index++] = scopedCallback;
+                }
+            }
         }
 
-        try
+        foreach (Action callback in callbacks)
         {
-            callback?.Invoke();
-        }
-        catch
-        {
-            // Native message processing must remain alive even if a subscriber fails.
+            try
+            {
+                callback();
+            }
+            catch
+            {
+                // Native message processing must remain alive even if a subscriber fails.
+            }
         }
     }
 
@@ -1053,7 +1163,13 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
             return;
         }
 
-        UnsubscribeChanges();
+        lock (_subscriptionGate)
+        {
+            _changeCallback = null;
+            _scopedChangeCallbacks?.Clear();
+            RemoveListenerIfUnusedLocked();
+        }
+
         nint window = _windowHandle;
         if (window != 0)
         {
@@ -1067,6 +1183,20 @@ public sealed unsafe partial class Win32Clipboard : IClipboardAccess, IDisposabl
 
         _started.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    private sealed class ScopedSubscription : IDisposable
+    {
+        private Win32Clipboard? _owner;
+        private readonly long _id;
+
+        public ScopedSubscription(Win32Clipboard owner, long id)
+        {
+            _owner = owner;
+            _id = id;
+        }
+
+        public void Dispose() => Interlocked.Exchange(ref _owner, null)?.UnsubscribeScoped(_id);
     }
 
     private sealed class OwnedClipboardMemory : IDisposable

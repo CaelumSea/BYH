@@ -111,6 +111,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
 
         var monitor = new ClipboardChangeMonitor(_clipboard);
         bool subscribed = false;
+        IDisposable? scopedSubscription = null;
         bool inputCommitted = false;
         bool externalChangeObserved = false;
         uint lastBaseline = snapshot.SequenceNumber;
@@ -122,8 +123,19 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
 
         try
         {
-            _clipboard.SubscribeChanges(monitor.Signal);
-            subscribed = true;
+            // Clipboard history keeps a long-lived listener on the shared
+            // Win32Clipboard. Use a scoped lease when the implementation
+            // supports it so this capture can observe the same WM_CLIPBOARDUPDATE
+            // stream without replacing or colliding with history's callback.
+            if (_clipboard is IScopedClipboardChangeAccess scopedClipboard)
+            {
+                scopedSubscription = scopedClipboard.SubscribeChangesScoped(monitor.Signal);
+            }
+            else
+            {
+                _clipboard.SubscribeChanges(monitor.Signal);
+                subscribed = true;
+            }
 
             foreach (SimulatedCopyChord chord in chords)
             {
@@ -236,8 +248,9 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
             // Internal overall timeout. Cleanup still runs below.
             return NoCapture();
         }
-        catch
+        catch (Exception exception)
         {
+            Trace($"clipboard failed type={exception.GetType().Name} message={exception.Message}");
             return NoCapture();
         }
         finally
@@ -252,6 +265,15 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 {
                     // Restoration below remains sequence guarded.
                 }
+            }
+
+            try
+            {
+                scopedSubscription?.Dispose();
+            }
+            catch
+            {
+                // Restoration below remains sequence guarded.
             }
 
             if (!externalChangeObserved && ownedSequence is uint expectedSequence)
