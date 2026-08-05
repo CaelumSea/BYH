@@ -488,6 +488,13 @@ public partial class App : Application
                         clipboardLogger,
                         entryCipher,
                         _paths.ClipboardArchiveDirectory);
+                    // 接线：取词管线注入复制前通知历史服务抑制 2 次 WM_CLIPBOARDUPDATE
+                    // （注入复制 + restore backup）。必须在 history service 构造后 + 在
+                    // SetSharedClipboard rebuild capture wrapper 之后调用：SetHistoryChangeSuppressor
+                    // 会把回调透传给当前活跃的 Win32ClipboardCapture，并在未来 rebuild 时复用。
+                    // 捕获局部变量避免闭包持有可空的 _clipboardHistoryService 字段造成 stale。
+                    ClipboardHistoryService history = _clipboardHistoryService;
+                    _runtime.SetHistoryChangeSuppressor(n => history.SuppressNextChanges(n));
                 }
                 catch (Exception exception)
                 {

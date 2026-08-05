@@ -20,6 +20,10 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
     private readonly ClipboardCaptureOptions _options;
     private readonly IReadOnlyList<SimulatedCopyChord> _chords;
     private readonly Action<string>? _diagnosticSink;
+    // 剪贴板历史抑制回调。注入复制前调用，让 ClipboardHistoryService 忽略接下来 N 次
+    // WM_CLIPBOARDUPDATE（注入 1 次 + restore backup 1 次 = 典型 2 次）。null 表示未接线
+    // （历史服务未启用）。非 readonly：由 SetHistoryChangeSuppressor 在 App 组合期设置。
+    private Action<int>? _suppressHistoryChanges;
     private readonly SemaphoreSlim _captureGate = new(1, 1);
     private int _disposed;
 
@@ -41,6 +45,15 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
             throw new ArgumentException("At least one simulated-copy chord is required.", nameof(chords));
         }
     }
+
+    /// <summary>
+    /// 注入剪贴板历史变更抑制回调。每次注入复制（chord 真正发出）前会调用
+    /// <paramref name="suppress"/> 并传 2，让 ClipboardHistoryService 忽略接下来 2 次
+    /// WM_CLIPBOARDUPDATE（注入复制本身 + RestoreOriginalClipboard 还原 backup）。
+    /// 传 null 取消接线。线程安全：volatile 写。App 组合期调用一次，之后只读。
+    /// </summary>
+    public void SetHistoryChangeSuppressor(Action<int>? suppress) =>
+        _suppressHistoryChanges = suppress;
 
     public async Task<CaptureResult> CaptureAsync(SelectionGesture gesture, CancellationToken token)
     {
@@ -151,10 +164,29 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 }
 
                 lastBaseline = _clipboard.GetSequenceNumber();
+
+                // 抑制必须在 SendCopyChord 之前：目标进程响应剪贴板写入的速度可能极快
+                // （WeChatAppEx/CEF ~10-50ms），WM_CLIPBOARDUPDATE 会在 SendCopyChord 返回后
+                // 立即投递。若配额在 send 之后才设，第一次变化会在配额就位前到达 → 漏抑制。
+                // 配额设 2 次：① 注入复制本身写的剪贴板；② finally 里 RestoreOriginalClipboard
+                // 还原 backup 写的剪贴板。sent=false 时回滚 2，避免误吞下次真实复制。
+                bool suppressorWired = _suppressHistoryChanges is not null;
+                if (suppressorWired)
+                {
+                    try { _suppressHistoryChanges!.Invoke(2); }
+                    catch { suppressorWired = false; } // 抑制失败不影响取词，按未接线处理
+                }
+
                 bool sent = _input.SendCopyChord(chord);
                 Trace($"clipboard chord={chord} sent={sent} baseline={lastBaseline}");
                 if (!sent)
                 {
+                    // chord 没发出，不会有剪贴板写入，回滚刚设的配额。
+                    if (suppressorWired)
+                    {
+                        try { _suppressHistoryChanges!.Invoke(-2); }
+                        catch { }
+                    }
                     continue;
                 }
 
@@ -185,9 +217,18 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
 
                 if (ownerProcessId is not null && ownerProcessId != gesture.SourceProcessId)
                 {
-                    Trace($"clipboard rejected owner mismatch expected={gesture.SourceProcessId} actual={ownerProcessId}");
-                    externalChangeObserved = true;
-                    return NoCapture();
+                    // 套壳应用（微信 Weixin→WeChatAppEx、Electron 主→renderer/GPU）会把复制
+                    // 路由到子进程，剪贴板属主是子 PID，与鼠标手势时记录的根窗口 PID 不同。
+                    // 沿父链认后代：是 source 后代则视为同源，正常取词并让 finally 走 restore
+                    // 分支（不设 externalChangeObserved）。判定失败（受保护进程等）返回 false，
+                    // 走原有拒绝路径，零回归。
+                    bool isDescendant = ProcessParentage.IsDescendantOf(ownerProcessId.Value, gesture.SourceProcessId);
+                    Trace($"clipboard owner mismatch expected={gesture.SourceProcessId} actual={ownerProcessId.Value} descendant={isDescendant}");
+                    if (!isDescendant)
+                    {
+                        externalChangeObserved = true;
+                        return NoCapture();
+                    }
                 }
 
                 // Some GPU/WebView terminals (including Warp) place clipboard
@@ -198,10 +239,16 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 ownedSequence = stableSequence.Value;
                 string? text = _clipboard.GetText();
 
-                if (_clipboard.GetSequenceNumber() != ownedSequence.Value ||
-                    (ownerlessResult
-                        ? _clipboard.GetOwnerProcessId() is not null
-                        : _clipboard.GetOwnerProcessId() != gesture.SourceProcessId))
+                // 读文本期间 owner 变了 = 有别的进程抢剪贴板 = 不可信。对套壳子进程
+                // 场景（owner 是 source 的后代），这里复用同样的父子判定：owner 仍是
+                // source 或其后代视为"没变"。ownerlessResult 路径保持原语义（有 owner 就拒）。
+                uint? ownerAfterRead = _clipboard.GetOwnerProcessId();
+                bool ownerChangedDuringRead = ownerlessResult
+                    ? ownerAfterRead is not null
+                    : ownerAfterRead != gesture.SourceProcessId &&
+                      !(ownerAfterRead is uint after &&
+                        ProcessParentage.IsDescendantOf(after, gesture.SourceProcessId));
+                if (_clipboard.GetSequenceNumber() != ownedSequence.Value || ownerChangedDuringRead)
                 {
                     Trace("clipboard rejected because sequence/owner changed during read");
                     externalChangeObserved = true;
@@ -278,6 +325,14 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
 
             if (!externalChangeObserved && ownedSequence is uint expectedSequence)
             {
+                // restore 即将写剪贴板（可能写多个格式 → 多次 seq 变化），单独补配额，
+                // 覆盖 restore 产生的所有 WM_CLIPBOARDUPDATE。这样不依赖"注入复制产生几次
+                // 变化"的猜测——chord 前设的配额覆盖注入，这里覆盖 restore。
+                if (_suppressHistoryChanges is not null)
+                {
+                    try { _suppressHistoryChanges.Invoke(2); }
+                    catch { }
+                }
                 RestoreOriginalClipboard(snapshot, expectedSequence);
             }
 

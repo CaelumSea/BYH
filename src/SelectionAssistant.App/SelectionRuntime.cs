@@ -421,6 +421,16 @@ internal sealed class SelectionRuntime : IDisposable
     }
 
     /// <summary>
+    /// 注入剪贴板历史变更抑制回调，透传给 <see cref="_textCapture"/>。每次取词注入
+    /// 复制（Ctrl+Insert/Ctrl+C）前会调用 <paramref name="suppress"/> 传 2，让
+    /// ClipboardHistoryService 忽略接下来 2 次 WM_CLIPBOARDUPDATE（注入复制本身 +
+    /// RestoreOriginalClipboard 还原 backup），避免取词注入的原文污染剪贴板历史。
+    /// 在 App 组合期 ClipboardHistoryService 构造完后调用一次。
+    /// </summary>
+    public void SetHistoryChangeSuppressor(Action<int>? suppress) =>
+        _textCapture?.SetHistoryChangeSuppressor(suppress);
+
+    /// <summary>
     /// Returns a clipboard to use for a single write/read, plus whether the
     /// caller owns (and must Dispose) the returned instance. When the shared
     /// long-lived instance is available it is returned with ownsInstance=false

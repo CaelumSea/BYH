@@ -46,6 +46,9 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
     // Providers project.
     private VisionTextCapture? _visionCapture;
     private volatile bool _visionEnabled;
+    // 剪贴板历史抑制回调，透传给内部 Win32ClipboardCapture。非 readonly：由
+    // SetHistoryChangeSuppressor 在 App 组合期设置，并在 rebuild 时复用到新 wrapper。
+    private Action<int>? _historyChangeSuppressor;
 
     public WindowsSelectionTextCapture()
         : this(WindowsDefaultCapturePolicies.CreateProvider())
@@ -114,6 +117,9 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
                 clipboard,
                 new SendInputHelper(),
                 diagnosticSink: _diagnosticSink);
+            // 把已接线的 suppressor 复用到新 wrapper（rebuild 后旧 wrapper 被丢弃，
+            // suppressor 必须重连，否则 rebuild 后取词注入会再次污染历史）。
+            rebuilt.SetHistoryChangeSuppressor(_historyChangeSuppressor);
 
             IConfiguredClipboardCapture oldWrapper = _clipboardCapture;
             Win32Clipboard? oldClipboard = _ownedClipboard;
@@ -132,6 +138,21 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
                 oldDisposable.Dispose();
             }
             oldClipboard?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// 注入剪贴板历史变更抑制回调，透传给当前活跃的 Win32ClipboardCapture。每次注入
+    /// 复制前会调用 <paramref name="suppress"/> 传 2，让 ClipboardHistoryService 忽略
+    /// 接下来 2 次 WM_CLIPBOARDUPDATE（注入复制 + restore backup）。传 null 取消接线。
+    /// 后续 <see cref="SetSharedClipboard"/> rebuild 时会把同一回调复用到新 wrapper。
+    /// </summary>
+    public void SetHistoryChangeSuppressor(Action<int>? suppress)
+    {
+        _historyChangeSuppressor = suppress;
+        if (_clipboardCapture is Win32ClipboardCapture win32Capture)
+        {
+            win32Capture.SetHistoryChangeSuppressor(suppress);
         }
     }
 
