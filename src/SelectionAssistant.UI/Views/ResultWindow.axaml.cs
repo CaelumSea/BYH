@@ -349,11 +349,14 @@ public partial class ResultWindow : Window
     }
 
     // ESC closes the result window; C copies the translated result and closes
-    // it (a keyboard shortcut for the Copy button). The C accelerator is
-    // suppressed while the editable SourceTextBox has focus so typing the
-    // letter c works normally. Unlike the WS_EX_NOACTIVATE toolbar (which
-    // needs a low-level hook), this window activates normally and receives
-    // Avalonia KeyDown directly.
+    // it (a keyboard shortcut for the Copy button); R replaces the source
+    // selection with the translated result (a keyboard shortcut for the
+    // Replace button — writes the translation to the clipboard, hides this
+    // window, and injects Ctrl+V into the source app via OnReplaceRequested).
+    // Both accelerators are suppressed while the editable SourceTextBox has
+    // focus so typing the letters c/r works normally. Unlike the
+    // WS_EX_NOACTIVATE toolbar (which needs a low-level hook), this window
+    // activates normally and receives Avalonia KeyDown directly.
     private void OnWindowKeyDown(object? sender, KeyEventArgs eventArgs)
     {
         if (eventArgs.Key == Key.Escape)
@@ -373,6 +376,20 @@ public partial class ResultWindow : Window
             OnCopyClick(this, new RoutedEventArgs());
             Hide();
             CloseRequested?.Invoke();
+            return;
+        }
+
+        if (eventArgs.Key == Key.R && !_sourceTextBoxFocused)
+        {
+            // R accelerator: replace the source selection with the translated
+            // result (same path as the Replace button). OnReplaceClick →
+            // ReplaceRequested → OnReplaceRequested handles writing the
+            // clipboard, hiding this window, and injecting Ctrl+V into the
+            // source app, so no extra Hide/CloseRequested is needed here.
+            // Suppressed while the editable SourceTextBox has focus so typing
+            // the letter r works normally.
+            eventArgs.Handled = true;
+            OnReplaceClick(this, new RoutedEventArgs());
         }
     }
 
