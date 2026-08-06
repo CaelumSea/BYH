@@ -165,6 +165,67 @@ public sealed class Win32ClipboardCaptureTests
     }
 
     [Fact]
+    public async Task SimulatedCopyWithoutClipboardChange_ReleasesHistorySuppressionReservation()
+    {
+        var clipboard = new FakeClipboard(text: "original");
+        var input = new FakeInput
+        {
+            // The target accepts the injected chord but never writes to the
+            // clipboard. This is the common unsupported-target path that used
+            // to leave two suppression reservations per chord behind.
+            OnSend = _ => true,
+        };
+        int pendingSuppression = 0;
+        using var capture = CreateCapture(clipboard, input);
+        capture.SetHistoryChangeSuppressor(delta => pendingSuppression += delta);
+
+        CaptureResult result = await capture.CaptureAsync(Gesture(), CancellationToken.None);
+
+        Assert.Null(result.Text);
+        Assert.Equal(0, pendingSuppression);
+    }
+
+    [Fact]
+    public async Task ExternalClipboardWrite_ReleasesCaptureSuppressionReservation()
+    {
+        var clipboard = new FakeClipboard(text: "original");
+        var input = new FakeInput
+        {
+            OnSend = chord =>
+            {
+                _ = clipboard.WriteAfterAsync("user copy", ownerProcessId: 99, delayMs: 5);
+                return true;
+            },
+        };
+        int pendingSuppression = 0;
+        using var capture = CreateCapture(clipboard, input);
+        capture.SetHistoryChangeSuppressor(delta => pendingSuppression += delta);
+
+        CaptureResult result = await capture.CaptureAsync(Gesture(), CancellationToken.None);
+
+        Assert.Null(result.Text);
+        Assert.Equal("user copy", clipboard.Text);
+        Assert.Equal(0, pendingSuppression);
+    }
+
+    [Fact]
+    public async Task FailedRestore_ReleasesRestoreSuppressionReservation()
+    {
+        var clipboard = new FakeClipboard(text: "original");
+        clipboard.BeforeRestore = () => clipboard.Write("user copy", ownerProcessId: 99);
+        int pendingSuppression = 0;
+        var input = SourceCopyingInput(clipboard, "selected");
+        using var capture = CreateCapture(clipboard, input);
+        capture.SetHistoryChangeSuppressor(delta => pendingSuppression += delta);
+
+        CaptureResult result = await capture.CaptureAsync(Gesture(), CancellationToken.None);
+
+        Assert.Equal("selected", result.Text);
+        Assert.Equal("user copy", clipboard.Text);
+        Assert.Equal(0, pendingSuppression);
+    }
+
+    [Fact]
     public async Task UserCopiesDuringCapture_UserContentWinsAndIsNotReportedAsSelection()
     {
         var clipboard = new FakeClipboard(text: "original");

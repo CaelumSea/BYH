@@ -66,6 +66,12 @@ Warp 的 Windows 终端渲染面使用 `Ctrl+Shift+C` 复制选区，内置 `war
 自己的回调。不要让捕获路径再次调用单订阅的 `SubscribeChanges`，否则会在发送复制键之前
 抛出“已有订阅”，异常会被降级为空捕获，表现为 Warp 适配突然失效。
 
+**历史抑制配额不变量（REQ-038）**：捕获在发送模拟复制键前可以向历史服务预留两次
+`WM_CLIPBOARDUPDATE` 抑制，但预留必须有明确的回收路径：没有序列变化、检测到外部复制、
+或还原竞争失败时立即回滚；检测到稳定变化后先结清注入复制配额，再为
+`RestoreOriginalClipboard` 单独预留配额。否则连续的无效 Ctrl+Insert/Ctrl+C 会把配额
+留给下一次真实复制，导致用户主动复制的内容不进入剪贴板历史。
+
 ## 关键方法/类
 
 - `LowLevelMouseHook.HookCallback` — **绝不在回调里碰 UI**；只投射事件后立即 CallNextHookEx。
