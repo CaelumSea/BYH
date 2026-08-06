@@ -145,6 +145,26 @@ public sealed class Win32ClipboardCaptureTests
     }
 
     [Fact]
+    public async Task PreserveCapturedClipboard_LeavesSelectedTextInClipboard()
+    {
+        var clipboard = new FakeClipboard(text: "original");
+        var input = SourceCopyingInput(clipboard, "selected");
+        using var capture = CreateCapture(clipboard, input);
+
+        CaptureResult result = await capture.CaptureAsync(
+            Gesture(),
+            new ClipboardCaptureInvocation(
+                [SimulatedCopyChord.CtrlC],
+                PreserveCapturedClipboard: true),
+            CancellationToken.None);
+
+        Assert.Equal("selected", result.Text);
+        Assert.Equal(CaptureSource.SimulatedCopyCtrlC, result.Source);
+        Assert.Equal("selected", clipboard.Text);
+        Assert.Equal(0, clipboard.RestoreCalls);
+    }
+
+    [Fact]
     public async Task ScopedCaptureSubscription_PreservesLongLivedClipboardListener()
     {
         var clipboard = new FakeClipboard(text: "original");

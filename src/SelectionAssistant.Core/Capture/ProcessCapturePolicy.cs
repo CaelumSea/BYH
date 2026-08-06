@@ -12,6 +12,14 @@ public sealed record ProcessCapturePolicy(
     int ClipboardStabilizationMs,
     bool ManualFallbackEnabled)
 {
+    /// <summary>
+    /// Keeps a successfully captured selection in the system clipboard instead
+    /// of restoring the user's previous clipboard value. This is opt-in for
+    /// applications whose selection workflow is itself a copy operation (for
+    /// example Warp and the WeChat public-account surface).
+    /// </summary>
+    public bool PreserveCapturedClipboard { get; init; }
+
     /// <summary>默认策略:全部启用,标准稳定时长。</summary>
     public static ProcessCapturePolicy Default { get; } = new(
         DetectionEnabled: true,
@@ -53,6 +61,8 @@ public enum SimulatedCopyMode
     CtrlInsertOnly,
     /// <summary>先 Ctrl+Insert 再 Ctrl+C(最大兼容性)。</summary>
     CtrlInsertThenCtrlC,
+    /// <summary>仅 Ctrl+C（WebView/公众号等不响应 Ctrl+Insert 的应用）。</summary>
+    CtrlCOnly,
     /// <summary>仅 Ctrl+Shift+C（Warp 等终端的复制快捷键）。</summary>
     CtrlShiftCOnly,
 }

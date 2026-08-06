@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 
 namespace SelectionAssistant.Platform.Windows.Capture;
 
@@ -12,6 +13,8 @@ namespace SelectionAssistant.Platform.Windows.Capture;
 /// </summary>
 internal static partial class ProcessParentage
 {
+    private const int WeChatFamilyMaxDepth = 8;
+
     // PROCESSINFOCLASS.ProcessBasicInformation == 0
     private const uint ProcessBasicInformation = 0;
 
@@ -63,6 +66,101 @@ internal static partial class ProcessParentage
         }
         return false;
     }
+
+    /// <summary>
+    /// Accepts the two process branches used by the current WeChat client.
+    /// Public-account pages may run in <c>Weixin.exe --type=wxpublic</c> while
+    /// the actual clipboard write is performed by the sibling
+    /// <c>WeChatAppEx.exe</c> process. A strict descendant check rejects that
+    /// legitimate hand-off, so allow a common ancestor only when both process
+    /// names are known WeChat hosts. This remains deliberately narrower than a
+    /// generic sibling-process rule.
+    /// </summary>
+    public static bool IsSameWeChatFamily(uint candidatePid, uint rootPid)
+    {
+        if (candidatePid == 0 || rootPid == 0)
+        {
+            return false;
+        }
+
+        if (IsDescendantOf(candidatePid, rootPid))
+        {
+            return true;
+        }
+
+        string? candidateName = TryGetProcessName(candidatePid);
+        string? rootName = TryGetProcessName(rootPid);
+        if (!IsWeChatHost(candidateName) || !IsWeChatHost(rootName))
+        {
+            return false;
+        }
+
+        HashSet<uint> rootChain = BuildAncestorChain(rootPid, WeChatFamilyMaxDepth);
+        if (rootChain.Count == 0)
+        {
+            return false;
+        }
+
+        uint current = candidatePid;
+        for (int depth = 0; depth <= WeChatFamilyMaxDepth; depth++)
+        {
+            if (rootChain.Contains(current))
+            {
+                return true;
+            }
+
+            uint? parent = GetParentPid(current);
+            if (parent is null || parent == 0 || parent == current)
+            {
+                return false;
+            }
+
+            current = parent.Value;
+        }
+
+        return false;
+    }
+
+    private static HashSet<uint> BuildAncestorChain(uint pid, int maxDepth)
+    {
+        var chain = new HashSet<uint>();
+        uint current = pid;
+        for (int depth = 0; depth <= maxDepth && current != 0; depth++)
+        {
+            if (!chain.Add(current))
+            {
+                break;
+            }
+
+            uint? parent = GetParentPid(current);
+            if (parent is null || parent == 0 || parent == current)
+            {
+                break;
+            }
+
+            current = parent.Value;
+        }
+
+        return chain;
+    }
+
+    private static string? TryGetProcessName(uint pid)
+    {
+        try
+        {
+            using Process process = Process.GetProcessById(checked((int)pid));
+            return process.ProcessName;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static bool IsWeChatHost(string? processName) =>
+        processName is not null &&
+        (processName.Equals("Weixin", StringComparison.OrdinalIgnoreCase) ||
+         processName.Equals("WeChatAppEx", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// 拿 <paramref name="pid"/> 的父 PID。失败（OpenProcess 被拒、NtQuery 返回非成功

@@ -27,6 +27,12 @@ public static class WindowsDefaultCapturePolicies
         "warp",
     ];
 
+    private static readonly string[] WeChatProcessNames =
+    [
+        "Weixin",
+        "WeChatAppEx",
+    ];
+
     public static void AddTo(ProcessPolicyResolver resolver)
     {
         ArgumentNullException.ThrowIfNull(resolver);
@@ -51,6 +57,7 @@ public static class WindowsDefaultCapturePolicies
         {
             CopyMode = SimulatedCopyMode.CtrlShiftCOnly,
             ClipboardStabilizationMs = 120,
+            PreserveCapturedClipboard = true,
         };
         foreach (string processName in WarpProcessNames)
         {
@@ -58,6 +65,24 @@ public static class WindowsDefaultCapturePolicies
                 PolicyMatchKind.ProcessName,
                 processName,
                 warpPolicy));
+        }
+
+        // The new WeChat client hosts public-account content in a Chromium
+        // child process. Ctrl+Insert is not handled consistently by that
+        // surface (and can consume the selection before Ctrl+C arrives), so
+        // use the native Ctrl+C path and keep the captured text available for
+        // the user's next paste/history lookup.
+        var weChatPolicy = ProcessCapturePolicy.Default with
+        {
+            CopyMode = SimulatedCopyMode.CtrlCOnly,
+            PreserveCapturedClipboard = true,
+        };
+        foreach (string processName in WeChatProcessNames)
+        {
+            resolver.AddRule(new PolicyRule(
+                PolicyMatchKind.ProcessName,
+                processName,
+                weChatPolicy));
         }
 
         var pdfPolicy = ProcessCapturePolicy.Default with

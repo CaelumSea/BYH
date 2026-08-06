@@ -21,7 +21,7 @@
 | `Platform.Windows/Capture/WindowsSelectionTextCapture.cs` | UIA TextPattern2→TextPattern 取词 + 按进程策略选择剪贴板回退 |
 | `Platform.Windows/Capture/Win32ClipboardCapture.cs` | 监听剪贴板序号、注入复制键、校验来源并恢复原剪贴板 |
 | `Platform.Windows/Capture/SendInputHelper.cs` | 注入 Ctrl+Insert / Ctrl+C / Warp 的 Ctrl+Shift+C（以及 Ctrl+V）到源应用 |
-| `Platform.Windows/Capture/WindowsDefaultCapturePolicies.cs` | 内置终端 / PDF / Warp 的进程匹配策略 |
+| `Platform.Windows/Capture/WindowsDefaultCapturePolicies.cs` | 内置终端 / PDF / Warp / 微信的进程匹配策略 |
 | `Core/Capture/IProcessCapturePolicyProvider.cs` | 进程策略（终端只注入 Ctrl+Insert；高完整性降级） |
 | `App/SelectionRuntime.cs` | 组合根；`OnMouseEvent` 分发（chord 优先 → dismiss → 手势 → 取词） |
 
@@ -45,7 +45,7 @@ WH_MOUSE_LL 钩子（原生线程 HookCallback）
 
 ### 剪贴板回退的进程策略
 
-UIA 没有返回确定文本时，`WindowsSelectionTextCapture` 根据 `SourceProcessId` 解析 `ProcessCapturePolicy`，再由 `Win32ClipboardCapture` 监听剪贴板序号变化并注入该策略允许的复制键。默认链路是 `Ctrl+Insert → Ctrl+C`；传统终端只用 `Ctrl+Insert`。
+UIA 没有返回确定文本时，`WindowsSelectionTextCapture` 根据 `SourceProcessId` 解析 `ProcessCapturePolicy`，再由 `Win32ClipboardCapture` 监听剪贴板序号变化并注入该策略允许的复制键。默认链路是 `Ctrl+Insert → Ctrl+C`；传统终端只用 `Ctrl+Insert`。微信（含 `Weixin.exe --type=wxpublic` 和 `WeChatAppEx.exe`）使用单独的 `Ctrl+C`，避免 `Ctrl+Insert` 先消费公众号 WebView 的选区。
 
 #### Warp（REQ-029）
 
@@ -56,9 +56,11 @@ Warp 的 Windows 终端渲染面使用 `Ctrl+Shift+C` 复制选区，内置 `war
 1. 注入前前台窗口的 root HWND 与手势来源一致，且没有用户正在按下的修饰键；
 2. 复制键发送成功，剪贴板序号在超时内变化并稳定；
 3. 读取文本期间序号没有再次变化，且 owner 仍为空；
-4. 读取文本非空后，finally 仍按序号保护恢复原剪贴板。
+4. 读取文本非空后，Warp/微信的保留策略不恢复原剪贴板；其他策略才按序号保护恢复。
 
-其他进程和其他复制键仍要求 owner PID 等于手势来源进程，不能通过 ownerless 路径。`Program --probe-process-policy <pid>` 可检查 Warp 进程解析到的模式；运行日志的 `CaptureDebug` 类别只记录策略、发送结果、序号、owner 和长度，不记录选中文本正文。
+Warp 与微信的默认策略设置 `PreserveCapturedClipboard=true`：捕获成功后保留选中文字作为系统剪贴板内容并允许历史服务记录，这正是“划词默认复制”的产品语义；失败、空文本或检测到外部复制时仍沿用序号保护与清理逻辑。其他进程默认恢复原剪贴板。微信公众号的 `wxpublic` 与 `WeChatAppEx` 有时是同一主进程下的兄弟进程，owner 校验除直接后代外还允许双方均为微信宿主且共享祖先进程，禁止泛化为任意兄弟进程。
+
+其他进程和其他复制键仍要求 owner PID 等于手势来源进程，不能通过 ownerless 路径。`Program --probe-process-policy <pid>` 可检查 Warp/微信进程解析到的模式；运行日志的 `CaptureDebug` 类别只记录策略、发送结果、序号、owner 和长度，不记录选中文本正文。
 
 **共享监听不变量（REQ-037）**：剪贴板历史服务与划词捕获共用同一个长生命周期的
 `Win32Clipboard`。历史服务保留 legacy 订阅；每次模拟复制由
@@ -69,8 +71,9 @@ Warp 的 Windows 终端渲染面使用 `Ctrl+Shift+C` 复制选区，内置 `war
 **历史抑制配额不变量（REQ-038）**：捕获在发送模拟复制键前可以向历史服务预留两次
 `WM_CLIPBOARDUPDATE` 抑制，但预留必须有明确的回收路径：没有序列变化、检测到外部复制、
 或还原竞争失败时立即回滚；检测到稳定变化后先结清注入复制配额，再为
-`RestoreOriginalClipboard` 单独预留配额。否则连续的无效 Ctrl+Insert/Ctrl+C 会把配额
-留给下一次真实复制，导致用户主动复制的内容不进入剪贴板历史。
+`RestoreOriginalClipboard` 单独预留配额。`PreserveCapturedClipboard=true` 的 Warp/微信路径
+不为目标复制预留抑制配额，因为这次复制就是用户可见的默认复制，必须进入系统剪贴板和历史。
+否则连续的无效 Ctrl+Insert/Ctrl+C 会把配额留给下一次真实复制，导致用户主动复制的内容不进入剪贴板历史。
 
 ## 关键方法/类
 

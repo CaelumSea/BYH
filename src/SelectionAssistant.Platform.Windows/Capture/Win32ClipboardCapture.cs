@@ -5,7 +5,9 @@ namespace SelectionAssistant.Platform.Windows.Capture;
 
 /// <summary>
 /// Tier 2/3 simulated-copy capture. The original clipboard is restored only
-/// when the final sequence and owner still identify the injected source copy.
+/// when the final sequence and owner still identify the injected source copy;
+/// policies that opt into default-copy semantics intentionally keep the
+/// captured selection in the clipboard.
 /// </summary>
 public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredClipboardCapture, IDisposable
 {
@@ -47,10 +49,10 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
     }
 
     /// <summary>
-    /// 注入剪贴板历史变更抑制回调。每次注入复制（chord 真正发出）前会调用
-    /// <paramref name="suppress"/> 并传 2，让 ClipboardHistoryService 忽略接下来 2 次
-    /// WM_CLIPBOARDUPDATE（注入复制本身 + RestoreOriginalClipboard 还原 backup）。
-    /// 传 null 取消接线。线程安全：volatile 写。App 组合期调用一次，之后只读。
+    /// 注入剪贴板历史变更抑制回调。需要恢复原剪贴板的注入复制会在发送前
+    /// 预留配额，让 ClipboardHistoryService 忽略目标写入与还原写入；保留捕获结果的
+    /// 策略不会预留目标写入配额，因为该写入就是用户可见的默认复制。传 null 取消接线。
+    /// 线程安全：volatile 写。App 组合期调用一次，之后只读。
     /// </summary>
     public void SetHistoryChangeSuppressor(Action<int>? suppress) =>
         _suppressHistoryChanges = suppress;
@@ -85,6 +87,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 gesture,
                 invocation.Chords,
                 invocation.AllowOwnerlessResult,
+                invocation.PreserveCapturedClipboard,
                 effectiveOptions,
                 token).ConfigureAwait(false);
         }
@@ -98,6 +101,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
         SelectionGesture gesture,
         IReadOnlyList<SimulatedCopyChord> chords,
         bool allowOwnerlessResult,
+        bool preserveCapturedClipboard,
         ClipboardCaptureOptions options,
         CancellationToken callerToken)
     {
@@ -130,10 +134,12 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
         uint lastBaseline = snapshot.SequenceNumber;
         uint? ownedSequence = null;
         int pendingHistorySuppression = 0;
+        bool capturedClipboardPreserved = false;
 
-        // Each simulated-copy chord reserves two history notifications before
-        // sending input: one for the target application's clipboard write and
-        // one for the eventual restore. A chord that never changes the
+        // Each simulated-copy chord that will restore the user's clipboard
+        // reserves two history notifications before sending input: one for the
+        // target application's clipboard write and one for the eventual
+        // restore. A chord that never changes the
         // clipboard (common for unsupported targets) must release its
         // reservation immediately, otherwise later real Ctrl+C writes can be
         // mistaken for BYH-owned changes and disappear from clipboard history.
@@ -219,7 +225,10 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 // 先预留 2 次给注入复制本身可能产生的 WM_CLIPBOARDUPDATE；稳定变化确认后
                 // 会回收未消耗部分，finally 再为 RestoreOriginalClipboard 单独预留 2 次。
                 // sent=false 时立即回滚，避免误吞下次真实复制。
-                ReserveHistorySuppression();
+                if (!preserveCapturedClipboard)
+                {
+                    ReserveHistorySuppression();
+                }
 
                 bool sent = _input.SendCopyChord(chord);
                 Trace($"clipboard chord={chord} sent={sent} baseline={lastBaseline}");
@@ -267,8 +276,11 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                     // 分支（不设 externalChangeObserved）。判定失败（受保护进程等）返回 false，
                     // 走原有拒绝路径，零回归。
                     bool isDescendant = ProcessParentage.IsDescendantOf(ownerProcessId.Value, gesture.SourceProcessId);
-                    Trace($"clipboard owner mismatch expected={gesture.SourceProcessId} actual={ownerProcessId.Value} descendant={isDescendant}");
-                    if (!isDescendant)
+                    bool isSameWeChatFamily = ProcessParentage.IsSameWeChatFamily(
+                        ownerProcessId.Value,
+                        gesture.SourceProcessId);
+                    Trace($"clipboard owner mismatch expected={gesture.SourceProcessId} actual={ownerProcessId.Value} descendant={isDescendant} wechatFamily={isSameWeChatFamily}");
+                    if (!isDescendant && !isSameWeChatFamily)
                     {
                         // This was an external/user clipboard write. There is
                         // no restore on this path, so release any unused
@@ -295,7 +307,8 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                     ? ownerAfterRead is not null
                     : ownerAfterRead != gesture.SourceProcessId &&
                       !(ownerAfterRead is uint after &&
-                        ProcessParentage.IsDescendantOf(after, gesture.SourceProcessId));
+                        (ProcessParentage.IsDescendantOf(after, gesture.SourceProcessId) ||
+                         ProcessParentage.IsSameWeChatFamily(after, gesture.SourceProcessId)));
                 if (_clipboard.GetSequenceNumber() != ownedSequence.Value || ownerChangedDuringRead)
                 {
                     Trace("clipboard rejected because sequence/owner changed during read");
@@ -320,6 +333,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                         SimulatedCopyChord.CtrlShiftC => CaptureSource.SimulatedCopyCtrlShiftC,
                         _ => CaptureSource.SimulatedCopyCtrlC,
                     };
+                    capturedClipboardPreserved = preserveCapturedClipboard;
                     return new CaptureResult(text, source, truncated);
                 }
 
@@ -378,7 +392,9 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 // Restoration below remains sequence guarded.
             }
 
-            if (!externalChangeObserved && ownedSequence is uint expectedSequence)
+            if (!capturedClipboardPreserved &&
+                !externalChangeObserved &&
+                ownedSequence is uint expectedSequence)
             {
                 // restore 即将写剪贴板（可能写多个格式 → 多次 seq 变化），单独补配额，
                 // 覆盖 restore 产生的所有 WM_CLIPBOARDUPDATE。这样不依赖"注入复制产生几次

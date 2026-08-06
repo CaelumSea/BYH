@@ -93,6 +93,13 @@ public static class CapturePolicyConfigurationLoader
                 "clipboardStabilizationMs",
                 defaults.ClipboardStabilizationMs),
             ManualFallbackEnabled: ReadBoolean(element, "manualFallback", defaults.ManualFallbackEnabled));
+        policy = policy with
+        {
+            PreserveCapturedClipboard = ReadBoolean(
+                element,
+                "preserveCapturedClipboard",
+                defaults.PreserveCapturedClipboard),
+        };
 
         try
         {

@@ -80,7 +80,29 @@ public sealed class WindowsSelectionTextCapturePolicyTests
             [SimulatedCopyChord.CtrlShiftC],
             clipboard.LastInvocation?.Chords);
         Assert.Equal(TimeSpan.FromMilliseconds(120), clipboard.LastInvocation?.StabilizationDelay);
+        Assert.False(clipboard.LastInvocation?.PreserveCapturedClipboard ?? false);
         Assert.Equal(0, accessibility.CallCount);
+    }
+
+    [Fact]
+    public async Task WeChatPolicy_UsesCtrlCAndPreservesCapturedClipboard()
+    {
+        var accessibility = new FakeAccessibilityCapture(Result(null, CaptureSource.None));
+        var clipboard = new FakeClipboardCapture(
+            Result("wechat", CaptureSource.SimulatedCopyCtrlC));
+        ProcessCapturePolicy policy = ProcessCapturePolicy.Default with
+        {
+            AccessibilityEnabled = false,
+            CopyMode = SimulatedCopyMode.CtrlCOnly,
+            PreserveCapturedClipboard = true,
+        };
+        using var capture = Create(policy, accessibility, clipboard);
+
+        CaptureResult result = await capture.CaptureAsync(Gesture(), CancellationToken.None);
+
+        Assert.Equal("wechat", result.Text);
+        Assert.Equal([SimulatedCopyChord.CtrlC], clipboard.LastInvocation?.Chords);
+        Assert.True(clipboard.LastInvocation?.PreserveCapturedClipboard ?? false);
     }
 
     [Fact]
@@ -127,6 +149,8 @@ public sealed class WindowsSelectionTextCapturePolicyTests
     [InlineData("powershell.exe", SimulatedCopyMode.CtrlInsertOnly, 0)]
     [InlineData("AcroRd32.exe", SimulatedCopyMode.CtrlInsertThenCtrlC, 150)]
     [InlineData("warp.exe", SimulatedCopyMode.CtrlShiftCOnly, 120)]
+    [InlineData("Weixin.exe", SimulatedCopyMode.CtrlCOnly, 0)]
+    [InlineData("WeChatAppEx.exe", SimulatedCopyMode.CtrlCOnly, 0)]
     public void WindowsDefaults_ResolveExpectedApplicationPolicy(
         string processName,
         SimulatedCopyMode expectedMode,
@@ -139,6 +163,17 @@ public sealed class WindowsSelectionTextCapturePolicyTests
 
         Assert.Equal(expectedMode, result.CopyMode);
         Assert.Equal(expectedStabilization, result.ClipboardStabilizationMs);
+    }
+
+    [Fact]
+    public void WindowsDefaults_MarkWarpAndWeChatAsClipboardPreserving()
+    {
+        var resolver = new ProcessPolicyResolver();
+        WindowsDefaultCapturePolicies.AddTo(resolver);
+
+        Assert.True(resolver.Resolve("warp", null, null).PreserveCapturedClipboard);
+        Assert.True(resolver.Resolve("Weixin", null, null).PreserveCapturedClipboard);
+        Assert.True(resolver.Resolve("WeChatAppEx", null, null).PreserveCapturedClipboard);
     }
 
     [Fact]

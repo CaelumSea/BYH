@@ -211,6 +211,7 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
         {
             SimulatedCopyMode.CtrlInsertOnly => CtrlInsertOnly,
             SimulatedCopyMode.CtrlInsertThenCtrlC => CtrlInsertThenCtrlC,
+            SimulatedCopyMode.CtrlCOnly => [SimulatedCopyChord.CtrlC],
             SimulatedCopyMode.CtrlShiftCOnly => CtrlShiftCOnly,
             _ => null,
         };
@@ -226,7 +227,8 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
                     new ClipboardCaptureInvocation(
                         chords,
                         stabilization,
-                        AllowOwnerlessResult: policy.CopyMode == SimulatedCopyMode.CtrlShiftCOnly),
+                        AllowOwnerlessResult: policy.CopyMode == SimulatedCopyMode.CtrlShiftCOnly,
+                        PreserveCapturedClipboard: policy.PreserveCapturedClipboard),
                     token)
                 .ConfigureAwait(false);
 

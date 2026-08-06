@@ -53,7 +53,8 @@ public interface ICopyInputInjector
 public sealed record ClipboardCaptureInvocation(
     IReadOnlyList<SimulatedCopyChord> Chords,
     TimeSpan? StabilizationDelay = null,
-    bool AllowOwnerlessResult = false)
+    bool AllowOwnerlessResult = false,
+    bool PreserveCapturedClipboard = false)
 {
     public ClipboardCaptureInvocation Validate()
     {
