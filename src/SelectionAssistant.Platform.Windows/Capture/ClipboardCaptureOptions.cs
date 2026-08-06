@@ -54,7 +54,8 @@ public sealed record ClipboardCaptureInvocation(
     IReadOnlyList<SimulatedCopyChord> Chords,
     TimeSpan? StabilizationDelay = null,
     bool AllowOwnerlessResult = false,
-    bool PreserveCapturedClipboard = false)
+    bool PreserveCapturedClipboard = false,
+    int HistorySuppressionCount = 2)
 {
     public ClipboardCaptureInvocation Validate()
     {
@@ -67,6 +68,11 @@ public sealed record ClipboardCaptureInvocation(
         if (StabilizationDelay is { } delay && delay <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(nameof(StabilizationDelay));
+        }
+
+        if (HistorySuppressionCount is < 0 or > 8)
+        {
+            throw new ArgumentOutOfRangeException(nameof(HistorySuppressionCount));
         }
 
         return this;

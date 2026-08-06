@@ -20,6 +20,7 @@ public sealed class CapturePolicyConfigurationLoaderTests
                   "accessibilityCapture": false,
                   "simulatedCopyMode": "None",
                   "clipboardStabilizationMs": 220,
+                  "historySuppressionCount": 6,
                   "preserveCapturedClipboard": true,
                   "manualFallback": true
                 }
@@ -36,6 +37,7 @@ public sealed class CapturePolicyConfigurationLoaderTests
             Assert.False(rule.Policy.AccessibilityEnabled);
             Assert.Equal(SimulatedCopyMode.None, rule.Policy.CopyMode);
             Assert.Equal(220, rule.Policy.ClipboardStabilizationMs);
+            Assert.Equal(6, rule.Policy.HistorySuppressionCount);
             Assert.True(rule.Policy.PreserveCapturedClipboard);
         }
         finally

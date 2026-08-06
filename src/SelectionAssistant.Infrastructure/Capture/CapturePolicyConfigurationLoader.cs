@@ -99,6 +99,10 @@ public static class CapturePolicyConfigurationLoader
                 element,
                 "preserveCapturedClipboard",
                 defaults.PreserveCapturedClipboard),
+            HistorySuppressionCount = ReadInteger(
+                element,
+                "historySuppressionCount",
+                defaults.HistorySuppressionCount),
         };
 
         try
@@ -107,7 +111,7 @@ public static class CapturePolicyConfigurationLoader
         }
         catch (ArgumentOutOfRangeException exception)
         {
-            throw new CapturePolicyConfigurationException("剪贴板稳定时间超出允许范围。", exception);
+            throw new CapturePolicyConfigurationException("剪贴板稳定时间或历史抑制次数超出允许范围。", exception);
         }
 
         return new PolicyRule(matchKind, matchValue, policy);

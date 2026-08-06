@@ -143,8 +143,8 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
 
     /// <summary>
     /// 注入剪贴板历史变更抑制回调，透传给当前活跃的 Win32ClipboardCapture。每次注入
-    /// 复制前会调用 <paramref name="suppress"/> 传 2，让 ClipboardHistoryService 忽略
-    /// 接下来 2 次 WM_CLIPBOARDUPDATE（注入复制 + restore backup）。传 null 取消接线。
+    /// 复制前会按进程策略预留 WM_CLIPBOARDUPDATE 配额，让 ClipboardHistoryService 忽略
+    /// 注入复制与 restore backup。传 null 取消接线。
     /// 后续 <see cref="SetSharedClipboard"/> rebuild 时会把同一回调复用到新 wrapper。
     /// </summary>
     public void SetHistoryChangeSuppressor(Action<int>? suppress)
@@ -228,7 +228,8 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
                         chords,
                         stabilization,
                         AllowOwnerlessResult: policy.CopyMode == SimulatedCopyMode.CtrlShiftCOnly,
-                        PreserveCapturedClipboard: policy.PreserveCapturedClipboard),
+                        PreserveCapturedClipboard: policy.PreserveCapturedClipboard,
+                        HistorySuppressionCount: policy.HistorySuppressionCount),
                     token)
                 .ConfigureAwait(false);
 

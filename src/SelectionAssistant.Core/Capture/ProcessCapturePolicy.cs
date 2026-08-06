@@ -20,6 +20,14 @@ public sealed record ProcessCapturePolicy(
     /// </summary>
     public bool PreserveCapturedClipboard { get; init; }
 
+    /// <summary>
+    /// Number of clipboard-history notifications reserved while a simulated
+    /// copy is in flight. GPU/WebView terminals can publish one logical copy
+    /// in several clipboard transactions; the default covers normal targets,
+    /// while a process-specific policy may reserve more.
+    /// </summary>
+    public int HistorySuppressionCount { get; init; } = 2;
+
     /// <summary>默认策略:全部启用,标准稳定时长。</summary>
     public static ProcessCapturePolicy Default { get; } = new(
         DetectionEnabled: true,
@@ -37,6 +45,7 @@ public sealed record ProcessCapturePolicy(
     public ProcessCapturePolicy Normalize() => this with
     {
         ClipboardStabilizationMs = Math.Clamp(ClipboardStabilizationMs, 0, 5_000),
+        HistorySuppressionCount = Math.Clamp(HistorySuppressionCount, 0, 8),
     };
 
     public ProcessCapturePolicy Validate()
@@ -46,6 +55,13 @@ public sealed record ProcessCapturePolicy(
             throw new ArgumentOutOfRangeException(
                 nameof(ClipboardStabilizationMs),
                 "Clipboard stabilization must be between 0 and 5000 ms.");
+        }
+
+        if (HistorySuppressionCount is < 0 or > 8)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(HistorySuppressionCount),
+                "History suppression count must be between 0 and 8.");
         }
 
         return this;

@@ -9,6 +9,7 @@
       "accessibilityCapture": true,
       "simulatedCopyMode": "CtrlInsertOnly",
       "clipboardStabilizationMs": 0,
+      "historySuppressionCount": 2,
       "preserveCapturedClipboard": false,
       "manualFallback": true
     },
@@ -20,6 +21,7 @@
       "accessibilityCapture": true,
       "simulatedCopyMode": "CtrlInsertThenCtrlC",
       "clipboardStabilizationMs": 150,
+      "historySuppressionCount": 2,
       "preserveCapturedClipboard": false,
       "manualFallback": true
     }

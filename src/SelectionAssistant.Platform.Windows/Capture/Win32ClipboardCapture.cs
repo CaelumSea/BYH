@@ -90,6 +90,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 invocation.Chords,
                 invocation.AllowOwnerlessResult,
                 invocation.PreserveCapturedClipboard,
+                invocation.HistorySuppressionCount,
                 effectiveOptions,
                 token).ConfigureAwait(false);
         }
@@ -104,6 +105,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
         IReadOnlyList<SimulatedCopyChord> chords,
         bool allowOwnerlessResult,
         bool preserveCapturedClipboard,
+        int historySuppressionCount,
         ClipboardCaptureOptions options,
         CancellationToken callerToken)
     {
@@ -139,8 +141,9 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
         bool capturedClipboardPreserved = false;
 
         // Each simulated-copy chord that will restore the user's clipboard
-        // reserves two history notifications before sending input: one for the
-        // target application's clipboard write and one for the eventual
+        // reserves the policy-specific number of history notifications before
+        // sending input. Normal applications use two; GPU/WebView targets
+        // such as Warp can publish one logical copy in several transactions.
         // restore. A chord that never changes the
         // clipboard (common for unsupported targets) must release its
         // reservation immediately, otherwise later real Ctrl+C writes can be
@@ -155,8 +158,13 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
 
             try
             {
-                suppressor(2);
-                pendingHistorySuppression += 2;
+                if (historySuppressionCount <= 0)
+                {
+                    return;
+                }
+
+                suppressor(historySuppressionCount);
+                pendingHistorySuppression += historySuppressionCount;
             }
             catch
             {
@@ -237,7 +245,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 if (!sent)
                 {
                     // chord 没发出，不会有剪贴板写入，回滚刚设的配额。
-                    ReleaseHistorySuppression(2);
+                    ReleaseHistorySuppression(historySuppressionCount);
                     continue;
                 }
 
@@ -254,12 +262,12 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                     // No WM_CLIPBOARDUPDATE arrived, so this reservation can
                     // never be consumed by the target. Do not carry it into
                     // the user's next active copy.
-                    ReleaseHistorySuppression(2);
+                    ReleaseHistorySuppression(historySuppressionCount);
                     continue;
                 }
 
                 uint? ownerProcessId = _clipboard.GetOwnerProcessId();
-                Trace($"clipboard chord={chord} stable={stableSequence.Value} owner={ownerProcessId?.ToString() ?? "none"}");
+                Trace($"clipboard chord={chord} stable={stableSequence.Value} delta={unchecked(stableSequence.Value - lastBaseline)} owner={ownerProcessId?.ToString() ?? "none"} historyReserve={historySuppressionCount}");
                 bool ownerlessResult = ownerProcessId is null && allowOwnerlessResult;
                 if (ownerProcessId is null && !ownerlessResult)
                 {
@@ -287,7 +295,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                         // This was an external/user clipboard write. There is
                         // no restore on this path, so release any unused
                         // capture reservation before returning.
-                        ReleaseHistorySuppression(2);
+                        ReleaseHistorySuppression(historySuppressionCount);
                         externalChangeObserved = true;
                         return NoCapture();
                     }
@@ -314,7 +322,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 if (_clipboard.GetSequenceNumber() != ownedSequence.Value || ownerChangedDuringRead)
                 {
                     Trace("clipboard rejected because sequence/owner changed during read");
-                    ReleaseHistorySuppression(2);
+                    ReleaseHistorySuppression(historySuppressionCount);
                     externalChangeObserved = true;
                     ownedSequence = null;
                     return NoCapture();
@@ -343,7 +351,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 // successful capture and the loop may try another chord. Its
                 // reservation has already served its purpose, so release it
                 // before the next chord reserves a fresh pair.
-                ReleaseHistorySuppression(2);
+                ReleaseHistorySuppression(historySuppressionCount);
             }
 
             return NoCapture();

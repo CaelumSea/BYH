@@ -171,6 +171,7 @@ public sealed class WindowsSelectionTextCapturePolicyTests
         WindowsDefaultCapturePolicies.AddTo(resolver);
 
         Assert.False(resolver.Resolve("warp", null, null).PreserveCapturedClipboard);
+        Assert.Equal(8, resolver.Resolve("warp", null, null).HistorySuppressionCount);
         Assert.False(resolver.Resolve("Weixin", null, null).PreserveCapturedClipboard);
         Assert.False(resolver.Resolve("WeChatAppEx", null, null).PreserveCapturedClipboard);
     }

@@ -57,6 +57,11 @@ public static class WindowsDefaultCapturePolicies
         {
             CopyMode = SimulatedCopyMode.CtrlShiftCOnly,
             ClipboardStabilizationMs = 120,
+            // Warp's GPU/WebView surface publishes one logical copy through
+            // several clipboard transactions (observed sequence delta: 5).
+            // Reserve enough history notifications to hide all of those
+            // intermediate writes; restore uses its own single reservation.
+            HistorySuppressionCount = 8,
         };
         foreach (string processName in WarpProcessNames)
         {

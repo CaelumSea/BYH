@@ -49,7 +49,7 @@ UIA 没有返回确定文本时，`WindowsSelectionTextCapture` 根据 `SourcePr
 
 #### Warp（REQ-029）
 
-Warp 的 Windows 终端渲染面使用 `Ctrl+Shift+C` 复制选区，内置 `warp.exe` 规则映射到 `SimulatedCopyMode.CtrlShiftCOnly`，并使用 120ms 稳定等待。Warp 的 GPU/WebView 剪贴板在实测中会出现：序号发生变化、`CF_UNICODETEXT` 可读，但 `GetClipboardOwner()` 返回空窗口，因此无法得到 owner PID。
+Warp 的 Windows 终端渲染面使用 `Ctrl+Shift+C` 复制选区，内置 `warp.exe` 规则映射到 `SimulatedCopyMode.CtrlShiftCOnly`，并使用 120ms 稳定等待。Warp 的 GPU/WebView 剪贴板在实测中会出现：一次逻辑复制产生多次序号/通知变化、`CF_UNICODETEXT` 可读，但 `GetClipboardOwner()` 返回空窗口，因此无法得到 owner PID。Warp 专用策略把 `historySuppressionCount` 提高到 8，覆盖这些中间写入；还原写入仍单独抑制 1 次。普通应用保留默认 2 次配额。
 
 为兼容这一行为，`ClipboardCaptureInvocation.AllowOwnerlessResult` 只在 `CtrlShiftCOnly` 策略中开启。ownerless 结果仍需同时满足：
 
