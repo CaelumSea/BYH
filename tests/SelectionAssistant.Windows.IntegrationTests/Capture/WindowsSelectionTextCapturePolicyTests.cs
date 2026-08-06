@@ -60,7 +60,7 @@ public sealed class WindowsSelectionTextCapturePolicyTests
     }
 
     [Fact]
-    public async Task WarpPolicy_UsesOnlyCtrlShiftC()
+    public async Task WarpPolicy_UsesOnlyCtrlShiftCAndRestoresClipboard()
     {
         var accessibility = new FakeAccessibilityCapture(Result(null, CaptureSource.None));
         var clipboard = new FakeClipboardCapture(
@@ -85,7 +85,7 @@ public sealed class WindowsSelectionTextCapturePolicyTests
     }
 
     [Fact]
-    public async Task WeChatPolicy_UsesCtrlCAndPreservesCapturedClipboard()
+    public async Task WeChatPolicy_UsesCtrlCWithoutPreservingCapturedClipboard()
     {
         var accessibility = new FakeAccessibilityCapture(Result(null, CaptureSource.None));
         var clipboard = new FakeClipboardCapture(
@@ -94,7 +94,6 @@ public sealed class WindowsSelectionTextCapturePolicyTests
         {
             AccessibilityEnabled = false,
             CopyMode = SimulatedCopyMode.CtrlCOnly,
-            PreserveCapturedClipboard = true,
         };
         using var capture = Create(policy, accessibility, clipboard);
 
@@ -102,7 +101,7 @@ public sealed class WindowsSelectionTextCapturePolicyTests
 
         Assert.Equal("wechat", result.Text);
         Assert.Equal([SimulatedCopyChord.CtrlC], clipboard.LastInvocation?.Chords);
-        Assert.True(clipboard.LastInvocation?.PreserveCapturedClipboard ?? false);
+        Assert.False(clipboard.LastInvocation?.PreserveCapturedClipboard ?? false);
     }
 
     [Fact]
@@ -166,14 +165,14 @@ public sealed class WindowsSelectionTextCapturePolicyTests
     }
 
     [Fact]
-    public void WindowsDefaults_MarkWarpAndWeChatAsClipboardPreserving()
+    public void WindowsDefaults_RestoreClipboardAfterSelectionCapture()
     {
         var resolver = new ProcessPolicyResolver();
         WindowsDefaultCapturePolicies.AddTo(resolver);
 
-        Assert.True(resolver.Resolve("warp", null, null).PreserveCapturedClipboard);
-        Assert.True(resolver.Resolve("Weixin", null, null).PreserveCapturedClipboard);
-        Assert.True(resolver.Resolve("WeChatAppEx", null, null).PreserveCapturedClipboard);
+        Assert.False(resolver.Resolve("warp", null, null).PreserveCapturedClipboard);
+        Assert.False(resolver.Resolve("Weixin", null, null).PreserveCapturedClipboard);
+        Assert.False(resolver.Resolve("WeChatAppEx", null, null).PreserveCapturedClipboard);
     }
 
     [Fact]

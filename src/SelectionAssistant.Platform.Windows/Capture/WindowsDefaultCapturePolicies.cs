@@ -57,7 +57,6 @@ public static class WindowsDefaultCapturePolicies
         {
             CopyMode = SimulatedCopyMode.CtrlShiftCOnly,
             ClipboardStabilizationMs = 120,
-            PreserveCapturedClipboard = true,
         };
         foreach (string processName in WarpProcessNames)
         {
@@ -75,7 +74,6 @@ public static class WindowsDefaultCapturePolicies
         var weChatPolicy = ProcessCapturePolicy.Default with
         {
             CopyMode = SimulatedCopyMode.CtrlCOnly,
-            PreserveCapturedClipboard = true,
         };
         foreach (string processName in WeChatProcessNames)
         {

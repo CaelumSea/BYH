@@ -56,9 +56,9 @@ Warp 的 Windows 终端渲染面使用 `Ctrl+Shift+C` 复制选区，内置 `war
 1. 注入前前台窗口的 root HWND 与手势来源一致，且没有用户正在按下的修饰键；
 2. 复制键发送成功，剪贴板序号在超时内变化并稳定；
 3. 读取文本期间序号没有再次变化，且 owner 仍为空；
-4. 读取文本非空后，Warp/微信的保留策略不恢复原剪贴板；其他策略才按序号保护恢复。
+4. 读取文本非空后，所有内置策略都按序号保护恢复原剪贴板；工具条 `C` 或用户主动复制才改变系统剪贴板。
 
-Warp 与微信的默认策略设置 `PreserveCapturedClipboard=true`：捕获成功后保留选中文字作为系统剪贴板内容并允许历史服务记录，这正是“划词默认复制”的产品语义；失败、空文本或检测到外部复制时仍沿用序号保护与清理逻辑。其他进程默认恢复原剪贴板。微信公众号的 `wxpublic` 与 `WeChatAppEx` 有时是同一主进程下的兄弟进程，owner 校验除直接后代外还允许双方均为微信宿主且共享祖先进程，禁止泛化为任意兄弟进程。
+`PreserveCapturedClipboard` 保留为可选策略扩展，但 Warp 与微信的内置策略关闭它：划词捕获只临时读取选区，成功或失败都恢复用户原剪贴板；工具条 `C` 的显式复制和用户主动 Ctrl+C 由历史服务正常记录。微信公众号的 `wxpublic` 与 `WeChatAppEx` 有时是同一主进程下的兄弟进程，owner 校验除直接后代外还允许双方均为微信宿主且共享祖先进程，禁止泛化为任意兄弟进程。
 
 其他进程和其他复制键仍要求 owner PID 等于手势来源进程，不能通过 ownerless 路径。`Program --probe-process-policy <pid>` 可检查 Warp/微信进程解析到的模式；运行日志的 `CaptureDebug` 类别只记录策略、发送结果、序号、owner 和长度，不记录选中文本正文。
 
@@ -71,9 +71,8 @@ Warp 与微信的默认策略设置 `PreserveCapturedClipboard=true`：捕获成
 **历史抑制配额不变量（REQ-038）**：捕获在发送模拟复制键前可以向历史服务预留两次
 `WM_CLIPBOARDUPDATE` 抑制，但预留必须有明确的回收路径：没有序列变化、检测到外部复制、
 或还原竞争失败时立即回滚；检测到稳定变化后先结清注入复制配额，再为
-`RestoreOriginalClipboard` 单独预留配额。`PreserveCapturedClipboard=true` 的 Warp/微信路径
-不为目标复制预留抑制配额，因为这次复制就是用户可见的默认复制，必须进入系统剪贴板和历史。
-否则连续的无效 Ctrl+Insert/Ctrl+C 会把配额留给下一次真实复制，导致用户主动复制的内容不进入剪贴板历史。
+`RestoreOriginalClipboard` 单独预留配额；只有显式配置 `PreserveCapturedClipboard=true` 时才跳过
+目标写入的抑制。否则连续的无效 Ctrl+Insert/Ctrl+C 会把配额留给下一次真实复制，导致用户主动复制的内容不进入剪贴板历史。
 
 ## 关键方法/类
 

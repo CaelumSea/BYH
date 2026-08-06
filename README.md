@@ -87,7 +87,7 @@ OCR（Ocean Eyes）用哪个 provider/model 在 **设置 → Vision** 单独配�
 | `clipboard-history-icons.json` | 用户导入的图标库（SVG path data）。 |
 | `launcher-entries.json` | 启动器条目（用户添加的 app/URL）。 |
 | `toolbar-shortcuts.json` | 工具栏内置快捷键（默认 R/C/V）。 |
-| `capture-policies.json` | 进程级选词捕获策略；内置 Warp 使用 `Ctrl+Shift+C`，微信/公众号使用 `Ctrl+C`，两者成功捕获后默认保留到剪贴板；其他终端保持 `Ctrl+Insert`。 |
+| `capture-policies.json` | 进程级选词捕获策略；内置 Warp 使用 `Ctrl+Shift+C`，微信/公众号使用 `Ctrl+C`，划词读取后恢复原剪贴板；只有主动复制才写入历史。其他终端保持 `Ctrl+Insert`。 |
 | `clipboard-images/` | 图片剪贴板条目的 PNG。 |
 | `clipboard-archive/` | 按月分片（`YYYY-MM.json`）的剪贴板归档。 |
 | `launcher-icons/` | 启动器图标缓存。 |
