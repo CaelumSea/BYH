@@ -56,10 +56,11 @@ public sealed class ClipboardHistoryService : IDisposable
     private UserIconLibrary _iconLibrary;
     private ClipboardHistorySettings _settings;
     private uint _lastSeenSequence;
-    // 抑制配额：PasteAsync 自写剪贴板时置 1，取词管线注入 Ctrl+Insert/Ctrl+C 时
-    // 经 SuppressNextChanges 置 2（注入复制 1 次 + RestoreOriginalClipboard 还原
-    // backup 1 次）。OnClipboardChanged 每次 Interlocked.Decrement 消耗 1。语义与
-    // 原单次 bool 一致，只是支持连续多次自写。int 用 Interlocked 操作，无需 _gate。
+    // 抑制配额：PasteAsync 自写剪贴板时置 1；取词管线注入复制阶段通常预留 2
+    // （兼容少数分阶段发布内容的应用），RestoreOriginalClipboard 单独预留 1
+    // （一次 EmptyClipboard + SetClipboardData 事务只产生一个系统更新通知）。
+    // OnClipboardChanged 每次 Interlocked.Decrement 消耗 1。int 用 Interlocked 操作，
+    // 无需 _gate。
     private int _suppressNextChanges;
     private int _disposed;
     // R103: lazily-loaded archive cache. Null + _archiveLoaded=false means "not
@@ -644,15 +645,16 @@ public sealed class ClipboardHistoryService : IDisposable
 
     /// <summary>
     /// 取词管线在发 <c>Ctrl+Insert</c>/<c>Ctrl+C</c> 注入复制前调用，让历史服务忽略
-    /// 接下来 <paramref name="count"/> 次 <c>WM_CLIPBOARDUPDATE</c>。典型 count=2：
-    /// 注入复制本身 1 次 + <c>Win32ClipboardCapture</c> 还原 backup 又 1 次。语义与
-    /// <see cref="PasteAsync"/> 的单次抑制一致，只是支持连续多次自写。线程安全：
+    /// 接下来 <paramref name="count"/> 次 <c>WM_CLIPBOARDUPDATE</c>。注入复制阶段
+    /// 通常 count=2；还原阶段由 <c>Win32ClipboardCapture</c> 精确传入 count=1。
+    /// 语义与 <see cref="PasteAsync"/> 的单次抑制一致，只是支持连续多次自写。线程安全：
     /// 在 <see cref="_gate"/> 内自增，<c>OnClipboardChanged</c> 用
     /// <see cref="Interlocked"/> 无锁递减。<paramref name="count"/>)&lt;=0 为无操作。
     /// </summary>
     public void SuppressNextChanges(int count)
     {
-        // count>0：累加配额（取词注入 +2）。count<0：回滚配额（chord 没真发出时撤销）。
+        // count>0：累加配额（取词注入通常 +2，restore +1）。count<0：回滚配额
+        //（chord 没真发出或 restore 失败时撤销）。
         // count==0 无操作。钳制到 [0,8]：下界保证不残留负配额污染真实复制，上界防止
         // 异常路径无限累积误吞后续复制。
         if (count == 0)

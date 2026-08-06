@@ -23,8 +23,10 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
     private readonly IReadOnlyList<SimulatedCopyChord> _chords;
     private readonly Action<string>? _diagnosticSink;
     // 剪贴板历史抑制回调。注入复制前调用，让 ClipboardHistoryService 忽略接下来 N 次
-    // WM_CLIPBOARDUPDATE（注入 1 次 + restore backup 1 次 = 典型 2 次）。null 表示未接线
-    // （历史服务未启用）。非 readonly：由 SetHistoryChangeSuppressor 在 App 组合期设置。
+    // WM_CLIPBOARDUPDATE。注入阶段保守预留 2 次（部分应用会分阶段发布内容），恢复阶段
+    // 只预留 1 次（一次 EmptyClipboard + SetClipboardData 只产生一个系统更新通知）。
+    // null 表示未接线（历史服务未启用）。非 readonly：由 SetHistoryChangeSuppressor
+    // 在 App 组合期设置。
     private Action<int>? _suppressHistoryChanges;
     private readonly SemaphoreSlim _captureGate = new(1, 1);
     private int _disposed;
@@ -396,12 +398,16 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 !externalChangeObserved &&
                 ownedSequence is uint expectedSequence)
             {
-                // restore 即将写剪贴板（可能写多个格式 → 多次 seq 变化），单独补配额，
-                // 覆盖 restore 产生的所有 WM_CLIPBOARDUPDATE。这样不依赖"注入复制产生几次
-                // 变化"的猜测——chord 前设的配额覆盖注入，这里覆盖 restore。
+                // restore uses one EmptyClipboard + several SetClipboardData
+                // calls in a single ownership transaction. Windows emits one
+                // WM_CLIPBOARDUPDATE for that transaction, so reserve exactly
+                // one notification here. Reserving two leaves a stale quota
+                // in applications that emit the normal single notification;
+                // the next real user Ctrl+C is then silently discarded by the
+                // history listener.
                 // The target-copy reservation has already been balanced after
-                // the stable change was observed; this pair belongs only to
-                // the restore write.
+                // the stable change was observed; this reservation belongs only
+                // to the restore write.
                 ReleaseAllHistorySuppression();
                 Action<int>? suppressor = _suppressHistoryChanges;
                 bool restoreSuppressionReserved = false;
@@ -409,7 +415,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 {
                     try
                     {
-                        suppressor(2);
+                        suppressor(1);
                         restoreSuppressionReserved = true;
                     }
                     catch { }
@@ -421,7 +427,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                     // A sequence-guarded restore may lose a race with a real
                     // user copy. No restore write means its reservation must
                     // be cancelled immediately.
-                    try { suppressor!(-2); }
+                    try { suppressor!(-1); }
                     catch { }
                 }
             }

@@ -69,8 +69,9 @@ public static class WindowsDefaultCapturePolicies
         // The new WeChat client hosts public-account content in a Chromium
         // child process. Ctrl+Insert is not handled consistently by that
         // surface (and can consume the selection before Ctrl+C arrives), so
-        // use the native Ctrl+C path and keep the captured text available for
-        // the user's next paste/history lookup.
+        // use the native Ctrl+C path. The capture layer restores the user's
+        // prior clipboard; explicit Ctrl+C and toolbar C remain the only paths
+        // that intentionally create a new clipboard-history entry.
         var weChatPolicy = ProcessCapturePolicy.Default with
         {
             CopyMode = SimulatedCopyMode.CtrlCOnly,
