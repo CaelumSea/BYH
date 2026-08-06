@@ -12,6 +12,7 @@ using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
+using SelectionAssistant.Core.Speech;
 using SelectionAssistant.Core.Startup;
 using SelectionAssistant.Core.Translation;
 using SelectionAssistant.Infrastructure.Configuration;
@@ -362,6 +363,8 @@ public partial class App : Application
             settingsWindow.LauncherEntryMoved += OnLauncherEntryMoved;
             settingsWindow.ScanInstalledAppsRequested += OnScanInstalledAppsRequested;
             settingsWindow.VisionSettingsSaved += OnVisionSettingsSaved;
+            settingsWindow.TtsSettingsSaved += OnTtsSettingsSaved;
+            settingsWindow.TtsTestRequested += OnTtsTestRequested;
             settingsWindow.OceanEyesTriggerSettingsSaved += OnOceanEyesTriggerSettingsSaved;
             settingsWindow.OceanEyesCaptureSettingsSaved += OnOceanEyesCaptureSettingsSaved;
             settingsWindow.ToolbarShortcutsSaved += OnToolbarShortcutsSaved;
@@ -2026,6 +2029,11 @@ public partial class App : Application
 
         _settingsWindow.SetPromptTemplates(_runtime.GetPromptTemplates());
         _settingsWindow.SetVisionSettings(_runtime.GetVisionSettings());
+        // 朗读 (TTS): push settings + whether a BYH-managed key is configured.
+        // When not configured, the settings UI hints the user that mmx's login
+        // will be reused instead.
+        bool ttsKeyConfigured = await _runtime.IsTtsKeyConfiguredAsync();
+        _settingsWindow.SetTtsSettings(_runtime.GetTtsSettings(), ttsKeyConfigured);
         _settingsWindow.SetOceanEyesTriggerSettings(_oceanEyesTrigger);
         _settingsWindow.SetOceanEyesCaptureSettings(_oceanEyesCapture);
         _settingsWindow.SetToolbarShortcuts(_toolbarShortcuts);
@@ -2255,6 +2263,25 @@ public partial class App : Application
     {
         if (_runtime is null) return;
         _runtime.UpdateVisionSettings(settings);
+    }
+
+    /// <summary>Persists + applies 朗读 (TTS) settings from the UI. Also saves
+    /// a freshly-typed API key to the DPAPI store (null/empty = no change).</summary>
+    private async void OnTtsSettingsSaved(TtsSettings settings, string? newApiKey)
+    {
+        if (_runtime is null) return;
+        _runtime.UpdateTtsSettings(settings);
+        if (!string.IsNullOrWhiteSpace(newApiKey))
+        {
+            await _runtime.SaveTtsApiKeyAsync(newApiKey);
+        }
+    }
+
+    /// <summary>Test-synthesizes + plays a sample with the form's current
+    /// settings (no persistence). Used by the settings "测试" button.</summary>
+    private void OnTtsTestRequested(TtsSettings settings, string? newApiKey)
+    {
+        _runtime?.TestTtsAsync(settings, newApiKey);
     }
 
     /// <summary>Refreshes provider list on the settings window, then shows it.</summary>

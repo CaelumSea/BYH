@@ -143,6 +143,19 @@
             </Grid>
           </Button>
 
+          <Button x:Name="TtsNavButton"
+                  Classes="SettingsNav"
+                  Padding="12,8"
+                  AutomationProperties.AutomationId="BYH.Settings.Nav.Tts"
+                  Click="OnShowTtsClick">
+            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
+              <!-- speaker icon: cone + sound waves -->
+              <Path Classes="NavIcon"
+                    Data="M3,10 L3,14 L7,14 L12,18 L12,6 L7,10 Z M15,9 A4,4 0 0 1 15,15 M17.5,6.5 A7.5,7.5 0 0 1 17.5,17.5" />
+              <TextBlock Grid.Column="1" Text="{x:Static i18n:Strings.Settings_Nav_Tts}" FontSize="{DynamicResource ByhFontSizeBodyLarge}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
           <Button x:Name="LauncherNavButton"
                   Classes="SettingsNav"
                   Padding="12,8"
@@ -659,7 +672,7 @@
                          FontSize="{DynamicResource ByhFontSizeSubheading}"
                          FontWeight="SemiBold" />
               <Border Classes="InnerCard" Padding="12">
-                <Grid ColumnDefinitions="Auto,60,*" RowDefinitions="Auto,Auto"
+                <Grid ColumnDefinitions="Auto,60,*" RowDefinitions="Auto,Auto,Auto"
                       RowSpacing="8" ColumnSpacing="12">
                   <TextBlock Grid.Row="0" Grid.Column="0"
                              Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Prompt}"
@@ -691,6 +704,23 @@
                             PlaceholderText="{x:Static i18n:Strings.Common_Placeholder_None}" />
                   <TextBlock Grid.Row="1" Grid.Column="2"
                              Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Copy_Hint}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                             VerticalAlignment="Center" />
+
+                  <TextBlock Grid.Row="2" Grid.Column="0"
+                             Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Speak}"
+                             Classes="Secondary"
+                             FontSize="{DynamicResource ByhFontSizeBody}"
+                             VerticalAlignment="Center" />
+                  <TextBox  Grid.Row="2" Grid.Column="1"
+                            x:Name="SpeakShortcutInput"
+                            MaxLength="1"
+                            FontSize="{DynamicResource ByhFontSizeBodyLarge}"
+                            HorizontalAlignment="Stretch"
+                            PlaceholderText="{x:Static i18n:Strings.Common_Placeholder_None}" />
+                  <TextBlock Grid.Row="2" Grid.Column="2"
+                             Text="{x:Static i18n:Strings.Settings_ToolbarShortcut_Speak_Hint}"
                              Classes="Muted"
                              FontSize="{DynamicResource ByhFontSizeBodySmall}"
                              VerticalAlignment="Center" />
@@ -1133,6 +1163,126 @@
                     Classes="Primary"
                     Click="OnSaveVisionClick" />
           </StackPanel>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- 朗读 (TTS): MiniMax text-to-speech for the selection toolbar. -->
+        <StackPanel x:Name="TtsSection" IsVisible="False" Spacing="0">
+          <Border Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="16">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_TTS_Title}"
+                             Classes="CardTitle"
+                             FontSize="{DynamicResource ByhFontSizeSubheading}"
+                             FontWeight="SemiBold" />
+                </StackPanel>
+                <ToggleSwitch x:Name="TtsEnabledToggle"
+                              Grid.Column="1"
+                              OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                              OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
+                              IsChecked="True"
+                              VerticalAlignment="Center" />
+              </Grid>
+
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_TTS_ApiKey}"
+                             FontSize="{DynamicResource ByhFontSizeBody}"
+                             FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="1"
+                             Text="{x:Static i18n:Strings.Settings_TTS_ApiKey_Hint}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeCaption}"
+                             TextWrapping="Wrap"
+                             VerticalAlignment="Center" />
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBox x:Name="TtsApiKeyInput"
+                           AutomationProperties.AutomationId="BYH.Settings.Tts.ApiKey"
+                           PlaceholderText="sk-..."
+                           PasswordChar="•" />
+                  <Button Grid.Column="1"
+                          Content="{x:Static i18n:Strings.Settings_Show}"
+                          Click="OnToggleTtsKeyVisibilityClick" />
+                </Grid>
+                <TextBlock x:Name="TtsApiKeyStatusText"
+                           Classes="Muted"
+                           Text="{x:Static i18n:Strings.Settings_Key_NotSet}"
+                           FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+              </StackPanel>
+
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                <StackPanel Grid.Column="0" Spacing="6">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_TTS_Region}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                  <Border Classes="InnerCard" Padding="6,4">
+                    <ComboBox x:Name="TtsRegionComboBox"
+                              HorizontalAlignment="Stretch"
+                              SelectedIndex="0">
+                      <ComboBoxItem Content="{x:Static i18n:Strings.Settings_TTS_RegionGlobal}" />
+                      <ComboBoxItem Content="{x:Static i18n:Strings.Settings_TTS_RegionCn}" />
+                    </ComboBox>
+                  </Border>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_TTS_Voice}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                  <Border Classes="InnerCard" Padding="6,4">
+                    <ComboBox x:Name="TtsVoiceComboBox"
+                              HorizontalAlignment="Stretch"
+                              IsEditable="True"
+                              SelectedIndex="0">
+                      <ComboBoxItem Content="auto" />
+                      <ComboBoxItem Content="Chinese (Mandarin)_Warm_Bestie" />
+                      <ComboBoxItem Content="female-shaonv-jingpin" />
+                      <ComboBoxItem Content="Charming_Lady" />
+                      <ComboBoxItem Content="Cantonese_CuteGirl" />
+                      <ComboBoxItem Content="Japanese_CalmLady" />
+                      <ComboBoxItem Content="Japanese_ColdQueen" />
+                      <ComboBoxItem Content="Japanese_GracefulMaiden" />
+                      <ComboBoxItem Content="French_MovieLeadFemale" />
+                      <ComboBoxItem Content="Spanish_CaptivatingStoryteller" />
+                      <ComboBoxItem Content="English_Whispering_girl" />
+                    </ComboBox>
+                  </Border>
+                </StackPanel>
+              </Grid>
+
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_TTS_Speed}"
+                             FontSize="{DynamicResource ByhFontSizeBody}"
+                             FontWeight="SemiBold" />
+                  <TextBlock x:Name="TtsSpeedLabel"
+                             Grid.Column="1"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeCaption}"
+                             VerticalAlignment="Center" />
+                </Grid>
+                <Slider x:Name="TtsSpeedSlider"
+                        Minimum="0.5"
+                        Maximum="2.0"
+                        Value="1.1"
+                        TickFrequency="0.1"
+                        IsSnapToTickEnabled="True"
+                        HorizontalAlignment="Stretch" />
+              </StackPanel>
+
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <TextBlock x:Name="TtsStatusText"
+                           TextWrapping="Wrap"
+                           Classes="Muted"
+                           FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                           VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                  <Button x:Name="TtsTestButton"
+                          Content="{x:Static i18n:Strings.Settings_TTS_Test}"
+                          Click="OnTtsTestClick" />
+                  <Button Content="{x:Static i18n:Strings.Settings_SaveTts}"
+                          Classes="Primary"
+                          Click="OnSaveTtsClick" />
+                </StackPanel>
+              </Grid>
             </StackPanel>
           </Border>
         </StackPanel>

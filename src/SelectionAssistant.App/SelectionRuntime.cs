@@ -5,10 +5,12 @@ using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
 using SelectionAssistant.Core.Selection;
+using SelectionAssistant.Core.Speech;
 using SelectionAssistant.Core.Translation;
 using SelectionAssistant.Infrastructure.Capture;
 using SelectionAssistant.Infrastructure.Configuration;
 using SelectionAssistant.Infrastructure.Logging;
+using SelectionAssistant.Infrastructure.Speech;
 using SelectionAssistant.Infrastructure.Translation;
 using SelectionAssistant.Platform.Abstractions;
 using SelectionAssistant.Platform.Abstractions.Secrets;
@@ -18,6 +20,7 @@ using SelectionAssistant.Platform.Windows.Capture;
 using SelectionAssistant.Platform.Windows.Hooks;
 using SelectionAssistant.Platform.Windows.Launcher;
 using SelectionAssistant.Platform.Windows.Secrets;
+using SelectionAssistant.Platform.Windows.Speech;
 using SelectionAssistant.Platform.Windows.Windowing;
 using SelectionAssistant.Providers;
 using SelectionAssistant.UI.Views;
@@ -69,6 +72,12 @@ internal sealed class SelectionRuntime : IDisposable
     private WindowsUiAutomationBackend? _visionBackend;
     private IVisionOcrClient? _visionOcrClient;
     private VisionCaptureSettings _visionSettings = VisionCaptureSettings.Default;
+    // 朗读 (TTS) tier: MiniMax T2A synthesis + MCI playback. Provider is owned
+    // here (single HttpClient shared across calls). _ttsCts cancels the active
+    // synthesis+playback when a new Speak request arrives or the app shuts down.
+    private MiniMaxTtsProvider? _ttsProvider;
+    private TtsSettings _ttsSettings = TtsSettings.Default;
+    private CancellationTokenSource? _ttsCts;
     // R37/R41: user-configurable toolbar built-in shortcut keys (Prompt/Copy,
     // defaults R/C). Mutable for hot-swap from the settings page. Read on the
     // keyboard hook thread by TryInvokeBuiltinToolbarShortcut — assignments from
@@ -258,6 +267,7 @@ internal sealed class SelectionRuntime : IDisposable
 
         _toolbarWindow.TranslateRequested += OnTranslateRequested;
         _toolbarWindow.ActionRequested += (actionId, text) => RunActionAsync(actionId, text);
+        _toolbarWindow.SpeakRequested += OnSpeakRequested;
         _resultWindow.RetryWithTextRequested += OnRetryWithTextRequested;
         _resultWindow.ReplaceRequested += OnReplaceRequested;
         _resultWindow.CloseRequested += OnResultCloseRequested;
@@ -278,6 +288,12 @@ internal sealed class SelectionRuntime : IDisposable
         // injects the capture into _textCapture. Non-fatal if anything is
         // missing — the tier just stays disabled (UIA + clipboard only).
         ConfigureVisionCapture();
+
+        // 朗读 (TTS): load tts.json (region/model/voices), construct the MiniMax
+        // provider once so its HttpClient is reused across speak calls. The
+        // speak button stays visible regardless; Enabled only gates whether the
+        // click actually synthesizes.
+        ConfigureTts();
     }
 
     /// <summary>
@@ -355,6 +371,349 @@ internal sealed class SelectionRuntime : IDisposable
         _logger.Info(
             "VisionCapture",
             $"Vision OCR tier enabled: provider='{entry.Id}' model='{_visionSettings.Model}'.");
+    }
+
+    // ── 朗读 (TTS) tier: MiniMax T2A synthesis + MCI playback ────────────────
+
+    /// <summary>
+    /// Loads <c>tts.json</c> and constructs the MiniMax provider. Called once at
+    /// construction. Non-fatal on read failure — settings fall back to defaults
+    /// with Enabled=false so a corrupt file never blocks app startup.
+    /// </summary>
+    private void ConfigureTts()
+    {
+        try
+        {
+            _ttsSettings = TtsSettingsStore.LoadIfExists(_paths.TtsSettingsFile).Normalize();
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("Tts", "tts.json rejected; TTS tier disabled.", exception);
+            _ttsSettings = TtsSettings.Default with { Enabled = false };
+        }
+        _ttsProvider = new MiniMaxTtsProvider();
+        _logger.Info("Tts", $"TTS tier loaded: model='{_ttsSettings.Model}' region='{_ttsSettings.Region}' enabled={_ttsSettings.Enabled}.");
+    }
+
+    /// <summary>
+    /// Toolbar "朗读" click handler. Synthesizes the captured text via MiniMax
+    /// T2A and plays it back on a background thread. Re-entrancy: a new click
+    /// cancels any in-flight synthesis/playback first (restart semantics). Does
+    /// NOT hide the toolbar (audio is background; user may want to act again).
+    /// </summary>
+    private void OnSpeakRequested(string text)
+    {
+        if (_ttsProvider is null)
+        {
+            return;
+        }
+
+        if (!_ttsSettings.Enabled)
+        {
+            _toolbarWindow.SpeakFailed("朗读未启用，请在设置中开启。");
+            ScheduleSpeakStatusReset();
+            return;
+        }
+
+        if (text.Length > _ttsSettings.MaxCharacters)
+        {
+            _toolbarWindow.SpeakFailed($"文本过长（超过 {_ttsSettings.MaxCharacters} 字）。");
+            ScheduleSpeakStatusReset();
+            return;
+        }
+
+        // Cancel any prior playback (restart semantics). Cancelled playback
+        // unblocks the background thread's `play ... wait` via MCI stop+close.
+        CancellationTokenSource cts = new();
+        CancellationTokenSource? prior = Interlocked.Exchange(ref _ttsCts, cts);
+        if (prior is not null)
+        {
+            try { prior.Cancel(); } catch { }
+            prior.Dispose();
+        }
+
+        _toolbarWindow.StartSpeaking();
+
+        TtsSettings settings = _ttsSettings;
+        MiniMaxTtsProvider provider = _ttsProvider;
+        _ = Task.Run(() => SpeakAsyncCore(provider, settings, text, cts.Token));
+    }
+
+    private async Task SpeakAsyncCore(
+        MiniMaxTtsProvider provider,
+        TtsSettings settings,
+        string text,
+        CancellationToken cancellationToken)
+    {
+        string? failureMessage = null;
+        try
+        {
+            // Resolve API key + the region that key is valid for. When we fall
+            // back to ~/.mmx/config.json, the key is bound to mmx's region —
+            // override the settings' region for this call or MiniMax returns 401.
+            (string apiKey, string effectiveRegion) =
+                await ResolveTtsApiKeyAsync(settings, cancellationToken).ConfigureAwait(false);
+            TtsSettings effectiveSettings =
+                effectiveRegion == settings.Region
+                    ? settings
+                    : settings with { Region = effectiveRegion };
+
+            byte[] mp3 = await provider
+                .SynthesizeAsync(text, effectiveSettings, apiKey, cancellationToken)
+                .ConfigureAwait(false);
+
+            // Playback blocks this background thread until done or cancelled.
+            // MCI cancellation is wired via the token registration inside
+            // MciAudioPlayer.PlayMp3Bytes.
+            MciAudioPlayer.PlayMp3Bytes(mp3, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // Restart or shutdown — not an error; StayQuiet.
+        }
+        catch (TtsException exception)
+        {
+            failureMessage = exception.Message;
+            _logger.Error("Tts", "synthesis/playback failed.", exception);
+        }
+        catch (InvalidOperationException exception)
+        {
+            // MCI open failure (e.g. no audio device / mp3 codec).
+            failureMessage = "音频设备不可用，无法播放。";
+            _logger.Error("Tts", "MCI playback failed.", exception);
+        }
+        catch (Exception exception)
+        {
+            failureMessage = "朗读发生未知错误。";
+            _logger.Error("Tts", "unexpected speak failure.", exception);
+        }
+        finally
+        {
+            // Marshal back to the UI thread to flip toolbar status. Use a captured
+            // local rather than _ttsCts so a later Speak request's CTS doesn't
+            // race this callback into thinking it's still "current".
+            string? message = failureMessage;
+            try
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (message is null)
+                    {
+                        _toolbarWindow.StopSpeaking();
+                    }
+                    else
+                    {
+                        _toolbarWindow.SpeakFailed(message);
+                        ScheduleSpeakStatusReset();
+                    }
+                });
+            }
+            catch
+            {
+                // App shutting down; dispatcher may be gone. Swallow.
+            }
+        }
+    }
+
+    /// <summary>
+    /// Resolves the MiniMax API key AND the region it's valid for. Priority:
+    /// DPAPI secret referenced by <see cref="TtsSettings.ApiKeyReference"/>
+    /// (if non-empty and set) → uses <paramref name="settings"/>'s region;
+    /// then <c>~/.mmx/config.json</c>'s api_key / oauth.access_token → uses the
+    /// mmx config's OWN region (the mmx key is bound to that region; sending it
+    /// to the settings' region host yields HTTP 401 "invalid API key").
+    /// Throws <see cref="TtsException"/> with a friendly message when no key.
+    /// </summary>
+    private async Task<(string Key, string Region)> ResolveTtsApiKeyAsync(
+        TtsSettings settings, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(settings.ApiKeyReference))
+        {
+            try
+            {
+                string? key = await _secretStore
+                    .GetAsync(settings.ApiKeyReference, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    return (key, settings.Region);
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("Tts", "secret store read failed; falling back to mmx config.", exception);
+            }
+        }
+
+        MmxCredential? mmx = MmxConfigReader.Read();
+        if (mmx is not null && !string.IsNullOrWhiteSpace(mmx.Token))
+        {
+            // CRITICAL: the mmx key is bound to mmx's region. A cn-region key
+            // sent to api.minimax.io (global) returns 401. Always pair them.
+            return (mmx.Token, mmx.Region);
+        }
+
+        throw new TtsException(
+            "未配置 MiniMax 密钥。请在设置中填写 API Key，或运行 mmx auth login --api-key sk-xxxx 登录。");
+    }
+
+    /// <summary>
+    /// Resets the toolbar status a few seconds after a speak error so the
+    /// transient failure message doesn't linger over the captured-wordmark.
+    /// Fires once; a new Speak request supersedes it (its own reset wins).
+    /// </summary>
+    private void ScheduleSpeakStatusReset()
+    {
+        _ = Task.Delay(TimeSpan.FromSeconds(4)).ContinueWith(_ =>
+        {
+            try
+            {
+                Dispatcher.UIThread.Post(() => _toolbarWindow.StopSpeaking());
+            }
+            catch { }
+        }, TaskScheduler.Default);
+    }
+
+    // ── TTS settings read/written by the settings UI ────────────────────────
+
+    public TtsSettings GetTtsSettings() => _ttsSettings;
+
+    /// <summary>True when the BYH-managed DPAPI secret for TTS is set. When
+    /// false, the settings UI shows "未设置，将使用 mmx 登录的密钥".</summary>
+    public async Task<bool> IsTtsKeyConfiguredAsync(CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_ttsSettings.ApiKeyReference))
+        {
+            return false;
+        }
+        try
+        {
+            string? key = await _secretStore
+                .GetAsync(_ttsSettings.ApiKeyReference, cancellationToken)
+                .ConfigureAwait(false);
+            return !string.IsNullOrWhiteSpace(key);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Test-synthesizes a fixed sample sentence and plays it, using the form's
+    /// current settings (so the user hears the result of their edits BEFORE
+    /// saving). Used by the settings "测试" button. Runs in the background.
+    /// </summary>
+    public void TestTtsAsync(TtsSettings settings, string? newApiKey)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        TtsSettings normalized = settings.Normalize();
+        // Apply the candidate settings in-memory for the duration of this test
+        // (so ResolveTtsApiKeyAsync + ResolveVoice use them), but do NOT persist.
+        TtsSettings prior = _ttsSettings;
+        _ttsSettings = normalized;
+        // Synthesize a bilingual sample so the voice heuristic is exercised.
+        const string sample = "这是一段朗读测试。This is a text-to-speech test.";
+        CancellationTokenSource cts = new();
+        CancellationTokenSource? oldCts = Interlocked.Exchange(ref _ttsCts, cts);
+        if (oldCts is not null)
+        {
+            try { oldCts.Cancel(); } catch { }
+            oldCts.Dispose();
+        }
+
+        _ = Task.Run(async () =>
+        {
+            // If the user typed a new key in the form, use it for the test
+            // without persisting (paired with the form's region). Otherwise
+            // resolve key+region from secret store / mmx config.
+            string apiKey;
+            TtsSettings effective = normalized;
+            if (!string.IsNullOrWhiteSpace(newApiKey))
+            {
+                apiKey = newApiKey;
+            }
+            else
+            {
+                try
+                {
+                    (apiKey, string region) =
+                        await ResolveTtsApiKeyAsync(normalized, cts.Token).ConfigureAwait(false);
+                    // mmx key is bound to mmx's region — override when different.
+                    if (region != normalized.Region)
+                    {
+                        effective = normalized with { Region = region };
+                    }
+                }
+                catch (TtsException)
+                {
+                    return;
+                }
+            }
+
+            try
+            {
+                if (_ttsProvider is null)
+                {
+                    return;
+                }
+                byte[] mp3 = await _ttsProvider
+                    .SynthesizeAsync(sample, effective, apiKey, cts.Token)
+                    .ConfigureAwait(false);
+                MciAudioPlayer.PlayMp3Bytes(mp3, cts.Token);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception exception)
+            {
+                _logger.Error("Tts", "test synthesis failed.", exception);
+            }
+            finally
+            {
+                // Restore prior settings so an un-persisted test doesn't leak.
+                _ttsSettings = prior;
+                try { cts.Dispose(); } catch { }
+            }
+        });
+    }
+
+    /// <summary>
+    /// Updates the TTS settings in-memory and persists them to tts.json.
+    /// Returns false if persistence failed (the in-memory copy is still updated
+    /// so the UI reflects intent; will not survive restart).
+    /// </summary>
+    public bool UpdateTtsSettings(TtsSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        settings = settings.Normalize();
+        _ttsSettings = settings;
+        try
+        {
+            TtsSettingsStore.Save(settings, _paths.TtsSettingsFile);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("Tts", "Failed to persist tts.json.", exception);
+        }
+        return true;
+    }
+
+    /// <summary>Saves/overwrites the BYH-managed MiniMax API key to the DPAPI
+    /// secret store. Null/empty key deletes the entry (forces mmx fallback).</summary>
+    public async Task SaveTtsApiKeyAsync(string? newApiKey)
+    {
+        string? reference = _ttsSettings.ApiKeyReference;
+        if (string.IsNullOrWhiteSpace(reference))
+        {
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(newApiKey))
+        {
+            try { await _secretStore.DeleteAsync(reference).ConfigureAwait(false); }
+            catch (Exception exception) { _logger.Error("Tts", "delete key failed.", exception); }
+            return;
+        }
+        try { await _secretStore.SetAsync(reference, newApiKey).ConfigureAwait(false); }
+        catch (Exception exception) { _logger.Error("Tts", "save key failed.", exception); }
     }
 
     /// <summary>
@@ -3590,24 +3949,25 @@ internal sealed class SelectionRuntime : IDisposable
     }
 
     /// <summary>
-    /// R37: 工具栏内建快捷键（默认 R/C/V，用户可在设置里改）的派发。在
+    /// R37: 工具栏内建快捷键（默认 R/C/S，用户可在设置里改）的派发。在
     /// <see cref="OnToolbarKeyPressed"/> 中，当用户未给该键配置自定义
     /// PromptTemplate 时作为兜底入口。三个动作各自映射到一个工具栏按钮：
     /// <list type="bullet">
     ///   <item>PromptKey（默认 R）→ 打开提示词窗口（需已取词，否则透传）。</item>
-    ///   <item>CopyKey（默认 C）→ 复制选中文本到剪贴板（需已取词，否则透传）。</item>
+    ///   <item>CopyKey（默认 C）→ 复制选中文本到剪贴板（需已取词，否则透传），复制后关闭工具栏。</item>
+    ///   <item>SpeakKey（默认 S）→ MiniMax 朗读选中文本（需已取词，否则透传），不关闭工具栏。</item>
     /// </list>
-    /// 返回 true 吞键，false 透传。R41: PasteKey 已删除。两个动作都不隐藏工具栏（用户可能复制完继续
-    /// 做别的动作），所以不调 <c>_keyboardHook.SetEnabled(false)</c>。
+    /// 返回 true 吞键，false 透传。R41: PasteKey 已删除。三个动作都不在派发前隐藏工具栏（用户可能复制/朗读完继续
+    /// 做别的动作）；Copy 在复制成功后单独关闭，Speak 保持可见。
     ///
     /// <para>
     /// <b>线程模型（关键）</b>：本方法跑在 keyboard hook 的后台线程上
-    /// （<c>WH_KEYBOARD_LL</c> 回调），而复制/提示最终要调 Avalonia UI 线程
-    /// API（<c>clipboard.SetTextAsync</c>、显示 PromptWindow）。直接同步调
+    /// （<c>WH_KEYBOARD_LL</c> 回调），而复制/提示/朗读最终要调 Avalonia UI 线程
+    /// API（<c>clipboard.SetTextAsync</c>、显示 PromptWindow、触发 SpeakRequested）。直接同步调
     /// UI API 会崩（C 崩）或静默无效（R 没反应）。所以：
     /// <list type="number">
     ///   <item>吞键判断在 hook 线程同步完成——读 <see cref="GetLastCapturedText"/>
-    ///     （线程安全）判断 R/C 是否有文本可操作；V 恒吞。</item>
+    ///     （线程安全）判断 R/C/S 是否有文本可操作。</item>
     ///   <item>实际 UI 操作用 <c>Dispatcher.UIThread.Post</c> fire-and-forget
     ///     派发到 UI 线程（不阻塞 hook 线程，避免 <c>InvokeAsync</c> 同步等
     ///     待可能的死锁）。这是 codebase 的标准模式（见 App.axaml.cs 多处
@@ -3624,10 +3984,11 @@ internal sealed class SelectionRuntime : IDisposable
 
         // Resolve which built-in action (if any) this key is bound to. Null key
         // in settings = that action's shortcut is disabled.
-        // R41: Paste removed — only Prompt + Copy remain.
+        // R41: Paste removed — Prompt + Copy + Speak remain.
         bool isCopy = KeysEqual(key, bindings.CopyKey);
-        bool isPrompt = !isCopy && KeysEqual(key, bindings.PromptKey);
-        if (!isCopy && !isPrompt)
+        bool isSpeak = !isCopy && KeysEqual(key, bindings.SpeakKey);
+        bool isPrompt = !isCopy && !isSpeak && KeysEqual(key, bindings.PromptKey);
+        if (!isCopy && !isPrompt && !isSpeak)
         {
             return false;  // Not bound to any built-in toolbar shortcut — pass through.
         }
@@ -3659,6 +4020,14 @@ internal sealed class SelectionRuntime : IDisposable
                         // Without this the toolbar stayed open after copy — the user
                         // asked for copy-and-close semantics on C.
                         HideToolbarAndDisableHook();
+                    }
+                    else if (isSpeak)
+                    {
+                        // S = synthesize + play. Do NOT hide the toolbar — audio is
+                        // background; the user may want to re-trigger Speak or fire
+                        // another action while it plays. Re-clicking S cancels the
+                        // prior playback and restarts (handled in OnSpeakRequested).
+                        _toolbarWindow.InvokeSpeakShortcut();
                     }
                     else
                     {
@@ -4030,7 +4399,8 @@ internal sealed class SelectionRuntime : IDisposable
         _mouseHook.MouseEvent -= OnMouseEvent;
         _keyboardHook.KeyPressed -= OnToolbarKeyPressed;
         _toolbarWindow.TranslateRequested -= OnTranslateRequested;
-        _resultWindow.RetryWithTextRequested -= OnRetryWithTextRequested;
+        _toolbarWindow.SpeakRequested -= OnSpeakRequested;
+        _resultWindow.RetryWithTextRequested += OnRetryWithTextRequested;
         _resultWindow.ReplaceRequested -= OnReplaceRequested;
         _resultWindow.CloseRequested -= OnResultCloseRequested;
         _mouseHook.Dispose();
@@ -4040,6 +4410,21 @@ internal sealed class SelectionRuntime : IDisposable
         _disposableProvider?.Dispose();
         _visionOcrClient?.Dispose();
         _visionBackend?.Dispose();
+        // 朗读 (TTS): stop any in-flight playback + cancel pending synthesis +
+        // release the provider's HttpClient. Order matters — Stop() unblocks the
+        // background play thread before we tear down the CTS that gates it.
+        try { MciAudioPlayer.Stop(); } catch { }
+        try
+        {
+            CancellationTokenSource? ttsCts = Interlocked.Exchange(ref _ttsCts, null);
+            if (ttsCts is not null)
+            {
+                try { ttsCts.Cancel(); } catch { }
+                ttsCts.Dispose();
+            }
+        }
+        catch { }
+        _ttsProvider?.Dispose();
         // R44: close + dispose the color picker loupe if it was ever constructed.
         try
         {

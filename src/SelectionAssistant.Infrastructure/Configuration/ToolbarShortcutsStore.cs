@@ -47,6 +47,8 @@ public static class ToolbarShortcutsStore
             {
                 PromptKey = ReadOptionalString(root, "promptKey", defaults.PromptKey),
                 CopyKey = ReadOptionalString(root, "copyKey", defaults.CopyKey),
+                // speakKey added later than prompt/copy; absent on older files → default "S".
+                SpeakKey = ReadOptionalString(root, "speakKey", defaults.SpeakKey),
             }.Normalize();
             settings.Validate();
             return settings;
@@ -85,6 +87,7 @@ public static class ToolbarShortcutsStore
                 // preserves "user cleared this field" rather than snapping back to default.
                 WriteOptionalString(writer, "promptKey", settings.PromptKey);
                 WriteOptionalString(writer, "copyKey", settings.CopyKey);
+                WriteOptionalString(writer, "speakKey", settings.SpeakKey);
                 writer.WriteEndObject();
                 writer.Flush();
             }

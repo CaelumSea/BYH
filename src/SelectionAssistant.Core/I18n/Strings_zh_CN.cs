@@ -26,6 +26,7 @@ internal static partial class Strings_zh_CN
         ["Toolbar_Summarize"] = "总结",
         ["Toolbar_Prompt"] = "Prompt",
         ["Toolbar_Copy"] = "复制",
+        ["Toolbar_Speak"] = "朗读",
         ["Toolbar_StatusWaiting"] = "等待选词",
         ["Toolbar_StatusCapturing"] = "取词中 · {0},{1}",
         ["Toolbar_StatusCaptured"] = "已取词 · {0}",
@@ -33,6 +34,9 @@ internal static partial class Strings_zh_CN
         ["Toolbar_StatusEmpty"] = "暂未取到文本",
         ["Toolbar_PromptTooltip"] = "提示词（快捷键 R）",
         ["Toolbar_CopyTooltip"] = "复制（快捷键 C）",
+        ["Toolbar_SpeakTooltip"] = "朗读选中文字（MiniMax 语音）",
+        ["Toolbar_StatusSpeaking"] = "朗读中…",
+        ["Toolbar_StatusSpeakFailed"] = "朗读失败：{0}",
 
         // ResultWindow
         ["Result_Title"] = "翻译",  // Audit L2: was untranslated "Translation"
@@ -140,6 +144,7 @@ internal static partial class Strings_zh_CN
         ["Settings_Nav_Provider"] = "翻译",
         ["Settings_Nav_Functions"] = "动作",
         ["Settings_Nav_Vision"] = "视觉",
+        ["Settings_Nav_Tts"] = "朗读",
         ["Settings_Nav_Launcher"] = "启动器",
         ["Settings_Nav_Clipboard"] = "剪贴板",
         ["Settings_Nav_Dashboard"] = "仪表盘",
@@ -179,6 +184,8 @@ internal static partial class Strings_zh_CN
         ["Settings_ToolbarShortcut_Prompt_Hint"] = "打开提示词窗口",
         ["Settings_ToolbarShortcut_Copy"] = "复制",
         ["Settings_ToolbarShortcut_Copy_Hint"] = "复制选中文本",
+        ["Settings_ToolbarShortcut_Speak"] = "朗读",
+        ["Settings_ToolbarShortcut_Speak_Hint"] = "MiniMax 朗读选中文本（不关闭工具栏）",
         ["Settings_SaveShortcuts"] = "保存快捷键",
 
         // SettingsWindow — Ocean Eyes Capture card
@@ -243,6 +250,22 @@ internal static partial class Strings_zh_CN
         ["Settings_Vision_Thinking_Disabled"] = "已禁用",
         ["Settings_Vision_Thinking_Allowed"] = "允许",
         ["Settings_SaveVision"] = "保存视觉设置",
+
+        // SettingsWindow — TTS (text-to-speech / 朗读) section
+        ["Settings_TTS_Title"] = "朗读（语音合成）",
+        ["Settings_TTS_Enabled"] = "启用朗读",
+        ["Settings_TTS_ApiKey"] = "MiniMax API 密钥",
+        ["Settings_TTS_ApiKey_Hint"] = "留空则自动使用 mmx 已登录的密钥（~/.mmx/config.json）",
+        ["Settings_TTS_Region"] = "区域",
+        ["Settings_TTS_RegionGlobal"] = "国际（api.minimax.io）",
+        ["Settings_TTS_RegionCn"] = "国内（api.minimaxi.com）",
+        ["Settings_TTS_Voice"] = "音色",
+        ["Settings_TTS_Speed"] = "语速",
+        ["Settings_TTS_Test"] = "测试",
+        ["Settings_TTS_Testing"] = "合成中…",
+        ["Settings_TTS_TestOk"] = "测试成功，正在播放",
+        ["Settings_TTS_TestFailed"] = "测试失败：{0}",
+        ["Settings_SaveTts"] = "保存朗读设置",
 
         // SettingsWindow — Launcher section
         ["Settings_Launcher_Title"] = "启动器",
@@ -313,7 +336,7 @@ internal static partial class Strings_zh_CN
         ["Settings_Status_MouseChordOn"] = "鼠标组合键开",
         ["Settings_Status_MouseChordOff"] = "鼠标组合键关",
         ["Settings_Status_ToolbarShortcuts"] = "已保存：提示 {0} · 复制 {1}",
-        ["Settings_ToolbarStatusCurrent"] = "当前：Prompt {0} · Copy {1}",
+        ["Settings_ToolbarStatusCurrent"] = "当前：Prompt {0} · Copy {1} · Speak {2}",
         ["Settings_Unbound"] = "未绑定",
         ["Settings_Launcher_NoNewApps"] = "没有发现新的可导入应用。",
         ["Settings_Launcher_Imported"] = "已导入 {0} 个应用。",

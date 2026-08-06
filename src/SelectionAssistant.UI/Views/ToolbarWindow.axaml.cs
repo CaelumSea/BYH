@@ -39,6 +39,12 @@ public partial class ToolbarWindow : Window
     /// <summary>Raised when the user clicks "Prompt" with captured text selected.</summary>
     public event Action<string>? PromptRequested;
 
+    /// <summary>Raised when the user clicks "Speak" with captured text — the
+    /// runtime synthesizes via MiniMax T2A and plays it back. Audio runs in the
+    /// background; the toolbar stays visible so the user can re-click to restart
+    /// or trigger other actions while audio plays.</summary>
+    public event Action<string>? SpeakRequested;
+
     /// <summary>
     /// Raised to run a built-in action (summarize/explain) using the global
     /// prompt template for that action. Arg = (actionId, selectedText).
@@ -85,12 +91,14 @@ public partial class ToolbarWindow : Window
         SummarizeButton.IsVisible = true;
         PromptButton.IsVisible = true;
         CopyButton.IsVisible = true;
+        SpeakButton.IsVisible = true;
         OceanEyesSignature.IsVisible = false;
         TranslateButton.IsEnabled = false;
         ExplainButton.IsEnabled = false;
         SummarizeButton.IsEnabled = false;
         PromptButton.IsEnabled = false;
         CopyButton.IsEnabled = false;
+        SpeakButton.IsEnabled = false;
         StatusText.Text = string.Format(Strings.Toolbar_StatusCapturing, gesture.MouseUpX, gesture.MouseUpY);
         // Pending/diagnostic states show StatusText; hide the wordmark so the
         // user only sees the "byh" art text once capture actually succeeded.
@@ -110,6 +118,7 @@ public partial class ToolbarWindow : Window
         SummarizeButton.IsVisible = false;
         PromptButton.IsVisible = false;
         CopyButton.IsVisible = false;
+        SpeakButton.IsVisible = false;
         MoreButton.IsVisible = false;
         SetMoreExpanded(false);
 
@@ -193,7 +202,7 @@ public partial class ToolbarWindow : Window
     public void SetCaptureResult(CaptureResult result)
     {
         _capturedText = string.IsNullOrWhiteSpace(result.Text) ? null : result.Text.Trim();
-        // Translate / explain / summarize / prompt / copy all need captured text;
+        // Translate / explain / summarize / prompt / copy / speak all need captured text;
         // toggle them together for a consistent enabled state. Paste is always
         // enabled (it acts on the clipboard + source app, not the captured text).
         bool enabled = _capturedText is not null;
@@ -202,6 +211,7 @@ public partial class ToolbarWindow : Window
         SummarizeButton.IsEnabled = enabled;
         PromptButton.IsEnabled = enabled;
         CopyButton.IsEnabled = enabled;
+        SpeakButton.IsEnabled = enabled;
         StatusText.Text = _capturedText is not null
             ? string.Format(Strings.Toolbar_StatusCaptured, result.Source)
             : result.Source == CaptureSource.ManualFallback
@@ -274,6 +284,68 @@ public partial class ToolbarWindow : Window
         }
     }
 
+    /// <summary>Raises <see cref="SpeakRequested"/> for the captured text.</summary>
+    private void OnSpeakClick(object? sender, RoutedEventArgs eventArgs)
+    {
+        if (_capturedText is { Length: > 0 } text)
+        {
+            SpeakRequested?.Invoke(text);
+        }
+    }
+
+    // ── Speak (TTS) playback status feedback ──────────────────────────────
+    // The toolbar stays visible during playback (unlike translate/prompt which
+    // hide it), so the user can re-click Speak to restart. These three methods
+    // swap StatusText/wordmark visibility to surface speaking/error state, then
+    // revert to the captured-wordmark state on success. Save + restore the
+    // prior StatusText so a transient speak error doesn't wipe a pending
+    // "已取词" label.
+
+    private bool _speakingStateActive;
+    private string? _preSpeakingStatusText;
+    private bool _preSpeakingWordmarkVisible;
+
+    /// <summary>Shows "朗读中…" status while synthesis/playback is active.</summary>
+    public void StartSpeaking()
+    {
+        if (_speakingStateActive)
+        {
+            return;
+        }
+        _speakingStateActive = true;
+        _preSpeakingStatusText = StatusText.Text;
+        _preSpeakingWordmarkVisible = WordmarkImage.IsVisible;
+        StatusText.Text = Strings.Toolbar_StatusSpeaking;
+        StatusText.IsVisible = true;
+        WordmarkImage.IsVisible = false;
+    }
+
+    /// <summary>Reverts to the pre-speaking status (called on successful playback end).</summary>
+    public void StopSpeaking()
+    {
+        if (!_speakingStateActive)
+        {
+            return;
+        }
+        _speakingStateActive = false;
+        StatusText.Text = _preSpeakingStatusText ?? string.Empty;
+        StatusText.IsVisible = !_preSpeakingWordmarkVisible;
+        WordmarkImage.IsVisible = _preSpeakingWordmarkVisible;
+    }
+
+    /// <summary>Shows a transient speak-failure status. Auto-reverts after a delay.</summary>
+    public void SpeakFailed(string message)
+    {
+        if (!_speakingStateActive)
+        {
+            return;
+        }
+        _speakingStateActive = false;
+        StatusText.Text = string.Format(Strings.Toolbar_StatusSpeakFailed, message);
+        StatusText.IsVisible = true;
+        WordmarkImage.IsVisible = false;
+    }
+
     // ── R37/R41: 工具栏内建单字符快捷键入口（R/C）──────────────────────
     // 由 SelectionRuntime.OnToolbarKeyPressed 在工具栏可见、用户配置快捷键未命中
     // 时调用。两个方法各自转发到现有按钮处理器，行为与点击按钮完全一致；不直接
@@ -299,6 +371,18 @@ public partial class ToolbarWindow : Window
             return false;
         }
         OnCopyClick(this, new RoutedEventArgs());
+        return true;
+    }
+
+    /// <summary>S = 朗读选中文本（MiniMax TTS）。Unlike Copy, does not hide the
+    /// toolbar — audio is background; the user may re-trigger or act again.</summary>
+    public bool InvokeSpeakShortcut()
+    {
+        if (_capturedText is not { Length: > 0 })
+        {
+            return false;
+        }
+        OnSpeakClick(this, new RoutedEventArgs());
         return true;
     }
 

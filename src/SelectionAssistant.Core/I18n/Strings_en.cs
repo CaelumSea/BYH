@@ -26,6 +26,7 @@ internal static partial class Strings_en
         ["Toolbar_Summarize"] = "Summarize",
         ["Toolbar_Prompt"] = "Prompt",
         ["Toolbar_Copy"] = "Copy",
+        ["Toolbar_Speak"] = "Speak",
         ["Toolbar_StatusWaiting"] = "Waiting for selection",
         ["Toolbar_StatusCapturing"] = "Capturing · {0},{1}",
         ["Toolbar_StatusCaptured"] = "Captured · {0}",
@@ -33,6 +34,9 @@ internal static partial class Strings_en
         ["Toolbar_StatusEmpty"] = "No text captured",
         ["Toolbar_PromptTooltip"] = "Prompt (shortcut R)",
         ["Toolbar_CopyTooltip"] = "Copy (shortcut C)",
+        ["Toolbar_SpeakTooltip"] = "Read selection aloud (MiniMax voice)",
+        ["Toolbar_StatusSpeaking"] = "Speaking…",
+        ["Toolbar_StatusSpeakFailed"] = "Speak failed: {0}",
 
         // ResultWindow
         ["Result_Title"] = "Translation",
@@ -138,6 +142,7 @@ internal static partial class Strings_en
         ["Settings_Nav_Provider"] = "Translation",
         ["Settings_Nav_Functions"] = "Actions",
         ["Settings_Nav_Vision"] = "Vision",
+        ["Settings_Nav_Tts"] = "Speak",
         ["Settings_Nav_Launcher"] = "Launcher",
         ["Settings_Nav_Clipboard"] = "Clipboard",
         ["Settings_Nav_Dashboard"] = "Dashboard",
@@ -177,6 +182,8 @@ internal static partial class Strings_en
         ["Settings_ToolbarShortcut_Prompt_Hint"] = "Open prompt window",
         ["Settings_ToolbarShortcut_Copy"] = "Copy",
         ["Settings_ToolbarShortcut_Copy_Hint"] = "Copy selected text",
+        ["Settings_ToolbarShortcut_Speak"] = "Speak",
+        ["Settings_ToolbarShortcut_Speak_Hint"] = "Read selected text aloud via MiniMax (toolbar stays open)",
         ["Settings_SaveShortcuts"] = "Save Shortcuts",
 
         // SettingsWindow — Ocean Eyes Capture card
@@ -241,6 +248,22 @@ internal static partial class Strings_en
         ["Settings_Vision_Thinking_Disabled"] = "Disabled",
         ["Settings_Vision_Thinking_Allowed"] = "Allowed",
         ["Settings_SaveVision"] = "Save Vision Settings",
+
+        // SettingsWindow — TTS (text-to-speech / Speak) section
+        ["Settings_TTS_Title"] = "Speak (Text-to-Speech)",
+        ["Settings_TTS_Enabled"] = "Enable Speak",
+        ["Settings_TTS_ApiKey"] = "MiniMax API Key",
+        ["Settings_TTS_ApiKey_Hint"] = "Leave blank to reuse the mmx-logged-in key (~/.mmx/config.json)",
+        ["Settings_TTS_Region"] = "Region",
+        ["Settings_TTS_RegionGlobal"] = "Global (api.minimax.io)",
+        ["Settings_TTS_RegionCn"] = "China (api.minimaxi.com)",
+        ["Settings_TTS_Voice"] = "Voice",
+        ["Settings_TTS_Speed"] = "Speed",
+        ["Settings_TTS_Test"] = "Test",
+        ["Settings_TTS_Testing"] = "Synthesizing…",
+        ["Settings_TTS_TestOk"] = "Test succeeded, playing",
+        ["Settings_TTS_TestFailed"] = "Test failed: {0}",
+        ["Settings_SaveTts"] = "Save Speak Settings",
 
         // SettingsWindow — Launcher section
         ["Settings_Launcher_Title"] = "Launcher",
@@ -311,7 +334,7 @@ internal static partial class Strings_en
         ["Settings_Status_MouseChordOn"] = "Mouse chord on",
         ["Settings_Status_MouseChordOff"] = "Mouse chord off",
         ["Settings_Status_ToolbarShortcuts"] = "Saved: Prompt {0} · Copy {1}",
-        ["Settings_ToolbarStatusCurrent"] = "Current: Prompt {0} · Copy {1}",
+        ["Settings_ToolbarStatusCurrent"] = "Current: Prompt {0} · Copy {1} · Speak {2}",
         ["Settings_Unbound"] = "Unbound",
         ["Settings_Launcher_NoNewApps"] = "No new importable apps found.",
         ["Settings_Launcher_Imported"] = "Imported {0} app(s).",

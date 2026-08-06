@@ -93,6 +93,7 @@ public static partial class Strings
     public static string Toolbar_Summarize => Get(nameof(Toolbar_Summarize));
     public static string Toolbar_Prompt => Get(nameof(Toolbar_Prompt));
     public static string Toolbar_Copy => Get(nameof(Toolbar_Copy));
+    public static string Toolbar_Speak => Get(nameof(Toolbar_Speak));
     public static string Toolbar_StatusWaiting => Get(nameof(Toolbar_StatusWaiting));
     public static string Toolbar_StatusCapturing => Get(nameof(Toolbar_StatusCapturing));
     public static string Toolbar_StatusCaptured => Get(nameof(Toolbar_StatusCaptured));
@@ -100,6 +101,9 @@ public static partial class Strings
     public static string Toolbar_StatusEmpty => Get(nameof(Toolbar_StatusEmpty));
     public static string Toolbar_PromptTooltip => Get(nameof(Toolbar_PromptTooltip));
     public static string Toolbar_CopyTooltip => Get(nameof(Toolbar_CopyTooltip));
+    public static string Toolbar_SpeakTooltip => Get(nameof(Toolbar_SpeakTooltip));
+    public static string Toolbar_StatusSpeaking => Get(nameof(Toolbar_StatusSpeaking));
+    public static string Toolbar_StatusSpeakFailed => Get(nameof(Toolbar_StatusSpeakFailed));
 
     // ResultWindow
     public static string Result_Title => Get(nameof(Result_Title));
@@ -217,6 +221,7 @@ public static partial class Strings
     public static string Settings_Nav_Provider => Get(nameof(Settings_Nav_Provider));
     public static string Settings_Nav_Functions => Get(nameof(Settings_Nav_Functions));
     public static string Settings_Nav_Vision => Get(nameof(Settings_Nav_Vision));
+    public static string Settings_Nav_Tts => Get(nameof(Settings_Nav_Tts));
     public static string Settings_Nav_Launcher => Get(nameof(Settings_Nav_Launcher));
     public static string Settings_Nav_Clipboard => Get(nameof(Settings_Nav_Clipboard));
     public static string Settings_Nav_Dashboard => Get(nameof(Settings_Nav_Dashboard));
@@ -256,6 +261,8 @@ public static partial class Strings
     public static string Settings_ToolbarShortcut_Prompt_Hint => Get(nameof(Settings_ToolbarShortcut_Prompt_Hint));
     public static string Settings_ToolbarShortcut_Copy => Get(nameof(Settings_ToolbarShortcut_Copy));
     public static string Settings_ToolbarShortcut_Copy_Hint => Get(nameof(Settings_ToolbarShortcut_Copy_Hint));
+    public static string Settings_ToolbarShortcut_Speak => Get(nameof(Settings_ToolbarShortcut_Speak));
+    public static string Settings_ToolbarShortcut_Speak_Hint => Get(nameof(Settings_ToolbarShortcut_Speak_Hint));
     public static string Settings_SaveShortcuts => Get(nameof(Settings_SaveShortcuts));
 
     // SettingsWindow — Ocean Eyes Capture card
@@ -323,6 +330,22 @@ public static partial class Strings
     public static string Settings_Vision_Thinking_Disabled => Get(nameof(Settings_Vision_Thinking_Disabled));
     public static string Settings_Vision_Thinking_Allowed => Get(nameof(Settings_Vision_Thinking_Allowed));
     public static string Settings_SaveVision => Get(nameof(Settings_SaveVision));
+
+    // SettingsWindow — TTS (text-to-speech / 朗读) section
+    public static string Settings_TTS_Title => Get(nameof(Settings_TTS_Title));
+    public static string Settings_TTS_Enabled => Get(nameof(Settings_TTS_Enabled));
+    public static string Settings_TTS_ApiKey => Get(nameof(Settings_TTS_ApiKey));
+    public static string Settings_TTS_ApiKey_Hint => Get(nameof(Settings_TTS_ApiKey_Hint));
+    public static string Settings_TTS_Region => Get(nameof(Settings_TTS_Region));
+    public static string Settings_TTS_RegionGlobal => Get(nameof(Settings_TTS_RegionGlobal));
+    public static string Settings_TTS_RegionCn => Get(nameof(Settings_TTS_RegionCn));
+    public static string Settings_TTS_Voice => Get(nameof(Settings_TTS_Voice));
+    public static string Settings_TTS_Speed => Get(nameof(Settings_TTS_Speed));
+    public static string Settings_TTS_Test => Get(nameof(Settings_TTS_Test));
+    public static string Settings_TTS_Testing => Get(nameof(Settings_TTS_Testing));
+    public static string Settings_TTS_TestOk => Get(nameof(Settings_TTS_TestOk));
+    public static string Settings_TTS_TestFailed => Get(nameof(Settings_TTS_TestFailed));
+    public static string Settings_SaveTts => Get(nameof(Settings_SaveTts));
 
     // SettingsWindow — Launcher section
     public static string Settings_Launcher_Title => Get(nameof(Settings_Launcher_Title));

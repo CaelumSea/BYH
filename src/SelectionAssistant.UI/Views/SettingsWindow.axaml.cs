@@ -9,6 +9,7 @@ using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
+using SelectionAssistant.Core.Speech;
 using SelectionAssistant.Core.Startup;
 using SelectionAssistant.Core.Translation;
 using SelectionAssistant.Infrastructure.Configuration;
@@ -54,6 +55,7 @@ public partial class SettingsWindow : Window
         Provider,
         Functions,
         Vision,
+        Tts,
         Launcher,
         ClipboardHistory,
     }
@@ -201,6 +203,7 @@ public partial class SettingsWindow : Window
         ProviderSection.IsVisible = page == SettingsPage.Provider;
         FunctionsSection.IsVisible = page == SettingsPage.Functions;
         VisionSection.IsVisible = page == SettingsPage.Vision;
+        TtsSection.IsVisible = page == SettingsPage.Tts;
         LauncherSection.IsVisible = page == SettingsPage.Launcher;
         ClipboardHistorySection.IsVisible = page == SettingsPage.ClipboardHistory;
 
@@ -209,6 +212,7 @@ public partial class SettingsWindow : Window
         SetNavigationState(ProviderNavButton, page == SettingsPage.Provider);
         SetNavigationState(FunctionsNavButton, page == SettingsPage.Functions);
         SetNavigationState(VisionNavButton, page == SettingsPage.Vision);
+        SetNavigationState(TtsNavButton, page == SettingsPage.Tts);
         SetNavigationState(LauncherNavButton, page == SettingsPage.Launcher);
         SetNavigationState(ClipboardHistoryNavButton, page == SettingsPage.ClipboardHistory);
 
@@ -272,6 +276,9 @@ public partial class SettingsWindow : Window
 
     private void OnShowVisionClick(object? sender, RoutedEventArgs e) =>
         ShowSettingsPage(SettingsPage.Vision);
+
+    private void OnShowTtsClick(object? sender, RoutedEventArgs e) =>
+        ShowSettingsPage(SettingsPage.Tts);
 
     private void OnShowLauncherClick(object? sender, RoutedEventArgs e) =>
         ShowSettingsPage(SettingsPage.Launcher);
@@ -357,6 +364,15 @@ public partial class SettingsWindow : Window
 
     /// <summary>R24 track B: request to save the vision OCR settings.</summary>
     public event Action<VisionCaptureSettings>? VisionSettingsSaved;
+
+    /// <summary>Request to save the 朗读 (TTS) settings. Args = (settings, newApiKey)
+    /// where newApiKey is null when the user didn't change the key field.</summary>
+    public event Action<TtsSettings, string?>? TtsSettingsSaved;
+
+    /// <summary>Request to test-synthesize + play a sample via the runtime.
+    /// Args = (settings, newApiKeyOrNull). The runtime resolves the key, calls
+    /// MiniMax T2A, and plays the result via MCI.</summary>
+    public event Action<TtsSettings, string?>? TtsTestRequested;
 
     /// <summary>Request to atomically apply and persist Ocean Eyes trigger settings.</summary>
     public event Action<OceanEyesTriggerSettings>? OceanEyesTriggerSettingsSaved;
@@ -1196,6 +1212,103 @@ public partial class SettingsWindow : Window
         VisionSettingsSaved?.Invoke(settings);
     }
 
+    // ── 朗读 (TTS) settings ───────────────────────────────────────────────
+
+    /// <summary>Pushed by App after loading tts.json. Populates the TTS form.</summary>
+    public void SetTtsSettings(TtsSettings settings, bool keyConfigured)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        TtsEnabledToggle.IsChecked = settings.Enabled;
+        TtsRegionComboBox.SelectedIndex =
+            string.Equals(settings.Region, "cn", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        // Voice combo is editable + has presets; select the configured voice if
+        // listed, otherwise seed the editable text so the user sees the value.
+        SelectTtsVoice(settings.Voice);
+        TtsSpeedSlider.Value = settings.Speed;
+        UpdateTtsSpeedLabel();
+        TtsApiKeyInput.Text = string.Empty; // never echo the secret back
+        TtsApiKeyStatusText.Text = keyConfigured
+            ? Strings.Settings_Key_Saved
+            : Strings.Settings_Key_NotSet;
+        TtsStatusText.Text = string.Empty;
+    }
+
+    private void SelectTtsVoice(string voiceId)
+    {
+        for (int i = 0; i < TtsVoiceComboBox.ItemCount; i++)
+        {
+            if (TtsVoiceComboBox.Items[i] is ComboBoxItem item &&
+                string.Equals(item.Content as string, voiceId, StringComparison.Ordinal))
+            {
+                TtsVoiceComboBox.SelectedIndex = i;
+                return;
+            }
+        }
+        // Not a preset — type it into the editable combo so it's still visible
+        // and saved back unchanged on next Save.
+        TtsVoiceComboBox.SelectedItem = null;
+        TtsVoiceComboBox.Text = voiceId;
+    }
+
+    private string ReadTtsVoice()
+    {
+        if (TtsVoiceComboBox.SelectedItem is ComboBoxItem item)
+        {
+            return item.Content as string ?? "auto";
+        }
+        string? text = TtsVoiceComboBox.Text;
+        return string.IsNullOrWhiteSpace(text) ? "auto" : text.Trim();
+    }
+
+    private void UpdateTtsSpeedLabel() =>
+        TtsSpeedLabel.Text = $"{TtsSpeedSlider.Value:F1}×";
+
+    /// <summary>Builds a TtsSettings snapshot from the current form values.</summary>
+    private TtsSettings BuildTtsSettings() => new()
+    {
+        Enabled = TtsEnabledToggle.IsChecked == true,
+        ApiKeyReference = "secret://tts/minimax",
+        Region = TtsRegionComboBox.SelectedIndex == 1 ? "cn" : "global",
+        Voice = ReadTtsVoice(),
+        Speed = TtsSpeedSlider.Value,
+    };
+
+    private void OnSaveTtsClick(object? sender, RoutedEventArgs e)
+    {
+        TtsSettings settings = BuildTtsSettings();
+        string? newKey = NormalizeInput(TtsApiKeyInput.Text);
+        TtsSettingsSaved?.Invoke(settings, newKey);
+        // Clear the field so a re-open doesn't re-save the plaintext.
+        TtsApiKeyInput.Text = string.Empty;
+    }
+
+    private void OnTtsTestClick(object? sender, RoutedEventArgs e)
+    {
+        TtsSettings settings = BuildTtsSettings();
+        string? newKey = NormalizeInput(TtsApiKeyInput.Text);
+        TtsTestButton.IsEnabled = false;
+        TtsStatusText.Text = Strings.Settings_TTS_Testing;
+        try
+        {
+            // Fire the test event; the runtime synthesizes + plays on a
+            // background thread. We can't await its completion from here, so the
+            // status flips to a "sent" message and the user hears the audio.
+            TtsTestRequested?.Invoke(settings, newKey);
+            TtsStatusText.Text = Strings.Settings_TTS_TestOk;
+        }
+        catch (Exception exception)
+        {
+            TtsStatusText.Text = string.Format(Strings.Settings_TTS_TestFailed, exception.Message);
+        }
+        finally
+        {
+            TtsTestButton.IsEnabled = true;
+        }
+    }
+
+    private void OnToggleTtsKeyVisibilityClick(object? sender, RoutedEventArgs e) =>
+        TtsApiKeyInput.PasswordChar = TtsApiKeyInput.PasswordChar == '\0' ? '•' : '\0';
+
     // ───────────────────────────────────────────────────────────────────────
     // R26: "Refresh Models" feature.
     //
@@ -1793,13 +1906,17 @@ public partial class SettingsWindow : Window
         settings = settings.Normalize();
         PromptShortcutInput.Text = settings.PromptKey;
         CopyShortcutInput.Text = settings.CopyKey;
+        SpeakShortcutInput.Text = settings.SpeakKey;
         ToolbarShortcutsStatusText.Text = statusMessage
-            ?? string.Format(Strings.Settings_ToolbarStatusCurrent, DisplayKey(settings.PromptKey), DisplayKey(settings.CopyKey));
+            ?? string.Format(Strings.Settings_ToolbarStatusCurrent,
+                DisplayKey(settings.PromptKey),
+                DisplayKey(settings.CopyKey),
+                DisplayKey(settings.SpeakKey));
         SetFeedbackTone(ToolbarShortcutsStatusText, isError);
     }
 
     /// <summary>
-    /// Reads the two TextBoxes, constructs and validates a
+    /// Reads the three TextBoxes, constructs and validates a
     /// <see cref="ToolbarShortcutSettings"/>, and raises
     /// <see cref="ToolbarShortcutsSaved"/>. Validation failures (non-A-Z,
     /// duplicate keys) are shown inline without raising the event.
@@ -1810,6 +1927,7 @@ public partial class SettingsWindow : Window
         {
             PromptKey = NormalizeInput(PromptShortcutInput.Text),
             CopyKey = NormalizeInput(CopyShortcutInput.Text),
+            SpeakKey = NormalizeInput(SpeakShortcutInput.Text),
         }.Normalize();
 
         try

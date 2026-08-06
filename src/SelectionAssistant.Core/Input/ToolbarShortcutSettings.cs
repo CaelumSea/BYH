@@ -1,10 +1,10 @@
 namespace SelectionAssistant.Core.Input;
 
 /// <summary>
-/// R37: user-configurable single-character shortcut keys for the two built-in
-/// toolbar actions (Prompt / Copy). Independent of the PromptTemplate.Shortcut
-/// system (which only covers translate/summarize/explain + user custom
-/// functions). Persisted to <c>toolbar-shortcuts.json</c> via
+/// R37: user-configurable single-character shortcut keys for the three built-in
+/// toolbar actions (Prompt / Copy / Speak). Independent of the
+/// PromptTemplate.Shortcut system (which only covers translate/summarize/explain
+/// + user custom functions). Persisted to <c>toolbar-shortcuts.json</c> via
 /// <see cref="SelectionAssistant.Infrastructure.Configuration.ToolbarShortcutsStore"/>.
 ///
 /// <para>
@@ -14,8 +14,8 @@ namespace SelectionAssistant.Core.Input;
 /// and the key passes through to the source app.
 /// </para>
 /// <para>
-/// Defaults: Prompt = R, Copy = C. These run only as a fallback when no
-/// user-configured PromptTemplate is bound to the same key
+/// Defaults: Prompt = R, Copy = C, Speak = S. These run only as a fallback
+/// when no user-configured PromptTemplate is bound to the same key
 /// (<c>PromptTemplateSet.FindByShortcut</c> is consulted first, so user
 /// configuration always wins).
 /// </para>
@@ -34,10 +34,16 @@ public sealed record ToolbarShortcutSettings
     /// <summary>Shortcut for the toolbar "复制" button. Default "C". Null/empty = disabled.</summary>
     public string? CopyKey { get; init; } = "C";
 
+    /// <summary>Shortcut for the toolbar "朗读" (Speak) button. Default "S".
+    /// Unlike Copy, the Speak action does NOT hide the toolbar after firing —
+    /// audio plays in the background and the user may want to re-trigger it.
+    /// Null/empty = disabled.</summary>
+    public string? SpeakKey { get; init; } = "S";
+
     public static ToolbarShortcutSettings Default { get; } = new();
 
     /// <summary>
-    /// Normalizes both keys: trims whitespace, uppercases. Empty/whitespace
+    /// Normalizes all keys: trims whitespace, uppercases. Empty/whitespace
     /// strings become null (treated as "disabled"). Does not validate character
     /// range — call <see cref="Validate"/> after normalize.
     /// </summary>
@@ -45,23 +51,25 @@ public sealed record ToolbarShortcutSettings
     {
         PromptKey = NormalizeKey(PromptKey),
         CopyKey = NormalizeKey(CopyKey),
+        SpeakKey = NormalizeKey(SpeakKey),
     };
 
     /// <summary>
     /// Validates every non-null key is a single uppercase A-Z letter, and that
-    /// the two keys are mutually distinct (a key can't be bound to two
-    /// built-in actions at once — the runtime dispatch would be ambiguous).
-    /// Throws <see cref="ArgumentException"/> on any violation.
+    /// no two keys collide (a key can't be bound to two built-in actions at
+    /// once — the runtime dispatch would be ambiguous). Throws
+    /// <see cref="ArgumentException"/> on any violation.
     /// </summary>
     public void Validate()
     {
         ValidateKey(PromptKey, nameof(PromptKey));
         ValidateKey(CopyKey, nameof(CopyKey));
+        ValidateKey(SpeakKey, nameof(SpeakKey));
 
-        // Reject duplicate bindings between the two (only compares non-null keys,
-        // so multiple disabled entries don't count as duplicates).
+        // Reject duplicate bindings (only compares non-null keys, so multiple
+        // disabled entries don't count as duplicates).
         var assigned = new HashSet<string>(StringComparer.Ordinal);
-        foreach (string? key in new[] { PromptKey, CopyKey })
+        foreach (string? key in new[] { PromptKey, CopyKey, SpeakKey })
         {
             if (string.IsNullOrEmpty(key))
             {

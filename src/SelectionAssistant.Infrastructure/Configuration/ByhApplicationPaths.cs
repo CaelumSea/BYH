@@ -26,6 +26,13 @@ public sealed record ByhApplicationPaths(string BaseDirectory)
     public string VisionCaptureFile =>
         Path.Combine(BaseDirectory, "vision.json");
 
+    /// <summary>朗读 (text-to-speech) settings: MiniMax key reference, region,
+    /// model, voices, speed. Missing file = built-in defaults. The 朗读 button on
+    /// the selection toolbar calls MiniMax T2A with these; falls back to
+    /// <c>~/.mmx/config.json</c> when the BYH-managed key is absent.</summary>
+    public string TtsSettingsFile =>
+        Path.Combine(BaseDirectory, "tts.json");
+
     /// <summary>
     /// R40 Ocean Eyes trigger (keyboard shortcut + optional mouse chord).
     /// Renamed from <c>quick-tools.json</c>; the store migrates the legacy

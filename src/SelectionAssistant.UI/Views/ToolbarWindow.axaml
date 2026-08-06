@@ -22,7 +22,7 @@
            cluster on the left stays a fixed, evenly-spaced block while the
            status text fills the remaining space and right-aligns. This keeps
            the toolbar shape stable as the status message changes length. -->
-      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="4">
+      <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" ColumnSpacing="4">
         <Button x:Name="TranslateButton"
                 Classes="Primary"
                 Grid.Column="0"
@@ -65,12 +65,21 @@
                 IsEnabled="False"
                 Click="OnCopyClick"
                 ToolTip.Tip="{x:Static i18n:Strings.Toolbar_CopyTooltip}" />
+        <Button x:Name="SpeakButton"
+                Classes="Ghost"
+                Grid.Column="5"
+                Content="{x:Static i18n:Strings.Toolbar_Speak}"
+                Padding="8,3"
+                FontSize="{DynamicResource ByhFontSizeBody}"
+                IsEnabled="False"
+                Click="OnSpeakClick"
+                ToolTip.Tip="{x:Static i18n:Strings.Toolbar_SpeakTooltip}" />
         <!-- R39: 状态区双层。WordmarkImage 取词成功时显示透明底 "By Your Hand"
              艺术字 wordmark（替换 R37 的 TextBlock 文字版——真实手写体比 Italic
              Georgia 更贴合品牌图样）；StatusText 保留其它状态（取词中/暂未取到/
              诊断错误）。两个控件叠在同一个 Grid 单元里，由 code-behind 互斥切换
              IsVisible。图片右对齐，高度固定为 28（约等于工具栏行高）以稳定布局。 -->
-        <StackPanel Grid.Column="5"
+        <StackPanel Grid.Column="6"
                     MinWidth="80"
                     MaxHeight="42"
                     Orientation="Horizontal"
@@ -104,7 +113,7 @@
         <!-- "More" toggle: visible only when there are custom functions. -->
         <Button x:Name="MoreButton"
                 Classes="Ghost"
-                Grid.Column="6"
+                Grid.Column="7"
                 Content="▼"
                 Padding="6,3"
                 FontSize="{DynamicResource ByhFontSizeBodySmall}"
