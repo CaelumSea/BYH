@@ -32,6 +32,7 @@ public sealed class LowLevelKeyboardHook : IDisposable
     private const int WmKeyDown = 0x0100;
     private const int WmSysKeyDown = 0x0104;
     private const uint WmQuit = 0x0012;
+    private const uint LlkhfInjected = 0x00000010;
 
     private readonly object _lifecycleGate = new();
     private readonly ManualResetEventSlim _startupCompleted = new(false);
@@ -200,6 +201,16 @@ public sealed class LowLevelKeyboardHook : IDisposable
                 // marshaler variant allocates + does runtime-type checks per
                 // call. Unsafe.Read<T> is a zero-alloc AOT-trim-safe intrinsic.
                 KbdllHookStruct nativeEvent = Unsafe.Read<KbdllHookStruct>((void*)lParam);
+                // SendInput-generated chords are part of BYH's capture/paste
+                // pipeline, not user toolbar shortcuts. Let them continue to
+                // the focused application and never feed them into the
+                // toolbar dispatcher (which would otherwise see injected C as
+                // the toolbar Copy key).
+                if ((nativeEvent.Flags & LlkhfInjected) != 0)
+                {
+                    return CallNextHookEx(_hookHandle, code, wParam, lParam);
+                }
+
                 try
                 {
                     if (RaiseKeyPressedSafely((int)nativeEvent.VkCode))

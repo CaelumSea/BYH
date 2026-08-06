@@ -3663,6 +3663,17 @@ internal sealed class SelectionRuntime : IDisposable
             return true;
         }
 
+        // A-Z toolbar shortcuts are deliberately single-key actions. A real
+        // modifier chord belongs to the focused source application, however;
+        // in particular Ctrl+C must remain a normal copy instead of being
+        // mistaken for the toolbar's bare C shortcut. This also lets the
+        // selection capture pipeline's injected Ctrl+C reach the source app
+        // while the toolbar is already visible.
+        if (IsModifierHeld())
+        {
+            return false;
+        }
+
         // Only single-character A-Z (0x41-0x5A) are eligible for shortcuts.
         if (vkCode < 0x41 || vkCode > 0x5A)
         {
@@ -3881,20 +3892,25 @@ internal sealed class SelectionRuntime : IDisposable
     /// the toolbar" behavior while a chord is in progress — e.g. Ctrl+C must
     /// not hide the toolbar before the Copy action key (C) is dispatched, and
     /// Ctrl+Backspace (delete-word) is a command, not plain typing. Reads the
-    /// live modifier state via <see cref="GetKeyState"/>; the high bit (0x8000)
-    /// means "currently pressed".
+    /// live modifier state via <see cref="GetAsyncKeyState"/>; the high bit
+    /// (0x8000) means "currently pressed". The async variant is important
+    /// here because this method runs on the dedicated low-level-hook thread,
+    /// whose message queue does not reliably carry the source app's key state.
     /// </summary>
     private static bool IsModifierHeld()
     {
         const int vkMenu = 0x12;   // VK_MENU (Alt)
         const int vkLwin = 0x5B;   // VK_LWIN
         const int vkRwin = 0x5C;   // VK_RWIN
-        return (GetKeyState(VK_SHIFT) & 0x8000) != 0 ||
-               (GetKeyState(VK_CONTROL) & 0x8000) != 0 ||
-               (GetKeyState(vkMenu) & 0x8000) != 0 ||
-               (GetKeyState(vkLwin) & 0x8000) != 0 ||
-               (GetKeyState(vkRwin) & 0x8000) != 0;
+        return IsKeyDownAsync(VK_SHIFT) ||
+               IsKeyDownAsync(VK_CONTROL) ||
+               IsKeyDownAsync(vkMenu) ||
+               IsKeyDownAsync(vkLwin) ||
+               IsKeyDownAsync(vkRwin);
     }
+
+    private static bool IsKeyDownAsync(int virtualKey) =>
+        (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
 
     /// <summary>
     /// Bug fix helper: classifies a virtual-key code as a "dismiss-trigger" key
@@ -4486,6 +4502,9 @@ internal sealed class SelectionRuntime : IDisposable
 
     [DllImport("user32.dll")]
     private static extern short GetKeyState(int nVirtKey);
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int nVirtKey);
 
     // ── UIA invisibility for pinned screenshot windows ─────────────────
     // SetProp("UIA_WindowVisibilityOverridden", 2) tells UI Automation to
