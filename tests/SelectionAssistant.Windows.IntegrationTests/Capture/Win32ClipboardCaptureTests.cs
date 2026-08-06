@@ -145,6 +145,44 @@ public sealed class Win32ClipboardCaptureTests
     }
 
     [Fact]
+    public async Task OwnerlessCtrlShiftC_RetriesRestoreAfterLateSameTextWrite()
+    {
+        var clipboard = new FakeClipboard(text: "original");
+        int restoreAttempts = 0;
+        clipboard.BeforeRestore = () =>
+        {
+            // Simulate Warp's late ownerless transaction arriving between the
+            // stability probe and the sequence-guarded restore.
+            if (Interlocked.Increment(ref restoreAttempts) == 1)
+            {
+                clipboard.Write("selected", ownerProcessId: null);
+            }
+        };
+        var input = new FakeInput
+        {
+            OnSend = _chord =>
+            {
+                _ = clipboard.WriteAfterAsync("selected", ownerProcessId: null, delayMs: 5);
+                return true;
+            },
+        };
+        using var capture = CreateCapture(clipboard, input);
+
+        CaptureResult result = await capture.CaptureAsync(
+            Gesture(),
+            new ClipboardCaptureInvocation(
+                [SimulatedCopyChord.CtrlShiftC],
+                AllowOwnerlessResult: true,
+                HistorySuppressionCount: 8),
+            CancellationToken.None);
+
+        Assert.Equal("selected", result.Text);
+        Assert.Equal("original", clipboard.Text);
+        Assert.True(clipboard.RestoreCalls >= 2);
+        Assert.Equal(1, clipboard.SuccessfulRestores);
+    }
+
+    [Fact]
     public async Task PreserveCapturedClipboard_LeavesSelectedTextInClipboard()
     {
         var clipboard = new FakeClipboard(text: "original");

@@ -139,6 +139,7 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
         uint? ownedSequence = null;
         int pendingHistorySuppression = 0;
         bool capturedClipboardPreserved = false;
+        string? capturedClipboardText = null;
 
         // Each simulated-copy chord that will restore the user's clipboard
         // reserves the policy-specific number of history notifications before
@@ -232,8 +233,9 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 // 抑制必须在 SendCopyChord 之前：目标进程响应剪贴板写入的速度可能极快
                 // （WeChatAppEx/CEF ~10-50ms），WM_CLIPBOARDUPDATE 会在 SendCopyChord 返回后
                 // 立即投递。若配额在 send 之后才设，第一次变化会在配额就位前到达 → 漏抑制。
-                // 先预留 2 次给注入复制本身可能产生的 WM_CLIPBOARDUPDATE；稳定变化确认后
-                // 会回收未消耗部分，finally 再为 RestoreOriginalClipboard 单独预留 2 次。
+                // 先预留策略指定的配额给注入复制本身可能产生的
+                // WM_CLIPBOARDUPDATE；稳定变化确认后会回收未消耗部分，finally 再为
+                // RestoreOriginalClipboard 单独预留 1 次。
                 // sent=false 时立即回滚，避免误吞下次真实复制。
                 if (!preserveCapturedClipboard)
                 {
@@ -331,6 +333,12 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 if (!string.IsNullOrWhiteSpace(text))
                 {
                     Trace($"clipboard success source={chord} ownerless={ownerlessResult} length={text.Length}");
+                    // Keep the untruncated clipboard text for the ownerless
+                    // restore retry below. The retry must prove that the
+                    // clipboard still contains the exact text produced by
+                    // this capture before it may replace it with the user's
+                    // original snapshot.
+                    capturedClipboardText = text;
                     bool truncated = text.Length > options.MaxTextLength;
                     if (truncated)
                     {
@@ -415,8 +423,14 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                 // history listener.
                 // The target-copy reservation has already been balanced after
                 // the stable change was observed; this reservation belongs only
-                // to the restore write.
-                ReleaseAllHistorySuppression();
+                // to the restore write. Ownerless GPU/WebView targets can still
+                // emit a late write after the stable probe, so keep their
+                // remaining target quota alive until restore has settled.
+                bool deferHistoryRelease = allowOwnerlessResult;
+                if (!deferHistoryRelease)
+                {
+                    ReleaseAllHistorySuppression();
+                }
                 Action<int>? suppressor = _suppressHistoryChanges;
                 bool restoreSuppressionReserved = false;
                 if (suppressor is not null)
@@ -429,7 +443,15 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                     catch { }
                 }
 
-                bool restored = RestoreOriginalClipboard(snapshot, expectedSequence);
+                bool restored = deferHistoryRelease
+                    ? RestoreOwnerlessClipboardWithRetry(
+                        snapshot,
+                        expectedSequence,
+                        capturedClipboardText,
+                        gesture,
+                        options)
+                    : RestoreOriginalClipboard(snapshot, expectedSequence);
+                Trace($"clipboard restore expected={expectedSequence} success={restored} deferredHistory={deferHistoryRelease}");
                 if (!restored && restoreSuppressionReserved)
                 {
                     // A sequence-guarded restore may lose a race with a real
@@ -437,6 +459,11 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
                     // be cancelled immediately.
                     try { suppressor!(-1); }
                     catch { }
+                }
+
+                if (deferHistoryRelease)
+                {
+                    ReleaseAllHistorySuppression();
                 }
             }
             else
@@ -506,6 +533,99 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
             // Best effort. Every native mutation remains sequence guarded.
             return false;
         }
+    }
+
+    /// <summary>
+    /// Warp's GPU/WebView clipboard can publish a late ownerless write after
+    /// the normal stability window. A strict one-shot sequence guard then
+    /// refuses to restore the user's clipboard, leaving the selected text in
+    /// the system clipboard. Retry only for the ownerless policy, and only
+    /// while the clipboard still contains the exact text captured by this
+    /// session. Any non-matching text or external owner aborts immediately so
+    /// a real user copy is never overwritten.
+    /// </summary>
+    private bool RestoreOwnerlessClipboardWithRetry(
+        ClipboardSnapshot snapshot,
+        uint expectedSequence,
+        string? capturedText,
+        SelectionGesture gesture,
+        ClipboardCaptureOptions options)
+    {
+        if (string.IsNullOrEmpty(capturedText))
+        {
+            return RestoreOriginalClipboard(snapshot, expectedSequence);
+        }
+
+        const int maxAttempts = 8;
+        int delayMs = Math.Clamp(
+            (int)Math.Ceiling(options.StabilizationDelay.TotalMilliseconds / 2),
+            15,
+            40);
+        uint candidateSequence = expectedSequence;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            if (attempt > 1)
+            {
+                Thread.Sleep(delayMs);
+            }
+
+            bool restored = RestoreOriginalClipboard(snapshot, candidateSequence);
+            if (!restored)
+            {
+                if (!TryGetOwnerlessCapturedClipboard(
+                        capturedText,
+                        gesture,
+                        out uint currentSequence))
+                {
+                    Trace($"clipboard ownerless restore aborted attempt={attempt} after sequence guard");
+                    return false;
+                }
+
+                candidateSequence = currentSequence;
+                continue;
+            }
+
+            // A successful restore can still race a late Warp transaction.
+            // Wait one short interval and verify the selected text did not
+            // reappear before declaring the clipboard restored.
+            Thread.Sleep(delayMs);
+            if (!TryGetOwnerlessCapturedClipboard(
+                    capturedText,
+                    gesture,
+                    out uint postRestoreSequence))
+            {
+                Trace($"clipboard ownerless restore retry succeeded attempt={attempt} seq={candidateSequence}");
+                return true;
+            }
+
+            candidateSequence = postRestoreSequence;
+            Trace($"clipboard ownerless restore observed late write attempt={attempt} seq={candidateSequence}");
+        }
+
+        Trace($"clipboard ownerless restore retry exhausted attempts={maxAttempts}");
+        return false;
+    }
+
+    private bool TryGetOwnerlessCapturedClipboard(
+        string capturedText,
+        SelectionGesture gesture,
+        out uint sequence)
+    {
+        uint? owner = _clipboard.GetOwnerProcessId();
+        string? currentText = _clipboard.GetText();
+        sequence = _clipboard.GetSequenceNumber();
+        bool ownerMatches = owner is null ||
+            owner == gesture.SourceProcessId ||
+            ProcessParentage.IsDescendantOf(owner.Value, gesture.SourceProcessId);
+        bool textMatches = string.Equals(currentText, capturedText, StringComparison.Ordinal);
+        if (!ownerMatches || !textMatches)
+        {
+            Trace($"clipboard ownerless restore verification owner={owner?.ToString() ?? "none"} textMatch={textMatches}");
+            return false;
+        }
+
+        return true;
     }
 
     private static CaptureResult NoCapture() =>
