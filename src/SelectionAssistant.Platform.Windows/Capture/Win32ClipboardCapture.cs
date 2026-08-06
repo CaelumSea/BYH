@@ -587,12 +587,12 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
             }
 
             // A successful restore can still race a late Warp transaction.
-            // Wait one short interval and verify the selected text did not
+            // Keep a short quiet window and verify the selected text did not
             // reappear before declaring the clipboard restored.
-            Thread.Sleep(delayMs);
-            if (!TryGetOwnerlessCapturedClipboard(
+            if (WaitForOwnerlessRestoreToSettle(
                     capturedText,
                     gesture,
+                    delayMs,
                     out uint postRestoreSequence))
             {
                 Trace($"clipboard ownerless restore retry succeeded attempt={attempt} seq={candidateSequence}");
@@ -605,6 +605,43 @@ public sealed class Win32ClipboardCapture : ISelectionTextCapture, IConfiguredCl
 
         Trace($"clipboard ownerless restore retry exhausted attempts={maxAttempts}");
         return false;
+    }
+
+    private bool WaitForOwnerlessRestoreToSettle(
+        string capturedText,
+        SelectionGesture gesture,
+        int delayMs,
+        out uint lateWriteSequence)
+    {
+        const int quietChecks = 4;
+        lateWriteSequence = _clipboard.GetSequenceNumber();
+
+        for (int check = 0; check < quietChecks; check++)
+        {
+            Thread.Sleep(delayMs);
+            uint? owner = _clipboard.GetOwnerProcessId();
+            string? currentText = _clipboard.GetText();
+            uint currentSequence = _clipboard.GetSequenceNumber();
+            bool ownerMatches = owner is null ||
+                owner == (uint)Environment.ProcessId ||
+                owner == gesture.SourceProcessId ||
+                ProcessParentage.IsDescendantOf(owner.Value, gesture.SourceProcessId);
+
+            if (!ownerMatches)
+            {
+                // A real external copy now owns the clipboard. Preserve it;
+                // the caller will not retry or overwrite this content.
+                return true;
+            }
+
+            if (string.Equals(currentText, capturedText, StringComparison.Ordinal))
+            {
+                lateWriteSequence = currentSequence;
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private bool TryGetOwnerlessCapturedClipboard(
