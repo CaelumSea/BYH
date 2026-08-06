@@ -60,6 +60,13 @@ Warp 的 Windows 终端渲染面使用 `Ctrl+Shift+C` 复制选区，内置 `war
 
 `PreserveCapturedClipboard` 保留为可选策略扩展，但 Warp 与微信的内置策略关闭它：划词捕获只临时读取选区，成功或失败都恢复用户原剪贴板；工具条 `C` 的显式复制和用户主动 Ctrl+C 由历史服务正常记录。Warp 的 ownerless 路径在严格恢复序列失配时，只要剪贴板仍是本次捕获文本且没有外部 owner，就在短窗口内重试恢复；文本改变或出现外部 owner 会立即放弃，避免覆盖主动复制。微信公众号的 `wxpublic` 与 `WeChatAppEx` 有时是同一主进程下的兄弟进程，owner 校验除直接后代外还允许双方均为微信宿主且共享祖先进程，禁止泛化为任意兄弟进程。
 
+**Warp 源端配置前置条件（2026-08-06）**：必须在 Warp 中关闭 `terminal.copy_on_select`，即设置
+`copy_on_select = false`。Warp 的 schema 默认值为 `true`；开启时，Warp 会在用户仅划词时自行写入剪贴板，
+并可能在 BYH 临时捕获完成后继续以 ownerless 写入重复发布选区内容。此时即使 BYH 使用序号守卫、
+恢复重试和历史抑制配额，也无法从剪贴板事件本身可靠区分“被动划词”和“主动 Ctrl+C”，因此这不是继续
+增加 BYH 重试次数可以解决的问题。关闭该选项后，BYH 的 `Ctrl+Shift+C` 只做临时捕获并恢复原剪贴板，
+用户主动 `Ctrl+C` 仍按正常路径进入剪贴板历史；若 Warp 仍出现自动复制，先检查此源端设置，再调整 BYH。
+
 其他进程和其他复制键仍要求 owner PID 等于手势来源进程，不能通过 ownerless 路径。`Program --probe-process-policy <pid>` 可检查 Warp/微信进程解析到的模式；运行日志的 `CaptureDebug` 类别只记录策略、发送结果、序号、owner 和长度，不记录选中文本正文。
 
 **共享监听不变量（REQ-037）**：剪贴板历史服务与划词捕获共用同一个长生命周期的
