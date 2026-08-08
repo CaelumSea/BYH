@@ -2,7 +2,7 @@
 
 > Context-aware selection assistant. 选词即用，不离开当前上下文。
 >
-> Status: **v0.1.0 + post-release updates (2026-08-02)** · NativeAOT single-binary · Windows 10+ · .NET 10 · [MIT License](#license)
+> Status: **v0.1.0 + post-release updates (2026-08-09)** · NativeAOT single-binary · Windows 10+ · .NET 10 · [MIT License](#license)
 
 BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选的内容——**一个工具搞定截图 OCR、即时翻译、剪贴板历史、启动器、提示词模板**，全程不离开当前窗口。
 
@@ -14,8 +14,10 @@ BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选�
 
 > **平台定位**：BYH 是 **Windows 专属**工具——核心能力（全局快捷键、UIA 文本捕获、低级 hook、DPAPI）深度依赖 Win32。`Platform.Abstractions` 作为 Windows 内部的解耦设计保留，Core/Providers 保持平台无关（由 macOS CI 守护）。
 
-## 最近更新 · 2026-08-02
+## 最近更新 · 2026-08-09
 
+- **选词工具栏「朗读」**：选词工具栏新增「朗读」按钮（默认 `S` 快捷键），把当前选区送 MiniMax T2A 合成并通过 Windows MCI 播放；语音按书写体系自动路由（CJK / 拉丁），缺 mmx key 时回退到全局密钥。
+- **功耗监控（默认关闭）**：BYH 周期性 HTTP 轮询本地 Libre Hardware Monitor Web Server，托盘 tooltip 显示 W / kWh，按梯形积分累计能耗（Wh / kWh），温度超阈值 TTS 播报 mp3 警音（5°C 滞回），每分钟写入 `power-history.jsonl`。
 - **大区域截图稳定性**：补齐 BGRA / DIB / PNG 尺寸上限与 checked 算术，异常尺寸安全失败，不再带崩后台进程。
 - **Warp 选区兼容**：为 `warp.exe` 增加受限的 `Ctrl+Shift+C` 捕获策略；仅在剪贴板序号变化、文本稳定且命中明确进程策略时接受 ownerless 结果。
 - **超长剪贴板搜索**：索引构建和查询移出 UI 线程；27 万字符级条目也不会在每次键入时同步扫描全文。
@@ -122,7 +124,7 @@ Clipboard     ← 剪贴板历史所有开关与上限
 # 编译检查（Windows）
 dotnet build SelectionAssistant.slnx -c Release
 
-# 测试（当前 762 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
+# 测试（当前 954 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
 dotnet test
 
 # NativeAOT 单文件发布（Windows，生成 BYH.exe，约 28MB）
