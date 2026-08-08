@@ -355,6 +355,30 @@ public static partial class Strings
     public static string Settings_TTS_TestFailed => Get(nameof(Settings_TTS_TestFailed));
     public static string Settings_SaveTts => Get(nameof(Settings_SaveTts));
 
+    // SettingsWindow — Power Monitoring section (Libre Hardware Monitor HTTP client)
+    public static string Settings_PowerMonitor_Title => Get(nameof(Settings_PowerMonitor_Title));
+    public static string Settings_PowerMonitor_Nav => Get(nameof(Settings_PowerMonitor_Nav));
+    public static string Settings_PowerMonitor_Enabled => Get(nameof(Settings_PowerMonitor_Enabled));
+    public static string Settings_PowerMonitor_Endpoint => Get(nameof(Settings_PowerMonitor_Endpoint));
+    public static string Settings_PowerMonitor_Endpoint_Hint => Get(nameof(Settings_PowerMonitor_Endpoint_Hint));
+    public static string Settings_PowerMonitor_PollInterval => Get(nameof(Settings_PowerMonitor_PollInterval));
+    public static string Settings_PowerMonitor_ShowInTray => Get(nameof(Settings_PowerMonitor_ShowInTray));
+    public static string Settings_PowerMonitor_TrackEnergy => Get(nameof(Settings_PowerMonitor_TrackEnergy));
+    public static string Settings_PowerMonitor_AlertEnabled => Get(nameof(Settings_PowerMonitor_AlertEnabled));
+    public static string Settings_PowerMonitor_CpuTemp => Get(nameof(Settings_PowerMonitor_CpuTemp));
+    public static string Settings_PowerMonitor_GpuTemp => Get(nameof(Settings_PowerMonitor_GpuTemp));
+    public static string Settings_PowerMonitor_SsdTemp => Get(nameof(Settings_PowerMonitor_SsdTemp));
+    public static string Settings_PowerMonitor_HistoryRetention => Get(nameof(Settings_PowerMonitor_HistoryRetention));
+    public static string Settings_PowerMonitor_Test => Get(nameof(Settings_PowerMonitor_Test));
+    public static string Settings_PowerMonitor_AlertTest => Get(nameof(Settings_PowerMonitor_AlertTest));
+    public static string Settings_PowerMonitor_ClearHistory => Get(nameof(Settings_PowerMonitor_ClearHistory));
+    public static string Settings_PowerMonitor_HistorySize => Get(nameof(Settings_PowerMonitor_HistorySize));
+    public static string Settings_PowerMonitor_Saved => Get(nameof(Settings_PowerMonitor_Saved));
+    public static string Settings_PowerMonitor_Offline => Get(nameof(Settings_PowerMonitor_Offline));
+    public static string Settings_SavePowerMonitor => Get(nameof(Settings_SavePowerMonitor));
+    public static string Settings_PageTitle_PowerMonitor => Get(nameof(Settings_PageTitle_PowerMonitor));
+    public static string Settings_PageSubtitle_PowerMonitor => Get(nameof(Settings_PageSubtitle_PowerMonitor));
+
     // SettingsWindow — Launcher section
     public static string Settings_Launcher_Title => Get(nameof(Settings_Launcher_Title));
     public static string Settings_ScanInstalledApps => Get(nameof(Settings_ScanInstalledApps));

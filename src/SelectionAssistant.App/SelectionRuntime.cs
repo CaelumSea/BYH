@@ -4,12 +4,14 @@ using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
+using SelectionAssistant.Core.PowerMonitoring;
 using SelectionAssistant.Core.Selection;
 using SelectionAssistant.Core.Speech;
 using SelectionAssistant.Core.Translation;
 using SelectionAssistant.Infrastructure.Capture;
 using SelectionAssistant.Infrastructure.Configuration;
 using SelectionAssistant.Infrastructure.Logging;
+using SelectionAssistant.Infrastructure.PowerMonitoring;
 using SelectionAssistant.Infrastructure.Speech;
 using SelectionAssistant.Infrastructure.Translation;
 using SelectionAssistant.Platform.Abstractions;
@@ -78,6 +80,20 @@ internal sealed class SelectionRuntime : IDisposable
     private MiniMaxTtsProvider? _ttsProvider;
     private TtsSettings _ttsSettings = TtsSettings.Default;
     private CancellationTokenSource? _ttsCts;
+    // 功耗监控 (power monitoring). BYH polls the user's Libre Hardware Monitor
+    // Web Server over HTTP — no LibreHardwareMonitorLib reference, no elevation,
+    // no NativeAOT impact. The provider owns a single HttpClient. The accumulator
+    // integrates Wh via trapezoidal rule; the alert evaluator applies 5°C
+    // hysteresis. _powerHistoryThrottle tracks the last append timestamp so we
+    // only write power-history.jsonl once per minute.
+    private HttpPowerMonitorClient? _powerClient;
+    private EnergyAccumulator? _energyAccumulator;
+    private PowerMonitorSettings _powerSettings = PowerMonitorSettings.Default;
+    private PowerSnapshot _lastPowerSnapshot;
+    private AlertEvaluator.AlertState _alertState;
+    private string? _powerHistoryPath;
+    private DateTimeOffset _lastPowerPersistAt;
+    private DateTimeOffset _lastHistoryAppendAt;
     // R37/R41: user-configurable toolbar built-in shortcut keys (Prompt/Copy,
     // defaults R/C). Mutable for hot-swap from the settings page. Read on the
     // keyboard hook thread by TryInvokeBuiltinToolbarShortcut — assignments from
@@ -300,6 +316,13 @@ internal sealed class SelectionRuntime : IDisposable
         // speak button stays visible regardless; Enabled only gates whether the
         // click actually synthesizes.
         ConfigureTts();
+
+        // 功耗监控 (power monitoring): BYH as HTTP client polling the user's
+        // Libre Hardware Monitor Web Server. Default off (opt-in); the polling
+        // loop (driven by App.axaml.cs) only starts when Enabled=true. Loads
+        // cumulative Wh + alert state so energy accumulation + alert hysteresis
+        // survive restarts. Non-fatal on read failure — tier stays disabled.
+        ConfigurePowerMonitor();
     }
 
     /// <summary>
@@ -399,6 +422,214 @@ internal sealed class SelectionRuntime : IDisposable
         }
         _ttsProvider = new MiniMaxTtsProvider();
         _logger.Info("Tts", $"TTS tier loaded: model='{_ttsSettings.Model}' region='{_ttsSettings.Region}' enabled={_ttsSettings.Enabled}.");
+    }
+
+    // ── Power monitoring: configure / read / poll / persist ──────────────────
+    // App.axaml.cs owns the polling loop (PeriodicTimer + background Task); each
+    // tick calls PollAndAccumulateAsync. The accumulator + alert state are held
+    // here so they survive the loop and can be queried by the settings UI.
+
+    /// <summary>
+    /// Loads power-monitoring.json (settings + cumulative Wh + alert state),
+    /// constructs the HTTP client and energy accumulator, and trims the history
+    /// file once at startup. Non-fatal on read failure — the tier disables.
+    /// The polling loop itself is started/stopped by App.axaml.cs based on
+    /// <see cref="PowerMonitorSettings.Enabled"/>; this method only prepares
+    /// state so the loop can run.
+    /// </summary>
+    private void ConfigurePowerMonitor()
+    {
+        try
+        {
+            (PowerMonitorSettings s, double whTotal, double whToday, DateOnly today, DateTimeOffset lastAt, AlertEvaluator.AlertState alertState) =
+                PowerMonitorSettingsStore.LoadIfExists(_paths.PowerMonitorSettingsFile);
+            _powerSettings = s.Normalize();
+            _alertState = alertState;
+            _energyAccumulator = new EnergyAccumulator();
+            _energyAccumulator.Load(whTotal, whToday, today, lastAt);
+        }
+        catch (ProviderConfigurationException exception)
+        {
+            _logger.Error("PowerMonitor", "power-monitoring.json rejected; power tier disabled.", exception);
+            _powerSettings = PowerMonitorSettings.Default with { Enabled = false };
+            _alertState = AlertEvaluator.AlertState.Default;
+            _energyAccumulator = new EnergyAccumulator();
+        }
+        _powerClient = new HttpPowerMonitorClient();
+        _powerHistoryPath = _paths.PowerHistoryFile;
+        _lastPowerPersistAt = DateTimeOffset.UtcNow;
+        _lastHistoryAppendAt = DateTimeOffset.MinValue;
+
+        // Trim history once at startup (not on every append). Best-effort.
+        try
+        {
+            int removed = PowerHistoryStore.TrimByAge(_powerHistoryPath, _powerSettings.HistoryRetentionDays, DateTimeOffset.Now);
+            if (removed > 0)
+            {
+                _logger.Info("PowerMonitor", $"History trimmed: removed {removed} samples older than {_powerSettings.HistoryRetentionDays} days.");
+            }
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("PowerMonitor", "History trim failed; continuing.", exception);
+        }
+
+        _logger.Info("PowerMonitor",
+            $"Power tier loaded: endpoint='{_powerSettings.Endpoint}' interval={_powerSettings.PollIntervalMs}ms enabled={_powerSettings.Enabled} alert={_powerSettings.AlertEnabled}.");
+    }
+
+    /// <summary>Current power-monitor settings (snapshot for the UI).</summary>
+    public PowerMonitorSettings GetPowerMonitorSettings() => _powerSettings;
+
+    /// <summary>Latest snapshot (may be default/unconnected before first poll).</summary>
+    public PowerSnapshot GetLastPowerSnapshot() => _lastPowerSnapshot;
+
+    /// <summary>
+    /// One-shot LHM read for the settings-page "test connection" button. Does NOT
+    /// integrate energy, update the snapshot, or persist. Returns the snapshot so
+    /// the UI can show live sensor values.
+    /// </summary>
+    public async Task<PowerSnapshot> ReadPowerOnceAsync(CancellationToken cancellationToken)
+    {
+        if (_powerClient is null)
+        {
+            return new PowerSnapshot { CapturedAt = DateTimeOffset.UtcNow };
+        }
+        try
+        {
+            return await _powerClient.ReadAsync(_powerSettings.Endpoint, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("PowerMonitor", "one-shot read failed.", exception);
+            return new PowerSnapshot { CapturedAt = DateTimeOffset.UtcNow };
+        }
+    }
+
+    /// <summary>
+    /// Driven by App.axaml.cs's polling loop on each tick. Reads LHM, integrates
+    /// energy (trapezoidal), evaluates alert thresholds, appends a history sample
+    /// once per minute, and persists cumulative state every 60s. Returns the
+    /// alert result so the caller can play alert sounds for newly-triggered
+    /// thresholds. Silently swallows read failures (transient disconnect).
+    /// </summary>
+    public async Task<AlertEvaluator.AlertResult> PollAndAccumulateAsync(CancellationToken cancellationToken)
+    {
+        if (_powerClient is null || _energyAccumulator is null)
+        {
+            return new AlertEvaluator.AlertResult(_alertState, false, false, false);
+        }
+
+        PowerSnapshot snap;
+        try
+        {
+            snap = await _powerClient.ReadAsync(_powerSettings.Endpoint, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("PowerMonitor", "poll failed; marking offline.", exception);
+            snap = new PowerSnapshot { CapturedAt = DateTimeOffset.UtcNow, Connected = false };
+        }
+
+        // Integrate energy (fills snap.TotalWatts / WattHours / TodayWattHours).
+        _energyAccumulator.OnSample(ref snap);
+        // Evaluate alert thresholds with hysteresis against the prior state.
+        AlertEvaluator.AlertResult result = AlertEvaluator.Evaluate(in snap, _powerSettings, _alertState);
+        _alertState = result.State;
+        _lastPowerSnapshot = snap;
+
+        // Append a history sample at most once per minute (throttle).
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        if (_powerSettings.TrackEnergy && now - _lastHistoryAppendAt > TimeSpan.FromSeconds(60))
+        {
+            try
+            {
+                PowerHistoryStore.Append(_powerHistoryPath!, PowerHistorySample.FromSnapshot(in snap));
+                _lastHistoryAppendAt = now;
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("PowerMonitor", "history append failed; continuing.", exception);
+            }
+        }
+
+        // Persist cumulative state (Wh + alert state) every 60s so a crash
+        // loses at most one minute of energy accumulation.
+        if (_powerSettings.TrackEnergy && now - _lastPowerPersistAt > TimeSpan.FromSeconds(60))
+        {
+            PersistPowerMonitor();
+            _lastPowerPersistAt = now;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Writes the current settings + cumulative Wh + alert state to
+    /// power-monitoring.json. Called periodically (~60s) by PollAndAccumulateAsync
+    /// and once at shutdown. Best-effort — logs and swallows IO errors.
+    /// </summary>
+    public void PersistPowerMonitor()
+    {
+        if (_energyAccumulator is null)
+        {
+            return;
+        }
+        try
+        {
+            (double whTotal, double whToday, DateTimeOffset lastAt) = _energyAccumulator.Snapshot();
+            PowerMonitorSettingsStore.Save(
+                _powerSettings, whTotal, whToday,
+                DateOnly.FromDateTime(DateTime.Now), lastAt, _alertState,
+                _paths.PowerMonitorSettingsFile);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("PowerMonitor", "Failed to persist power-monitoring.json.", exception);
+        }
+    }
+
+    /// <summary>
+    /// Hot-swaps the power settings (called when the settings page saves).
+    /// Normalizes, persists immediately, and updates the in-memory copy so the
+    /// next poll uses the new endpoint/interval/thresholds. Does NOT restart the
+    /// loop — App.axaml.cs restarts the loop after this returns so the new
+    /// PollIntervalMs takes effect.
+    /// </summary>
+    public bool UpdatePowerMonitorSettings(PowerMonitorSettings settings)
+    {
+        try
+        {
+            _powerSettings = settings.Normalize();
+            _powerSettings.Validate();
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+        PersistPowerMonitor();
+        return true;
+    }
+
+    /// <summary>History file info for the settings UI (path, existence, size, samples).</summary>
+    public (string Path, bool Exists, long Bytes, int Samples) GetPowerHistoryInfo()
+    {
+        string path = _powerHistoryPath ?? _paths.PowerHistoryFile;
+        (bool exists, long bytes, int samples) = PowerHistoryStore.GetInfo(path);
+        return (path, exists, bytes, samples);
+    }
+
+    /// <summary>Clears the history file (settings-page "clear history" button).</summary>
+    public void ClearPowerHistory()
+    {
+        try
+        {
+            PowerHistoryStore.Clear(_powerHistoryPath ?? _paths.PowerHistoryFile);
+        }
+        catch (Exception exception)
+        {
+            _logger.Error("PowerMonitor", "Failed to clear history.", exception);
+        }
     }
 
     /// <summary>
@@ -4509,6 +4740,12 @@ internal sealed class SelectionRuntime : IDisposable
         }
         catch { }
         _ttsProvider?.Dispose();
+        // 功耗监控 (power monitoring): flush cumulative Wh + alert state to disk
+        // once on shutdown (so a clean exit loses nothing), then release the HTTP
+        // client. The polling loop's CTS is cancelled by App.axaml.cs before
+        // reaching here.
+        try { PersistPowerMonitor(); } catch { }
+        try { _powerClient?.Dispose(); } catch { }
         // R44: close + dispose the color picker loupe if it was ever constructed.
         try
         {

@@ -156,6 +156,19 @@
             </Grid>
           </Button>
 
+          <Button x:Name="PowerMonitorNavButton"
+                  Classes="SettingsNav"
+                  Padding="12,8"
+                  AutomationProperties.AutomationId="BYH.Settings.Nav.PowerMonitor"
+                  Click="OnShowPowerMonitorClick">
+            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
+              <!-- lightning bolt icon -->
+              <Path Classes="NavIcon"
+                    Data="M13,2 L4,13 L11,13 L10,22 L20,10 L13,10 Z" />
+              <TextBlock Grid.Column="1" Text="{x:Static i18n:Strings.Settings_PowerMonitor_Nav}" FontSize="{DynamicResource ByhFontSizeBodyLarge}" FontWeight="SemiBold" VerticalAlignment="Center" />
+            </Grid>
+          </Button>
+
           <Button x:Name="LauncherNavButton"
                   Classes="SettingsNav"
                   Padding="12,8"
@@ -1281,6 +1294,195 @@
                   <Button Content="{x:Static i18n:Strings.Settings_SaveTts}"
                           Classes="Primary"
                           Click="OnSaveTtsClick" />
+                </StackPanel>
+              </Grid>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- 功耗监控 (PowerMonitor) settings. Mirrors the TTS panel shape. -->
+        <StackPanel x:Name="PowerMonitorSection" IsVisible="False" Spacing="0">
+          <Border Classes="DashboardPanel" Margin="24,14,24,0">
+            <StackPanel Spacing="16">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                <StackPanel Spacing="4">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_PowerMonitor_Title}"
+                             Classes="CardTitle"
+                             FontSize="{DynamicResource ByhFontSizeSubheading}"
+                             FontWeight="SemiBold" />
+                </StackPanel>
+                <ToggleSwitch x:Name="PowerMonitorEnabledToggle"
+                              Grid.Column="1"
+                              OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                              OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
+                              IsChecked="False"
+                              VerticalAlignment="Center" />
+              </Grid>
+
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_PowerMonitor_Endpoint}"
+                             FontSize="{DynamicResource ByhFontSizeBody}"
+                             FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="1"
+                             Text="{x:Static i18n:Strings.Settings_PowerMonitor_Endpoint_Hint}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeCaption}"
+                             TextWrapping="Wrap"
+                             VerticalAlignment="Center" />
+                </Grid>
+                <Border Classes="InnerCard" Padding="6,4">
+                  <TextBox x:Name="PowerMonitorEndpointInput"
+                           Text="http://localhost:8085/data.json" />
+                </Border>
+              </StackPanel>
+
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+                <StackPanel Grid.Column="0" Spacing="6">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_PowerMonitor_PollInterval}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                  <Border Classes="InnerCard" Padding="6,4">
+                    <NumericUpDown x:Name="PowerMonitorPollIntervalInput"
+                                   Minimum="1000"
+                                   Maximum="60000"
+                                   Increment="500"
+                                   Value="3000" />
+                  </Border>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_PowerMonitor_HistoryRetention}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                  <Border Classes="InnerCard" Padding="6,4">
+                    <NumericUpDown x:Name="PowerMonitorHistoryRetentionInput"
+                                   Minimum="7"
+                                   Maximum="365"
+                                   Increment="1"
+                                   Value="30" />
+                  </Border>
+                </StackPanel>
+              </Grid>
+
+              <StackPanel Spacing="14">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                  <StackPanel Spacing="3">
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_PowerMonitor_ShowInTray}"
+                               FontSize="{DynamicResource ByhFontSizeBody}"
+                               FontWeight="SemiBold" />
+                  </StackPanel>
+                  <ToggleSwitch x:Name="PowerMonitorShowInTrayToggle"
+                                Grid.Column="1"
+                                OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                                OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
+                                IsChecked="True"
+                                VerticalAlignment="Center" />
+                </Grid>
+                <Border BorderBrush="{DynamicResource ByhBorderSubtleBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="0,14,0,0">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_PowerMonitor_TrackEnergy}"
+                                 FontSize="{DynamicResource ByhFontSizeBody}"
+                                 FontWeight="SemiBold" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="PowerMonitorTrackEnergyToggle"
+                                  Grid.Column="1"
+                                  OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                                  OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
+                                  IsChecked="True"
+                                  VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+                <Border BorderBrush="{DynamicResource ByhBorderSubtleBrush}"
+                        BorderThickness="0,1,0,0"
+                        Padding="0,14,0,0">
+                  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="18">
+                    <StackPanel Spacing="3">
+                      <TextBlock Text="{x:Static i18n:Strings.Settings_PowerMonitor_AlertEnabled}"
+                                 FontSize="{DynamicResource ByhFontSizeBody}"
+                                 FontWeight="SemiBold" />
+                    </StackPanel>
+                    <ToggleSwitch x:Name="PowerMonitorAlertEnabledToggle"
+                                  Grid.Column="1"
+                                  OnContent="{x:Static i18n:Strings.Common_Toggle_On}"
+                                  OffContent="{x:Static i18n:Strings.Common_Toggle_Off}"
+                                  IsChecked="False"
+                                  VerticalAlignment="Center" />
+                  </Grid>
+                </Border>
+              </StackPanel>
+
+              <Grid ColumnDefinitions="*,*,*" ColumnSpacing="14">
+                <StackPanel Grid.Column="0" Spacing="6">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_PowerMonitor_CpuTemp}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                  <Border Classes="InnerCard" Padding="6,4">
+                    <NumericUpDown x:Name="PowerMonitorCpuTempInput"
+                                   Minimum="50"
+                                   Maximum="110"
+                                   Increment="1"
+                                   Value="93" />
+                  </Border>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_PowerMonitor_GpuTemp}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                  <Border Classes="InnerCard" Padding="6,4">
+                    <NumericUpDown x:Name="PowerMonitorGpuTempInput"
+                                   Minimum="50"
+                                   Maximum="110"
+                                   Increment="1"
+                                   Value="85" />
+                  </Border>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="6">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_PowerMonitor_SsdTemp}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                  <Border Classes="InnerCard" Padding="6,4">
+                    <NumericUpDown x:Name="PowerMonitorSsdTempInput"
+                                   Minimum="40"
+                                   Maximum="90"
+                                   Increment="1"
+                                   Value="73" />
+                  </Border>
+                </StackPanel>
+              </Grid>
+
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                  <TextBlock x:Name="PowerMonitorHistorySizeText"
+                             Grid.Column="0"
+                             VerticalAlignment="Center"
+                             Classes="Muted"
+                             Text="{x:Static i18n:Strings.Settings_PowerMonitor_Offline}"
+                             FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                             TextTrimming="CharacterEllipsis" />
+                  <Button Grid.Column="1"
+                          Content="{x:Static i18n:Strings.Settings_PowerMonitor_ClearHistory}"
+                          Click="OnPowerMonitorClearHistoryClick" />
+                </Grid>
+              </StackPanel>
+
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
+                <TextBlock x:Name="PowerMonitorStatusText"
+                           TextWrapping="Wrap"
+                           Classes="Muted"
+                           FontSize="{DynamicResource ByhFontSizeBodySmall}"
+                           VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                  <Button x:Name="PowerMonitorTestButton"
+                          Content="{x:Static i18n:Strings.Settings_PowerMonitor_Test}"
+                          Click="OnPowerMonitorTestClick" />
+                  <Button Content="{x:Static i18n:Strings.Settings_PowerMonitor_AlertTest}"
+                          Click="OnPowerMonitorAlertTestClick" />
+                  <Button Content="{x:Static i18n:Strings.Settings_SavePowerMonitor}"
+                          Classes="Primary"
+                          Click="OnSavePowerMonitorClick" />
                 </StackPanel>
               </Grid>
             </StackPanel>

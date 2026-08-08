@@ -41,6 +41,19 @@
          - app-icon.png: fallback / used where a bitmap is required. -->
     <AvaloniaResource Include="Assets\app-icon.ico" />
     <AvaloniaResource Include="Assets\app-icon.png" />
+    <!-- 告警提示音（TTS 预生成的固定 mp3，温暖闺蜜音色）。用 EmbeddedResource 而非
+         AvaloniaResource，因为告警播放走 MciAudioPlayer.PlayMp3Bytes(byte[])，需要
+         GetManifestResourceStream 拿原始字节，不是 Avalonia 的 IAssetLoader。
+         LogicalName 给无点干净名避免歧义。三份各对应一个触发部件，播对应那份。 -->
+    <EmbeddedResource Include="Assets\alert-cpu.mp3">
+      <LogicalName>alertcpu</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Assets\alert-gpu.mp3">
+      <LogicalName>alertgpu</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Assets\alert-ssd.mp3">
+      <LogicalName>alertssd</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

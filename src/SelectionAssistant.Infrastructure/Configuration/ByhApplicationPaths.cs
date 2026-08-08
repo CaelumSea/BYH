@@ -33,6 +33,18 @@ public sealed record ByhApplicationPaths(string BaseDirectory)
     public string TtsSettingsFile =>
         Path.Combine(BaseDirectory, "tts.json");
 
+    /// <summary>功耗监控 (power monitoring) settings: 启用开关 + LHM data.json 端点 +
+    /// 轮询间隔 + 托盘显示 + 能耗累计开关。BYH 作为 HTTP 客户端轮询用户已安装的
+    /// Libre Hardware Monitor 的 Web Server，不引用 NuGet、不提权。Missing file =
+    /// 内置默认（关闭）。同文件还存累计 Wh / 今日 Wh / 上次采样时间戳，用于跨重启连续累计。</summary>
+    public string PowerMonitorSettingsFile =>
+        Path.Combine(BaseDirectory, "power-monitoring.json");
+
+    /// <summary>power-history.jsonl：每分钟一行历史采样（时间戳+功率+温度），JSONL 追加。
+    /// 供事后用 AI 查询"昨晚待机功耗"之类的问题。详见 PowerHistoryStore。</summary>
+    public string PowerHistoryFile =>
+        Path.Combine(BaseDirectory, "power-history.jsonl");
+
     /// <summary>
     /// R40 Ocean Eyes trigger (keyboard shortcut + optional mouse chord).
     /// Renamed from <c>quick-tools.json</c>; the store migrates the legacy

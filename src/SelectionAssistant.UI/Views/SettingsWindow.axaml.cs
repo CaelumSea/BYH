@@ -9,10 +9,12 @@ using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
+using SelectionAssistant.Core.PowerMonitoring;
 using SelectionAssistant.Core.Speech;
 using SelectionAssistant.Core.Startup;
 using SelectionAssistant.Core.Translation;
 using SelectionAssistant.Infrastructure.Configuration;
+using SelectionAssistant.Infrastructure.PowerMonitoring;
 using System.Collections.ObjectModel;
 
 namespace SelectionAssistant.UI.Views;
@@ -56,6 +58,7 @@ public partial class SettingsWindow : Window
         Functions,
         Vision,
         Tts,
+        PowerMonitor,
         Launcher,
         ClipboardHistory,
     }
@@ -204,6 +207,7 @@ public partial class SettingsWindow : Window
         FunctionsSection.IsVisible = page == SettingsPage.Functions;
         VisionSection.IsVisible = page == SettingsPage.Vision;
         TtsSection.IsVisible = page == SettingsPage.Tts;
+        PowerMonitorSection.IsVisible = page == SettingsPage.PowerMonitor;
         LauncherSection.IsVisible = page == SettingsPage.Launcher;
         ClipboardHistorySection.IsVisible = page == SettingsPage.ClipboardHistory;
 
@@ -213,6 +217,7 @@ public partial class SettingsWindow : Window
         SetNavigationState(FunctionsNavButton, page == SettingsPage.Functions);
         SetNavigationState(VisionNavButton, page == SettingsPage.Vision);
         SetNavigationState(TtsNavButton, page == SettingsPage.Tts);
+        SetNavigationState(PowerMonitorNavButton, page == SettingsPage.PowerMonitor);
         SetNavigationState(LauncherNavButton, page == SettingsPage.Launcher);
         SetNavigationState(ClipboardHistoryNavButton, page == SettingsPage.ClipboardHistory);
 
@@ -230,6 +235,8 @@ public partial class SettingsWindow : Window
                 (Strings.Settings_PageTitle_Vision, Strings.Settings_PageSubtitle_Vision),
             SettingsPage.Tts =>
                 (Strings.Settings_PageTitle_Tts, Strings.Settings_PageSubtitle_Tts),
+            SettingsPage.PowerMonitor =>
+                (Strings.Settings_PageTitle_PowerMonitor, Strings.Settings_PageSubtitle_PowerMonitor),
             SettingsPage.Launcher =>
                 (Strings.Settings_PageTitle_Launcher, Strings.Settings_PageSubtitle_Launcher),
             SettingsPage.ClipboardHistory =>
@@ -281,6 +288,9 @@ public partial class SettingsWindow : Window
 
     private void OnShowTtsClick(object? sender, RoutedEventArgs e) =>
         ShowSettingsPage(SettingsPage.Tts);
+
+    private void OnShowPowerMonitorClick(object? sender, RoutedEventArgs e) =>
+        ShowSettingsPage(SettingsPage.PowerMonitor);
 
     private void OnShowLauncherClick(object? sender, RoutedEventArgs e) =>
         ShowSettingsPage(SettingsPage.Launcher);
@@ -375,6 +385,19 @@ public partial class SettingsWindow : Window
     /// Args = (settings, newApiKeyOrNull). The runtime resolves the key, calls
     /// MiniMax T2A, and plays the result via MCI.</summary>
     public event Action<TtsSettings, string?>? TtsTestRequested;
+
+    /// <summary>Request to apply and persist the Libre Hardware Monitor polling settings.</summary>
+    public event Action<PowerMonitorSettings>? PowerMonitorSettingsSaved;
+
+    /// <summary>Request a one-shot snapshot read against the configured endpoint.
+    /// Runtime reads <c>data.json</c> and calls back via <see cref="ShowPowerMonitorTestResult"/>.</summary>
+    public event Action<PowerMonitorSettings>? PowerMonitorTestRequested;
+
+    /// <summary>Request to fire the alert pipeline once (sound + status), useful for the "AlertTest" button.</summary>
+    public event Action? PowerMonitorAlertTestRequested;
+
+    /// <summary>Request to wipe the on-disk power history jsonl (after user confirms elsewhere).</summary>
+    public event Action? PowerMonitorHistoryClearRequested;
 
     /// <summary>Request to atomically apply and persist Ocean Eyes trigger settings.</summary>
     public event Action<OceanEyesTriggerSettings>? OceanEyesTriggerSettingsSaved;
@@ -1315,6 +1338,114 @@ public partial class SettingsWindow : Window
 
     private void OnToggleTtsKeyVisibilityClick(object? sender, RoutedEventArgs e) =>
         TtsApiKeyInput.PasswordChar = TtsApiKeyInput.PasswordChar == '\0' ? '•' : '\0';
+
+    // ── 功耗监控 (PowerMonitor) settings ──────────────────────────────────
+
+    /// <summary>Pushed by App after loading power-monitor.json. Populates the form.</summary>
+    public void SetPowerMonitorSettings(
+        PowerMonitorSettings settings,
+        string historyPath,
+        bool historyExists,
+        long historyBytes,
+        int historySamples)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        PowerMonitorEnabledToggle.IsChecked = settings.Enabled;
+        PowerMonitorEndpointInput.Text = settings.Endpoint;
+        PowerMonitorPollIntervalInput.Value = settings.PollIntervalMs;
+        PowerMonitorShowInTrayToggle.IsChecked = settings.ShowInTray;
+        PowerMonitorTrackEnergyToggle.IsChecked = settings.TrackEnergy;
+        PowerMonitorAlertEnabledToggle.IsChecked = settings.AlertEnabled;
+        PowerMonitorCpuTempInput.Value = settings.CpuTempThresholdC;
+        PowerMonitorGpuTempInput.Value = settings.GpuTempThresholdC;
+        PowerMonitorSsdTempInput.Value = settings.SsdTempThresholdC;
+        PowerMonitorHistoryRetentionInput.Value = settings.HistoryRetentionDays;
+        PowerMonitorHistorySizeText.Text = historyExists
+            ? string.Format(Strings.Settings_PowerMonitor_HistorySize, historySamples, FormatBytes(historyBytes))
+            : Strings.Settings_PowerMonitor_Offline;
+        PowerMonitorStatusText.Text = string.Empty;
+    }
+
+    /// <summary>App callback after the user clicks "Test". Shows the one-shot snapshot
+    /// inline in the status line. Connected=false means endpoint unreachable.</summary>
+    public void ShowPowerMonitorTestResult(PowerSnapshot snap)
+    {
+        if (!snap.Connected)
+        {
+            PowerMonitorStatusText.Text = Strings.Settings_PowerMonitor_Offline;
+            return;
+        }
+        string cpuW = snap.CpuPackageWatts is { } w ? $"{w:F0}W" : "—";
+        string cpuT = snap.CpuTempC is { } t ? $"{t:F0}°C" : "—";
+        string gpuW = snap.GpuPowerWatts is { } w2 ? $"{w2:F0}W" : "—";
+        string gpuT = snap.GpuTempC is { } t2 ? $"{t2:F0}°C" : "—";
+        string totalW = $"{snap.TotalWatts:F0}W";
+        PowerMonitorStatusText.Text = $"CPU {cpuW} {cpuT} · GPU {gpuW} {gpuT} · {totalW}";
+    }
+
+    /// <summary>Builds a <see cref="PowerMonitorSettings"/> from the form values, normalized.</summary>
+    private PowerMonitorSettings BuildPowerMonitorSettings()
+    {
+        PowerMonitorSettings settings = new PowerMonitorSettings
+        {
+            Enabled = PowerMonitorEnabledToggle.IsChecked == true,
+            Endpoint = string.IsNullOrWhiteSpace(PowerMonitorEndpointInput.Text)
+                ? PowerMonitorSettings.Default.Endpoint
+                : PowerMonitorEndpointInput.Text.Trim(),
+            PollIntervalMs = (int)(PowerMonitorPollIntervalInput.Value ?? PowerMonitorSettings.Default.PollIntervalMs),
+            ShowInTray = PowerMonitorShowInTrayToggle.IsChecked == true,
+            TrackEnergy = PowerMonitorTrackEnergyToggle.IsChecked == true,
+            AlertEnabled = PowerMonitorAlertEnabledToggle.IsChecked == true,
+            CpuTempThresholdC = (int)(PowerMonitorCpuTempInput.Value ?? PowerMonitorSettings.Default.CpuTempThresholdC),
+            GpuTempThresholdC = (int)(PowerMonitorGpuTempInput.Value ?? PowerMonitorSettings.Default.GpuTempThresholdC),
+            SsdTempThresholdC = (int)(PowerMonitorSsdTempInput.Value ?? PowerMonitorSettings.Default.SsdTempThresholdC),
+            HistoryRetentionDays = (int)(PowerMonitorHistoryRetentionInput.Value ?? PowerMonitorSettings.Default.HistoryRetentionDays),
+        };
+        return settings.Normalize();
+    }
+
+    private void OnSavePowerMonitorClick(object? sender, RoutedEventArgs e)
+    {
+        PowerMonitorSettings settings = BuildPowerMonitorSettings();
+        try
+        {
+            settings.Validate();
+        }
+        catch (ArgumentException exception)
+        {
+            PowerMonitorStatusText.Text = exception.Message;
+            return;
+        }
+        PowerMonitorSettingsSaved?.Invoke(settings);
+        PowerMonitorStatusText.Text = Strings.Settings_PowerMonitor_Saved;
+    }
+
+    private void OnPowerMonitorTestClick(object? sender, RoutedEventArgs e)
+    {
+        PowerMonitorSettings settings = BuildPowerMonitorSettings();
+        PowerMonitorStatusText.Text = Strings.Settings_PowerMonitor_Test + "...";
+        PowerMonitorTestRequested?.Invoke(settings);
+    }
+
+    private void OnPowerMonitorAlertTestClick(object? sender, RoutedEventArgs e)
+    {
+        PowerMonitorAlertTestRequested?.Invoke();
+    }
+
+    private void OnPowerMonitorClearHistoryClick(object? sender, RoutedEventArgs e)
+    {
+        PowerMonitorHistoryClearRequested?.Invoke();
+    }
+
+    /// <summary>Byte-size formatter for the history label ("1.2 KB", "3.4 MB").</summary>
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        double kb = bytes / 1024.0;
+        if (kb < 1024) return $"{kb:F1} KB";
+        double mb = kb / 1024.0;
+        return $"{mb:F1} MB";
+    }
 
     // ───────────────────────────────────────────────────────────────────────
     // R26: "Refresh Models" feature.

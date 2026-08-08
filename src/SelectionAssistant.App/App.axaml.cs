@@ -12,11 +12,13 @@ using SelectionAssistant.Core.Clipboard;
 using SelectionAssistant.Core.I18n;
 using SelectionAssistant.Core.Input;
 using SelectionAssistant.Core.Launcher;
+using SelectionAssistant.Core.PowerMonitoring;
 using SelectionAssistant.Core.Speech;
 using SelectionAssistant.Core.Startup;
 using SelectionAssistant.Core.Translation;
 using SelectionAssistant.Infrastructure.Configuration;
 using SelectionAssistant.Infrastructure.Logging;
+using SelectionAssistant.Infrastructure.PowerMonitoring;
 
 using SelectionAssistant.Platform.Abstractions;
 using SelectionAssistant.Platform.Abstractions.Startup;
@@ -55,6 +57,14 @@ public partial class App : Application
     private static readonly System.Net.Http.HttpClient _faviconHttpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
     private static readonly Dictionary<string, Avalonia.Media.Imaging.Bitmap?> _faviconCache = new(StringComparer.OrdinalIgnoreCase);
     private TrayIcon? _trayIcon;
+    // 功耗监控 (power monitoring): the polling loop is a background Task driven
+    // by a PeriodicTimer; _powerCts cancels it on shutdown or settings change.
+    // The three alert mp3 byte[] are lazy-loaded from embedded resources the
+    // first time a threshold is newly triggered (cached thereafter).
+    private CancellationTokenSource? _powerCts;
+    private byte[]? _alertCpuBytes;
+    private byte[]? _alertGpuBytes;
+    private byte[]? _alertSsdBytes;
     private ToolbarWindow? _toolbarWindow;
     private ResultWindow? _resultWindow;
     private SettingsWindow? _settingsWindow;
@@ -366,6 +376,10 @@ public partial class App : Application
             settingsWindow.VisionSettingsSaved += OnVisionSettingsSaved;
             settingsWindow.TtsSettingsSaved += OnTtsSettingsSaved;
             settingsWindow.TtsTestRequested += OnTtsTestRequested;
+            settingsWindow.PowerMonitorSettingsSaved += OnPowerMonitorSettingsSaved;
+            settingsWindow.PowerMonitorTestRequested += OnPowerMonitorTestRequested;
+            settingsWindow.PowerMonitorAlertTestRequested += OnPowerMonitorAlertTest;
+            settingsWindow.PowerMonitorHistoryClearRequested += OnPowerMonitorHistoryClear;
             settingsWindow.OceanEyesTriggerSettingsSaved += OnOceanEyesTriggerSettingsSaved;
             settingsWindow.OceanEyesCaptureSettingsSaved += OnOceanEyesCaptureSettingsSaved;
             settingsWindow.ToolbarShortcutsSaved += OnToolbarShortcutsSaved;
@@ -548,6 +562,14 @@ public partial class App : Application
                 {
                     RefreshAndShowSettings();
                 }
+
+                // 功耗监控 (power monitoring): start the background polling loop
+                // if the user has enabled it. Must run after _runtime is created
+                // (the loop calls _runtime.PollAndAccumulateAsync each tick). The
+                // loop refreshes the tray tooltip with live CPU/GPU watts + kWh,
+                // and plays an alert mp3 when a temperature threshold is newly
+                // exceeded (hysteresis-protected). No-op when Enabled=false.
+                StartPowerMonitorLoop();
             };
 
             desktop.Exit += (_, _) => DisposeApplicationResources();
@@ -2042,6 +2064,10 @@ public partial class App : Application
         // "Key not set" when the runtime can already resolve ~/.mmx/config.json.
         TtsCredentialSource ttsCredentialSource = await _runtime.GetTtsCredentialSourceAsync();
         _settingsWindow.SetTtsSettings(_runtime.GetTtsSettings(), ttsCredentialSource);
+        // 功耗监控: push settings + history info so the panel shows current state.
+        var (histPath, histExists, histBytes, histSamples) = _runtime.GetPowerHistoryInfo();
+        _settingsWindow.SetPowerMonitorSettings(
+            _runtime.GetPowerMonitorSettings(), histPath, histExists, histBytes, histSamples);
         _settingsWindow.SetOceanEyesTriggerSettings(_oceanEyesTrigger);
         _settingsWindow.SetOceanEyesCaptureSettings(_oceanEyesCapture);
         _settingsWindow.SetToolbarShortcuts(_toolbarShortcuts);
@@ -2292,6 +2318,187 @@ public partial class App : Application
         _runtime?.TestTtsAsync(settings, newApiKey);
     }
 
+    // ── 功耗监控 (power monitoring) handlers + polling loop ─────────────────
+
+    /// <summary>
+    /// Settings-page "save" handler: hot-swap settings + restart the loop so the
+    /// new endpoint / PollIntervalMs / thresholds take effect immediately.
+    /// </summary>
+    private void OnPowerMonitorSettingsSaved(PowerMonitorSettings settings)
+    {
+        if (_runtime is null) return;
+        _runtime.UpdatePowerMonitorSettings(settings);
+        StartPowerMonitorLoop(); // cancel old loop, start new with fresh interval
+    }
+
+    /// <summary>Settings-page "test connection" handler: one-shot read, push the
+    /// live snapshot back to the panel so the user sees real sensor values.</summary>
+    private async void OnPowerMonitorTestRequested(PowerMonitorSettings settings)
+    {
+        if (_runtime is null || _settingsWindow is null) return;
+        // Temporarily apply the candidate settings so the test uses them.
+        var prior = _runtime.GetPowerMonitorSettings();
+        _runtime.UpdatePowerMonitorSettings(settings);
+        PowerSnapshot snap = await _runtime.ReadPowerOnceAsync(CancellationToken.None);
+        _settingsWindow.ShowPowerMonitorTestResult(snap);
+        // Restore the prior settings (the test must not persist unsaved edits).
+        _runtime.UpdatePowerMonitorSettings(prior);
+    }
+
+    /// <summary>Settings-page "alert test" handler: play all three alert mp3s
+    /// so the user can preview the voice and verify audio output.</summary>
+    private void OnPowerMonitorAlertTest()
+    {
+        // Play sequentially in the background (each PlayMp3Bytes blocks).
+        _ = Task.Run(() =>
+        {
+            PlayAlertSound(PowerAlertKind.Cpu);
+            PlayAlertSound(PowerAlertKind.Gpu);
+            PlayAlertSound(PowerAlertKind.Ssd);
+        });
+    }
+
+    /// <summary>Settings-page "clear history" handler.</summary>
+    private void OnPowerMonitorHistoryClear()
+    {
+        if (_runtime is null || _settingsWindow is null) return;
+        _runtime.ClearPowerHistory();
+        var (histPath, histExists, histBytes, histSamples) = _runtime.GetPowerHistoryInfo();
+        _settingsWindow.SetPowerMonitorSettings(
+            _runtime.GetPowerMonitorSettings(), histPath, histExists, histBytes, histSamples);
+    }
+
+    /// <summary>
+    /// (Re)starts the power polling loop. Cancels any in-flight loop first. No-op
+    /// when the runtime isn't ready or power monitoring is disabled. Called at app
+    /// startup (after runtime construction) and whenever settings change.
+    /// </summary>
+    private void StartPowerMonitorLoop()
+    {
+        if (_runtime is null) return;
+        CancellationTokenSource? oldCts = Interlocked.Exchange(ref _powerCts, null);
+        if (oldCts is not null)
+        {
+            try { oldCts.Cancel(); } catch { }
+            oldCts.Dispose();
+        }
+        if (!_runtime.GetPowerMonitorSettings().Enabled)
+        {
+            // Restore the default tooltip when disabled.
+            UpdateTrayTooltip(null);
+            return;
+        }
+        CancellationTokenSource cts = new();
+        _powerCts = cts;
+        int intervalMs = _runtime.GetPowerMonitorSettings().PollIntervalMs;
+        _ = Task.Run(() => PowerMonitorLoopAsync(intervalMs, cts.Token));
+    }
+
+    /// <summary>
+    /// The polling loop body. Every tick: PollAndAccumulateAsync → refresh tray
+    /// tooltip with live watts/kWh → play alert mp3 for newly-triggered
+    /// thresholds. Cancels cleanly on shutdown / settings change.
+    /// </summary>
+    private async Task PowerMonitorLoopAsync(int intervalMs, CancellationToken cancellationToken)
+    {
+        using PeriodicTimer timer = new(TimeSpan.FromMilliseconds(intervalMs));
+        SelectionRuntime runtime = _runtime!; // captured; _runtime won't be null mid-loop
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
+            {
+                AlertEvaluator.AlertResult result =
+                    await runtime.PollAndAccumulateAsync(cancellationToken).ConfigureAwait(false);
+                PowerSnapshot snap = runtime.GetLastPowerSnapshot();
+                // Tooltip refresh + alert sounds run on the UI thread (TrayIcon
+                // is a UI object; MciAudioPlayer is fine off-thread but we batch).
+                Dispatcher.UIThread.Post(() =>
+                {
+                    UpdateTrayTooltip(snap);
+                    if (result.AnyNewlyTriggered)
+                    {
+                        if (result.NewCpuTriggered) _ = Task.Run(() => PlayAlertSound(PowerAlertKind.Cpu));
+                        if (result.NewGpuTriggered) _ = Task.Run(() => PlayAlertSound(PowerAlertKind.Gpu));
+                        if (result.NewSsdTriggered) _ = Task.Run(() => PlayAlertSound(PowerAlertKind.Ssd));
+                    }
+                });
+            }
+        }
+        catch (OperationCanceledException) { /* shutdown / restart */ }
+        catch
+        {
+            // Non-fatal: a crashed polling loop just stops refreshing the tooltip.
+            // The next StartPowerMonitorLoop (settings change or restart) recovers.
+        }
+    }
+
+    /// <summary>
+    /// Updates the tray tooltip with live power data. Shows CPU/GPU watts, total
+    /// watts, and kWh; "(功耗离线 / power offline)" when LHM is unreachable.
+    /// Pass null to restore the default tooltip.
+    /// </summary>
+    private void UpdateTrayTooltip(PowerSnapshot? snap)
+    {
+        if (_trayIcon is null) return;
+        if (snap is null || !snap.Value.Connected)
+        {
+            _trayIcon.ToolTipText = snap is null
+                ? "BYH · By Your Hand"
+                : "BYH · By Your Hand · (功耗离线)";
+            return;
+        }
+        PowerSnapshot s = snap.Value;
+        double kwh = s.WattHours / 1000.0;
+        string cpu = s.CpuPackageWatts.HasValue ? $"{s.CpuPackageWatts.Value:0}W" : "—";
+        string gpu = s.GpuPowerWatts.HasValue ? $"{s.GpuPowerWatts.Value:0}W" : "—";
+        string cpuT = s.CpuTempC.HasValue ? $"{s.CpuTempC.Value:0}°C" : "";
+        _trayIcon.ToolTipText = $"BYH · CPU {cpu}{cpuT} · GPU {gpu} · {s.TotalWatts:0}W · {kwh:0.000}kWh";
+    }
+
+    /// <summary>Which alert mp3 to play.</summary>
+    private enum PowerAlertKind { Cpu, Gpu, Ssd }
+
+    /// <summary>
+    /// Plays the alert mp3 for the given component. Lazy-loads the embedded
+    /// resource on first use (cached thereafter). Non-blocking — runs on a
+    /// background thread because MciAudioPlayer.PlayMp3Bytes blocks until done.
+    /// </summary>
+    private void PlayAlertSound(PowerAlertKind kind)
+    {
+        try
+        {
+            byte[]? bytes = kind switch
+            {
+                PowerAlertKind.Cpu => _alertCpuBytes ??= LoadEmbeddedMp3("alertcpu"),
+                PowerAlertKind.Gpu => _alertGpuBytes ??= LoadEmbeddedMp3("alertgpu"),
+                PowerAlertKind.Ssd => _alertSsdBytes ??= LoadEmbeddedMp3("alertssd"),
+                _ => null,
+            };
+            if (bytes is null || bytes.Length == 0) return;
+            MciAudioPlayer.PlayMp3Bytes(bytes, CancellationToken.None);
+        }
+        catch
+        {
+            // Non-fatal: alert sound failure (missing resource, MCI error) is
+            // silent — the temperature threshold still shows in the tooltip.
+        }
+    }
+
+    /// <summary>Loads an embedded mp3 resource by logical name into a byte[].</summary>
+    private static byte[]? LoadEmbeddedMp3(string logicalName)
+    {
+        try
+        {
+            using System.IO.Stream? stream =
+                typeof(App).Assembly.GetManifestResourceStream(logicalName);
+            if (stream is null) return null;
+            using System.IO.MemoryStream ms = new();
+            stream.CopyTo(ms);
+            return ms.ToArray();
+        }
+        catch { return null; }
+    }
+
     /// <summary>Refreshes provider list on the settings window, then shows it.</summary>
     private async void RefreshAndShowSettings()
     {
@@ -2523,6 +2730,12 @@ public partial class App : Application
         // (or worse, keep running) in those paths. Disposing here is safe
         // because DisposeApplicationResources is now idempotent (it re-checks
         // _runtime != null).
+        // 功耗监控: cancel the polling loop before disposing the runtime (the
+        // loop calls _runtime.PollAndAccumulateAsync each tick; a running loop
+        // must not outlive the runtime). PersistPowerMonitor runs inside
+        // _runtime.Dispose so cumulative Wh is flushed on clean exit.
+        CancellationTokenSource? powerCts = Interlocked.Exchange(ref _powerCts, null);
+        if (powerCts is not null) { try { powerCts.Cancel(); } catch { } powerCts.Dispose(); }
         _runtime?.Dispose();
         _runtime = null;
         _trayIcon?.Dispose();
@@ -2537,6 +2750,8 @@ public partial class App : Application
         // anything RequestExit missed (e.g. if RequestExit threw before
         // reaching _runtime?.Dispose()). The null check makes a double-dispose
         // from both paths a no-op instead of an ObjectDisposedException.
+        CancellationTokenSource? powerCts = Interlocked.Exchange(ref _powerCts, null);
+        if (powerCts is not null) { try { powerCts.Cancel(); } catch { } powerCts.Dispose(); }
         _runtime?.Dispose();
         _runtime = null;
         _oceanEyesHotKey?.Dispose();

@@ -82,6 +82,12 @@ artifacts/qa/
 ## --- 分享包（本地打包产物，含 exe + 文档，不进版本控制） ---
 dist/
 
+## --- 第三方工具（本地运行依赖，不进版本控制） ---
+## tools/LibreHardwareMonitor/ 是解压的 Libre Hardware Monitor 程序（19MB，45 文件）。
+## BYH 功耗监控走 HTTP 轮询用户自装的 LHM Web Server，代码不引用这些二进制。
+## 用户自行从 https://github.com/LibreHardwareMonitor/LibreHardwareMonitor 下载安装。
+tools/LibreHardwareMonitor/
+
 ## --- reqbase / 多 agent 协作过程产物（仓库根目录散落文件） ---
 ## 这些是开发过程文件，对公众无价值；保留在本地但不纳入版本控制。
 output/
