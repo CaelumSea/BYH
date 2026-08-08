@@ -137,6 +137,13 @@ UIA(TextPattern→选区→DocumentRange→Value) → 剪贴板(Ctrl+Insert/Ctrl
        → QuickTools.ShowOcrResult（文字进剪贴板 + 弹回面板，翻译/解释/复制直接可用）
 ```
 
+**Enter 保存可靠性（REQ-040，2026-08-07）**：确认选区后 `RegionSelectOverlay` 会继续保持焦点，
+而 QuickTools 是 no-activate 窗口；在焦点/激活切换瞬间，Enter 可能绕过持久低级键盘钩，直接送到
+overlay。overlay 的 `ConfirmedEnterPressed` 现在作为本地兜底，和全局钩子共同调用
+`SelectionRuntime.RequestOceanEyesSave()`。该入口用原子 gate（`_oceanEyesSaveRequested`）保证一次
+Enter 只保存一次，不会重新进入截图流程或覆盖缓存 PNG。自动保存文件使用毫秒时间戳，并以
+`FileMode.CreateNew` + 序号后缀分配唯一名称，避免同秒重复 Enter 或旧文件造成碰撞。
+
 **配置口径**：源码/新建配置默认仍是 `Qwen/Qwen3.5-4B` + `disableThinking=true`；2026-07-24 针对 SiliconFlow 视觉通道的真机稳定性对比后，当前用户运行配置已切到 `nex-agi/Nex-N2-Pro`。接手时应同时检查 `VisionCaptureSettings.Default` 和 `%LOCALAPPDATA%\BYH\vision.json`，不要把源码默认值当成用户当前值。`deepseek-ai/DeepSeek-OCR` 因桌面截图幻觉已弃。
 
 ### 关键文件

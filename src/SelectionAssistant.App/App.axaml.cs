@@ -25,6 +25,7 @@ using SelectionAssistant.Platform.Windows.Clipboard;
 using SelectionAssistant.Platform.Windows.Input;
 using SelectionAssistant.Platform.Windows.Launcher;
 using SelectionAssistant.Platform.Windows.Secrets;
+using SelectionAssistant.Platform.Windows.Speech;
 using SelectionAssistant.Platform.Windows.Startup;
 using SelectionAssistant.UI.Views;
 
@@ -428,6 +429,13 @@ public partial class App : Application
             // already hid itself; if runtime is active, clean up toolbar + state.
             _regionOverlay.RegionCancelled += () =>
                 _runtime?.ResetForRedraw();
+            // The confirmed overlay stays active while the toolbar is shown.
+            // Enter is normally swallowed by SelectionRuntime's persistent
+            // low-level hook, but a focus transition can route it to the
+            // overlay instead. Forward that local event to the same
+            // idempotent save request so Enter never re-enters capture.
+            _regionOverlay.ConfirmedEnterPressed += () =>
+                _runtime?.RequestOceanEyesSave();
             // R42: overlay Reset (right-click redraw after confirm) — clear
             // toolbar + OCR state but keep overlay visible for redraw.
             _regionOverlay.RegionReset += () =>
@@ -2029,11 +2037,11 @@ public partial class App : Application
 
         _settingsWindow.SetPromptTemplates(_runtime.GetPromptTemplates());
         _settingsWindow.SetVisionSettings(_runtime.GetVisionSettings());
-        // 朗读 (TTS): push settings + whether a BYH-managed key is configured.
-        // When not configured, the settings UI hints the user that mmx's login
-        // will be reused instead.
-        bool ttsKeyConfigured = await _runtime.IsTtsKeyConfiguredAsync();
-        _settingsWindow.SetTtsSettings(_runtime.GetTtsSettings(), ttsKeyConfigured);
+        // 朗读 (TTS): push settings + the exact credential source used by the
+        // backend (BYH DPAPI secret, mmx login, or none). The UI must not report
+        // "Key not set" when the runtime can already resolve ~/.mmx/config.json.
+        TtsCredentialSource ttsCredentialSource = await _runtime.GetTtsCredentialSourceAsync();
+        _settingsWindow.SetTtsSettings(_runtime.GetTtsSettings(), ttsCredentialSource);
         _settingsWindow.SetOceanEyesTriggerSettings(_oceanEyesTrigger);
         _settingsWindow.SetOceanEyesCaptureSettings(_oceanEyesCapture);
         _settingsWindow.SetToolbarShortcuts(_toolbarShortcuts);

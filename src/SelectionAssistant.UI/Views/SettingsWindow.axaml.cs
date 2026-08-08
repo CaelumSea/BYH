@@ -228,6 +228,8 @@ public partial class SettingsWindow : Window
                 (Strings.Settings_PageTitle_Functions, Strings.Settings_PageSubtitle_Functions),
             SettingsPage.Vision =>
                 (Strings.Settings_PageTitle_Vision, Strings.Settings_PageSubtitle_Vision),
+            SettingsPage.Tts =>
+                (Strings.Settings_PageTitle_Tts, Strings.Settings_PageSubtitle_Tts),
             SettingsPage.Launcher =>
                 (Strings.Settings_PageTitle_Launcher, Strings.Settings_PageSubtitle_Launcher),
             SettingsPage.ClipboardHistory =>
@@ -1214,8 +1216,10 @@ public partial class SettingsWindow : Window
 
     // ── 朗读 (TTS) settings ───────────────────────────────────────────────
 
-    /// <summary>Pushed by App after loading tts.json. Populates the TTS form.</summary>
-    public void SetTtsSettings(TtsSettings settings, bool keyConfigured)
+    /// <summary>Pushed by App after loading tts.json. Populates the TTS form.
+    /// The credential source (not a plain bool) drives the status label so the
+    /// UI never reports "Key not set" when the runtime can resolve mmx's login.</summary>
+    public void SetTtsSettings(TtsSettings settings, TtsCredentialSource credentialSource)
     {
         ArgumentNullException.ThrowIfNull(settings);
         TtsEnabledToggle.IsChecked = settings.Enabled;
@@ -1227,9 +1231,12 @@ public partial class SettingsWindow : Window
         TtsSpeedSlider.Value = settings.Speed;
         UpdateTtsSpeedLabel();
         TtsApiKeyInput.Text = string.Empty; // never echo the secret back
-        TtsApiKeyStatusText.Text = keyConfigured
-            ? Strings.Settings_Key_Saved
-            : Strings.Settings_Key_NotSet;
+        TtsApiKeyStatusText.Text = credentialSource switch
+        {
+            TtsCredentialSource.ByhSecret => Strings.Settings_Key_Saved,
+            TtsCredentialSource.MmxConfig => Strings.Settings_Key_UsingMmx,
+            _ => Strings.Settings_Key_NotSet,
+        };
         TtsStatusText.Text = string.Empty;
     }
 

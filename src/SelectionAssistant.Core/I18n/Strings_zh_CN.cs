@@ -165,6 +165,9 @@ internal static partial class Strings_zh_CN
         ["Settings_PageSubtitle_Launcher"] = "快速启动项与 Spotlight 快捷键。",
         ["Settings_PageSubtitle_Clipboard"] = "无需离开键盘即可调用最近的文本和图片。",
         ["Settings_PageSubtitle_Dashboard"] = "你的模块、模型路由与本地使用节奏。",
+        ["Settings_PageTitle_Tts"] = "朗读 / Speak",
+        ["Settings_PageSubtitle_Tts"] = "用 MiniMax 语音合成朗读选中文字。",
+        ["Settings_Key_UsingMmx"] = "使用 mmx 登录 ✓",
 
         // SettingsWindow — Ocean Eyes Trigger card
         ["Settings_OceanEyesTrigger_Title"] = "Ocean Eyes 触发器",
@@ -425,6 +428,7 @@ internal static partial class Strings_zh_CN
         ["Clip_Row_ViewFull"] = "查看全文…",
         // Tag nav tooltip + image popup header (parameterized, code-behind)
         ["Clip_TagNavTooltip"] = "{0}  (点击选择 · 拖拽排序 · 右键管理)",
+        ["Clip_TagFilter_Tooltip"] = "按 {0} 过滤 · 点击关闭",
         ["Clip_ImagePopupHeader"] = "图片 · {0}  ·  滚轮缩放 · 拖拽平移 · 双击或 Esc 关闭",
         ["Clip_Row_AddTag"] = "添加标签…",
         ["Clip_Row_RemoveTag"] = "移除标签",

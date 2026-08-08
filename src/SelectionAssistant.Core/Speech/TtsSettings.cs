@@ -1,5 +1,13 @@
 namespace SelectionAssistant.Core.Speech;
 
+/// <summary>Where the active Speak credential is resolved from.</summary>
+public enum TtsCredentialSource
+{
+    None,
+    ByhSecret,
+    MmxConfig,
+}
+
 /// <summary>
 /// 朗读 (text-to-speech) 功能配置。选中文字 → 调 MiniMax T2A 合成 mp3 → 后台播放。
 /// 复用 <c>~/.mmx/config.json</c> 已登录的 MiniMax 密钥（<see cref="ApiKeyReference"/>

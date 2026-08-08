@@ -163,6 +163,9 @@ internal static partial class Strings_en
         ["Settings_PageSubtitle_Launcher"] = "Quick-launch entries and the Spotlight hotkey.",
         ["Settings_PageSubtitle_Clipboard"] = "Recall recent text and images without leaving the keyboard.",
         ["Settings_PageSubtitle_Dashboard"] = "Your modules, model routes, and local usage rhythm.",
+        ["Settings_PageTitle_Tts"] = "Speak / 朗读",
+        ["Settings_PageSubtitle_Tts"] = "Read selected text aloud via MiniMax speech synthesis.",
+        ["Settings_Key_UsingMmx"] = "Using mmx login ✓",
 
         // SettingsWindow — Ocean Eyes Trigger card
         ["Settings_OceanEyesTrigger_Title"] = "Ocean Eyes Trigger",
@@ -423,6 +426,7 @@ internal static partial class Strings_en
         ["Clip_Row_ViewFull"] = "View full…",
         // Tag nav tooltip + image popup header (parameterized, code-behind)
         ["Clip_TagNavTooltip"] = "{0}  (click to select · drag to reorder · right-click to manage)",
+        ["Clip_TagFilter_Tooltip"] = "Filter by {0} · click to remove",
         ["Clip_ImagePopupHeader"] = "Image · {0}  ·  scroll to zoom · drag to pan · double-click or Esc to close",
         ["Clip_Row_AddTag"] = "Add tag…",
         ["Clip_Row_RemoveTag"] = "Remove tag",

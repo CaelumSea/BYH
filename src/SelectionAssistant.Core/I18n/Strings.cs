@@ -242,6 +242,14 @@ public static partial class Strings
     public static string Settings_PageSubtitle_Launcher => Get(nameof(Settings_PageSubtitle_Launcher));
     public static string Settings_PageSubtitle_Clipboard => Get(nameof(Settings_PageSubtitle_Clipboard));
     public static string Settings_PageSubtitle_Dashboard => Get(nameof(Settings_PageSubtitle_Dashboard));
+    // SettingsWindow — Speak (TTS) page title/subtitle (REQ-041 crash fix: the
+    // ShowSettingsPage title switch previously threw ArgumentOutOfRangeException
+    // for the Tts branch, terminating the NativeAOT process on tab click).
+    public static string Settings_PageTitle_Tts => Get(nameof(Settings_PageTitle_Tts));
+    public static string Settings_PageSubtitle_Tts => Get(nameof(Settings_PageSubtitle_Tts));
+    // TTS credential source status (REQ-042): distinguishes BYH-managed key,
+    // mmx login fallback, and truly-not-set so the UI never lies.
+    public static string Settings_Key_UsingMmx => Get(nameof(Settings_Key_UsingMmx));
 
     // SettingsWindow — Ocean Eyes Trigger card
     public static string Settings_OceanEyesTrigger_Title => Get(nameof(Settings_OceanEyesTrigger_Title));
@@ -506,6 +514,9 @@ public static partial class Strings
     public static string Clip_Row_ViewFull => Get(nameof(Clip_Row_ViewFull));
     // Tag navigation tooltip and image popup header (parameterized, code-behind)
     public static string Clip_TagNavTooltip => Get(nameof(Clip_TagNavTooltip));
+    // Tag filter chip tooltip (parameterized {0} = tag name); shown above the list
+    // when the user clicks a row's entry-tag or custom-tag badge.
+    public static string Clip_TagFilter_Tooltip => Get(nameof(Clip_TagFilter_Tooltip));
     public static string Clip_ImagePopupHeader => Get(nameof(Clip_ImagePopupHeader));
     public static string Clip_Row_AddTag => Get(nameof(Clip_Row_AddTag));
     public static string Clip_Row_RemoveTag => Get(nameof(Clip_Row_RemoveTag));

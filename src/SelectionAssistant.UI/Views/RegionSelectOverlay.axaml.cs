@@ -125,6 +125,17 @@ public partial class RegionSelectOverlay : Window
     public event Action? RegionCancelled;
 
     /// <summary>
+    /// Raised when Enter is pressed while a region is already confirmed.
+    ///
+    /// The overlay remains the active window while the no-activate toolbar is
+    /// shown. Normally the persistent low-level keyboard hook consumes Enter,
+    /// but a focus/activation transition can occasionally deliver the key to
+    /// this window instead. Keep this fallback at the overlay boundary so the
+    /// same save command is used regardless of which input route wins.
+    /// </summary>
+    public event Action? ConfirmedEnterPressed;
+
+    /// <summary>
     /// R41: raised when the user requests a re-draw (right-click while the
     /// toolbar is up). The overlay stays open with a cleared rect + UIA
     /// tracking re-armed; App.axaml.cs hides the toolbar + clears OCR cache.
@@ -565,7 +576,17 @@ public partial class RegionSelectOverlay : Window
         }
         else if (e.Key == Key.Enter)
         {
-            Confirm();
+            if (_confirmed)
+            {
+                // Once the frame is locked, Enter is the screenshot-save
+                // command. Do not call Confirm() again: that would re-enter
+                // the async capture path and replace the cached PNG.
+                ConfirmedEnterPressed?.Invoke();
+            }
+            else
+            {
+                Confirm();
+            }
             e.Handled = true;
         }
     }

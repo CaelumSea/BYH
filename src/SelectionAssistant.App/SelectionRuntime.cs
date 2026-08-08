@@ -116,6 +116,12 @@ internal sealed class SelectionRuntime : IDisposable
     // written from the UI thread (FeedOceanEyesCapture / Esc); Volatile for
     // cross-thread visibility without a lock.
     private int _oceanEyesActive;
+    // R40 Ocean Eyes Enter-save idempotency gate. Both the persistent low-level
+    // keyboard hook and the RegionSelectOverlay's ConfirmedEnterPressed fallback
+    // can deliver Enter after frame confirmation; this 0→1 CompareExchange ensures
+    // SaveOceanEyesScreenshot runs exactly once per session. Reset to 0 in
+    // ShowToolbarForOceanEyes (new session) and DismissOceanEyes (cleanup).
+    private int _oceanEyesSaveRequested;
     // PNG captured for the current Ocean Eyes session. Cached so Enter can save
     // immediately without re-capturing (which would also pick up the toolbar).
     // nulled out when the Ocean Eyes toolbar is dismissed (Esc/Enter/action).
@@ -578,26 +584,52 @@ internal sealed class SelectionRuntime : IDisposable
 
     public TtsSettings GetTtsSettings() => _ttsSettings;
 
-    /// <summary>True when the BYH-managed DPAPI secret for TTS is set. When
-    /// false, the settings UI shows "未设置，将使用 mmx 登录的密钥".</summary>
-    public async Task<bool> IsTtsKeyConfiguredAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Resolves the same credential sources <see cref="ResolveTtsApiKeyAsync"/>
+    /// would use, but reports WHICH source instead of the key itself. The
+    /// settings UI uses this to avoid reporting "Key not set" when the runtime
+    /// can already resolve <c>~/.mmx/config.json</c>:
+    /// <list type="bullet">
+    /// <item><see cref="TtsCredentialSource.ByhSecret"/> — BYH-managed DPAPI secret exists → "Key saved ✓".</item>
+    /// <item><see cref="TtsCredentialSource.MmxConfig"/> — DPAPI miss but mmx login token present → "Using mmx login ✓".</item>
+    /// <item><see cref="TtsCredentialSource.None"/> — neither source → "Key not set".</item>
+    /// </list>
+    /// </summary>
+    public async Task<TtsCredentialSource> GetTtsCredentialSourceAsync(
+        CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_ttsSettings.ApiKeyReference))
+        if (!string.IsNullOrWhiteSpace(_ttsSettings.ApiKeyReference))
         {
-            return false;
+            try
+            {
+                string? key = await _secretStore
+                    .GetAsync(_ttsSettings.ApiKeyReference, cancellationToken)
+                    .ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(key))
+                {
+                    return TtsCredentialSource.ByhSecret;
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("Tts", "secret store read failed; falling back to mmx config.", exception);
+            }
         }
-        try
+
+        MmxCredential? mmx = MmxConfigReader.Read();
+        if (mmx is not null && !string.IsNullOrWhiteSpace(mmx.Token))
         {
-            string? key = await _secretStore
-                .GetAsync(_ttsSettings.ApiKeyReference, cancellationToken)
-                .ConfigureAwait(false);
-            return !string.IsNullOrWhiteSpace(key);
+            return TtsCredentialSource.MmxConfig;
         }
-        catch
-        {
-            return false;
-        }
+
+        return TtsCredentialSource.None;
     }
+
+    /// <summary>True when any usable TTS credential (BYH secret or mmx login)
+    /// can be resolved. Delegates to <see cref="GetTtsCredentialSourceAsync"/>.</summary>
+    public async Task<bool> IsTtsKeyConfiguredAsync(CancellationToken cancellationToken = default) =>
+        await GetTtsCredentialSourceAsync(cancellationToken).ConfigureAwait(false)
+            != TtsCredentialSource.None;
 
     /// <summary>
     /// Test-synthesizes a fixed sample sentence and plays it, using the form's
@@ -887,6 +919,7 @@ internal sealed class SelectionRuntime : IDisposable
         // Arm the Ocean Eyes flag + the keyboard hook so Enter / F / J / Z /
         // R / C all route through OnToolbarKeyPressed.
         Volatile.Write(ref _oceanEyesActive, 1);
+        Volatile.Write(ref _oceanEyesSaveRequested, 0); // R40: reset save gate for new session
         _toolbarVisible = true; // R54 v2 bug fix: gate action-key dispatch
         _keyboardHook.SetEnabled(true);
     }
@@ -983,6 +1016,27 @@ internal sealed class SelectionRuntime : IDisposable
     }
 
     /// <summary>
+    /// R40: idempotent entry point for the Ocean Eyes screenshot-save command.
+    /// Two independent routes can deliver Enter after frame confirmation — the
+    /// persistent low-level keyboard hook, and the <c>RegionSelectOverlay</c>'s
+    /// <c>ConfirmedEnterPressed</c> fallback (a focus/activation transition can
+    /// route the key past the hook to the overlay window). This atomic 0→1 gate
+    /// (<see cref="Interlocked.CompareExchange"/>) guarantees
+    /// <see cref="SaveOceanEyesScreenshot"/> runs exactly once per Ocean Eyes
+    /// session; the second route's call is a silent no-op. Reset to 0 in
+    /// <see cref="ShowToolbarForOceanEyes"/> (new session) and
+    /// <see cref="DismissOceanEyes"/> (cleanup).
+    /// </summary>
+    public void RequestOceanEyesSave()
+    {
+        if (Interlocked.CompareExchange(ref _oceanEyesSaveRequested, 1, 0) != 0)
+        {
+            return; // already saved this session
+        }
+        SaveOceanEyesScreenshot();
+    }
+
+    /// <summary>
     /// R40: writes the cached PNG to <c>SavePath/ocean-eyes-yyyyMMdd-HHmmss.png</c>
     /// (if AutoSaveEnabled) and copies it to the clipboard (if
     /// CopyToClipboardEnabled). Then hides the toolbar and clears the Ocean Eyes
@@ -1033,8 +1087,21 @@ internal sealed class SelectionRuntime : IDisposable
                     if (!string.IsNullOrEmpty(directory))
                     {
                         Directory.CreateDirectory(directory);
-                        string stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+                        // R40: millisecond precision + CreateNew sequence suffix
+                        // so a same-second double-Enter (hook + overlay fallback,
+                        // or a rapid re-trigger) cannot overwrite the first file.
+                        string stamp = DateTime.Now.ToString("yyyyMMdd-HHmmssfff");
                         string file = Path.Combine(directory, $"ocean-eyes-{stamp}.png");
+                        // Allocate a unique filename: if the ms stamp already
+                        // exists (same-ms retry), append -2, -3, … until free.
+                        if (File.Exists(file))
+                        {
+                            for (int n = 2; ; n++)
+                            {
+                                string candidate = Path.Combine(directory, $"ocean-eyes-{stamp}-{n}.png");
+                                if (!File.Exists(candidate)) { file = candidate; break; }
+                            }
+                        }
                         File.WriteAllBytes(file, finalPng);
                         _logger.Info("OceanEyes", $"Saved screenshot: {file}");
                     }
@@ -1128,6 +1195,7 @@ internal sealed class SelectionRuntime : IDisposable
         // Clear flags immediately (thread-safe Volatile writes) so any
         // concurrent hook callback sees the inactive state right away.
         Volatile.Write(ref _oceanEyesActive, 0);
+        Volatile.Write(ref _oceanEyesSaveRequested, 0); // R40: drop any pending save
         _toolbarVisible = false; // R54 v2 bug fix
         _oceanEyesPng = null;
         _oceanEyesBgra = null;
@@ -3549,7 +3617,7 @@ internal sealed class SelectionRuntime : IDisposable
             try
             {
                 _logger.Info("KeyboardHook", "Ocean Eyes: Enter → save screenshot.");
-                SaveOceanEyesScreenshot();
+                RequestOceanEyesSave();
             }
             catch (Exception exception)
             {
