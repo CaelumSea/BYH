@@ -142,6 +142,15 @@ public partial class ClipboardHistoryWindow : Window
 
     private ClipboardTab _activeTab = ClipboardTab.All;
     private string? _activeCustomTagName; // set when _activeTab == Custom
+
+    // Click-to-filter tag state: clicking an entry-tag (pink) or custom-tag
+    // (olive) badge on a row sets a single (mutually exclusive) tag filter and
+    // shows a chip above the list. Clicking a different badge replaces it;
+    // clicking the chip's ✕ (or the chip itself) clears it. Session-scoped —
+    // cleared on window reopen, never persisted. Independent of the left-nav
+    // tab (a custom-tag badge filter and the nav tab are two views of the same
+    // data, but the chip is an ad-hoc filter the user applies on the fly).
+    private TagFilter _tagFilter = TagFilter.None;
     // R54 v2: ordered list of currently-visible nav tabs, mirroring the buttons
     // built by RebuildNav (All, then group tabs that have entries, then
     // Image/Pinned/Favorite if present, then custom tags in order). Drives
@@ -240,6 +249,10 @@ public partial class ClipboardHistoryWindow : Window
         {
             ExitMultiSelectMode();
             SearchInput.Text = string.Empty;
+            // Tag-filter chip is session-scoped: clear it on reopen so a stale
+            // filter from the last invocation doesn't silently narrow the list.
+            _tagFilter = TagFilter.None;
+            RenderTagFilterChip();
             SearchInput.Focus();
             // Reset the click-pair anchor so a click just before the previous
             // Hide() isn't misread as the first half of a double-click on reopen.
@@ -247,6 +260,33 @@ public partial class ClipboardHistoryWindow : Window
             _revealed.Clear();
             // R100: 窗口打开动画已去掉(用户要求)。窗口直接静态出现。
         };
+
+        // Delete-to-remove-entry: the window opens with focus in SearchInput
+        // (see Opened handler above) and arrow-key navigation keeps focus there
+        // (MoveSelection only updates _selectedIndex, never moves focus). While
+        // the TextBox has focus, a plain Delete is consumed by the TextBox's own
+        // forward-delete-character handling and marked Handled, so it never
+        // bubbles up to OnWindowKeyDown — the selected entry is therefore not
+        // removed. The window's Delete overload only works when focus is
+        // *outside* the TextBox (e.g. on a row) or when there is no char to
+        // delete (empty query / caret at end) — hence the "sometimes" failure.
+        // Same root cause and same fix shape as the entry-tag Enter-key bug
+        // (R99 Bug A) a few sections below: tunnel the key on the SearchInput
+        // itself, ahead of the TextBox's bubbling handler, and only for a bare
+        // Delete (no modifiers) so text editing with Ctrl/Ctrl+Shift is left
+        // alone. Backspace is intentionally NOT captured — it stays a text-
+        // editing key — so Delete is the sole "remove entry" shortcut.
+        SearchInput.AddHandler(
+            InputElement.KeyDownEvent,
+            (_, e) =>
+            {
+                if (e.Key == Key.Delete && e.KeyModifiers == KeyModifiers.None)
+                {
+                    HandleDeleteKey(e);
+                }
+            },
+            RoutingStrategies.Tunnel,
+            handledEventsToo: true);
 
         // R100 动画1: 关闭直接 Hide(瞬切)。用户要求"一次性弹出来", 不要缩回动画。
         // 只有出现时 scale 弹入(0.85→1.0), 关闭直接消失。
@@ -1896,6 +1936,146 @@ public partial class ClipboardHistoryWindow : Window
         ReapplyFilter();
     }
 
+    // ── Tag-filter chip (click a row's tag badge to filter the list) ──
+    //
+    // Both EntryTag (pink, free-form like "AWS") and CustomTag (olive, custom-tab
+    // like "工作") badges are clickable. Clicking sets a single, mutually
+    // exclusive tag filter: clicking a different badge replaces it rather than
+    // intersecting. The active filter is shown as a chip above the list
+    // (TagFilterBar); clicking the chip or its ✕ clears it. Session-scoped —
+    // cleared on window reopen, never persisted. The badge's PointerPressed
+    // marks the event handled so the row's select/menu/double-click logic never
+    // fires (the badge owns its click).
+
+    private enum TagFilterKind { None, Entry, Custom }
+
+    private readonly record struct TagFilter(TagFilterKind Kind, string Value)
+    {
+        public static readonly TagFilter None = new(TagFilterKind.None, string.Empty);
+        public bool IsActive => Kind != TagFilterKind.None;
+    }
+
+    /// <summary>Handler attached to every entry-tag and custom-tag badge in the
+    /// row templates. The badge's <c>Tag</c> is <c>"entry|name"</c> or
+    /// <c>"custom|name"</c> (set via StringFormat in AXAML). Sets the filter and
+    /// swallows the press so the host row does not select/open.</summary>
+    private void OnTagBadgePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Border border && border.Tag is string encoded &&
+            TryParseTagBadgeTag(encoded, out TagFilterKind kind, out string name))
+        {
+            SetTagFilter(new TagFilter(kind, name));
+        }
+        // Always swallow: even a parse failure should not fall through to the
+        // row's select/double-click logic (the user clearly aimed at the badge).
+        e.Handled = true;
+    }
+
+    private static bool TryParseTagBadgeTag(string encoded, out TagFilterKind kind, out string name)
+    {
+        int sep = encoded.IndexOf('|');
+        if (sep <= 0 || sep >= encoded.Length - 1)
+        {
+            kind = TagFilterKind.None;
+            name = string.Empty;
+            return false;
+        }
+        string kindText = encoded[..sep];
+        kind = kindText switch
+        {
+            "entry" => TagFilterKind.Entry,
+            "custom" => TagFilterKind.Custom,
+            _ => TagFilterKind.None,
+        };
+        name = encoded[(sep + 1)..];
+        return kind != TagFilterKind.None && name.Length > 0;
+    }
+
+    private void SetTagFilter(TagFilter filter)
+    {
+        _tagFilter = filter;
+        RenderTagFilterChip();
+        ReapplyFilter();
+    }
+
+    private void ClearTagFilter()
+    {
+        if (!_tagFilter.IsActive)
+        {
+            return;
+        }
+        _tagFilter = TagFilter.None;
+        RenderTagFilterChip();
+        ReapplyFilter();
+    }
+
+    private void RenderTagFilterChip()
+    {
+        TagFilterBar.Children.Clear();
+        if (!_tagFilter.IsActive)
+        {
+            TagFilterBar.IsVisible = false;
+            return;
+        }
+
+        // Chip = emoji + tag name + ✕. Custom tags prefix with "#" to match the
+        // row badge format ("# 工作"); entry tags show the bare name with a tag
+        // glyph so the chip reads distinct from the body text.
+        string prefix = _tagFilter.Kind == TagFilterKind.Custom ? "# " : "🏷 ";
+        var label = new TextBlock
+        {
+            Text = prefix + _tagFilter.Value,
+            FontSize = GetFontSize("ByhFontSizeBodySmall"),
+            FontWeight = FontWeight.SemiBold,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var close = new TextBlock
+        {
+            Text = "✕",
+            FontSize = GetFontSize("ByhFontSizeBodySmall"),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(6, 0, 0, 0),
+            Foreground = (IBrush?)Application.Current?.FindResource("ByhTextSecondaryBrush"),
+        };
+
+        // Reuse the entry-tag badge fill for both kinds so the chip matches the
+        // pink/olive badge the user clicked (EntryTag→pink EntryTagBadge style;
+        // CustomTag→olive TagBadge style). The whole chip is clickable to clear.
+        string chipClass = _tagFilter.Kind == TagFilterKind.Custom ? "TagBadge" : "EntryTagBadge";
+        var chip = new Border
+        {
+            Classes = { chipClass },
+            Padding = new Thickness(8, 2),
+            CornerRadius = new CornerRadius(10),
+            Cursor = new Cursor(StandardCursorType.Hand),
+            Child = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Children = { label, close },
+            },
+        };
+        ToolTip.SetTip(chip, string.Format(Strings.Clip_TagFilter_Tooltip, _tagFilter.Value));
+        chip.PointerPressed += (_, e) =>
+        {
+            ClearTagFilter();
+            e.Handled = true;
+        };
+        TagFilterBar.Children.Add(chip);
+        TagFilterBar.IsVisible = true;
+    }
+
+    /// <summary>True when the row carries the active tag filter (entry-tag
+    /// membership for Entry kind, custom-tab membership for Custom kind). No
+    /// active filter → always true. Used by ScheduleFilter to narrow the tab
+    /// pool before search is applied.</summary>
+    private bool PassesTagFilter(ClipboardHistoryEntryRow row) => _tagFilter switch
+    {
+        { Kind: TagFilterKind.Entry } =>
+            row.EntryTags.Contains(_tagFilter.Value, StringComparer.Ordinal),
+        { Kind: TagFilterKind.Custom } => row.HasCustomTag(_tagFilter.Value),
+        _ => true,
+    };
+
     /// <summary>R54 v2: cycles the active nav tab forward (+1, Ctrl+Tab) or
     /// backward (-1, Ctrl+Shift+Tab). Wraps around. No-op when fewer than two
     /// tabs are visible. Finds the current tab in <c>_navOrder</c> by matching
@@ -2015,7 +2195,11 @@ public partial class ClipboardHistoryWindow : Window
         ClipboardTab tab = _activeTab;
         string? customTagName = _activeCustomTagName;
         ClipboardSearchQuery query = ClipboardSearchQuery.Parse(SearchInput.Text);
-        List<ClipboardHistoryEntryRow> tabPool = GetTabPool(tab, customTagName).ToList();
+        // Apply the active tag-filter chip (if any) on top of the tab pool. The
+        // chip is independent of the nav tab: e.g. with the All tab active and a
+        // "AWS" entry-tag chip, only rows carrying that entry tag survive here.
+        List<ClipboardHistoryEntryRow> tabPool =
+            GetTabPool(tab, customTagName).Where(PassesTagFilter).ToList();
 
         if (query.IsEmpty)
         {
@@ -2086,20 +2270,32 @@ public partial class ClipboardHistoryWindow : Window
 
             List<ClipboardHistoryEntryRow> matches = await Task.Run(() =>
             {
-                var result = new List<ClipboardHistoryEntryRow>();
+                // Collect (row, score, isArchived, originalIndex) for the matched
+                // set. The original index (position in `candidates`, which is the
+                // snapshot-time-ordered tab pool) is the stable tiebreaker so
+                // tag-hit groups and text-only groups each keep time-desc order.
+                var scored = new List<(ClipboardHistoryEntryRow Row, ClipboardMatchScore Score, bool IsArchived, int Index)>();
+                int index = 0;
                 foreach (ClipboardHistoryEntryRow row in candidates)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (snapshot.Indexes.TryGetValue(row.Id, out ClipboardSearchIndex? index) &&
-                        index.IsMatch(query))
+                    if (snapshot.Indexes.TryGetValue(row.Id, out ClipboardSearchIndex? searchIndex))
                     {
-                        result.Add(row);
+                        ClipboardMatchScore score = searchIndex.ScoreMatch(query);
+                        if (score.IsMatch)
+                        {
+                            scored.Add((row, score, row.IsArchived, index));
+                        }
                     }
+                    index++;
                 }
 
-                // Live matches remain ahead of archived matches, preserving the
-                // stable ordering of the previous synchronous implementation.
-                return result.OrderBy(row => row.IsArchived ? 1 : 0).ToList();
+                // Rank: tag-hitting matches first (user intent: "I searched and
+                // a tagged item is more relevant"), then live before archived,
+                // then stable by original position (= snapshot time-desc).
+                // Delegates to ClipboardMatchRanker so the rule is unit-tested
+                // in one place (ClipboardSearchRankingTests).
+                return ClipboardMatchRanker.OrderByRank(scored);
             }, cancellationToken).ConfigureAwait(false);
 
             Dispatcher.UIThread.Post(() =>
@@ -2345,17 +2541,26 @@ public partial class ClipboardHistoryWindow : Window
                 return;
 
             case Key.Delete:
-                e.Handled = true;
-                if (_isMultiSelectMode)
-                {
-                    ConfirmMultiDelete();
-                    return;
-                }
-                if (CurrentSelectedRow is { } delRow)
-                {
-                    DeleteRequested?.Invoke(delRow.Id);
-                }
+                HandleDeleteKey(e);
                 return;
+        }
+    }
+
+    // Delete-key entry removal. Extracted so the window-level bubble handler
+    // (OnWindowKeyDown) and the SearchInput tunnel handler (see constructor)
+    // share one implementation. Marking e.Handled here also stops the event
+    // reaching any other control on the route.
+    private void HandleDeleteKey(KeyEventArgs e)
+    {
+        e.Handled = true;
+        if (_isMultiSelectMode)
+        {
+            ConfirmMultiDelete();
+            return;
+        }
+        if (CurrentSelectedRow is { } delRow)
+        {
+            DeleteRequested?.Invoke(delRow.Id);
         }
     }
 
@@ -2422,6 +2627,13 @@ public partial class ClipboardHistoryWindow : Window
     // click — no expand-first step.
     private void OnRowPointerPressed(object? sender, PointerPressedEventArgs e)
     {
+        // A child (e.g. a tag badge with its own PointerPressed handler) marked
+        // the event handled — let it own the gesture and skip row select/menu.
+        if (e.Handled)
+        {
+            return;
+        }
+
         if (sender is not Border border || border.DataContext is not ClipboardHistoryEntryRow row)
         {
             return;

@@ -91,8 +91,8 @@
         </Grid>
       </Border>
 
-      <!-- Right panel: search box + filtered list (unchanged machinery). -->
-      <Grid Grid.Column="1" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="8">
+      <!-- Right panel: search box + tag-filter chip + filtered list. -->
+      <Grid Grid.Column="1" RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="8">
 
         <!-- Search input row: clipboard icon + TextBox. Same gold-lace frame
              machinery as SpotlightWindow. -->
@@ -120,9 +120,20 @@
           </Border>
         </Grid>
 
+        <!-- Tag-filter chip bar: shown only while a single tag filter is
+             active (set by clicking an entry-tag or custom-tag badge on a row).
+             Single chip (mutually exclusive) — clicking a different badge
+             replaces it. The ✕ clears the filter. Hidden by default. -->
+        <StackPanel x:Name="TagFilterBar"
+                    Grid.Row="1"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    Margin="0,0,0,2"
+                    IsVisible="False" />
+
         <!-- Category header (shows the active tab name + count). -->
         <TextBlock x:Name="CategoryHeader"
-                   Grid.Row="1"
+                   Grid.Row="2"
                    Classes="Kicker"
                    Text="{x:Static i18n:Strings.Clip_CategoryDefault}"
                    FontSize="{DynamicResource ByhFontSizeBodySmall}" />
@@ -130,7 +141,7 @@
         <!-- Filtered results list. ContextMenu is attached dynamically per row
              in code-behind (it depends on the row's flags + the current custom
              tags, both of which change at runtime). -->
-        <Border Grid.Row="2"
+        <Border Grid.Row="3"
                 Background="Transparent"
                 BorderBrush="{DynamicResource ByhHairlineBrush}"
                 BorderThickness="0,1,0,0"
@@ -203,7 +214,10 @@
                               <Border Classes="Badge" Padding="5,1">
                                 <TextBlock Classes="Muted" FontSize="{DynamicResource ByhFontSizeCaption}" Text="{x:Static i18n:Strings.Clip_ImageLabel}" />
                               </Border>
-                              <!-- R54 v2: inline entry-tag badges (see text row). -->
+                              <!-- R54 v2: inline entry-tag badges (see text row).
+                                   Tag badges are clickable to filter the list by
+                                   that tag. Border.Tag carries "entry|<name>" so
+                                   the shared handler can distinguish kind. -->
                               <ItemsControl ItemsSource="{Binding EntryTags}">
                                 <ItemsControl.ItemsPanel>
                                   <ItemsPanelTemplate>
@@ -212,7 +226,10 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                   <DataTemplate x:DataType="sys:String">
-                                    <Border Classes="EntryTagBadge" Padding="5,1">
+                                    <Border Classes="EntryTagBadge TagBadgeClickable" Padding="5,1"
+                                            Tag="{Binding StringFormat='entry|{0}'}"
+                                            Cursor="Hand"
+                                            PointerPressed="OnTagBadgePointerPressed">
                                       <TextBlock Classes="Muted" FontSize="{DynamicResource ByhFontSizeCaption}" Text="{Binding}" />
                                     </Border>
                                   </DataTemplate>
@@ -227,7 +244,10 @@
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
                                   <DataTemplate x:DataType="sys:String">
-                                    <Border Classes="TagBadge" Padding="5,1">
+                                    <Border Classes="TagBadge TagBadgeClickable" Padding="5,1"
+                                            Tag="{Binding StringFormat='custom|{0}'}"
+                                            Cursor="Hand"
+                                            PointerPressed="OnTagBadgePointerPressed">
                                       <TextBlock Classes="Muted" FontSize="{DynamicResource ByhFontSizeCaption}" Text="{Binding, StringFormat='# {0}'}" />
                                     </Border>
                                   </DataTemplate>
@@ -289,7 +309,8 @@
                           <!-- R54 v2: inline entry-tag badges so a glance tells you
                                which entry this is ("AWS", "Stripe"). Each badge is a
                                free-form annotation tag added via "Add tag…" (independent
-                               of the custom-tag tab system). Empty list = no badges. -->
+                               of the custom-tag tab system). Empty list = no badges.
+                               Clickable: sets a tag filter on the list. -->
                           <ItemsControl ItemsSource="{Binding EntryTags}">
                             <ItemsControl.ItemsPanel>
                               <ItemsPanelTemplate>
@@ -298,7 +319,10 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                               <DataTemplate x:DataType="sys:String">
-                                <Border Classes="EntryTagBadge" Padding="5,1">
+                                <Border Classes="EntryTagBadge TagBadgeClickable" Padding="5,1"
+                                        Tag="{Binding StringFormat='entry|{0}'}"
+                                        Cursor="Hand"
+                                        PointerPressed="OnTagBadgePointerPressed">
                                   <TextBlock Classes="Muted" FontSize="{DynamicResource ByhFontSizeCaption}" Text="{Binding}" />
                                 </Border>
                               </DataTemplate>
@@ -308,7 +332,7 @@
                                entry was assigned to via "Move to…". A "#" prefix
                                mirrors the nav bar's custom-tab label so the two
                                read as the same thing. Distinct from EntryTags
-                               (which carry no prefix) at a glance. -->
+                               (which carry no prefix) at a glance. Clickable. -->
                           <ItemsControl ItemsSource="{Binding CustomTags}">
                             <ItemsControl.ItemsPanel>
                               <ItemsPanelTemplate>
@@ -317,7 +341,10 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                               <DataTemplate x:DataType="sys:String">
-                                <Border Classes="TagBadge" Padding="5,1">
+                                <Border Classes="TagBadge TagBadgeClickable" Padding="5,1"
+                                        Tag="{Binding StringFormat='custom|{0}'}"
+                                        Cursor="Hand"
+                                        PointerPressed="OnTagBadgePointerPressed">
                                   <TextBlock Classes="Muted" FontSize="{DynamicResource ByhFontSizeCaption}" Text="{Binding, StringFormat='# {0}'}" />
                                 </Border>
                               </DataTemplate>

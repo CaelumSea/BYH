@@ -21,57 +21,93 @@ public sealed class ClipboardSearchIndex
         ArgumentNullException.ThrowIfNull(source);
 
         var fields = new List<SearchableField>(2 + entryTags.Count + customTags.Count);
-        AddIfPresent(fields, text);
+        AddIfPresent(fields, text, FieldKind.Text);
         foreach (string tag in entryTags)
         {
-            AddIfPresent(fields, tag);
+            AddIfPresent(fields, tag, FieldKind.EntryTag);
         }
         foreach (string tag in customTags)
         {
-            AddIfPresent(fields, tag);
+            AddIfPresent(fields, tag, FieldKind.CustomTag);
         }
-        AddIfPresent(fields, source);
+        AddIfPresent(fields, source, FieldKind.Source);
         _fields = fields.ToArray();
     }
 
     /// <summary>
     /// Applies the same OR-across-fields / AND-across-tokens semantics as
     /// <see cref="ClipboardSearchMatcher.IsMatch"/> against cached fields.
+    /// Delegates to <see cref="ScoreMatch"/> so the boolean path and the ranked
+    /// path share one implementation — semantics stay identical for callers
+    /// that only need the boolean result.
     /// </summary>
-    public bool IsMatch(ClipboardSearchQuery query)
+    public bool IsMatch(ClipboardSearchQuery query) => ScoreMatch(query).IsMatch;
+
+    /// <summary>
+    /// Evaluates <paramref name="query"/> against the cached fields and returns
+    /// a <see cref="ClipboardMatchScore"/> carrying both the boolean match
+    /// result and whether any query token hit a tag field (EntryTag or
+    /// CustomTag). The UI uses <see cref="ClipboardMatchScore.TagHit"/> to sort
+    /// tag-hitting matches ahead of text-only matches.
+    /// </summary>
+    /// <remarks>
+    /// <b>AND across tokens, OR within a token</b> — same composition as the
+    /// legacy boolean matcher. <see cref="ClipboardMatchScore.TagHit"/> is true
+    /// when at least one of the matched tokens landed on a tag field, regardless
+    /// of whether other tokens matched only text/source.
+    /// </remarks>
+    public ClipboardMatchScore ScoreMatch(ClipboardSearchQuery query)
     {
         ArgumentNullException.ThrowIfNull(query);
         if (query.IsEmpty)
         {
-            return true;
+            return ClipboardMatchScore.MatchAll;
         }
 
+        bool allTokensMatched = true;
+        bool anyTokenHitTag = false;
         foreach (string token in query.Tokens)
         {
             bool tokenMatched = false;
+            bool tokenHitTag = false;
             foreach (SearchableField field in _fields)
             {
-                if (field.Matches(token))
+                if (!field.Matches(token))
                 {
-                    tokenMatched = true;
-                    break;
+                    continue;
                 }
+                tokenMatched = true;
+                if (field.Kind is FieldKind.EntryTag or FieldKind.CustomTag)
+                {
+                    tokenHitTag = true;
+                }
+                // Keep scanning: a field of a different kind might also match,
+                // but we only need one tag hit to set tokenHitTag, and matching
+                // is cheap. Breaking early would skip setting tokenHitTag if a
+                // tag field comes after the text field in _fields order.
             }
 
             if (!tokenMatched)
             {
-                return false;
+                allTokensMatched = false;
+                break;
+            }
+            if (tokenHitTag)
+            {
+                anyTokenHitTag = true;
             }
         }
 
-        return true;
+        return allTokensMatched
+            ? new ClipboardMatchScore { IsMatch = true, TagHit = anyTokenHitTag }
+            : ClipboardMatchScore.NoMatch;
     }
 
-    private static void AddIfPresent(List<SearchableField> fields, string value)
+    private static void AddIfPresent(List<SearchableField> fields, string value, FieldKind kind)
     {
         if (!string.IsNullOrEmpty(value))
         {
-            fields.Add(new SearchableField(value));
+            fields.Add(new SearchableField(value, kind));
         }
     }
 
@@ -81,12 +117,15 @@ public sealed class ClipboardSearchIndex
         private readonly string _segmentInitials;
         private readonly string _pinyinInitials;
 
-        public SearchableField(string value)
+        public SearchableField(string value, FieldKind kind)
         {
             _value = value;
+            Kind = kind;
             _segmentInitials = PinyinSearchHelper.ExtractSegmentInitials(value);
             _pinyinInitials = PinyinSearchHelper.ExtractPinyinInitials(value);
         }
+
+        public FieldKind Kind { get; }
 
         public bool Matches(string token)
         {

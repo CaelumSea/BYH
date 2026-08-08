@@ -107,4 +107,120 @@ public sealed class ClipboardSearchIndexTests(ITestOutputHelper output)
         Assert.True(queryTimer.Elapsed < TimeSpan.FromSeconds(2),
             $"50 indexed queries took {queryTimer.Elapsed.TotalMilliseconds:F1}ms.");
     }
+
+    // ── ScoreMatch: tag-hit ranking signal ──
+
+    [Fact]
+    public void ScoreMatch_EmptyQuery_MatchesAllWithoutTagHit()
+    {
+        var index = new ClipboardSearchIndex("hello", ["AWS"], ["工作"], "chrome");
+
+        ClipboardMatchScore score = index.ScoreMatch(ClipboardSearchQuery.Parse(""));
+
+        Assert.True(score.IsMatch);
+        Assert.False(score.TagHit);
+    }
+
+    [Fact]
+    public void ScoreMatch_TokenHitsEntryTag_SetsTagHit()
+    {
+        var index = new ClipboardSearchIndex("api key value", ["AWS"], [], "chrome");
+
+        ClipboardMatchScore score = index.ScoreMatch(ClipboardSearchQuery.Parse("aws"));
+
+        Assert.True(score.IsMatch);
+        Assert.True(score.TagHit);
+    }
+
+    [Fact]
+    public void ScoreMatch_TokenHitsCustomTag_SetsTagHit()
+    {
+        var index = new ClipboardSearchIndex("meeting notes", [], ["工作"], "warp");
+
+        ClipboardMatchScore score = index.ScoreMatch(ClipboardSearchQuery.Parse("工作"));
+
+        Assert.True(score.IsMatch);
+        Assert.True(score.TagHit);
+    }
+
+    [Fact]
+    public void ScoreMatch_TokenHitsTextOnly_TagHitFalse()
+    {
+        var index = new ClipboardSearchIndex("api key value", ["AWS"], ["工作"], "chrome");
+
+        ClipboardMatchScore score = index.ScoreMatch(ClipboardSearchQuery.Parse("value"));
+
+        Assert.True(score.IsMatch);
+        Assert.False(score.TagHit);
+    }
+
+    [Fact]
+    public void ScoreMatch_TokenHitsSourceOnly_TagHitFalse()
+    {
+        var index = new ClipboardSearchIndex("hello", [], [], "chrome");
+
+        ClipboardMatchScore score = index.ScoreMatch(ClipboardSearchQuery.Parse("chrome"));
+
+        Assert.True(score.IsMatch);
+        Assert.False(score.TagHit);
+    }
+
+    [Fact]
+    public void ScoreMatch_MultiTokenOneHitsTag_SetsTagHit()
+    {
+        // "aws" hits the EntryTag, "key" hits the body. One tag hit is enough.
+        var index = new ClipboardSearchIndex("api key value", ["AWS"], [], "chrome");
+
+        ClipboardMatchScore score = index.ScoreMatch(ClipboardSearchQuery.Parse("aws key"));
+
+        Assert.True(score.IsMatch);
+        Assert.True(score.TagHit);
+    }
+
+    [Fact]
+    public void ScoreMatch_MultiTokenNoneHitTag_TagHitFalse()
+    {
+        var index = new ClipboardSearchIndex("api key value", ["AWS"], [], "chrome");
+
+        ClipboardMatchScore score = index.ScoreMatch(ClipboardSearchQuery.Parse("api value"));
+
+        Assert.True(score.IsMatch);
+        Assert.False(score.TagHit);
+    }
+
+    [Fact]
+    public void ScoreMatch_NoMatch_ReturnsNoMatchWithTagHitFalse()
+    {
+        var index = new ClipboardSearchIndex("api key value", ["AWS"], [], "chrome");
+
+        ClipboardMatchScore score = index.ScoreMatch(ClipboardSearchQuery.Parse("missing"));
+
+        Assert.False(score.IsMatch);
+        Assert.False(score.TagHit);
+    }
+
+    [Fact]
+    public void ScoreMatch_MultiTokenOneTokenMisses_ReturnsNoMatch()
+    {
+        // "aws" matches the tag, "missing" matches nothing → whole query fails.
+        var index = new ClipboardSearchIndex("api key value", ["AWS"], [], "chrome");
+
+        ClipboardMatchScore score = index.ScoreMatch(ClipboardSearchQuery.Parse("aws missing"));
+
+        Assert.False(score.IsMatch);
+        Assert.False(score.TagHit);
+    }
+
+    [Fact]
+    public void IsMatch_DelegatesToScoreMatch_PreservesBooleanSemantics()
+    {
+        var index = new ClipboardSearchIndex("api key value", ["AWS"], ["工作"], "chrome");
+
+        Assert.Equal(index.ScoreMatch(ClipboardSearchQuery.Parse("aws")).IsMatch,
+                     index.IsMatch(ClipboardSearchQuery.Parse("aws")));
+        Assert.Equal(index.ScoreMatch(ClipboardSearchQuery.Parse("missing")).IsMatch,
+                     index.IsMatch(ClipboardSearchQuery.Parse("missing")));
+        Assert.Equal(index.ScoreMatch(ClipboardSearchQuery.Parse("")).IsMatch,
+                     index.IsMatch(ClipboardSearchQuery.Parse("")));
+    }
 }

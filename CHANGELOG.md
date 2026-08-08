@@ -16,6 +16,7 @@
 
 - **开机自启选项（设置 → 通用）。** 新增「开机自启」开关：开启后写入 `HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`（用户级注册表，无需管理员），登录 Windows 时自动拉起 BYH。注册表为真相源——若用户在任务管理器 / Windows 设置里手动禁用，启动时以注册表为准回写 `startup-options.json`，开关显示与实际一致。组策略或杀毒软件拦截写入时优雅降级，提示「启用失败」而非崩溃。新增 `IAutoStartManager` 平台抽象 + `WindowsRunAutoStartManager` 实现，沿用了 Ocean Eyes / 剪贴板历史的设置流水线（record → store → App 接线 → 设置卡片 + i18n）。
 - **剪贴板长按多选（REQ-031）。** 长按条目进入批量编辑状态，支持逐项选择、选择全部、取消全选和批量删除；普通单击、双击与右键菜单保持原行为。
+- **剪贴板 tag 徽章可点击过滤 + 搜索 tag 命中前置（REQ-043）。** 行内的粉色 EntryTag（如 `AWS`）和橄榄色 CustomTag（如 `#工作`）徽章现在可点击——点任意徽章即在搜索框上方出现一个过滤 chip（`🏷 <name> ✕` / `# <name> ✕`），列表立即只显示带该 tag 的条目；chip 单一互斥，点别的徽章替换，点 chip 或 ✕ 清除。搜索时凡是 token 命中 tag 字段的条目整组排在只命中正文的前，组内仍按时间倒序。新增 `ClipboardMatchScore` + `ClipboardMatchRanker`（Core 纯函数三键稳定排序），`ClipboardSearchIndex.ScoreMatch` 在原布尔 `IsMatch` 基础上附带 TagHit 信号（语义不变，14 例 parity 测试保护）。纯 UI/视图行为，App 层零改动，过滤 chip 会话级不持久化。
 
 ### 性能
 
@@ -29,6 +30,7 @@
 ### 修复
 
 - **大尺寸 Ocean Eyes 截图稳定性（REQ-028）。** 为 BGRA/DIB/PNG 路径增加尺寸上限和 checked 算术，修正 `SetClipboardData` 句柄所有权释放竞态，并加入 `tools/monitor-byh-crash.ps1` 监控探针。受控 2880×1620、3840×2160、4000×3000 和 6000×4000 场景均未复现崩溃；6000×4000 会安全返回诊断失败。
+- **剪贴板 Delete 键删条目有时失效（REQ-044）。** 窗口打开焦点落在搜索框、方向键导航不移走焦点，导致焦点始终在 `TextBox` 内，裸 `Delete` 被 `TextBox` 当作「向前删一个字符」吃掉并标记 Handled，事件不冒泡到窗口级 `OnWindowKeyDown`——只有搜索框为空 / 光标在末尾时 Delete 才生效，这就是「有时」失效的来源。与此前 R99「加 tag 偶尔失效」是同一焦点吞键根因。复用 R99 的 Tunnel 修法：在 `SearchInput` 上以 `InputElement.KeyDownEvent` + `RoutingStrategies.Tunnel` + `handledEventsToo: true` 订阅，在 `TextBox` 冒泡处理之前先拿到键，只拦裸 `Delete`（`KeyModifiers.None`），调共享的 `HandleDeleteKey`。修饰键组合（Ctrl/Ctrl+Shift + Delete）仍归文本编辑；Backspace 故意不拦，永远是文本编辑键。
 - **选词工具栏打字/编辑时自动隐藏。** 此前选中文字弹出工具栏后，若用户直接打字、按 Backspace/Delete 删除、或按方向键移动光标，工具栏会一直浮在原处挡住输入。现在工具栏可见时，按下任意「非动作」的字符键 / 编辑键 / 导航键（且无 Ctrl/Alt/Shift/Win 修饰键按下）会立即隐藏工具栏，同时按键照常生效给源应用。动作键（翻译/总结/复制等）、修饰键组合（Ctrl+C 等）、Esc、Ocean Eyes 模式行为不变。
 
 ### 验证
