@@ -469,10 +469,6 @@ public static partial class Strings
     public static string Clip_CategoryDefault => Get(nameof(Clip_CategoryDefault));
     public static string Clip_ImageLabel => Get(nameof(Clip_ImageLabel));
     public static string Clip_ArchivedBadge => Get(nameof(Clip_ArchivedBadge));
-    public static string Clip_FooterSelect => Get(nameof(Clip_FooterSelect));
-    public static string Clip_FooterPaste => Get(nameof(Clip_FooterPaste));
-    public static string Clip_FooterMenu => Get(nameof(Clip_FooterMenu));
-    public static string Clip_FooterClose => Get(nameof(Clip_FooterClose));
     public static string Clip_MultiSelectCount => Get(nameof(Clip_MultiSelectCount));
     public static string Clip_MultiDeselectAll => Get(nameof(Clip_MultiDeselectAll));
     public static string Clip_MultiDeleteConfirm => Get(nameof(Clip_MultiDeleteConfirm));

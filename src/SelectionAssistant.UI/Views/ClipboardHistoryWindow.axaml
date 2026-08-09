@@ -385,28 +385,8 @@
           </Grid>
         </Border>
 
-        <!-- Normal hints are replaced by a compact batch-action bar after a
-             500ms row long-press. -->
+        <!-- Compact batch-action bar shown after a 500ms row long-press. -->
         <Grid Grid.Row="3" Margin="0,4,0,0">
-          <StackPanel x:Name="NormalFooter"
-                      Orientation="Horizontal"
-                      Spacing="6"
-                      HorizontalAlignment="Right"
-                      VerticalAlignment="Center">
-            <Border Classes="Badge" Padding="6,2">
-              <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterSelect}" />
-            </Border>
-            <Border Classes="Badge" Padding="6,2">
-              <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterPaste}" />
-            </Border>
-            <Border Classes="Badge" Padding="6,2">
-              <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterMenu}" />
-            </Border>
-            <Border Classes="Badge" Padding="6,2">
-              <TextBlock FontSize="{DynamicResource ByhFontSizeBodySmall}" Text="{x:Static i18n:Strings.Clip_FooterClose}" />
-            </Border>
-          </StackPanel>
-
           <Border x:Name="MultiSelectToolbar"
                   Classes="MultiSelectToolbar"
                   IsVisible="False"

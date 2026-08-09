@@ -2856,7 +2856,6 @@ public partial class ClipboardHistoryWindow : Window
         SearchInput.IsEnabled = false;
         NavButtonsPanel.IsEnabled = false;
         SettingsFooterButton.IsEnabled = false;
-        NormalFooter.IsVisible = false;
         MultiSelectToolbar.IsVisible = true;
         UpdateMultiSelectToolbar();
     }
@@ -2877,7 +2876,6 @@ public partial class ClipboardHistoryWindow : Window
         SearchInput.IsEnabled = true;
         NavButtonsPanel.IsEnabled = true;
         SettingsFooterButton.IsEnabled = true;
-        NormalFooter.IsVisible = true;
         MultiSelectToolbar.IsVisible = false;
     }
 
