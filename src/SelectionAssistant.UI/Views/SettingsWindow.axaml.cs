@@ -66,10 +66,10 @@ public partial class SettingsWindow : Window
     private enum PhonePage
     {
         Overview,
-        Translation,
-        Vision,
-        Clipboard,
-        Launcher,
+        Cpu,
+        Gpu,
+        System,
+        Energy,
     }
 
     private bool _allowClose;
@@ -253,16 +253,16 @@ public partial class SettingsWindow : Window
     private void ShowPhonePage(PhonePage page)
     {
         PhoneOverviewView.IsVisible = page == PhonePage.Overview;
-        PhoneTranslationView.IsVisible = page == PhonePage.Translation;
-        PhoneVisionView.IsVisible = page == PhonePage.Vision;
-        PhoneClipboardView.IsVisible = page == PhonePage.Clipboard;
-        PhoneLauncherView.IsVisible = page == PhonePage.Launcher;
+        PhoneCpuView.IsVisible = page == PhonePage.Cpu;
+        PhoneGpuView.IsVisible = page == PhonePage.Gpu;
+        PhoneSystemView.IsVisible = page == PhonePage.System;
+        PhoneEnergyView.IsVisible = page == PhonePage.Energy;
 
         SetNavigationState(PhoneGeneralButton, page == PhonePage.Overview);
-        SetNavigationState(PhoneProviderButton, page == PhonePage.Translation);
-        SetNavigationState(PhoneVisionButton, page == PhonePage.Vision);
-        SetNavigationState(PhoneClipboardButton, page == PhonePage.Clipboard);
-        SetNavigationState(PhoneLauncherButton, page == PhonePage.Launcher);
+        SetNavigationState(PhoneCpuButton, page == PhonePage.Cpu);
+        SetNavigationState(PhoneGpuButton, page == PhonePage.Gpu);
+        SetNavigationState(PhoneSystemButton, page == PhonePage.System);
+        SetNavigationState(PhoneEnergyButton, page == PhonePage.Energy);
     }
 
     private static void SetNavigationState(Button button, bool isActive)
@@ -301,17 +301,90 @@ public partial class SettingsWindow : Window
     private void OnShowPhoneOverviewClick(object? sender, RoutedEventArgs e) =>
         ShowPhonePage(PhonePage.Overview);
 
-    private void OnShowPhoneTranslationClick(object? sender, RoutedEventArgs e) =>
-        ShowPhonePage(PhonePage.Translation);
+    private void OnShowPhoneCpuClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Cpu);
 
-    private void OnShowPhoneVisionClick(object? sender, RoutedEventArgs e) =>
-        ShowPhonePage(PhonePage.Vision);
+    private void OnShowPhoneGpuClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Gpu);
 
-    private void OnShowPhoneClipboardClick(object? sender, RoutedEventArgs e) =>
-        ShowPhonePage(PhonePage.Clipboard);
+    private void OnShowPhoneSystemClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.System);
 
-    private void OnShowPhoneLauncherClick(object? sender, RoutedEventArgs e) =>
-        ShowPhonePage(PhonePage.Launcher);
+    private void OnShowPhoneEnergyClick(object? sender, RoutedEventArgs e) =>
+        ShowPhonePage(PhonePage.Energy);
+
+    /// <summary>
+    /// Pushes a live power snapshot into the four phone power views (CPU/GPU/
+    /// System/Energy). Sensors that are <c>null</c> hide their row entirely (the
+    /// card collapses to only the sensors this machine actually reports). When
+    /// the monitor is offline (null snapshot or <see cref="PowerSnapshot.Connected"/>
+    /// is false), every page shows its offline hint and hides the data card.
+    /// Called from the App polling loop on the UI thread.
+    /// </summary>
+    public void UpdatePhonePowerViews(PowerSnapshot? snap)
+    {
+        bool online = snap.HasValue && snap.Value.Connected;
+        PowerSnapshot s = snap ?? default;
+
+        SetPageOnline(PhoneCpuOfflineText, PhoneCpuCard, online);
+        SetPageOnline(PhoneGpuOfflineText, PhoneGpuCard, online);
+        SetPageOnline(PhoneSystemOfflineText, PhoneSystemCard, online);
+        SetPageOnline(PhoneEnergyOfflineText, PhoneEnergyCard, online);
+
+        // ── CPU ──────────────────────────────────────────────────────────
+        SetRow(PhoneCpuPackageWattsRow, PhoneCpuPackageWattsValue, online ? s.CpuPackageWatts : null, v => $"{v:0.#} W");
+        SetRow(PhoneCpuCoreTempRow, PhoneCpuCoreTempValue, online ? s.CpuTempC : null, v => $"{v:0} °C");
+        SetRow(PhoneCpuTotalLoadRow, PhoneCpuTotalLoadValue, online ? s.CpuLoadPct : null, v => $"{v:0} %");
+        SetRow(PhoneCpuCoreMaxLoadRow, PhoneCpuCoreMaxLoadValue, online ? s.CpuCoreMaxLoadPct : null, v => $"{v:0} %");
+        SetRow(PhoneCpuClockRow, PhoneCpuClockValue, online ? s.CpuClockMhz : null, v => $"{v:0} MHz");
+
+        // ── GPU ──────────────────────────────────────────────────────────
+        SetRow(PhoneGpuPowerWattsRow, PhoneGpuPowerWattsValue, online ? s.GpuPowerWatts : null, v => $"{v:0.#} W");
+        SetRow(PhoneGpuCoreTempRow, PhoneGpuCoreTempValue, online ? s.GpuTempC : null, v => $"{v:0} °C");
+        SetRow(PhoneGpuCoreLoadRow, PhoneGpuCoreLoadValue, online ? s.GpuLoadPct : null, v => $"{v:0} %");
+        SetRow(PhoneGpuCoreClockRow, PhoneGpuCoreClockValue, online ? s.GpuClockMhz : null, v => $"{v:0} MHz");
+        SetRow(PhoneGpuMemClockRow, PhoneGpuMemClockValue, online ? s.GpuMemClockMhz : null, v => $"{v:0} MHz");
+
+        // ── System / motherboard ─────────────────────────────────────────
+        SetRow(PhoneSystemRail12VRow, PhoneSystemRail12VValue, online ? s.Rail12vWatts : null, v => $"{v:0.#} W");
+        SetRow(PhoneSystemRail5VRow, PhoneSystemRail5VValue, online ? s.Rail5vWatts : null, v => $"{v:0.#} W");
+        SetRow(PhoneSystemRail3v3Row, PhoneSystemRail3v3Value, online ? s.Rail3v3Watts : null, v => $"{v:0.#} W");
+        SetRow(PhoneSystemRamWattsRow, PhoneSystemRamWattsValue, online ? s.RamWatts : null, v => $"{v:0.#} W");
+        SetRow(PhoneSystemRamTempRow, PhoneSystemRamTempValue, online ? s.RamTempC : null, v => $"{v:0} °C");
+        SetRow(PhoneSystemCpuFanRow, PhoneSystemCpuFanValue, online ? (double?)s.CpuFanRpm : null, v => $"{v:0} RPM");
+        SetRow(PhoneSystemGpuFanRow, PhoneSystemGpuFanValue, online ? (double?)s.GpuFanRpm : null, v => $"{v:0} RPM");
+        // Battery: positive = charging, negative = discharging (LHM semantics).
+        SetRow(PhoneSystemBatteryRow, PhoneSystemBatteryValue,
+            online ? s.BatteryWatts : null,
+            v => s.BatteryPct.HasValue ? $"{v:0.#} W · {s.BatteryPct:0} %" : $"{v:0.#} W");
+        SetRow(PhoneSystemSsd1TempRow, PhoneSystemSsd1TempValue, online ? s.Ssd1TempC : null, v => $"{v:0} °C");
+        SetRow(PhoneSystemSsd2TempRow, PhoneSystemSsd2TempValue, online ? s.Ssd2TempC : null, v => $"{v:0} °C");
+
+        // ── Energy ───────────────────────────────────────────────────────
+        SetRow(PhoneEnergyTotalWattsRow, PhoneEnergyTotalWattsValue, online ? (double?)s.TotalWatts : null, v => $"{v:0.#} W");
+        SetRow(PhoneEnergyTotalKwhRow, PhoneEnergyTotalKwhValue, online ? (double?)s.WattHours : null, v => $"{v / 1000.0:0.000} kWh");
+        SetRow(PhoneEnergyTodayKwhRow, PhoneEnergyTodayKwhValue, online ? (double?)s.TodayWattHours : null, v => $"{v / 1000.0:0.000} kWh");
+        SetRow(PhoneEnergyLastUpdateRow, PhoneEnergyLastUpdateValue, online ? s.CapturedAt.ToLocalTime() : (DateTimeOffset?)null, v => v.LocalDateTime.ToString("HH:mm:ss"));
+
+        static void SetPageOnline(TextBlock offlineText, Border card, bool isOnline)
+        {
+            offlineText.IsVisible = !isOnline;
+            card.IsVisible = isOnline;
+        }
+
+        static void SetRow<T>(StackPanel row, TextBlock value, T? d, Func<T, string> fmt) where T : struct
+        {
+            if (d.HasValue)
+            {
+                row.IsVisible = true;
+                value.Text = fmt(d.Value);
+            }
+            else
+            {
+                row.IsVisible = false;
+            }
+        }
+    }
 
     // ── Events wired to the runtime in App.axaml.cs ──
 
@@ -731,9 +804,6 @@ public partial class SettingsWindow : Window
         SpotlightWindowWidthInput.Text = settings.WindowWidth.ToString();
         SpotlightWindowHeightInput.Text = settings.WindowHeight.ToString();
         SpotlightShortcutStatusText.Text = statusMessage ?? string.Format(Strings.Settings_Status_CurrentPrefix, settings.ToDisplayText());
-        PhoneLauncherHotkeyText.Text = settings.KeyboardShortcutEnabled
-            ? settings.ToDisplayText()
-            : Strings.Settings_Status_Disabled;
         SetFeedbackTone(SpotlightShortcutStatusText, isError);
     }
 
@@ -764,9 +834,6 @@ public partial class SettingsWindow : Window
         SummaryClipboardText.Text = settings.KeyboardShortcutEnabled
             ? settings.ToDisplayText()
             : Strings.Settings_Status_Disabled;
-        PhoneClipboardHotkeyText.Text = settings.KeyboardShortcutEnabled
-            ? settings.ToDisplayText()
-            : Strings.Settings_Status_Disabled;
         SetFeedbackTone(ClipboardHistoryShortcutStatusText, isError);
     }
 
@@ -790,13 +857,6 @@ public partial class SettingsWindow : Window
         ClipboardHistoryWindowWidthInput.Text = settings.WindowWidth.ToString();
         ClipboardHistoryWindowHeightInput.Text = settings.WindowHeight.ToString();
         ClipboardHistoryExcludeAppsInput.Text = string.Join(", ", settings.ExcludeProcessNames);
-        PhoneClipboardStatusText.Text = settings.Enabled
-            ? Strings.Settings_Phone_Clipboard_StatusActive
-            : Strings.Settings_Phone_Clipboard_StatusPaused;
-        PhoneClipboardRetentionText.Text = string.Format(
-            Strings.Settings_Phone_Clipboard_RetentionSummary,
-            settings.MaxEntries,
-            settings.MaxImageEntries);
         SetDashboardModuleActive(DashboardModule.Clipboard, settings.Enabled);
     }
 
@@ -892,14 +952,6 @@ public partial class SettingsWindow : Window
     {
         RefreshLauncherRows(entries);
         SetDashboardModuleActive(DashboardModule.Launcher, entries.Count > 0);
-        PhoneLauncherCountText.Text = string.Format(
-            entries.Count == 1
-                ? Strings.Settings_Phone_Launcher_DestinationsCount_Singular
-                : Strings.Settings_Phone_Launcher_DestinationsCount_Plural,
-            entries.Count);
-        PhoneLauncherPreviewText.Text = entries.Count == 0
-            ? Strings.Settings_Phone_Launcher_NoDestinations
-            : string.Join(" · ", entries.Take(3).Select(entry => entry.Name));
     }
 
     /// <summary>
@@ -1062,17 +1114,10 @@ public partial class SettingsWindow : Window
         SummaryProviderText.Text = activeProvider is null
             ? Strings.Settings_Status_NoProvider
             : $"{activeProvider.Name}\n{activeProvider.DefaultModel}";
-        PhoneProviderNameText.Text = activeProvider?.Name ?? Strings.Settings_Status_NoProvider;
-        PhoneProviderModelText.Text = activeProvider?.DefaultModel ?? Strings.Settings_Phone_Translation_ModelFallback;
         DashboardTextProviderText.Text = activeProvider?.Name ?? Strings.Settings_Dashboard_NotConfigured;
         DashboardTextModelText.Text = activeProvider?.DefaultModel ?? Strings.Settings_Dashboard_NoModelSelected;
         SetDashboardModuleActive(DashboardModule.Translation, activeProvider is not null);
         RefreshDashboardModelRouteCount();
-        PhoneProviderCountText.Text = string.Format(
-            providers.Count == 1
-                ? Strings.Settings_Phone_Translation_ProviderCount_Singular
-                : Strings.Settings_Phone_Translation_ProviderCount_Plural,
-            providers.Count);
 
         // Rebuild ComboBox options. Keep the label short: just the provider
         // display name (e.g. "DeepSeek"). The model id is visible in the edit
@@ -1197,18 +1242,10 @@ public partial class SettingsWindow : Window
         SummaryVisionText.Text = settings.Enabled
             ? $"{visionProviderName}\n{settings.Model}"
             : Strings.Settings_Status_Disabled;
-        PhoneVisionStatusText.Text = settings.Enabled
-            ? Strings.Settings_Phone_Vision_StatusReady
-            : Strings.Settings_Phone_Vision_StatusDisabled;
-        PhoneVisionProviderText.Text = visionProviderName;
-        PhoneVisionModelText.Text = settings.Model;
         DashboardVisionProviderText.Text = settings.Enabled ? visionProviderName : Strings.Settings_Dashboard_NotConfigured;
         DashboardVisionModelText.Text = settings.Enabled ? settings.Model : Strings.Settings_Dashboard_NoModelSelected;
         SetDashboardModuleActive(DashboardModule.Vision, settings.Enabled);
         RefreshDashboardModelRouteCount();
-        PhoneVisionAssistText.Text = settings.UiaPrefillEnabled
-            ? Strings.Settings_Phone_Vision_UiaAssistOn
-            : Strings.Settings_Phone_Vision_OcrOnly;
     }
 
     private void OnSaveVisionClick(object? sender, RoutedEventArgs e)

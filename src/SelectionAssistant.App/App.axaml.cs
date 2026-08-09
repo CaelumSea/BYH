@@ -2415,6 +2415,7 @@ public partial class App : Application
                 Dispatcher.UIThread.Post(() =>
                 {
                     UpdateTrayTooltip(snap);
+                    _settingsWindow?.UpdatePhonePowerViews(snap);
                     if (result.AnyNewlyTriggered)
                     {
                         if (result.NewCpuTriggered) _ = Task.Run(() => PlayAlertSound(PowerAlertKind.Cpu));

@@ -620,38 +620,45 @@ internal static partial class Strings_zh_CN
         ["Settings_Dashboard_Module_Vision"] = "视觉",
         ["Settings_Dashboard_Module_Translation"] = "翻译",
 
-        // SettingsWindow — 手机翻译视图
-        ["Settings_Phone_Translation_Title"] = "翻译",
-        ["Settings_Phone_Translation_Subtitle"] = "你的当前语言服务",
-        ["Settings_Phone_Translation_ActiveProvider"] = "当前服务",
-        ["Settings_Phone_Translation_ManageHint"] = "在翻译页管理服务与密钥。",
-        ["Settings_Phone_Translation_ModelFallback"] = "在翻译页选择一个",
-        ["Settings_Phone_Translation_ProviderCount_Singular"] = "{0} 个已配置服务",
-        ["Settings_Phone_Translation_ProviderCount_Plural"] = "{0} 个已配置服务",
+        // SettingsWindow — 手机 CPU 视图（实时功耗数据）
+        ["Settings_Phone_Cpu_Title"] = "CPU",
+        ["Settings_Phone_Cpu_Offline"] = "功耗监控离线",
+        ["Settings_Phone_Cpu_PackageWatts"] = "封装功率",
+        ["Settings_Phone_Cpu_CoreTemp"] = "核心温度",
+        ["Settings_Phone_Cpu_TotalLoad"] = "总负载",
+        ["Settings_Phone_Cpu_CoreMaxLoad"] = "最忙核心负载",
+        ["Settings_Phone_Cpu_Clock"] = "核心频率",
 
-        // SettingsWindow — 手机视觉（Ocean Eyes）视图
-        ["Settings_Phone_Vision_Title"] = "Ocean Eyes",
-        ["Settings_Phone_Vision_OcrProvider"] = "OCR 服务",
-        ["Settings_Phone_Vision_StatusReady"] = "视觉就绪",
-        ["Settings_Phone_Vision_StatusDisabled"] = "视觉已禁用",
-        ["Settings_Phone_Vision_UiaAssistOn"] = "UIA 辅助开",
-        ["Settings_Phone_Vision_OcrOnly"] = "仅 OCR",
+        // SettingsWindow — 手机 GPU 视图（实时功耗数据）
+        ["Settings_Phone_Gpu_Title"] = "GPU",
+        ["Settings_Phone_Gpu_Offline"] = "功耗监控离线",
+        ["Settings_Phone_Gpu_PowerWatts"] = "功率",
+        ["Settings_Phone_Gpu_CoreTemp"] = "核心温度",
+        ["Settings_Phone_Gpu_CoreLoad"] = "核心负载",
+        ["Settings_Phone_Gpu_CoreClock"] = "核心频率",
+        ["Settings_Phone_Gpu_MemClock"] = "显存频率",
 
-        // SettingsWindow — 手机剪贴板视图
-        ["Settings_Phone_Clipboard_Title"] = "剪贴板",
-        ["Settings_Phone_Clipboard_HistoryHotkey"] = "历史快捷键",
-        ["Settings_Phone_Clipboard_LocalRetention"] = "本地保留",
-        ["Settings_Phone_Clipboard_StatusActive"] = "历史已启用",
-        ["Settings_Phone_Clipboard_StatusPaused"] = "历史已暂停",
-        ["Settings_Phone_Clipboard_RetentionSummary"] = "{0} 文本 · {1} 图片",
+        // SettingsWindow — 手机系统视图（实时功耗数据）
+        ["Settings_Phone_System_Title"] = "系统",
+        ["Settings_Phone_System_Offline"] = "功耗监控离线",
+        ["Settings_Phone_System_Rail12V"] = "+12V 供电",
+        ["Settings_Phone_System_Rail5V"] = "+5V 供电",
+        ["Settings_Phone_System_Rail3v3"] = "+3.3V 供电",
+        ["Settings_Phone_System_RamWatts"] = "内存功率",
+        ["Settings_Phone_System_RamTemp"] = "内存温度",
+        ["Settings_Phone_System_CpuFan"] = "CPU 风扇",
+        ["Settings_Phone_System_GpuFan"] = "GPU 风扇",
+        ["Settings_Phone_System_Battery"] = "电池",
+        ["Settings_Phone_System_Ssd1Temp"] = "SSD 1 温度",
+        ["Settings_Phone_System_Ssd2Temp"] = "SSD 2 温度",
 
-        // SettingsWindow — 手机启动器视图
-        ["Settings_Phone_Launcher_Title"] = "启动器",
-        ["Settings_Phone_Launcher_Subtitle"] = "触手可及的快捷目标",
-        ["Settings_Phone_Launcher_SpotlightHotkey"] = "Spotlight 快捷键",
-        ["Settings_Phone_Launcher_NoDestinations"] = "尚未保存任何应用或网页",
-        ["Settings_Phone_Launcher_DestinationsCount_Singular"] = "{0} 个已保存目标",
-        ["Settings_Phone_Launcher_DestinationsCount_Plural"] = "{0} 个已保存目标",
+        // SettingsWindow — 手机能耗视图（实时功耗数据）
+        ["Settings_Phone_Energy_Title"] = "能耗",
+        ["Settings_Phone_Energy_Offline"] = "功耗监控离线",
+        ["Settings_Phone_Energy_TotalWatts"] = "瞬时合计",
+        ["Settings_Phone_Energy_TotalKwh"] = "累计",
+        ["Settings_Phone_Energy_TodayKwh"] = "今日",
+        ["Settings_Phone_Energy_LastUpdate"] = "上次更新",
 
         // SettingsWindow — 主题概念块
         ["Settings_Theme_Concept"] = "主题概念",

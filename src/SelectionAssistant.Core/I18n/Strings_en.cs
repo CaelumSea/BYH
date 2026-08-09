@@ -620,40 +620,45 @@ internal static partial class Strings_en
         ["Settings_Dashboard_Module_Vision"] = "Vision",
         ["Settings_Dashboard_Module_Translation"] = "Translation",
 
-        // SettingsWindow — phone Translation view
-        ["Settings_Phone_Translation_Title"] = "Translation",
-        ["Settings_Phone_Translation_Subtitle"] = "Your active language service",
-        ["Settings_Phone_Translation_ActiveProvider"] = "ACTIVE PROVIDER",
-        ["Settings_Phone_Translation_ManageHint"] = "Manage providers and keys from the Translation page.",
-        ["Settings_Phone_Translation_ModelFallback"] = "Choose one in Translation",
-        // Plurality handled in code-behind.
-        ["Settings_Phone_Translation_ProviderCount_Singular"] = "{0} configured provider",
-        ["Settings_Phone_Translation_ProviderCount_Plural"] = "{0} configured providers",
+        // SettingsWindow — phone CPU view (live power data)
+        ["Settings_Phone_Cpu_Title"] = "CPU",
+        ["Settings_Phone_Cpu_Offline"] = "Power monitor offline",
+        ["Settings_Phone_Cpu_PackageWatts"] = "Package power",
+        ["Settings_Phone_Cpu_CoreTemp"] = "Core temp",
+        ["Settings_Phone_Cpu_TotalLoad"] = "Total load",
+        ["Settings_Phone_Cpu_CoreMaxLoad"] = "Core max load",
+        ["Settings_Phone_Cpu_Clock"] = "Core clock",
 
-        // SettingsWindow — phone Vision (Ocean Eyes) view
-        ["Settings_Phone_Vision_Title"] = "Ocean Eyes",
-        ["Settings_Phone_Vision_OcrProvider"] = "OCR PROVIDER",
-        ["Settings_Phone_Vision_StatusReady"] = "Vision ready",
-        ["Settings_Phone_Vision_StatusDisabled"] = "Vision disabled",
-        ["Settings_Phone_Vision_UiaAssistOn"] = "UIA assist on",
-        ["Settings_Phone_Vision_OcrOnly"] = "OCR only",
+        // SettingsWindow — phone GPU view (live power data)
+        ["Settings_Phone_Gpu_Title"] = "GPU",
+        ["Settings_Phone_Gpu_Offline"] = "Power monitor offline",
+        ["Settings_Phone_Gpu_PowerWatts"] = "Power",
+        ["Settings_Phone_Gpu_CoreTemp"] = "Core temp",
+        ["Settings_Phone_Gpu_CoreLoad"] = "Core load",
+        ["Settings_Phone_Gpu_CoreClock"] = "Core clock",
+        ["Settings_Phone_Gpu_MemClock"] = "Memory clock",
 
-        // SettingsWindow — phone Clipboard view
-        ["Settings_Phone_Clipboard_Title"] = "Clipboard",
-        ["Settings_Phone_Clipboard_HistoryHotkey"] = "HISTORY HOTKEY",
-        ["Settings_Phone_Clipboard_LocalRetention"] = "LOCAL RETENTION",
-        ["Settings_Phone_Clipboard_StatusActive"] = "History active",
-        ["Settings_Phone_Clipboard_StatusPaused"] = "History paused",
-        ["Settings_Phone_Clipboard_RetentionSummary"] = "{0} text · {1} images",
+        // SettingsWindow — phone System view (live power data)
+        ["Settings_Phone_System_Title"] = "System",
+        ["Settings_Phone_System_Offline"] = "Power monitor offline",
+        ["Settings_Phone_System_Rail12V"] = "+12V rail",
+        ["Settings_Phone_System_Rail5V"] = "+5V rail",
+        ["Settings_Phone_System_Rail3v3"] = "+3.3V rail",
+        ["Settings_Phone_System_RamWatts"] = "Memory power",
+        ["Settings_Phone_System_RamTemp"] = "Memory temp",
+        ["Settings_Phone_System_CpuFan"] = "CPU fan",
+        ["Settings_Phone_System_GpuFan"] = "GPU fan",
+        ["Settings_Phone_System_Battery"] = "Battery",
+        ["Settings_Phone_System_Ssd1Temp"] = "SSD 1 temp",
+        ["Settings_Phone_System_Ssd2Temp"] = "SSD 2 temp",
 
-        // SettingsWindow — phone Launcher view
-        ["Settings_Phone_Launcher_Title"] = "Launcher",
-        ["Settings_Phone_Launcher_Subtitle"] = "Quick destinations within reach",
-        ["Settings_Phone_Launcher_SpotlightHotkey"] = "SPOTLIGHT HOTKEY",
-        ["Settings_Phone_Launcher_NoDestinations"] = "No apps or websites saved yet",
-        // Plurality handled in code-behind.
-        ["Settings_Phone_Launcher_DestinationsCount_Singular"] = "{0} saved destination",
-        ["Settings_Phone_Launcher_DestinationsCount_Plural"] = "{0} saved destinations",
+        // SettingsWindow — phone Energy view (live power data)
+        ["Settings_Phone_Energy_Title"] = "Energy",
+        ["Settings_Phone_Energy_Offline"] = "Power monitor offline",
+        ["Settings_Phone_Energy_TotalWatts"] = "Total draw",
+        ["Settings_Phone_Energy_TotalKwh"] = "Cumulative",
+        ["Settings_Phone_Energy_TodayKwh"] = "Today",
+        ["Settings_Phone_Energy_LastUpdate"] = "Last update",
 
         // SettingsWindow — theme concept block
         ["Settings_Theme_Concept"] = "THEME CONCEPT",

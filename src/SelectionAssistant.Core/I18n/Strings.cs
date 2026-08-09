@@ -715,41 +715,45 @@ public static partial class Strings
     public static string Settings_Dashboard_Module_Vision => Get(nameof(Settings_Dashboard_Module_Vision));
     public static string Settings_Dashboard_Module_Translation => Get(nameof(Settings_Dashboard_Module_Translation));
 
-    // SettingsWindow — phone Translation view
-    public static string Settings_Phone_Translation_Title => Get(nameof(Settings_Phone_Translation_Title));
-    public static string Settings_Phone_Translation_Subtitle => Get(nameof(Settings_Phone_Translation_Subtitle));
-    public static string Settings_Phone_Translation_ActiveProvider => Get(nameof(Settings_Phone_Translation_ActiveProvider));
-    public static string Settings_Phone_Translation_ManageHint => Get(nameof(Settings_Phone_Translation_ManageHint));
-    public static string Settings_Phone_Translation_ModelFallback => Get(nameof(Settings_Phone_Translation_ModelFallback));
-    // Code-behind picks singular/plural by count.
-    public static string Settings_Phone_Translation_ProviderCount_Singular => Get(nameof(Settings_Phone_Translation_ProviderCount_Singular));
-    public static string Settings_Phone_Translation_ProviderCount_Plural => Get(nameof(Settings_Phone_Translation_ProviderCount_Plural));
+    // SettingsWindow — phone CPU view (live power data)
+    public static string Settings_Phone_Cpu_Title => Get(nameof(Settings_Phone_Cpu_Title));
+    public static string Settings_Phone_Cpu_Offline => Get(nameof(Settings_Phone_Cpu_Offline));
+    public static string Settings_Phone_Cpu_PackageWatts => Get(nameof(Settings_Phone_Cpu_PackageWatts));
+    public static string Settings_Phone_Cpu_CoreTemp => Get(nameof(Settings_Phone_Cpu_CoreTemp));
+    public static string Settings_Phone_Cpu_TotalLoad => Get(nameof(Settings_Phone_Cpu_TotalLoad));
+    public static string Settings_Phone_Cpu_CoreMaxLoad => Get(nameof(Settings_Phone_Cpu_CoreMaxLoad));
+    public static string Settings_Phone_Cpu_Clock => Get(nameof(Settings_Phone_Cpu_Clock));
 
-    // SettingsWindow — phone Vision (Ocean Eyes) view
-    public static string Settings_Phone_Vision_Title => Get(nameof(Settings_Phone_Vision_Title));
-    public static string Settings_Phone_Vision_OcrProvider => Get(nameof(Settings_Phone_Vision_OcrProvider));
-    public static string Settings_Phone_Vision_StatusReady => Get(nameof(Settings_Phone_Vision_StatusReady));
-    public static string Settings_Phone_Vision_StatusDisabled => Get(nameof(Settings_Phone_Vision_StatusDisabled));
-    public static string Settings_Phone_Vision_UiaAssistOn => Get(nameof(Settings_Phone_Vision_UiaAssistOn));
-    public static string Settings_Phone_Vision_OcrOnly => Get(nameof(Settings_Phone_Vision_OcrOnly));
+    // SettingsWindow — phone GPU view (live power data)
+    public static string Settings_Phone_Gpu_Title => Get(nameof(Settings_Phone_Gpu_Title));
+    public static string Settings_Phone_Gpu_Offline => Get(nameof(Settings_Phone_Gpu_Offline));
+    public static string Settings_Phone_Gpu_PowerWatts => Get(nameof(Settings_Phone_Gpu_PowerWatts));
+    public static string Settings_Phone_Gpu_CoreTemp => Get(nameof(Settings_Phone_Gpu_CoreTemp));
+    public static string Settings_Phone_Gpu_CoreLoad => Get(nameof(Settings_Phone_Gpu_CoreLoad));
+    public static string Settings_Phone_Gpu_CoreClock => Get(nameof(Settings_Phone_Gpu_CoreClock));
+    public static string Settings_Phone_Gpu_MemClock => Get(nameof(Settings_Phone_Gpu_MemClock));
 
-    // SettingsWindow — phone Clipboard view
-    public static string Settings_Phone_Clipboard_Title => Get(nameof(Settings_Phone_Clipboard_Title));
-    public static string Settings_Phone_Clipboard_HistoryHotkey => Get(nameof(Settings_Phone_Clipboard_HistoryHotkey));
-    public static string Settings_Phone_Clipboard_LocalRetention => Get(nameof(Settings_Phone_Clipboard_LocalRetention));
-    public static string Settings_Phone_Clipboard_StatusActive => Get(nameof(Settings_Phone_Clipboard_StatusActive));
-    public static string Settings_Phone_Clipboard_StatusPaused => Get(nameof(Settings_Phone_Clipboard_StatusPaused));
-    // Code-behind interpolated: {0}=text count, {1}=image count
-    public static string Settings_Phone_Clipboard_RetentionSummary => Get(nameof(Settings_Phone_Clipboard_RetentionSummary));
+    // SettingsWindow — phone System view (live power data)
+    public static string Settings_Phone_System_Title => Get(nameof(Settings_Phone_System_Title));
+    public static string Settings_Phone_System_Offline => Get(nameof(Settings_Phone_System_Offline));
+    public static string Settings_Phone_System_Rail12V => Get(nameof(Settings_Phone_System_Rail12V));
+    public static string Settings_Phone_System_Rail5V => Get(nameof(Settings_Phone_System_Rail5V));
+    public static string Settings_Phone_System_Rail3v3 => Get(nameof(Settings_Phone_System_Rail3v3));
+    public static string Settings_Phone_System_RamWatts => Get(nameof(Settings_Phone_System_RamWatts));
+    public static string Settings_Phone_System_RamTemp => Get(nameof(Settings_Phone_System_RamTemp));
+    public static string Settings_Phone_System_CpuFan => Get(nameof(Settings_Phone_System_CpuFan));
+    public static string Settings_Phone_System_GpuFan => Get(nameof(Settings_Phone_System_GpuFan));
+    public static string Settings_Phone_System_Battery => Get(nameof(Settings_Phone_System_Battery));
+    public static string Settings_Phone_System_Ssd1Temp => Get(nameof(Settings_Phone_System_Ssd1Temp));
+    public static string Settings_Phone_System_Ssd2Temp => Get(nameof(Settings_Phone_System_Ssd2Temp));
 
-    // SettingsWindow — phone Launcher view
-    public static string Settings_Phone_Launcher_Title => Get(nameof(Settings_Phone_Launcher_Title));
-    public static string Settings_Phone_Launcher_Subtitle => Get(nameof(Settings_Phone_Launcher_Subtitle));
-    public static string Settings_Phone_Launcher_SpotlightHotkey => Get(nameof(Settings_Phone_Launcher_SpotlightHotkey));
-    public static string Settings_Phone_Launcher_NoDestinations => Get(nameof(Settings_Phone_Launcher_NoDestinations));
-    // Code-behind picks singular/plural by count.
-    public static string Settings_Phone_Launcher_DestinationsCount_Singular => Get(nameof(Settings_Phone_Launcher_DestinationsCount_Singular));
-    public static string Settings_Phone_Launcher_DestinationsCount_Plural => Get(nameof(Settings_Phone_Launcher_DestinationsCount_Plural));
+    // SettingsWindow — phone Energy view (live power data)
+    public static string Settings_Phone_Energy_Title => Get(nameof(Settings_Phone_Energy_Title));
+    public static string Settings_Phone_Energy_Offline => Get(nameof(Settings_Phone_Energy_Offline));
+    public static string Settings_Phone_Energy_TotalWatts => Get(nameof(Settings_Phone_Energy_TotalWatts));
+    public static string Settings_Phone_Energy_TotalKwh => Get(nameof(Settings_Phone_Energy_TotalKwh));
+    public static string Settings_Phone_Energy_TodayKwh => Get(nameof(Settings_Phone_Energy_TodayKwh));
+    public static string Settings_Phone_Energy_LastUpdate => Get(nameof(Settings_Phone_Energy_LastUpdate));
 
     // SettingsWindow — theme concept block (pre-existing hardcoded, now wired)
     public static string Settings_Theme_Concept => Get(nameof(Settings_Theme_Concept));
