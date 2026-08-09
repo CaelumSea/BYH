@@ -656,9 +656,6 @@ internal static partial class Strings_en
         ["Settings_Phone_Energy_Title"] = "Energy",
         ["Settings_Phone_Energy_Offline"] = "Power monitor offline",
         ["Settings_Phone_Energy_TotalWatts"] = "Total draw",
-        ["Settings_Phone_Energy_TotalKwh"] = "Cumulative",
-        ["Settings_Phone_Energy_TodayKwh"] = "Today",
-        ["Settings_Phone_Energy_LastUpdate"] = "Last update",
 
         // SettingsWindow — theme concept block
         ["Settings_Theme_Concept"] = "THEME CONCEPT",

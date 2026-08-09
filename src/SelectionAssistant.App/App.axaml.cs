@@ -2449,11 +2449,14 @@ public partial class App : Application
             return;
         }
         PowerSnapshot s = snap.Value;
-        double kwh = s.WattHours / 1000.0;
-        string cpu = s.CpuPackageWatts.HasValue ? $"{s.CpuPackageWatts.Value:0}W" : "—";
-        string gpu = s.GpuPowerWatts.HasValue ? $"{s.GpuPowerWatts.Value:0}W" : "—";
-        string cpuT = s.CpuTempC.HasValue ? $"{s.CpuTempC.Value:0}°C" : "";
-        _trayIcon.ToolTipText = $"BYH · CPU {cpu}{cpuT} · GPU {gpu} · {s.TotalWatts:0}W · {kwh:0.000}kWh";
+        // Two rows: top = power (CPU/GPU watts + SSD1 temp), bottom = temps (CPU/GPU + SSD2).
+        string cpuW = s.CpuPackageWatts.HasValue ? $"{s.CpuPackageWatts.Value:0}W" : "—";
+        string gpuW = s.GpuPowerWatts.HasValue ? $"{s.GpuPowerWatts.Value:0}W" : "—";
+        string cpuT = s.CpuTempC.HasValue ? $"{s.CpuTempC.Value:0}°C" : "—";
+        string gpuT = s.GpuTempC.HasValue ? $"{s.GpuTempC.Value:0}°C" : "—";
+        string ssd1 = s.Ssd1TempC.HasValue ? $"{s.Ssd1TempC.Value:0}°C" : "—";
+        string ssd2 = s.Ssd2TempC.HasValue ? $"{s.Ssd2TempC.Value:0}°C" : "—";
+        _trayIcon.ToolTipText = $"CPU {cpuW} · GPU {gpuW} · SSD1 {ssd1}\nCPU {cpuT} · GPU {gpuT} · SSD2 {ssd2}";
     }
 
     /// <summary>Which alert mp3 to play.</summary>

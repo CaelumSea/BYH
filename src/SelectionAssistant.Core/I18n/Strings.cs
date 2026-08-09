@@ -751,9 +751,6 @@ public static partial class Strings
     public static string Settings_Phone_Energy_Title => Get(nameof(Settings_Phone_Energy_Title));
     public static string Settings_Phone_Energy_Offline => Get(nameof(Settings_Phone_Energy_Offline));
     public static string Settings_Phone_Energy_TotalWatts => Get(nameof(Settings_Phone_Energy_TotalWatts));
-    public static string Settings_Phone_Energy_TotalKwh => Get(nameof(Settings_Phone_Energy_TotalKwh));
-    public static string Settings_Phone_Energy_TodayKwh => Get(nameof(Settings_Phone_Energy_TodayKwh));
-    public static string Settings_Phone_Energy_LastUpdate => Get(nameof(Settings_Phone_Energy_LastUpdate));
 
     // SettingsWindow — theme concept block (pre-existing hardcoded, now wired)
     public static string Settings_Theme_Concept => Get(nameof(Settings_Theme_Concept));

@@ -656,9 +656,6 @@ internal static partial class Strings_zh_CN
         ["Settings_Phone_Energy_Title"] = "能耗",
         ["Settings_Phone_Energy_Offline"] = "功耗监控离线",
         ["Settings_Phone_Energy_TotalWatts"] = "瞬时合计",
-        ["Settings_Phone_Energy_TotalKwh"] = "累计",
-        ["Settings_Phone_Energy_TodayKwh"] = "今日",
-        ["Settings_Phone_Energy_LastUpdate"] = "上次更新",
 
         // SettingsWindow — 主题概念块
         ["Settings_Theme_Concept"] = "主题概念",

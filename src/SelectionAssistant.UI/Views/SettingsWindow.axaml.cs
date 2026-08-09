@@ -362,9 +362,6 @@ public partial class SettingsWindow : Window
 
         // ── Energy ───────────────────────────────────────────────────────
         SetRow(PhoneEnergyTotalWattsRow, PhoneEnergyTotalWattsValue, online ? (double?)s.TotalWatts : null, v => $"{v:0.#} W");
-        SetRow(PhoneEnergyTotalKwhRow, PhoneEnergyTotalKwhValue, online ? (double?)s.WattHours : null, v => $"{v / 1000.0:0.000} kWh");
-        SetRow(PhoneEnergyTodayKwhRow, PhoneEnergyTodayKwhValue, online ? (double?)s.TodayWattHours : null, v => $"{v / 1000.0:0.000} kWh");
-        SetRow(PhoneEnergyLastUpdateRow, PhoneEnergyLastUpdateValue, online ? s.CapturedAt.ToLocalTime() : (DateTimeOffset?)null, v => v.LocalDateTime.ToString("HH:mm:ss"));
 
         static void SetPageOnline(TextBlock offlineText, Border card, bool isOnline)
         {
