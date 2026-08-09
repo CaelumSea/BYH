@@ -38,6 +38,7 @@
 - **Ocean Eyes 注释框 Enter 保存偶发失败（REQ-040）。** 注释对话框按 Enter 偶发「已保存但未落盘」——快速连按的 Enter 会触发两次保存路径，且对同一注释的两次写入按毫秒时间戳争抢。加固：先做幂等 gate（同 Id + 同 Content 的编辑直接去重），再以毫秒时间戳做稳定幂等键，强制单次写盘成功。
 - **Speak 设置选项卡崩溃（REQ-041）。** 设置 → Speak 打开后偶发白屏，根因在 `ShowSettingsPage` 路由表缺少 `Tts` title 的分支，路由落入默认 catch → 触发对未初始化 view-model 的 null 解引用。补齐 Tts 分支，与 Vision / Translation 对齐。
 - **Speak 密钥状态显示与实际不符（REQ-042）。** 之前 Speak 设置只显示「已配 / 未配」二值化状态，实际来源可能不同（`ByhSecret` BYH 私钥库 / `MmxConfig` MiniMax 配置文件）。改为 `TtsCredentialSource` 枚举（ByhSecret / MmxConfig / None），UI 同步显示来源，避免用户误以为未配。
+- **剪贴板右下角快捷键提示跑位。** 剪贴板历史弹窗底部的快捷键提示行（↑↓ 选择 / 双击粘贴 / 右键菜单 / Esc 关闭）位置错乱，直接移除该 `NormalFooter`；同区的长按批量操作栏（`MultiSelectToolbar`）保留。进/出多选模式时切换该提示显隐的两行引用一并删除，4 个随之成为孤儿的 i18n key（`Clip_FooterSelect/Paste/Menu/Close`）从三件套同步移除（32/32/32）。
 
 ### 验证
 
