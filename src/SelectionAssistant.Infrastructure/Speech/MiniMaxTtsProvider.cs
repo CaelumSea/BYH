@@ -7,6 +7,20 @@ using SelectionAssistant.Core.Speech;
 namespace SelectionAssistant.Infrastructure.Speech;
 
 /// <summary>
+/// Script classification of TTS input text, used to pick the per-script voice.
+/// <see cref="MiniMaxTtsProvider.ClassifyScript"/> maps text → this enum.
+/// </summary>
+public enum ScriptKind
+{
+    /// <summary>Text has CJK ideographs but no Latin letters.</summary>
+    Chinese,
+    /// <summary>Text has no CJK ideographs (pure Latin/English).</summary>
+    English,
+    /// <summary>Text has both CJK ideographs and Latin letters.</summary>
+    Mixed,
+}
+
+/// <summary>
 /// Text-to-speech provider backed by MiniMax's T2A REST API
 /// (<c>POST /v1/t2a_v2</c>). Mirrors <c>MyMemoryTranslationProvider</c>'s
 /// pattern: sealed, owns its <see cref="HttpClient"/>, disposable. Returns the
@@ -163,55 +177,59 @@ public sealed class MiniMaxTtsProvider : IDisposable
     }
 
     /// <summary>
-    /// Picks the final voice id (and optional language_boost) from settings. When
-    /// <see cref="TtsSettings.Voice"/> is <c>"auto"</c>, content with &gt;30% CJK
-    /// ideographs uses <see cref="TtsSettings.ChineseVoice"/> + language_boost
-    /// <c>"zh"</c>; otherwise <see cref="TtsSettings.EnglishVoice"/> with no boost.
-    /// Non-auto voice values are passed through verbatim (no language boost).
+    /// Picks the final voice id (and optional language_boost) from settings by
+    /// classifying the text's script: pure Chinese (CJK, no Latin) →
+    /// <see cref="TtsSettings.ChineseVoice"/> + language_boost <c>"zh"</c>;
+    /// pure English (no CJK) → <see cref="TtsSettings.EnglishVoice"/> with no
+    /// boost; mixed (both CJK and Latin) → <see cref="TtsSettings.MixedVoice"/>
+    /// with no boost (cross-lingual voices handle the language switch themselves).
     /// </summary>
     public static (string VoiceId, string? LanguageBoost) ResolveVoice(string text, TtsSettings settings)
     {
-        if (!string.Equals(settings.Voice?.Trim(), "auto", StringComparison.OrdinalIgnoreCase))
+        return ClassifyScript(text) switch
         {
-            return (settings.Voice!, null);
-        }
-        return IsMostlyChinese(text)
-            ? (settings.ChineseVoice, "zh")
-            : (settings.EnglishVoice, null);
+            ScriptKind.Chinese => (settings.ChineseVoice, "zh"),
+            ScriptKind.Mixed => (settings.MixedVoice, null),
+            _ => (settings.EnglishVoice, null),
+        };
     }
 
     /// <summary>
-    /// True when &gt;15% of text characters are CJK Unified Ideographs
-    /// (U+4E00–U+9FFF). The low threshold (15%, not 30%) means mixed
-    /// Chinese/English content with a Chinese majority routes to the Chinese
-    /// voice — e.g. "今天用了 iPhone 感觉很 nice" (~50% CJK) and even a sentence
-    /// that's one-third Chinese still counts as Chinese. Pure English with a
-    /// stray CJK character (e.g. "The 茶 leaf") stays under 15% and routes to
-    /// English. Whitespace is skipped so the ratio reflects real characters.
-    /// Public so tests can drive the voice-heuristic directly.
+    /// Classifies text into a script bucket by presence of CJK ideographs vs
+    /// Latin letters (ratios are ignored — only "is there any"). Has CJK and no
+    /// Latin → <see cref="ScriptKind.Chinese"/>; has CJK and Latin →
+    /// <see cref="ScriptKind.Mixed"/> (e.g. "今天用了 iPhone 感觉很 nice");
+    /// no CJK → <see cref="ScriptKind.English"/> (pure-Latin text, including a
+    /// stray CJK char only inside whitespace-free noise, still counts as English
+    /// when it has zero CJK). Empty/whitespace → English (a sane default, since
+    /// synthesis of nothing is a no-op anyway). Public so tests drive the
+    /// classifier directly.
     /// </summary>
-    public static bool IsMostlyChinese(string text)
+    public static ScriptKind ClassifyScript(string text)
     {
         if (string.IsNullOrEmpty(text))
         {
-            return false;
+            return ScriptKind.English;
         }
-        int total = 0;
-        int cjk = 0;
+        bool hasCjk = false;
+        bool hasLatin = false;
         foreach (char c in text)
         {
-            // Skip whitespace so the ratio reflects real characters, not padding.
-            if (char.IsWhiteSpace(c))
-            {
-                continue;
-            }
-            total++;
             if (c >= '\u4E00' && c <= '\u9FFF')
             {
-                cjk++;
+                hasCjk = true;
+            }
+            else if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))
+            {
+                hasLatin = true;
             }
         }
-        return total > 0 && cjk * 100 > total * 15;
+        return (hasCjk, hasLatin) switch
+        {
+            (true, false) => ScriptKind.Chinese,
+            (true, true) => ScriptKind.Mixed,
+            _ => ScriptKind.English,
+        };
     }
 
     /// <summary>

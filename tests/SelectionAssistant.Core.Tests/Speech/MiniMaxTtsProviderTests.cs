@@ -69,55 +69,55 @@ public sealed class MiniMaxTtsProviderTests
         Assert.Equal(expected, MiniMaxTtsProvider.HexToBytes(hex));
     }
 
-    // ── IsMostlyChinese: CJK ratio heuristic (>30% → Chinese voice) ──
+    // ── ClassifyScript: presence-based script bucket (CJK vs Latin) ──
 
     [Fact]
-    public void IsMostlyChinese_PureChinese_True()
+    public void ClassifyScript_PureChinese_Chinese()
     {
-        Assert.True(MiniMaxTtsProvider.IsMostlyChinese("你好世界，今天天气真好"));
+        // CJK with no Latin letters → Chinese bucket.
+        Assert.Equal(ScriptKind.Chinese, MiniMaxTtsProvider.ClassifyScript("你好世界，今天天气真好"));
     }
 
     [Fact]
-    public void IsMostlyChinese_PureEnglish_False()
+    public void ClassifyScript_PureEnglish_English()
     {
-        Assert.False(MiniMaxTtsProvider.IsMostlyChinese("Hello world, how are you today?"));
+        // No CJK → English bucket.
+        Assert.Equal(ScriptKind.English, MiniMaxTtsProvider.ClassifyScript("Hello world, how are you today?"));
     }
 
     [Fact]
-    public void IsMostlyChinese_MixedMostlyChinese_True()
+    public void ClassifyScript_CjkAndLatin_Mixed()
     {
-        // 6 CJK + some Latin/punct → CJK dominates.
-        Assert.True(MiniMaxTtsProvider.IsMostlyChinese("今天用了 iPhone，感觉很 nice"));
+        // Has both CJK and Latin letters → Mixed, regardless of ratio.
+        // This is the "中英混合" intent: even one Latin token in Chinese text
+        // (or vice versa) routes to the cross-lingual Mixed voice.
+        Assert.Equal(ScriptKind.Mixed, MiniMaxTtsProvider.ClassifyScript("今天用了 iPhone，感觉很 nice"));
+        // Low-CJK mix still counts as Mixed — the classifier only looks at
+        // presence, not ratio (deliberate change from the old 15% heuristic).
+        Assert.Equal(ScriptKind.Mixed, MiniMaxTtsProvider.ClassifyScript("The character 茶 is interesting"));
     }
 
     [Fact]
-    public void IsMostlyChinese_MixedMostlyEnglish_False()
+    public void ClassifyScript_EmptyOrWhitespace_English()
     {
-        // One CJK char in a sea of English → below 15%.
-        Assert.False(MiniMaxTtsProvider.IsMostlyChinese("The character 茶 is interesting"));
+        // Empty/whitespace defaults to English (synthesis of nothing is a no-op;
+        // English is the sane fallback bucket).
+        Assert.Equal(ScriptKind.English, MiniMaxTtsProvider.ClassifyScript(""));
+        Assert.Equal(ScriptKind.English, MiniMaxTtsProvider.ClassifyScript("   \t\n  "));
     }
 
     [Fact]
-    public void IsMostlyChinese_MixedOneQuarterChinese_True()
+    public void ClassifyScript_CjkWithPunctuationOnly_Chinese()
     {
-        // ~25% CJK content — above the 15% threshold, so it routes to the
-        // Chinese voice even though most words are English. This is the
-        // "中英混杂以中文为主" intent.
-        // 4 CJK chars (今天用了) + ~12 Latin chars/punct ≈ 25%.
-        Assert.True(MiniMaxTtsProvider.IsMostlyChinese("今天用了 iPhone 感觉不错"));
+        // CJK + punctuation/digits (no Latin letters) still Chinese — only
+        // A-Z/a-z count as Latin, not digits or punctuation.
+        Assert.Equal(ScriptKind.Chinese, MiniMaxTtsProvider.ClassifyScript("第 3 季，共 12 集。"));
     }
 
-    [Fact]
-    public void IsMostlyChinese_EmptyOrWhitespace_False()
-    {
-        Assert.False(MiniMaxTtsProvider.IsMostlyChinese(""));
-        Assert.False(MiniMaxTtsProvider.IsMostlyChinese("   \t\n  "));
-    }
-
-    // ── ResolveVoice: auto heuristic + explicit override + language_boost ──
+    // ── ResolveVoice: three-way routing by script bucket ──
 
     [Fact]
-    public void ResolveVoice_Auto_ChineseText_UsesChineseVoiceAndZhBoost()
+    public void ResolveVoice_PureChinese_UsesChineseVoiceAndZhBoost()
     {
         var settings = TtsSettings.Default;
         (string voice, string? boost) = MiniMaxTtsProvider.ResolveVoice("你好世界", settings);
@@ -126,7 +126,7 @@ public sealed class MiniMaxTtsProviderTests
     }
 
     [Fact]
-    public void ResolveVoice_Auto_EnglishText_UsesEnglishVoiceNoBoost()
+    public void ResolveVoice_PureEnglish_UsesEnglishVoiceNoBoost()
     {
         var settings = TtsSettings.Default;
         (string voice, string? boost) = MiniMaxTtsProvider.ResolveVoice("Hello world", settings);
@@ -135,11 +135,13 @@ public sealed class MiniMaxTtsProviderTests
     }
 
     [Fact]
-    public void ResolveVoice_ExplicitVoice_PassesThroughNoBoost()
+    public void ResolveVoice_MixedScript_UsesMixedVoiceNoBoost()
     {
-        var settings = TtsSettings.Default with { Voice = "Japanese_CalmLady" };
-        (string voice, string? boost) = MiniMaxTtsProvider.ResolveVoice("你好世界", settings);
-        Assert.Equal("Japanese_CalmLady", voice);
+        var settings = TtsSettings.Default;
+        (string voice, string? boost) = MiniMaxTtsProvider.ResolveVoice("今天用了 iPhone", settings);
+        Assert.Equal(settings.MixedVoice, voice);
+        // No language_boost for Mixed — the cross-lingual voice handles the
+        // language switch itself; forcing "zh" would mis-segment the English.
         Assert.Null(boost);
     }
 

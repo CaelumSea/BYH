@@ -12,11 +12,11 @@ public sealed class TtsSettingsTests
         Assert.True(d.Enabled);
         Assert.Equal("global", d.Region);
         Assert.Equal("speech-2.8-hd", d.Model);
-        Assert.Equal("auto", d.Voice);
         // The user-curated picks (~/tts-output/voice-pickup.md):
-        // Charming_Lady handles Chinese content, Spanish_CaptivatingStoryteller
-        // handles English.
-        Assert.Equal("Charming_Lady", d.ChineseVoice);
+        // Warm_Bestie (闺蜜) handles pure Chinese, CalmLady handles mixed-script,
+        // Spanish_CaptivatingStoryteller handles pure English.
+        Assert.Equal("Chinese (Mandarin)_Warm_Bestie", d.ChineseVoice);
+        Assert.Equal("Japanese_CalmLady", d.MixedVoice);
         Assert.Equal("Spanish_CaptivatingStoryteller", d.EnglishVoice);
         // Speed 1.1 — the rate at which the curated collection was selected.
         Assert.Equal(1.1, d.Speed);
@@ -30,9 +30,9 @@ public sealed class TtsSettingsTests
             Enabled = true,
             Region = "  ",
             Model = null!,
-            Voice = "",
             EnglishVoice = "",
             ChineseVoice = "",
+            MixedVoice = "",
             Speed = 0,   // invalid → default
             MaxCharacters = 0,
         };
@@ -40,9 +40,9 @@ public sealed class TtsSettingsTests
         TtsSettings n = raw.Normalize();
         Assert.Equal(TtsSettings.Default.Region, n.Region);
         Assert.Equal(TtsSettings.Default.Model, n.Model);
-        Assert.Equal(TtsSettings.Default.Voice, n.Voice);
         Assert.Equal(TtsSettings.Default.EnglishVoice, n.EnglishVoice);
         Assert.Equal(TtsSettings.Default.ChineseVoice, n.ChineseVoice);
+        Assert.Equal(TtsSettings.Default.MixedVoice, n.MixedVoice);
         Assert.Equal(TtsSettings.Default.Speed, n.Speed);
         Assert.Equal(TtsSettings.Default.MaxCharacters, n.MaxCharacters);
     }

@@ -29,9 +29,9 @@ public sealed class TtsSettingsStoreTests
                 ApiKeyReference = "secret://tts/custom",
                 Region = "cn",
                 Model = "speech-2.6-hd",
-                Voice = "Japanese_CalmLady",
                 EnglishVoice = "English_Whispering_girl",
                 ChineseVoice = "Chinese (Mandarin)_Warm_Bestie",
+                MixedVoice = "Japanese_CalmLady",
                 Speed = 1.3,
                 MaxCharacters = 5000,
             };
@@ -43,9 +43,9 @@ public sealed class TtsSettingsStoreTests
             Assert.Equal("secret://tts/custom", loaded.ApiKeyReference);
             Assert.Equal("cn", loaded.Region);
             Assert.Equal("speech-2.6-hd", loaded.Model);
-            Assert.Equal("Japanese_CalmLady", loaded.Voice);
             Assert.Equal("English_Whispering_girl", loaded.EnglishVoice);
             Assert.Equal("Chinese (Mandarin)_Warm_Bestie", loaded.ChineseVoice);
+            Assert.Equal("Japanese_CalmLady", loaded.MixedVoice);
             Assert.Equal(1.3, loaded.Speed);
             Assert.Equal(5000, loaded.MaxCharacters);
         }

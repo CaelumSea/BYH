@@ -59,9 +59,9 @@ public static class TtsSettingsStore
                 ApiKeyReference = apiKeyReference,
                 Region = ReadString(root, "region", defaults.Region),
                 Model = ReadString(root, "model", defaults.Model),
-                Voice = ReadString(root, "voice", defaults.Voice),
                 EnglishVoice = ReadString(root, "englishVoice", defaults.EnglishVoice),
                 ChineseVoice = ReadString(root, "chineseVoice", defaults.ChineseVoice),
+                MixedVoice = ReadString(root, "mixedVoice", defaults.MixedVoice),
                 Speed = ReadDouble(root, "speed", defaults.Speed),
                 MaxCharacters = ReadInt(root, "maxCharacters", defaults.MaxCharacters),
             };
@@ -120,9 +120,9 @@ public static class TtsSettingsStore
                 }
                 writer.WriteString("region", settings.Region);
                 writer.WriteString("model", settings.Model);
-                writer.WriteString("voice", settings.Voice);
                 writer.WriteString("englishVoice", settings.EnglishVoice);
                 writer.WriteString("chineseVoice", settings.ChineseVoice);
+                writer.WriteString("mixedVoice", settings.MixedVoice);
                 writer.WriteNumber("speed", settings.Speed);
                 writer.WriteNumber("maxCharacters", settings.MaxCharacters);
                 writer.WriteEndObject();

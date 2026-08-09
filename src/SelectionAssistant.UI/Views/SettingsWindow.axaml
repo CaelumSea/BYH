@@ -1226,33 +1226,75 @@
                            FontSize="{DynamicResource ByhFontSizeBodySmall}" />
               </StackPanel>
 
-              <Grid ColumnDefinitions="*,*" ColumnSpacing="14">
+              <StackPanel Spacing="6">
+                <TextBlock Text="{x:Static i18n:Strings.Settings_TTS_Region}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                <Border Classes="InnerCard" Padding="6,4">
+                  <ComboBox x:Name="TtsRegionComboBox"
+                            HorizontalAlignment="Stretch"
+                            SelectedIndex="0">
+                    <ComboBoxItem Content="{x:Static i18n:Strings.Settings_TTS_RegionGlobal}" />
+                    <ComboBoxItem Content="{x:Static i18n:Strings.Settings_TTS_RegionCn}" />
+                  </ComboBox>
+                </Border>
+              </StackPanel>
+
+              <!-- Per-script voice: one dropdown each for Chinese / English /
+                   mixed-script text. Same 10 curated presets (see ~/tts-output/
+                   voice-pickup.md) in every list; default selection points to the
+                   curated default for that script bucket. Non-editable — the user
+                   chose "just these ten". -->
+              <Grid ColumnDefinitions="*,*,*" ColumnSpacing="10">
                 <StackPanel Grid.Column="0" Spacing="6">
-                  <TextBlock Text="{x:Static i18n:Strings.Settings_TTS_Region}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_TTS_VoiceChinese}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
                   <Border Classes="InnerCard" Padding="6,4">
-                    <ComboBox x:Name="TtsRegionComboBox"
+                    <ComboBox x:Name="TtsChineseVoiceComboBox"
                               HorizontalAlignment="Stretch"
                               SelectedIndex="0">
-                      <ComboBoxItem Content="{x:Static i18n:Strings.Settings_TTS_RegionGlobal}" />
-                      <ComboBoxItem Content="{x:Static i18n:Strings.Settings_TTS_RegionCn}" />
-                    </ComboBox>
-                  </Border>
-                </StackPanel>
-                <StackPanel Grid.Column="1" Spacing="6">
-                  <TextBlock Text="{x:Static i18n:Strings.Settings_TTS_Voice}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
-                  <Border Classes="InnerCard" Padding="6,4">
-                    <ComboBox x:Name="TtsVoiceComboBox"
-                              HorizontalAlignment="Stretch"
-                              IsEditable="True"
-                              SelectedIndex="0">
-                      <ComboBoxItem Content="auto" />
                       <ComboBoxItem Content="Chinese (Mandarin)_Warm_Bestie" />
                       <ComboBoxItem Content="female-shaonv-jingpin" />
                       <ComboBoxItem Content="Charming_Lady" />
                       <ComboBoxItem Content="Cantonese_CuteGirl" />
+                      <ComboBoxItem Content="Japanese_GracefulMaiden" />
                       <ComboBoxItem Content="Japanese_CalmLady" />
                       <ComboBoxItem Content="Japanese_ColdQueen" />
+                      <ComboBoxItem Content="French_MovieLeadFemale" />
+                      <ComboBoxItem Content="Spanish_CaptivatingStoryteller" />
+                      <ComboBoxItem Content="English_Whispering_girl" />
+                    </ComboBox>
+                  </Border>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="6">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_TTS_VoiceEnglish}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                  <Border Classes="InnerCard" Padding="6,4">
+                    <ComboBox x:Name="TtsEnglishVoiceComboBox"
+                              HorizontalAlignment="Stretch"
+                              SelectedIndex="8">
+                      <ComboBoxItem Content="Chinese (Mandarin)_Warm_Bestie" />
+                      <ComboBoxItem Content="female-shaonv-jingpin" />
+                      <ComboBoxItem Content="Charming_Lady" />
+                      <ComboBoxItem Content="Cantonese_CuteGirl" />
                       <ComboBoxItem Content="Japanese_GracefulMaiden" />
+                      <ComboBoxItem Content="Japanese_CalmLady" />
+                      <ComboBoxItem Content="Japanese_ColdQueen" />
+                      <ComboBoxItem Content="French_MovieLeadFemale" />
+                      <ComboBoxItem Content="Spanish_CaptivatingStoryteller" />
+                      <ComboBoxItem Content="English_Whispering_girl" />
+                    </ComboBox>
+                  </Border>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="6">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_TTS_VoiceMixed}" Classes="Muted" FontSize="{DynamicResource ByhFontSizeBodySmall}" />
+                  <Border Classes="InnerCard" Padding="6,4">
+                    <ComboBox x:Name="TtsMixedVoiceComboBox"
+                              HorizontalAlignment="Stretch"
+                              SelectedIndex="5">
+                      <ComboBoxItem Content="Chinese (Mandarin)_Warm_Bestie" />
+                      <ComboBoxItem Content="female-shaonv-jingpin" />
+                      <ComboBoxItem Content="Charming_Lady" />
+                      <ComboBoxItem Content="Cantonese_CuteGirl" />
+                      <ComboBoxItem Content="Japanese_GracefulMaiden" />
+                      <ComboBoxItem Content="Japanese_CalmLady" />
+                      <ComboBoxItem Content="Japanese_ColdQueen" />
                       <ComboBoxItem Content="French_MovieLeadFemale" />
                       <ComboBoxItem Content="Spanish_CaptivatingStoryteller" />
                       <ComboBoxItem Content="English_Whispering_girl" />

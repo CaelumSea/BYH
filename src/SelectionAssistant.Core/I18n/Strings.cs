@@ -347,7 +347,9 @@ public static partial class Strings
     public static string Settings_TTS_Region => Get(nameof(Settings_TTS_Region));
     public static string Settings_TTS_RegionGlobal => Get(nameof(Settings_TTS_RegionGlobal));
     public static string Settings_TTS_RegionCn => Get(nameof(Settings_TTS_RegionCn));
-    public static string Settings_TTS_Voice => Get(nameof(Settings_TTS_Voice));
+    public static string Settings_TTS_VoiceChinese => Get(nameof(Settings_TTS_VoiceChinese));
+    public static string Settings_TTS_VoiceEnglish => Get(nameof(Settings_TTS_VoiceEnglish));
+    public static string Settings_TTS_VoiceMixed => Get(nameof(Settings_TTS_VoiceMixed));
     public static string Settings_TTS_Speed => Get(nameof(Settings_TTS_Speed));
     public static string Settings_TTS_Test => Get(nameof(Settings_TTS_Test));
     public static string Settings_TTS_Testing => Get(nameof(Settings_TTS_Testing));

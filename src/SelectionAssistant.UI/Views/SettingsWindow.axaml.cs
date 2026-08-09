@@ -1282,9 +1282,11 @@ public partial class SettingsWindow : Window
         TtsEnabledToggle.IsChecked = settings.Enabled;
         TtsRegionComboBox.SelectedIndex =
             string.Equals(settings.Region, "cn", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
-        // Voice combo is editable + has presets; select the configured voice if
-        // listed, otherwise seed the editable text so the user sees the value.
-        SelectTtsVoice(settings.Voice);
+        // Each per-script voice combo has the same preset list; select the
+        // configured voice for that script bucket.
+        SelectVoiceOption(TtsChineseVoiceComboBox, settings.ChineseVoice);
+        SelectVoiceOption(TtsEnglishVoiceComboBox, settings.EnglishVoice);
+        SelectVoiceOption(TtsMixedVoiceComboBox, settings.MixedVoice);
         TtsSpeedSlider.Value = settings.Speed;
         UpdateTtsSpeedLabel();
         TtsApiKeyInput.Text = string.Empty; // never echo the secret back
@@ -1297,31 +1299,40 @@ public partial class SettingsWindow : Window
         TtsStatusText.Text = string.Empty;
     }
 
-    private void SelectTtsVoice(string voiceId)
+    /// <summary>Selects the preset matching <paramref name="voiceId"/> in the
+    /// given per-script voice combo; falls back to index 0 (the first preset)
+    /// when the stored value isn't in the list (e.g. a voice retired from the
+    /// curated collection). Combos are non-editable, so there's always a valid
+    /// selection.</summary>
+    private static void SelectVoiceOption(ComboBox comboBox, string voiceId)
     {
-        for (int i = 0; i < TtsVoiceComboBox.ItemCount; i++)
+        for (int i = 0; i < comboBox.ItemCount; i++)
         {
-            if (TtsVoiceComboBox.Items[i] is ComboBoxItem item &&
+            if (comboBox.Items[i] is ComboBoxItem item &&
                 string.Equals(item.Content as string, voiceId, StringComparison.Ordinal))
             {
-                TtsVoiceComboBox.SelectedIndex = i;
+                comboBox.SelectedIndex = i;
                 return;
             }
         }
-        // Not a preset — type it into the editable combo so it's still visible
-        // and saved back unchanged on next Save.
-        TtsVoiceComboBox.SelectedItem = null;
-        TtsVoiceComboBox.Text = voiceId;
+        comboBox.SelectedIndex = 0;
     }
 
-    private string ReadTtsVoice()
+    /// <summary>Reads the selected preset's voice id from a per-script combo.
+    /// Combos are non-editable presets, so this is never null.</summary>
+    private static string ReadVoiceOption(ComboBox comboBox)
     {
-        if (TtsVoiceComboBox.SelectedItem is ComboBoxItem item)
+        if (comboBox.SelectedItem is ComboBoxItem item &&
+            item.Content is string content &&
+            !string.IsNullOrWhiteSpace(content))
         {
-            return item.Content as string ?? "auto";
+            return content;
         }
-        string? text = TtsVoiceComboBox.Text;
-        return string.IsNullOrWhiteSpace(text) ? "auto" : text.Trim();
+        // No selection shouldn't happen (SelectedIndex defaults are set in XAML),
+        // but guard anyway — first item is a safe voice id.
+        return comboBox.ItemCount > 0 && comboBox.Items[0] is ComboBoxItem first
+            ? (first.Content as string ?? string.Empty)
+            : string.Empty;
     }
 
     private void UpdateTtsSpeedLabel() =>
@@ -1333,7 +1344,9 @@ public partial class SettingsWindow : Window
         Enabled = TtsEnabledToggle.IsChecked == true,
         ApiKeyReference = "secret://tts/minimax",
         Region = TtsRegionComboBox.SelectedIndex == 1 ? "cn" : "global",
-        Voice = ReadTtsVoice(),
+        ChineseVoice = ReadVoiceOption(TtsChineseVoiceComboBox),
+        EnglishVoice = ReadVoiceOption(TtsEnglishVoiceComboBox),
+        MixedVoice = ReadVoiceOption(TtsMixedVoiceComboBox),
         Speed = TtsSpeedSlider.Value,
     };
 

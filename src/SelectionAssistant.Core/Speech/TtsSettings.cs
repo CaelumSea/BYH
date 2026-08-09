@@ -39,14 +39,7 @@ public sealed record TtsSettings
     public string Model { get; init; } = "speech-2.8-hd";
 
     /// <summary>
-    /// Voice selection strategy. <c>"auto"</c> = pick by content (see
-    /// <see cref="ChineseVoice"/> / <see cref="EnglishVoice"/> based on CJK ratio);
-    /// otherwise a concrete MiniMax voice id (e.g. <c>female-shaonv</c>).
-    /// </summary>
-    public string Voice { get; init; } = "auto";
-
-    /// <summary>
-    /// Voice used when content is mostly English. Default
+    /// Voice used when content is pure English (no CJK ideographs). Default
     /// <c>Spanish_CaptivatingStoryteller</c> — a cross-lingual voice (user-curated
     /// 2026-07-30): speaks whatever language the text is in while keeping a
     /// consistent storyteller timbre, and the English rendition was confirmed
@@ -55,11 +48,23 @@ public sealed record TtsSettings
     public string EnglishVoice { get; init; } = "Spanish_CaptivatingStoryteller";
 
     /// <summary>
-    /// Voice used when content is mostly Chinese (CJK ratio &gt; 15%). Default
-    /// <c>Charming_Lady</c> — 迷人女士, user-curated pick (2026-07-30) for
-    /// 魅力、有质感的口播. See ~/tts-output/voice-pickup.md.
+    /// Voice used when content is pure Chinese (has CJK ideographs but no Latin
+    /// letters). Default <c>Chinese (Mandarin)_Warm_Bestie</c> — 暖心闺蜜
+    /// (alias "bestie"), user-curated pick (2026-07-30) for 日常 vlog、推荐、
+    /// 生活贴士. See ~/tts-output/voice-pickup.md.
     /// </summary>
-    public string ChineseVoice { get; init; } = "Charming_Lady";
+    public string ChineseVoice { get; init; } = "Chinese (Mandarin)_Warm_Bestie";
+
+    /// <summary>
+    /// Voice used when content mixes Chinese and Latin scripts (has both CJK
+    /// ideographs and Latin letters, e.g. "今天用了 iPhone 感觉很 nice").
+    /// Default <c>Japanese_CalmLady</c> (alias "jp-calm") — one of two
+    /// cross-lingual treasures in the curated collection (user-curated
+    /// 2026-07-30): speaks whatever language the text is in while keeping a
+    /// consistent calm timbre, confirmed good across JP/EN/CN. Mixed content is
+    /// exactly where a cross-lingual voice shines. See ~/tts-output/voice-pickup.md.
+    /// </summary>
+    public string MixedVoice { get; init; } = "Japanese_CalmLady";
 
     /// <summary>
     /// Speed multiplier passed to MiniMax voice_setting.speed. 0.5–2.0. Default
@@ -86,9 +91,9 @@ public sealed record TtsSettings
     {
         Region = string.IsNullOrWhiteSpace(Region) ? Default.Region : Region.Trim(),
         Model = string.IsNullOrWhiteSpace(Model) ? Default.Model : Model.Trim(),
-        Voice = string.IsNullOrWhiteSpace(Voice) ? Default.Voice : Voice.Trim(),
         EnglishVoice = string.IsNullOrWhiteSpace(EnglishVoice) ? Default.EnglishVoice : EnglishVoice.Trim(),
         ChineseVoice = string.IsNullOrWhiteSpace(ChineseVoice) ? Default.ChineseVoice : ChineseVoice.Trim(),
+        MixedVoice = string.IsNullOrWhiteSpace(MixedVoice) ? Default.MixedVoice : MixedVoice.Trim(),
         Speed = Speed <= 0 ? Default.Speed : Math.Min(Math.Max(Speed, 0.5), 2.0),
         MaxCharacters = MaxCharacters <= 0 ? Default.MaxCharacters : Math.Min(MaxCharacters, 10000),
     };
@@ -107,6 +112,10 @@ public sealed record TtsSettings
         if (string.IsNullOrWhiteSpace(ChineseVoice))
         {
             throw new ArgumentException("TTS ChineseVoice must not be empty.", nameof(ChineseVoice));
+        }
+        if (string.IsNullOrWhiteSpace(MixedVoice))
+        {
+            throw new ArgumentException("TTS MixedVoice must not be empty.", nameof(MixedVoice));
         }
     }
 }
