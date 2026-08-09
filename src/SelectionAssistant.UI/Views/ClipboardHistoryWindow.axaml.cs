@@ -280,7 +280,18 @@ public partial class ClipboardHistoryWindow : Window
             InputElement.KeyDownEvent,
             (_, e) =>
             {
-                if (e.Key == Key.Delete && e.KeyModifiers == KeyModifiers.None)
+                // Ctrl+Tab / Ctrl+Shift+Tab cycle the nav tabs (browser-style),
+                // matching OnWindowKeyDown. Tab is the focus-traversal key, so
+                // while the TextBox has focus Avalonia's focus system swallows
+                // Ctrl+Tab and it never bubbles to OnWindowKeyDown — same class
+                // of focus-swallallowing bug as Delete (above) and Enter (R99).
+                // Tunnel ahead of the focus system; plain Tab is left untouched.
+                if (e.Key == Key.Tab && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+                {
+                    e.Handled = true;
+                    SelectNavTab(e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? -1 : +1);
+                }
+                else if (e.Key == Key.Delete && e.KeyModifiers == KeyModifiers.None)
                 {
                     HandleDeleteKey(e);
                 }
