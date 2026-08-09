@@ -182,6 +182,7 @@ public sealed class PowerHistoryStoreTests : IDisposable
         // 用 JsonDocument 解析回来，确认 ts round-trip 正确。
         using JsonDocument doc = JsonDocument.Parse(line);
         string? tsStr = doc.RootElement.GetProperty("ts").GetString();
+        Assert.NotNull(tsStr);
         DateTimeOffset parsed = DateTimeOffset.Parse(tsStr, System.Globalization.CultureInfo.InvariantCulture);
         Assert.Equal(ts, parsed);
         // totalW 也在
