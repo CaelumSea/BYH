@@ -46,7 +46,7 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 
 ## 当前状态与下一步
 
-**v0.1.0 已发布**（2026-07，git tag `v0.1.0`）。本地 `main` 截至 2026-08-09 已完成 REQ-028–REQ-044，新增 TTS「朗读」与 PowerMonitoring「功耗监控」两大功能：大尺寸截图防崩溃、Warp 选区捕获兼容、开机自启、剪贴板超长检索 / 长按多选 / tag 过滤 / Delete 键修复、Custom Provider 草稿、Ocean Eyes Enter 保存、Speak 设置选项卡与密钥状态、工具栏说话与系统功耗轮询。最新验证基线为 **954/954**（Core 784 / Providers 51 / Windows 119）。
+**v0.1.0 已发布**（2026-07，git tag `v0.1.0`）。本地 `main` 截至 2026-08-09 已完成 REQ-028–REQ-044，新增 TTS「朗读」与 PowerMonitoring「功耗监控」两大功能：大尺寸截图防崩溃、Warp 选区捕获兼容、开机自启、剪贴板超长检索 / 长按多选 / tag 过滤 / Delete 键修复、Custom Provider 草稿、Ocean Eyes Enter 保存、Speak 设置选项卡与密钥状态、工具栏说话与系统功耗轮询。PowerMonitoring 上线后，设置中心手机式状态卡的后 4 页（CPU/GPU/System/Energy）改为实时功率与温度数据（同源、null 字段整行隐藏），托盘 hover tooltip 改为两行（上=功率、下=温度），Overview 第一页不动。最新验证基线为 **954/954**（Core 784 / Providers 51 / Windows 119）。
 
 **下一项产品需求**：`REQ-036` “统一多模态模型与直接觉动作”，当前仅已派发、**尚未实现**。从 `TASK-053` 开始：先建立能力感知的多模态请求层，再接 Ocean Eyes 截图直译，最后对比直达与两段式链路。普通划词仍走纯文本，纯 OCR 与两段式回退必须保留。详见 [`docs/architecture/10-multimodal-actions.md`](docs/architecture/10-multimodal-actions.md)。`REQ-027` 的主题切换三个任务（TASK-030–032）仍在待办，不要误标已完成。
 

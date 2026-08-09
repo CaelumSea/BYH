@@ -18,6 +18,7 @@ BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选�
 
 - **选词工具栏「朗读」**：选词工具栏新增「朗读」按钮（默认 `S` 快捷键），把当前选区送 MiniMax T2A 合成并通过 Windows MCI 播放；语音按书写体系自动路由（CJK / 拉丁），缺 mmx key 时回退到全局密钥。
 - **功耗监控（默认关闭）**：BYH 周期性 HTTP 轮询本地 Libre Hardware Monitor Web Server，托盘 tooltip 显示 W / kWh，按梯形积分累计能耗（Wh / kWh），温度超阈值 TTS 播报 mp3 警音（5°C 滞回），每分钟写入 `power-history.jsonl`。
+- **设置卡片实时功耗 + 托盘两行 tooltip**：设置中心右侧的手机式状态卡后 4 页（CPU / GPU / System / Energy）改为实时功率与温度数据——和功耗监控同源，传感器测不到的字段整行隐藏、LHM 离线时显示离线提示。托盘 hover tooltip 改为两行：上排 CPU/GPU 功率 + SSD1 温度，下排 CPU/GPU 温度 + SSD2 温度。
 - **大区域截图稳定性**：补齐 BGRA / DIB / PNG 尺寸上限与 checked 算术，异常尺寸安全失败，不再带崩后台进程。
 - **Warp 选区兼容**：为 `warp.exe` 增加受限的 `Ctrl+Shift+C` 捕获策略；仅在剪贴板序号变化、文本稳定且命中明确进程策略时接受 ownerless 结果。
 - **超长剪贴板搜索**：索引构建和查询移出 UI 线程；27 万字符级条目也不会在每次键入时同步扫描全文。

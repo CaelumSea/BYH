@@ -19,6 +19,7 @@
 - **剪贴板 tag 徽章可点击过滤 + 搜索 tag 命中前置（REQ-043）。** 行内的粉色 EntryTag（如 `AWS`）和橄榄色 CustomTag（如 `#工作`）徽章现在可点击——点任意徽章即在搜索框上方出现一个过滤 chip（`🏷 <name> ✕` / `# <name> ✕`），列表立即只显示带该 tag 的条目；chip 单一互斥，点别的徽章替换，点 chip 或 ✕ 清除。搜索时凡是 token 命中 tag 字段的条目整组排在只命中正文的前，组内仍按时间倒序。新增 `ClipboardMatchScore` + `ClipboardMatchRanker`（Core 纯函数三键稳定排序），`ClipboardSearchIndex.ScoreMatch` 在原布尔 `IsMatch` 基础上附带 TagHit 信号（语义不变，14 例 parity 测试保护）。纯 UI/视图行为，App 层零改动，过滤 chip 会话级不持久化。
 - **选词工具栏「朗读」快捷播报（TTS）。** 选词工具栏新增「朗读」按钮，默认 `S` 快捷键，把当前选区文本送 MiniMax T2A 合成语音并通过 Windows MCI 播放。语音按书写体系自动路由（CJK / 拉丁），缺 mmx key 时回退到全局密钥；同 R99 一样受 i18n + 焦点吞键哨位保护。
 - **功耗监控（PowerMonitoring，默认关闭）。** BYH 周期性 HTTP 轮询用户配置的 Libre Hardware Monitor Web Server 拉取实时功率 / 温度，托盘 tooltip 显示 W / kWh，按梯形积分把瞬时功率累计成 Wh / kWh 落盘，温度超过阈值时 TTS 播报 mp3 警音（5°C 滞回防抖），每分钟写入 `power-history.jsonl`。纯 HTTP、无 LHM 客户端依赖、无提权，NativeAOT 安全。
+- **手机卡片接入实时功耗数据 + 托盘两行 tooltip。** 设置中心右侧的「手机式状态卡」原先后 4 页是翻译/视觉/剪贴板/启动器的功能摘要，现在改为功耗实时数据页（CPU / GPU / System / Energy），与已上线的 PowerMonitoring 同源。底部 dock 4 个按钮换名但图标外观保持原样（五边形/树叶/信封/齿轮），Overview 第一页不动。字段映射直接取自 `PowerSnapshot` 的 dock 分组：CPU 页（封装功率/核心温度/总负载/最大核心负载/频率）、GPU 页（功耗/温度/负载/核心频率/显存频率）、System 页（12V/5V/3.3V/内存功耗与温度/CPU 与 GPU 风扇/电池功率与百分比/两块 SSD 温度）、Energy 页（仅瞬时合计功率）。传感器字段为 null（测不到）时整行隐藏，LHM 离线时 4 页统一显离线提示。同时把托盘 hover tooltip 从单行 W/kWh 改为两行——上排 CPU/GPU 功率 + SSD1 温度，下排 CPU/GPU 温度 + SSD2 温度（SSD 只有温度字段、无功率）。实现：`App.axaml.cs` 的 `PowerMonitorLoopAsync` 轮询回调在原 `UpdateTrayTooltip(snap)` 后增调 `_settingsWindow?.UpdatePhonePowerViews(snap)`；`SettingsWindow.axaml.cs` 新增公共方法按页/按行做 null-aware 显隐；i18n 三件套删 21 旧 phone key、新增 power key（最终 36/36/36 对齐）。
 
 ### 性能
 
@@ -45,6 +46,7 @@
 - 2026-08-02 合并 REQ-030 / REQ-031 后全量测试：**752/752 通过**（Core 597、Windows Integration 105、Providers 50）；Release build 0 warning / 0 error；NativeAOT 正式产物 SHA-256 `3787A04A0C91FE8A02FE335C6071DE545DCA6000678E38CEDED2A9F6DD30CE17`。
 - 2026-08-02 REQ-033 支线验收：**754/754 通过**（Core 599、Windows Integration 105、Providers 50）；Release build 0 warning / 0 error；NativeAOT 发布成功，用户确认剪贴板连续检索及清空查询恢复流畅。
 - 2026-08-09 TTS / PowerMonitoring 合并后全量测试：**954/954 通过**（Core 784、Windows Integration 119、Providers 51）；Release build 0 warning / 0 error；NativeAOT 发布成功（29.3 MB，0 IL 警告）。新增 TTS 朗读功能、功耗监控功能、Ocean Eyes Enter 保存修复、Speak 选项卡崩溃修复与密钥状态修复。
+- 2026-08-09 手机卡片功耗数据 + 托盘两行 tooltip 合并后：i18n 三向 36/36/36 对齐，Release build 0 warning / 0 error，954 项测试全绿（i18n parity 守卫未动），NativeAOT 发布 0 IL 警告。已部署 `artifacts/publish/win-x64-nativeuia/BYH.exe`。
 
 ---
 
