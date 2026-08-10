@@ -2448,7 +2448,21 @@ public partial class SettingsWindow : Window
         {
             Show();
         }
+
+        // Restore from the taskbar if minimized — Activate() alone leaves a
+        // minimized window minimized (the taskbar just flashes).
+        if (WindowState == WindowState.Minimized)
+        {
+            WindowState = WindowState.Normal;
+        }
+
+        // Win32 foreground-locking often defeats Activate() when the window is
+        // covered by others; briefly flipping Topmost forces it to the front.
+        // Dropping it back on the next dispatch avoids leaving a permanent
+        // topmost window (true→false in the same message-pump pass coalesces).
+        Topmost = true;
         Activate();
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => Topmost = false);
     }
 
     /// <summary>
