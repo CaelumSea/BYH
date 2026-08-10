@@ -107,18 +107,6 @@
             </Grid>
           </Button>
 
-          <Button x:Name="ProviderNavButton"
-                  Classes="SettingsNav"
-                  Padding="12,8"
-                  AutomationProperties.AutomationId="BYH.Settings.Nav.Translation"
-                  Click="OnShowProviderClick">
-            <Grid ColumnDefinitions="22,*" ColumnSpacing="9">
-              <Path Classes="NavIcon"
-                    Data="M4,5 L20,5 L20,19 L4,19 Z M8,9 L16,9 M8,13 L16,13 M8,17 L13,17" />
-              <TextBlock Grid.Column="1" Text="{x:Static i18n:Strings.Settings_Nav_Provider}" FontSize="{DynamicResource ByhFontSizeBodyLarge}" FontWeight="SemiBold" VerticalAlignment="Center" />
-            </Grid>
-          </Button>
-
           <Button x:Name="FunctionsNavButton"
                   Classes="SettingsNav"
                   Padding="12,8"
@@ -830,11 +818,12 @@
 
         </StackPanel>
 
-        <!-- Translation providers. The whole edit form sits inside one
-             DashboardPanel shell; x:Name="EditFormBorder" stays on the
-             Border (BringIntoView works on Control) so code-behind is
-             unaffected by the StackPanel→Border type change. -->
-        <StackPanel x:Name="ProviderSection" IsVisible="False" Spacing="0">
+        <!-- Actions page: translation provider CRUD (the endpoints that prompt
+             actions consume) + the prompt-function templates. EditFormBorder stays
+             on the Border (BringIntoView works on Control) so code-behind is
+             unaffected. Provider CRUD sits above the prompt list because an action
+             needs a configured provider before its prompt is useful. -->
+        <StackPanel x:Name="FunctionsSection" IsVisible="False" Spacing="0">
           <Border x:Name="EditFormBorder" Classes="DashboardPanel" Margin="24,14,24,0">
             <StackPanel Spacing="16">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
@@ -997,10 +986,7 @@
 
             </StackPanel>
           </Border>
-        </StackPanel>
 
-        <!-- Prompt functions -->
-        <StackPanel x:Name="FunctionsSection" IsVisible="False" Spacing="0">
           <Border x:Name="PromptTemplatesCard" Classes="DashboardPanel" Margin="24,14,24,0">
             <StackPanel Spacing="16">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
@@ -1052,9 +1038,10 @@
           </Border>
         </StackPanel>
 
-        <!-- Vision OCR. Whole page (title + OCR + strategy) in one
-             DashboardPanel shell; the two inter-block hairlines collapse
-             into the panel's Spacing. -->
+        <!-- Vision OCR: independent page. OCR model selection + recognition
+             strategy. Controls keep Vision* x:Names; code-behind wiring
+             (SetVisionSettings, OnSaveVisionClick, FetchModelsAsync(isVision:true))
+             is unchanged from when this was its own section. -->
         <StackPanel x:Name="VisionSection" IsVisible="False" Spacing="0">
           <Border Classes="DashboardPanel" Margin="24,14,24,0">
             <StackPanel Spacing="16">

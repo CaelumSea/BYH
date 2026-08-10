@@ -54,7 +54,6 @@ public partial class SettingsWindow : Window
     {
         Dashboard,
         General,
-        Provider,
         Functions,
         Vision,
         Tts,
@@ -203,7 +202,6 @@ public partial class SettingsWindow : Window
     {
         DashboardSection.IsVisible = page == SettingsPage.Dashboard;
         GeneralSection.IsVisible = page == SettingsPage.General;
-        ProviderSection.IsVisible = page == SettingsPage.Provider;
         FunctionsSection.IsVisible = page == SettingsPage.Functions;
         VisionSection.IsVisible = page == SettingsPage.Vision;
         TtsSection.IsVisible = page == SettingsPage.Tts;
@@ -213,7 +211,6 @@ public partial class SettingsWindow : Window
 
         SetNavigationState(DashboardNavButton, page == SettingsPage.Dashboard);
         SetNavigationState(GeneralNavButton, page == SettingsPage.General);
-        SetNavigationState(ProviderNavButton, page == SettingsPage.Provider);
         SetNavigationState(FunctionsNavButton, page == SettingsPage.Functions);
         SetNavigationState(VisionNavButton, page == SettingsPage.Vision);
         SetNavigationState(TtsNavButton, page == SettingsPage.Tts);
@@ -227,8 +224,6 @@ public partial class SettingsWindow : Window
                 (Strings.Settings_PageTitle_Dashboard, Strings.Settings_PageSubtitle_Dashboard),
             SettingsPage.General =>
                 (Strings.Settings_PageTitle_General, Strings.Settings_PageSubtitle_General),
-            SettingsPage.Provider =>
-                (Strings.Settings_PageTitle_Provider, Strings.Settings_PageSubtitle_Provider),
             SettingsPage.Functions =>
                 (Strings.Settings_PageTitle_Functions, Strings.Settings_PageSubtitle_Functions),
             SettingsPage.Vision =>
@@ -276,9 +271,6 @@ public partial class SettingsWindow : Window
 
     private void OnShowGeneralClick(object? sender, RoutedEventArgs e) =>
         ShowSettingsPage(SettingsPage.General);
-
-    private void OnShowProviderClick(object? sender, RoutedEventArgs e) =>
-        ShowSettingsPage(SettingsPage.Provider);
 
     private void OnShowFunctionsClick(object? sender, RoutedEventArgs e) =>
         ShowSettingsPage(SettingsPage.Functions);
@@ -2241,7 +2233,7 @@ public partial class SettingsWindow : Window
     /// </summary>
     public void SelectProviderForEditing(string providerId)
     {
-        ShowSettingsPage(SettingsPage.Provider);
+        ShowSettingsPage(SettingsPage.Functions);
         _editingProviderId = providerId;
         ProviderOption? match = _providerOptions.FirstOrDefault(o => o.Id == providerId);
         if (match is not null)
@@ -2304,7 +2296,7 @@ public partial class SettingsWindow : Window
         _providers.Add(draft);
         _providerOptions.Add(new ProviderOption(id, $"{name} · {Strings.Settings_Provider_New}"));
 
-        ShowSettingsPage(SettingsPage.Provider);
+        ShowSettingsPage(SettingsPage.Functions);
         ProviderComboBox.SelectedIndex = _providerOptions.Count - 1;
         EditFormBorder.BringIntoView();
         BaseUrlInput.Focus();
