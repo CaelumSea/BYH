@@ -2344,6 +2344,16 @@ public partial class ClipboardHistoryWindow : Window
         // Batch 123: keep the full matched set in _filteredPool (cheap, no
         // controls) and only render the first slice in _filteredRows. The
         // remainder loads on scroll-to-bottom or arrow-past-edge (LoadMore).
+        //
+        // Preserve the current selection across a non-searching refresh (empty
+        // query — tab change, tag add/remove, external clipboard update): the
+        // row objects are rebuilt by SetEntries, so identity can't survive; we
+        // match by Id instead. A real search (non-empty query) intentionally
+        // resets to the top-ranked match, so it skips this branch.
+        Guid keepSelectedId = normalizedQuery.Length == 0
+            ? CurrentSelectedRow?.Id ?? Guid.Empty
+            : Guid.Empty;
+
         _filteredPool.Clear();
         _filteredPool.AddRange(matches);
 
@@ -2352,7 +2362,21 @@ public partial class ClipboardHistoryWindow : Window
             : InitialBatchSize;
         _visibleCount = Math.Min(initialBatchSize, _filteredPool.Count);
         _filteredRows.ReplaceAll(_filteredPool.GetRange(0, _visibleCount));
-        _selectedIndex = _filteredRows.Count > 0 ? 0 : -1;
+
+        int keepIndex = -1;
+        if (keepSelectedId != Guid.Empty)
+        {
+            for (int i = 0; i < _filteredRows.Count; i++)
+            {
+                if (_filteredRows[i].Id == keepSelectedId)
+                {
+                    keepIndex = i;
+                    break;
+                }
+            }
+        }
+        _selectedIndex = keepIndex >= 0 ? keepIndex
+                       : (_filteredRows.Count > 0 ? 0 : -1);
         SyncRowSelection();
         UpdateCategoryHeader();
         UpdateLoadMoreFooter();
