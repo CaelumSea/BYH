@@ -9,9 +9,13 @@ public sealed class UIAutomationTextCaptureTests
     [Fact]
     public async Task SuccessfulWorkerResult_IsReportedAsAccessibilityCapture()
     {
+        // Timeout must be generous: the worker's TrySetResult uses
+        // RunContinuationsAsynchronously, so the await continuation is queued
+        // onto the thread pool. On loaded CI runners that scheduling delay can
+        // swallow the old 200ms budget and spuriously time out the success path.
         using var capture = new UIAutomationTextCapture(
             () => new ImmediateBackend("selected text"),
-            TimeSpan.FromMilliseconds(200));
+            TimeSpan.FromSeconds(2));
 
         CaptureResult result = await capture.CaptureAsync(Gesture(), CancellationToken.None);
 
