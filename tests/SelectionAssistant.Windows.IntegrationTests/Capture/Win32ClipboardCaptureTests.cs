@@ -490,11 +490,20 @@ public sealed class Win32ClipboardCaptureTests
         FakeInput input) =>
         new(clipboard, input, FastOptions);
 
+    // Writes synchronously inside SendCopyChord rather than via fire-and-forget
+    // WriteAfterAsync. The original 5ms Task.Delay continuation queued onto the
+    // thread pool, and on loaded CI runners that scheduling delay could exceed
+    // ChangeTimeout (70ms), making the monitor misjudge "no sequence change"
+    // and flake success-path tests. Synchronous write still correctly models the
+    // sequence: baseline is read BEFORE SendCopyChord, so the Write (which bumps
+    // sequence) is visible to WaitForStableChangeAsync when it starts. This only
+    // affects the success-path helper; tests that specifically exercise async or
+    // ownerless timing still use WriteAfterAsync directly.
     private static FakeInput SourceCopyingInput(FakeClipboard clipboard, string text) => new()
     {
         OnSend = chord =>
         {
-            _ = clipboard.WriteAfterAsync(text, Gesture().SourceProcessId, delayMs: 5);
+            clipboard.Write(text, Gesture().SourceProcessId);
             return true;
         },
     };
