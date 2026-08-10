@@ -2537,6 +2537,48 @@ public partial class ClipboardHistoryWindow : Window
                 }
                 return;
 
+            // Ctrl+T opens the inline "Add tag" input on the selected row —
+            // same path as the right-click menu's "Add tag…". A direct popup
+            // (not a submenu) so it opens straight to the text box.
+            case Key.T when e.KeyModifiers == KeyModifiers.Control:
+                e.Handled = true;
+                if (CurrentSelectedRow is { } addTagRow)
+                {
+                    ShowEntryTagInputPopup(addTagRow);
+                }
+                return;
+
+            // Ctrl+M opens the "Move to…" list directly (categorize-as override
+            // + custom #tag assignments + "New tag…") — the same items as the
+            // right-click submenu but surfaced as a flat top-level menu, so the
+            // user doesn't drill through the surrounding right-click chrome.
+            // Text rows only (images can't be tagged, per BuildMoveToMenu).
+            case Key.M when e.KeyModifiers == KeyModifiers.Control:
+                e.Handled = true;
+                if (CurrentSelectedRow is { } moveRow && !moveRow.IsImage &&
+                    FindRowContainer(moveRow) is { } moveContainer)
+                {
+                    var flyout = new ContextMenu();
+                    PopulateMoveToItems(moveRow, item => flyout.Items.Add(item));
+                    flyout.Open(moveContainer);
+                }
+                return;
+
+            // Ctrl+R opens the "Remove tag" list directly — the row's current
+            // annotation tags as a flat top-level menu. No-op if the row has no
+            // tags (matches the right-click menu, which hides Remove tag when
+            // there's nothing to remove).
+            case Key.R when e.KeyModifiers == KeyModifiers.Control:
+                e.Handled = true;
+                if (CurrentSelectedRow is { } rmRow && rmRow.EntryTags.Count > 0 &&
+                    FindRowContainer(rmRow) is { } rmContainer)
+                {
+                    var flyout = new ContextMenu();
+                    PopulateRemoveTagItems(rmRow, item => flyout.Items.Add(item));
+                    flyout.Open(rmContainer);
+                }
+                return;
+
             // R54 v2: Ctrl+Tab / Ctrl+Shift+Tab cycle the nav tabs (browser-
             // style). Forward wraps All→…→last→All; Shift reverses. Only fires
             // when Ctrl is held so a plain Tab (future focus traversal) is left
@@ -3654,6 +3696,22 @@ public partial class ClipboardHistoryWindow : Window
         try { BeginResizeDrag(edge, e); } catch { /* ignore: already resizing */ }
     }
 
+    /// <summary>Finds the row's materialized container Border in the ResultsList
+    /// visual tree (the ItemTemplate root). The right-click path gets this from
+    /// the PointerPressed source; keyboard shortcuts have no such source, so
+    /// they look it up here to anchor a ContextMenu for Open().</summary>
+    private Border? FindRowContainer(ClipboardHistoryEntryRow row)
+    {
+        foreach (Control d in ResultsList.GetVisualDescendants())
+        {
+            if (d is Border b && ReferenceEquals(b.DataContext, row))
+            {
+                return b;
+            }
+        }
+        return null;
+    }
+
     // ── Per-row ContextMenu (built dynamically — depends on row flags + the
     //    current custom-tag list, both of which change at runtime) ──
 
@@ -3727,15 +3785,7 @@ public partial class ClipboardHistoryWindow : Window
 
         if (row.EntryTags.Count > 0)
         {
-            var removeTagMenu = new MenuItem { Header = Strings.Clip_Row_RemoveTag };
-            foreach (string tag in row.EntryTags)
-            {
-                string captured = tag; // capture for the lambda
-                var removeItem = new MenuItem { Header = tag, Tag = row };
-                removeItem.Click += (_, _) => EntryTagRemoved?.Invoke(row.Id, captured);
-                removeTagMenu.Items.Add(removeItem);
-            }
-            menu.Items.Add(removeTagMenu);
+            menu.Items.Add(BuildRemoveTagMenu(row));
         }
 
         // R54 v2: "View full" — explicit way to open the scrollable full-text
@@ -3779,101 +3829,11 @@ public partial class ClipboardHistoryWindow : Window
         }
 
         // "Move to…" submenu: only for text rows (R54 v2 — images can't be
-        // tagged). Two independent sections:
-        //
-        //  1. "Categorize as" — override the auto-classified built-in group.
-        //     Lets the user fix a wrong classification (move a missed secret
-        //     into Sensitive, or pull a false-positive out). The active target
-        //     is checkmarked; "Auto" reverts to the classifier result by
-        //     clearing GroupOverride. Selecting the current effective target is
-        //     a no-op (still fires the event, which is idempotent).
-        //
-        //  2. Custom tabs (#tag) — assign/unassign the entry to user-created
-        //     tabs. When none exist yet, the only entry is "New tag…" — clicking
-        //     it opens the create panel AND remembers this row so the new tag is
-        //     auto-assigned on confirm (no second right-click needed). A trailing
-        //     "New tag…" is always offered so the user can create + assign in
-        //     one flow even when tabs already exist.
+        // tagged). See BuildMoveToMenu for the section structure.
         if (!row.IsImage)
         {
-            var moveTo = new MenuItem { Header = Strings.Clip_Row_MoveTo };
-
-            // ── Section 1: categorize as (built-in group override) ──
-            void AddGroupTarget(string label, ClipboardGroup? target)
-            {
-                // Check the target that the user would switch TO: the effective
-                // group when target is a real group, or AutoGroup when target
-                // is null (revert). Selecting the already-active target is a
-                // harmless no-op but still listed so the check is informative.
-                ClipboardGroup activeForCheck = target ?? row.AutoGroup;
-                bool isCurrent = row.EffectiveGroup == activeForCheck &&
-                                 (target is not null ? row.GroupOverride == target
-                                                     : row.GroupOverride is null);
-                var item = new MenuItem
-                {
-                    Header = (isCurrent ? "✓ " : "  ") + label,
-                    Tag = row,
-                };
-                item.Click += (_, _) => GroupOverrideRequested?.Invoke(row.Id, target);
-                moveTo.Items.Add(item);
-            }
-            AddGroupTarget(Strings.Clip_Group_Auto, null);
-            AddGroupTarget(Strings.Clip_Group_LinkMenu, ClipboardGroup.Link);
-            AddGroupTarget(Strings.Clip_Group_CodeMenu, ClipboardGroup.Code);
-            AddGroupTarget(Strings.Clip_Group_CommandMenu, ClipboardGroup.Shell);
-            AddGroupTarget(Strings.Clip_Group_SensitiveMenu, ClipboardGroup.Sensitive);
-            // Note: JSON is folded into the Code tab at the filter layer, but as
-            // an override target it's redundant (Code and JSON render the same
-            // tab) — so we expose only Code here. Number has no tab and is
-            // intentionally not exposed as an override target.
-
-            moveTo.Items.Add(new Separator());
-
-            // ── Section 2: custom tabs (#tag assignments) ──
-            if (_customTags.Count == 0)
-            {
-                var createHint = new MenuItem
-                {
-                    Header = Strings.Clip_Row_NoTabsHint,
-                    Tag = row,
-                    FontStyle = FontStyle.Italic,
-                };
-                createHint.Click += (_, _) => ShowTagInputPanel(TagInputMode.Create, assignOnCreateEntryId: row.Id);
-                moveTo.Items.Add(createHint);
-            }
-            else
-            {
-                foreach (string tagName in _customTags)
-                {
-                    string tag = tagName; // capture for the lambda
-                    bool assigned = row.HasCustomTag(tag);
-                    var item = new MenuItem
-                    {
-                        Header = (assigned ? "✓ " : "  ") + "# " + tag,
-                        Tag = row,
-                    };
-                    item.Click += (_, _) =>
-                    {
-                        if (row.HasCustomTag(tag))
-                        {
-                            UnassignTagRequested?.Invoke(row.Id, tag);
-                        }
-                        else
-                        {
-                            AssignTagRequested?.Invoke(row.Id, tag);
-                        }
-                    };
-                    moveTo.Items.Add(item);
-                }
-                // Always offer "New tag…" at the bottom of the list too — creates
-                // the tab AND assigns it to this entry in one step.
-                moveTo.Items.Add(new Separator());
-                var createFromRow = new MenuItem { Header = Strings.Clip_Row_NewTabForEntry, Tag = row };
-                createFromRow.Click += (_, _) => ShowTagInputPanel(TagInputMode.Create, assignOnCreateEntryId: row.Id);
-                moveTo.Items.Add(createFromRow);
-            }
-            menu.Items.Add(moveTo);
-        } // end if (!row.IsImage)
+            menu.Items.Add(BuildMoveToMenu(row));
+        }
 
         // Sensitive-only: toggle plaintext reveal in place without writing the
         // clipboard. After reveal, the same slot becomes "Hide plaintext" so the
@@ -3906,5 +3866,124 @@ public partial class ClipboardHistoryWindow : Window
         menu.Items.Add(deleteItem);
 
         return menu;
+    }
+
+    /// <summary>Builds the "Move to…" submenu items (categorize-as override +
+    /// custom #tag assignments + "New tag…") and adds them to <paramref name="add"/>.
+    /// Called by both the right-click menu (items go under a "Move to…" header
+    /// MenuItem) and the Ctrl+M keyboard shortcut (items go flat into a
+    /// standalone ContextMenu). Same leaves either way — no item-reuse bugs
+    /// because each invocation builds fresh MenuItems.</summary>
+    private void PopulateMoveToItems(ClipboardHistoryEntryRow row, Action<Control> add)
+    {
+        // ── Section 1: categorize as (built-in group override) ──
+        void AddGroupTarget(string label, ClipboardGroup? target)
+        {
+            // Check the target that the user would switch TO: the effective
+            // group when target is a real group, or AutoGroup when target is
+            // null (revert). Selecting the already-active target is a harmless
+            // no-op but still listed so the check is informative.
+            ClipboardGroup activeForCheck = target ?? row.AutoGroup;
+            bool isCurrent = row.EffectiveGroup == activeForCheck &&
+                             (target is not null ? row.GroupOverride == target
+                                                 : row.GroupOverride is null);
+            var item = new MenuItem
+            {
+                Header = (isCurrent ? "✓ " : "  ") + label,
+                Tag = row,
+            };
+            item.Click += (_, _) => GroupOverrideRequested?.Invoke(row.Id, target);
+            add(item);
+        }
+        AddGroupTarget(Strings.Clip_Group_Auto, null);
+        AddGroupTarget(Strings.Clip_Group_LinkMenu, ClipboardGroup.Link);
+        AddGroupTarget(Strings.Clip_Group_CodeMenu, ClipboardGroup.Code);
+        AddGroupTarget(Strings.Clip_Group_CommandMenu, ClipboardGroup.Shell);
+        AddGroupTarget(Strings.Clip_Group_SensitiveMenu, ClipboardGroup.Sensitive);
+        // Note: JSON is folded into the Code tab at the filter layer, but as an
+        // override target it's redundant (Code and JSON render the same tab) —
+        // so we expose only Code here. Number has no tab and is intentionally
+        // not exposed as an override target.
+
+        add(new Separator());
+
+        // ── Section 2: custom tabs (#tag assignments) ──
+        if (_customTags.Count == 0)
+        {
+            var createHint = new MenuItem
+            {
+                Header = Strings.Clip_Row_NoTabsHint,
+                Tag = row,
+                FontStyle = FontStyle.Italic,
+            };
+            createHint.Click += (_, _) => ShowTagInputPanel(TagInputMode.Create, assignOnCreateEntryId: row.Id);
+            add(createHint);
+        }
+        else
+        {
+            foreach (string tagName in _customTags)
+            {
+                string tag = tagName; // capture for the lambda
+                bool assigned = row.HasCustomTag(tag);
+                var item = new MenuItem
+                {
+                    Header = (assigned ? "✓ " : "  ") + "# " + tag,
+                    Tag = row,
+                };
+                item.Click += (_, _) =>
+                {
+                    if (row.HasCustomTag(tag))
+                    {
+                        UnassignTagRequested?.Invoke(row.Id, tag);
+                    }
+                    else
+                    {
+                        AssignTagRequested?.Invoke(row.Id, tag);
+                    }
+                };
+                add(item);
+            }
+            // Always offer "New tag…" at the bottom of the list too — creates
+            // the tab AND assigns it to this entry in one step.
+            add(new Separator());
+            var createFromRow = new MenuItem { Header = Strings.Clip_Row_NewTabForEntry, Tag = row };
+            createFromRow.Click += (_, _) => ShowTagInputPanel(TagInputMode.Create, assignOnCreateEntryId: row.Id);
+            add(createFromRow);
+        }
+    }
+
+    /// <summary>Builds the "Remove tag" items (one leaf per tag the row
+    /// currently carries) and adds them to <paramref name="add"/>. Caller is
+    /// responsible for gating on <c>row.EntryTags.Count > 0</c>. Used by both
+    /// the right-click menu and the Ctrl+R keyboard shortcut.</summary>
+    private void PopulateRemoveTagItems(ClipboardHistoryEntryRow row, Action<Control> add)
+    {
+        foreach (string tag in row.EntryTags)
+        {
+            string captured = tag; // capture for the lambda
+            var removeItem = new MenuItem { Header = tag, Tag = row };
+            removeItem.Click += (_, _) => EntryTagRemoved?.Invoke(row.Id, captured);
+            add(removeItem);
+        }
+    }
+
+    /// <summary>Builds the "Move to…" submenu as a header MenuItem (for the
+    /// right-click context menu). Wraps <see cref="PopulateMoveToItems"/> with a
+    /// header so the leaves appear nested under "Move to…".</summary>
+    private MenuItem BuildMoveToMenu(ClipboardHistoryEntryRow row)
+    {
+        var moveTo = new MenuItem { Header = Strings.Clip_Row_MoveTo };
+        PopulateMoveToItems(row, item => moveTo.Items.Add(item));
+        return moveTo;
+    }
+
+    /// <summary>Builds the "Remove tag" submenu as a header MenuItem (for the
+    /// right-click context menu). Wraps <see cref="PopulateRemoveTagItems"/> with
+    /// a header so the leaves appear nested under "Remove tag".</summary>
+    private MenuItem BuildRemoveTagMenu(ClipboardHistoryEntryRow row)
+    {
+        var removeTagMenu = new MenuItem { Header = Strings.Clip_Row_RemoveTag };
+        PopulateRemoveTagItems(row, item => removeTagMenu.Items.Add(item));
+        return removeTagMenu;
     }
 }
