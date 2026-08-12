@@ -63,7 +63,7 @@ namespace SelectionAssistant.UI.Views;
 /// </para>
 /// <para>
 /// <b>R52:</b> magnetic snap during drag. The window snaps to screen work-area
-/// edges and other pinned-window edges within an 8px threshold. Shift
+/// edges and other pinned-window edges within a 20px threshold. Shift
 /// temporarily disables snapping. A gold guide line appears during drag when a
 /// snap edge is hit. The pure-function calculator is
 /// <see cref="MagneticSnapCalculator.ComputeSnap"/>.

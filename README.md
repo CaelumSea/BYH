@@ -126,7 +126,7 @@ Clipboard     ← 剪贴板历史所有开关与上限
 # 编译检查（Windows）
 dotnet build SelectionAssistant.slnx -c Release
 
-# 测试（当前 954 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
+# 测试（当前 953 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
 dotnet test
 
 # NativeAOT 单文件发布（Windows，生成 BYH.exe，约 28MB）
@@ -173,9 +173,9 @@ src/
 
 详见 `docs/AUDIT-findings.md` 和 `docs/BACKLOG-roadmap.md`。v0.1.0 之后排期中的硬骨头：
 
-- **M1/M2**：`ClipboardHistoryWindow.axaml.cs`（~3300 行）和 `App.axaml.cs`（~2200 行）的 god-class 拆分
+- **M1/M2**：`ClipboardHistoryWindow.axaml.cs`（~4000 行）和 `App.axaml.cs`（~2770 行）的 god-class 拆分
 - **L3**：无障碍 `AutomationProperties.Name` 全层补齐（需屏幕阅读器验证）
-- **M4**：剩余 ~46 处 `[DllImport]` → `[LibraryImport]` 迁移（hook / launcher / icon 高风险核心路径）
+- **M4**：剩余 ~51 处 `[DllImport]` → `[LibraryImport]` 迁移（hook / launcher / icon 高风险核心路径）
 - **L8**：`IManagedWindow` 公共接口（与 M1/M2 耦合）
 - 安装包 / 代码签名
 - **[REQ-036（已派发，未实现）](docs/architecture/10-multimodal-actions.md)**：让同一多模态 Provider/Model 按输入类型处理纯文本、OCR 和截图直译；保留纯 OCR 和“OCR → 文本动作”回退。

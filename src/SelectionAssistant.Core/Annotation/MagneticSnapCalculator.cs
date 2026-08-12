@@ -69,7 +69,7 @@ public static class MagneticSnapCalculator
     /// <param name="workAreas">List of screen work areas (physical pixels).</param>
     /// <param name="others">List of other pinned windows' physical rects (exclude the moving window itself).</param>
     /// <param name="shiftHeld">If true, snap is disabled — returns the original position.</param>
-    /// <param name="threshold">Snap threshold in physical pixels (default 8).</param>
+    /// <param name="threshold">Snap threshold in physical pixels (default 20 = <see cref="SnapThreshold"/>).</param>
     /// <returns>
     /// <c>snappedTopLeft</c>: the (X, Y) position after snapping (or original if no snap);
     /// <c>hints</c>: list of snap hints for each axis that hit (empty if no snap).

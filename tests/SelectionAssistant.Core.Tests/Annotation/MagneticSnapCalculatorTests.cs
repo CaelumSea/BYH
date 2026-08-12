@@ -13,7 +13,7 @@ public sealed class MagneticSnapCalculatorTests
     [Fact]
     public void ScreenLeft_HitsWithinThreshold()
     {
-        // Moving window Left=3, threshold 8 => within threshold => snap to Left=0.
+        // Moving window Left=3, default threshold 20 => within threshold => snap to Left=0.
         var moving = new PhysicalRect(3, 100, 203, 300);
         var (pos, hints) = MagneticSnapCalculator.ComputeSnap(moving, SingleScreen, NoOthers);
         Assert.Equal(0, pos.X);

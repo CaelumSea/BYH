@@ -13,7 +13,7 @@
 
 ```bash
 dotnet build SelectionAssistant.slnx -c Release      # 0 警告（CI /warnaserror）
-dotnet test SelectionAssistant.slnx                   # 当前 954 项
+dotnet test SelectionAssistant.slnx                   # 当前 953 项
 dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Release -r win-x64
 ```
 
@@ -32,7 +32,7 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 1. **i18n 三向同步**。`src/SelectionAssistant.Core/I18n/Strings.cs`（属性）+ `Strings_en.cs` + `Strings_zh_CN.cs` 三处 key 必须 1:1。`StringsTests` 三个不变量测试是守卫——typo / 漏 entry / en-zh 不一致 = CI 红。AXAML 用 `{x:Static i18n:Strings.X}`，code-behind 用 `Strings.X`。`x:Static` 是编译期解析，trim-safe。
 2. **无反射**。NativeAOT + `TrimMode=full`。JSON 全部手写 `Utf8JsonReader/Writer`，禁用 `System.Text.Json` 反射模式、`Activator.CreateInstance`、运行时 `ResourceInclude`。
 3. **密钥走 DPAPI**。`secret://provider/{id}` URI + `ISecretStore`（`%LOCALAPPDATA%\BYH\secrets\{sha256}.bin`，CurrentUser scope）。**永不**进 JSON、永不进日志（`RedactedLogger` 脱敏 `api_key=`/`bearer`）。CLI 写入：`BYH.exe --set-secret secret://provider/{id} <value>`。
-4. **P/Invoke 迁移进行中**（66/112 完成）。新增 P/Invoke 用 `[LibraryImport]` + 显式 `EntryPoint="...W"`。陷阱见 `docs/AUDIT-findings.md` M4：`StringMarshalling.Utf16` ≠ `CharSet.Unicode`、bool 参数要 `[MarshalAs(Bool)]`、out 句柄要显式 release。
+4. **P/Invoke 迁移进行中**（69/120 完成，全 src）。新增 P/Invoke 用 `[LibraryImport]` + 显式 `EntryPoint="...W"`。陷阱见 `docs/AUDIT-findings.md` M4：`StringMarshalling.Utf16` ≠ `CharSet.Unicode`、bool 参数要 `[MarshalAs(Bool)]`、out 句柄要显式 release。
 5. **单实例 mutex**。`Global\BYH_ByYourHand_SingleInstance`。**替换 exe 前先停止运行中的 BYH.exe**——运行中的进程锁文件，部署/发布前必做。
 6. **品牌名约定**。`AssemblyName=BYH`（exe 名、进程名、mutex、配置目录、托盘 tooltip 统一），但 namespace 仍是 `SelectionAssistant.*`（技术标识符不改）。`avares://` URI 用 `avares://BYH/*`（App 项目）和 `avares://SelectionAssistant.UI/*`（UI 项目），两者并存。
 7. **样式约定：InnerCard 即唯一框 + Fluent 资源键双层陷阱**。设置页所有输入控件（TextBox / ComboBox / NumericUpDown）都包在 `Border.InnerCard` 里，**InnerCard 是唯一可见的框**——控件自己的 Fluent 边框必须透明，否则会"套两层"（白瓷砖 + 金边，很丑）。具体：
@@ -46,7 +46,7 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 
 ## 当前状态与下一步
 
-**v0.1.0 已发布**（2026-07，git tag `v0.1.0`）。本地 `main` 截至 2026-08-09 已完成 REQ-028–REQ-044，新增 TTS「朗读」与 PowerMonitoring「功耗监控」两大功能：大尺寸截图防崩溃、Warp 选区捕获兼容、开机自启、剪贴板超长检索 / 长按多选 / tag 过滤 / Delete 键修复、Custom Provider 草稿、Ocean Eyes Enter 保存、Speak 设置选项卡与密钥状态、工具栏说话与系统功耗轮询。PowerMonitoring 上线后，设置中心手机式状态卡的后 4 页（CPU/GPU/System/Energy）改为实时功率与温度数据（同源、null 字段整行隐藏），托盘 hover tooltip 改为两行（上=功率、下=温度），Overview 第一页不动。最新验证基线为 **954/954**（Core 784 / Providers 51 / Windows 119）。
+**v0.1.0 已发布**（2026-07，git tag `v0.1.0`）。本地 `main` 截至 2026-08-09 已完成 REQ-028–REQ-044，新增 TTS「朗读」与 PowerMonitoring「功耗监控」两大功能：大尺寸截图防崩溃、Warp 选区捕获兼容、开机自启、剪贴板超长检索 / 长按多选 / tag 过滤 / Delete 键修复、Custom Provider 草稿、Ocean Eyes Enter 保存、Speak 设置选项卡与密钥状态、工具栏说话与系统功耗轮询。PowerMonitoring 上线后，设置中心手机式状态卡的后 4 页（CPU/GPU/System/Energy）改为实时功率与温度数据（同源、null 字段整行隐藏），托盘 hover tooltip 改为两行（上=功率、下=温度），Overview 第一页不动。最新验证基线为 **953/953**（Core 783 / Providers 51 / Windows 119）。
 
 **2026-08-10 剪贴板交互改进**：托盘点击恢复最小化/置顶已打开的设置窗口（`ShowAndActivate` 闪烁 Topmost）；合并「翻译」+「视觉」导航为单一「模型」页（Provider 增删改 + 视觉/OCR 子卡片，OCR 控件 x:Name 不变、数据模型零改动）；剪贴板行新增三个快捷键 —— `Ctrl+T` 添加标签、`Ctrl+M` 移动到（分类+自定义标签扁平列表）、`Ctrl+R` 移除标签，并修复 `ApplyFilterResults` 在 tag/group/pin/favorite 等非搜索刷新时把选中条目重置回顶部的问题（改按 Id 找回保持选中，真搜索仍跳到首个匹配）。剪贴板行右键菜单的 Move to / Remove tag 构建逻辑提取为 `PopulateMoveToItems` / `PopulateRemoveTagItems`（叶子构建）+ `BuildMoveToMenu` / `BuildRemoveTagMenu`（带 header 包装）+ `FindRowContainer`（可视树查找，键盘路径无 PointerPressed source），右键菜单行为不变。
 
@@ -54,7 +54,7 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 
 DEFER 队列（详见 CHANGELOG）：
 
-- **M1/M2**：god-class 拆分（`ClipboardHistoryWindow.axaml.cs` ~3300 行 / `App.axaml.cs` ~2200 行）
+- **M1/M2**：god-class 拆分（`ClipboardHistoryWindow.axaml.cs` ~4000 行 / `App.axaml.cs` ~2770 行）
 - **L3**：`AutomationProperties.Name` 无障碍全层补齐（需屏幕阅读器验证）
-- **M4**：剩余 46 处 `[DllImport]` → `[LibraryImport]`（高风险核心路径）
+- **M4**：剩余 51 处 `[DllImport]` → `[LibraryImport]`（高风险核心路径）
 - **macOS**：已取消移植计划。BYH 是 Windows 专属工具，Mac 同类需求由独立项目专项开发。

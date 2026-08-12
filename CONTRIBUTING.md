@@ -63,7 +63,7 @@ the app at runtime:
   `TrimMode=full`. JSON serialization is hand-written `Utf8JsonReader/Writer`.
   Don't introduce `System.Text.Json` reflection-based (de)serialization or
   `Activator.CreateInstance`.
-- **`[DllImport]` → `[LibraryImport]` migration is partial (66/112).** New
+- **`[DllImport]` → `[LibraryImport]` migration is partial (69/120).** New
   P/Invoke should use `[LibraryImport]` with explicit `EntryPoint="...W"`
   where Win32 only exports the `W` variant. See `docs/AUDIT-findings.md`
   entry M4 for the trap list (`StringMarshalling.Utf16` ≠ `CharSet.Unicode`,
