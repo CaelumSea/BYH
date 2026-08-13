@@ -121,6 +121,10 @@ public partial class App : Application
     // setting against the registry so a user who disabled BYH in Task Manager /
     // Windows Settings sees the toggle read Off here.
     private StartupSettings _startupSettings = StartupSettings.Default;
+    // Idle working-set trim timer. Ticks every few minutes; the Tick trims the
+    // OS working set only when no popup is visible (app back in the tray). Keeps
+    // Task Manager honest during long idle sessions instead of holding peak usage.
+    private DispatcherTimer? _workingSetTrimTimer;
     private readonly IAutoStartManager _autoStartManager = new WindowsRunAutoStartManager();
     private IClassicDesktopStyleApplicationLifetime? _desktop;
     private ByhApplicationPaths? _paths;
@@ -456,6 +460,17 @@ public partial class App : Application
                 _runtime?.ResetForRedraw();
 
             _trayIcon = CreateTrayIcon();
+
+            // Idle working-set trim: when every popup is closed and we're back in
+            // the tray, ask the OS to reclaim the pages the last burst reserved
+            // (selection capture, clipboard thumbnails, settings). 3-min cadence —
+            // EmptyWorkingSet is a cheap no-op when already lean.
+            _workingSetTrimTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(3) };
+            _workingSetTrimTimer.Tick += (_, _) =>
+            {
+                if (!AnyPopupVisible()) TrimWorkingSet();
+            };
+            _workingSetTrimTimer.Start();
 
             toolbarWindow.Opened += (_, _) =>
             {
@@ -1051,6 +1066,35 @@ public partial class App : Application
 
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
+
+    // ── Idle working-set trim ──
+    // Tray apps burst (selection capture, clipboard thumbnails, settings) then
+    // sit idle for hours. The .NET GC reclaims managed objects but does not
+    // proactively decommit the working set, so Task Manager keeps showing peak
+    // usage forever. EmptyWorkingSet lets the OS page idle pages out; they fault
+    // back in if we need them. Pure hint — failures are swallowed, never
+    // load-bearing. Gated on "no popup visible" so we never trim mid-action.
+    [DllImport("kernel32.dll")]
+    private static extern nint GetCurrentProcess();
+
+    [DllImport("psapi.dll")]
+    private static extern bool EmptyWorkingSet(nint hProcess);
+
+    private static void TrimWorkingSet()
+    {
+        try { _ = EmptyWorkingSet(GetCurrentProcess()); }
+        catch { /* psapi missing/denied — opportunistic, ignore. */ }
+    }
+
+    private bool AnyPopupVisible() =>
+        _toolbarWindow?.IsVisible == true
+        || _resultWindow?.IsVisible == true
+        || _settingsWindow?.IsVisible == true
+        || _promptWindow?.IsVisible == true
+        || _ocrTextWindow?.IsVisible == true
+        || _regionOverlay?.IsVisible == true
+        || _spotlightWindow?.IsVisible == true
+        || _clipboardHistoryWindow?.IsVisible == true;
 
     private void RegisterInitialOceanEyesHotKey()
     {
