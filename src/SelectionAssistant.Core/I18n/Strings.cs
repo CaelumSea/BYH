@@ -377,6 +377,11 @@ public static partial class Strings
     public static string Settings_PowerMonitor_HistorySize => Get(nameof(Settings_PowerMonitor_HistorySize));
     public static string Settings_PowerMonitor_Saved => Get(nameof(Settings_PowerMonitor_Saved));
     public static string Settings_PowerMonitor_Offline => Get(nameof(Settings_PowerMonitor_Offline));
+    public static string Settings_PowerMonitor_LhmPath => Get(nameof(Settings_PowerMonitor_LhmPath));
+    public static string Settings_PowerMonitor_LhmPath_Hint => Get(nameof(Settings_PowerMonitor_LhmPath_Hint));
+    public static string Settings_PowerMonitor_StartLhm => Get(nameof(Settings_PowerMonitor_StartLhm));
+    public static string Settings_PowerMonitor_LhmStarting => Get(nameof(Settings_PowerMonitor_LhmStarting));
+    public static string Settings_PowerMonitor_LhmNotFound => Get(nameof(Settings_PowerMonitor_LhmNotFound));
     public static string Settings_SavePowerMonitor => Get(nameof(Settings_SavePowerMonitor));
     public static string Settings_PageTitle_PowerMonitor => Get(nameof(Settings_PageTitle_PowerMonitor));
     public static string Settings_PageSubtitle_PowerMonitor => Get(nameof(Settings_PageSubtitle_PowerMonitor));

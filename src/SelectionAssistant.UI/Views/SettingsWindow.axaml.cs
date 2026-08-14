@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Platform.Storage;
 using SelectionAssistant.Core.Appearance;
 using SelectionAssistant.Core.Capture;
 using SelectionAssistant.Core.Clipboard;
@@ -460,6 +461,10 @@ public partial class SettingsWindow : Window
 
     /// <summary>Request to wipe the on-disk power history jsonl (after user confirms elsewhere).</summary>
     public event Action? PowerMonitorHistoryClearRequested;
+
+    /// <summary>Request to launch the user's Libre Hardware Monitor at <paramref name="lhmExePath"/>
+    /// as administrator (triggers UAC). Fired by the "Start LHM" button when the path is set.</summary>
+    public event Action<string>? PowerMonitorLhmStartRequested;
 
     /// <summary>Request to atomically apply and persist Ocean Eyes trigger settings.</summary>
     public event Action<OceanEyesTriggerSettings>? OceanEyesTriggerSettingsSaved;
@@ -1391,6 +1396,7 @@ public partial class SettingsWindow : Window
         ArgumentNullException.ThrowIfNull(settings);
         PowerMonitorEnabledToggle.IsChecked = settings.Enabled;
         PowerMonitorEndpointInput.Text = settings.Endpoint;
+        PowerMonitorLhmPathInput.Text = settings.LhmExePath;
         PowerMonitorPollIntervalInput.Value = settings.PollIntervalMs;
         PowerMonitorShowInTrayToggle.IsChecked = settings.ShowInTray;
         PowerMonitorTrackEnergyToggle.IsChecked = settings.TrackEnergy;
@@ -1439,6 +1445,7 @@ public partial class SettingsWindow : Window
             GpuTempThresholdC = (int)(PowerMonitorGpuTempInput.Value ?? PowerMonitorSettings.Default.GpuTempThresholdC),
             SsdTempThresholdC = (int)(PowerMonitorSsdTempInput.Value ?? PowerMonitorSettings.Default.SsdTempThresholdC),
             HistoryRetentionDays = (int)(PowerMonitorHistoryRetentionInput.Value ?? PowerMonitorSettings.Default.HistoryRetentionDays),
+            LhmExePath = PowerMonitorLhmPathInput.Text?.Trim() ?? string.Empty,
         };
         return settings.Normalize();
     }
@@ -1474,6 +1481,61 @@ public partial class SettingsWindow : Window
     private void OnPowerMonitorClearHistoryClick(object? sender, RoutedEventArgs e)
     {
         PowerMonitorHistoryClearRequested?.Invoke();
+    }
+
+    /// <summary>"Start LHM" button: when the configured path is set, ask the runtime to launch
+    /// Libre Hardware Monitor as administrator (UAC). The runtime pushes the outcome back via
+    /// the shared status line. A blank path shows the "not set" hint instead of launching.</summary>
+    private void OnPowerMonitorLhmStartClick(object? sender, RoutedEventArgs e)
+    {
+        string path = (PowerMonitorLhmPathInput.Text ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(path))
+        {
+            PowerMonitorStatusText.Text = Strings.Settings_PowerMonitor_LhmNotFound;
+            return;
+        }
+        PowerMonitorStatusText.Text = Strings.Settings_PowerMonitor_LhmStarting;
+        PowerMonitorLhmStartRequested?.Invoke(path);
+    }
+
+    /// <summary>"Browse" button: .exe file picker that fills the path box. The chosen path is
+    /// persisted only when the user clicks Save (mirrors the Endpoint field lifecycle).</summary>
+    private async void OnPowerMonitorLhmBrowseClick(object? sender, RoutedEventArgs e)
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel is null)
+        {
+            return;
+        }
+        var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = Strings.Settings_PowerMonitor_LhmPath,
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType(Strings.LauncherEdit_Picker_ExeFilter) { Patterns = ["*.exe"] },
+                new FilePickerFileType(Strings.LauncherEdit_Picker_AllFilter) { Patterns = ["*.*"] },
+            ],
+        });
+        if (files.Count > 0)
+        {
+            PowerMonitorLhmPathInput.Text = files[0].TryGetLocalPath() ?? files[0].Path.ToString();
+        }
+    }
+
+    /// <summary>Pushed by App whenever a fresh power snapshot arrives (and when the settings page
+    /// opens): when true (LHM online) the Start button is disabled to prevent a second instance;
+    /// when false (offline) it's enabled so the user can relaunch LHM.</summary>
+    public bool IsLhmOnline
+    {
+        set => PowerMonitorStartLhmButton.IsEnabled = !value;
+    }
+
+    /// <summary>App callback: show a free-form status message in the power-monitor status line
+    /// (used by the Start-LHM handler to surface "starting" / "not found" outcomes).</summary>
+    public void ShowPowerMonitorStatus(string text)
+    {
+        PowerMonitorStatusText.Text = text;
     }
 
     /// <summary>Byte-size formatter for the history label ("1.2 KB", "3.4 MB").</summary>

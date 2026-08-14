@@ -507,6 +507,52 @@ internal sealed class SelectionRuntime : IDisposable
     }
 
     /// <summary>
+    /// 启动用户配置的 Libre Hardware Monitor(<see cref="PowerMonitorSettings.LhmExePath"/>),
+    /// 以管理员身份运行(触发 UAC)。LHM 的 manifest 声明 requireAdministrator,LauncherRunner
+    /// 主路径返回 ERROR_ELEVATION_REQUIRED(740) 后自动 fallback 到 ShellExecuteEx(verb="runas")
+    /// 弹 UAC —— 复用启动器现有的提权链路,无需新 P/Invoke。供设置页"启动 LHM"按钮使用:
+    /// LHM 离线时一键拉起,无需用户手动找 exe。fire-and-forget 在后台线程(shell 启动不阻塞
+    /// UI,镜像 <see cref="RevealGalleryEntryInExplorer"/> 的非阻塞模式)。
+    /// </summary>
+    /// <returns><c>(Ok, Message)</c>:Ok=true 表示启动命令已发出(UAC 是否通过取决于用户),
+    /// Ok=false 表示路径不存在或参数缺失;Message 是可直接显示给用户的状态文案。</returns>
+    public (bool Ok, string Message) StartLhm(string exePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(exePath);
+        if (!File.Exists(exePath))
+        {
+            _logger.Error("PowerMonitor", $"StartLhm: executable not found: {exePath}");
+            return (false, Strings.Settings_PowerMonitor_LhmNotFound);
+        }
+
+        var entry = new LauncherEntry(
+            Id: "lhm-start",
+            Name: "Libre Hardware Monitor",
+            Kind: LauncherKind.LocalApp,
+            Target: exePath);
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                string? err = LauncherRunner.Start(entry, string.Empty);
+                if (err is null)
+                {
+                    _logger.Info("PowerMonitor", $"StartLhm: launch issued for {exePath} (UAC prompted).");
+                }
+                else
+                {
+                    _logger.Error("PowerMonitor", $"StartLhm: launch failed: {err}");
+                }
+            }
+            catch (Exception exception)
+            {
+                _logger.Error("PowerMonitor", "StartLhm: unexpected failure.", exception);
+            }
+        });
+        return (true, Strings.Settings_PowerMonitor_LhmStarting);
+    }
+
+    /// <summary>
     /// Driven by App.axaml.cs's polling loop on each tick. Reads LHM, integrates
     /// energy (trapezoidal), evaluates alert thresholds, appends a history sample
     /// once per minute, and persists cumulative state every 60s. Returns the

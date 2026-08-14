@@ -384,6 +384,7 @@ public partial class App : Application
             settingsWindow.PowerMonitorTestRequested += OnPowerMonitorTestRequested;
             settingsWindow.PowerMonitorAlertTestRequested += OnPowerMonitorAlertTest;
             settingsWindow.PowerMonitorHistoryClearRequested += OnPowerMonitorHistoryClear;
+            settingsWindow.PowerMonitorLhmStartRequested += OnPowerMonitorLhmStart;
             settingsWindow.OceanEyesTriggerSettingsSaved += OnOceanEyesTriggerSettingsSaved;
             settingsWindow.OceanEyesCaptureSettingsSaved += OnOceanEyesCaptureSettingsSaved;
             settingsWindow.ToolbarShortcutsSaved += OnToolbarShortcutsSaved;
@@ -2112,6 +2113,7 @@ public partial class App : Application
         var (histPath, histExists, histBytes, histSamples) = _runtime.GetPowerHistoryInfo();
         _settingsWindow.SetPowerMonitorSettings(
             _runtime.GetPowerMonitorSettings(), histPath, histExists, histBytes, histSamples);
+        _settingsWindow.IsLhmOnline = _runtime.GetLastPowerSnapshot().Connected;
         _settingsWindow.SetOceanEyesTriggerSettings(_oceanEyesTrigger);
         _settingsWindow.SetOceanEyesCaptureSettings(_oceanEyesCapture);
         _settingsWindow.SetToolbarShortcuts(_toolbarShortcuts);
@@ -2412,6 +2414,16 @@ public partial class App : Application
             _runtime.GetPowerMonitorSettings(), histPath, histExists, histBytes, histSamples);
     }
 
+    /// <summary>Settings-page "Start LHM" handler: launch the configured Libre Hardware Monitor
+    /// as administrator (UAC). Pushes the synchronous outcome to the status line — the actual
+    /// online/offline flip arrives a few seconds later via the polling loop.</summary>
+    private void OnPowerMonitorLhmStart(string lhmExePath)
+    {
+        if (_runtime is null || _settingsWindow is null) return;
+        var (ok, message) = _runtime.StartLhm(lhmExePath);
+        _settingsWindow.ShowPowerMonitorStatus(message);
+    }
+
     /// <summary>
     /// (Re)starts the power polling loop. Cancels any in-flight loop first. No-op
     /// when the runtime isn't ready or power monitoring is disabled. Called at app
@@ -2460,6 +2472,10 @@ public partial class App : Application
                 {
                     UpdateTrayTooltip(snap);
                     _settingsWindow?.UpdatePhonePowerViews(snap);
+                    if (_settingsWindow is not null)
+                    {
+                        _settingsWindow.IsLhmOnline = snap.Connected;
+                    }
                     if (result.AnyNewlyTriggered)
                     {
                         if (result.NewCpuTriggered) _ = Task.Run(() => PlayAlertSound(PowerAlertKind.Cpu));

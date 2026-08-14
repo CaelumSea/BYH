@@ -1497,6 +1497,36 @@
                 </Grid>
               </StackPanel>
 
+              <!-- LHM 启动:离线时一键以管理员身份启动 Libre Hardware Monitor。 -->
+              <StackPanel Spacing="6">
+                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10">
+                  <TextBlock Text="{x:Static i18n:Strings.Settings_PowerMonitor_LhmPath}"
+                             FontSize="{DynamicResource ByhFontSizeBody}"
+                             FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="1"
+                             Text="{x:Static i18n:Strings.Settings_PowerMonitor_LhmPath_Hint}"
+                             Classes="Muted"
+                             FontSize="{DynamicResource ByhFontSizeCaption}"
+                             TextWrapping="Wrap"
+                             VerticalAlignment="Center" />
+                </Grid>
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                  <Border Grid.Column="0" Classes="InnerCard" Padding="6,4">
+                    <TextBox x:Name="PowerMonitorLhmPathInput"
+                             PlaceholderText="C:\Path\To\LibreHardwareMonitor.exe"
+                             TextWrapping="NoWrap" />
+                  </Border>
+                  <Button Grid.Column="1"
+                          Content="{x:Static i18n:Strings.Common_Browse}"
+                          Click="OnPowerMonitorLhmBrowseClick" />
+                  <Button Grid.Column="2"
+                          x:Name="PowerMonitorStartLhmButton"
+                          Classes="Primary"
+                          Content="{x:Static i18n:Strings.Settings_PowerMonitor_StartLhm}"
+                          Click="OnPowerMonitorLhmStartClick" />
+                </Grid>
+              </StackPanel>
+
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
                 <TextBlock x:Name="PowerMonitorStatusText"
                            TextWrapping="Wrap"

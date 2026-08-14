@@ -75,6 +75,8 @@ public static class PowerMonitorSettingsStore
                 GpuTempThresholdC = ReadInt(root, "gpuTempThresholdC", defaults.GpuTempThresholdC),
                 SsdTempThresholdC = ReadInt(root, "ssdTempThresholdC", defaults.SsdTempThresholdC),
                 HistoryRetentionDays = ReadInt(root, "historyRetentionDays", defaults.HistoryRetentionDays),
+                // LHM 启动路径(schemaVersion 2 后追加;旧文件缺该键 → 默认空串)。
+                LhmExePath = ReadString(root, "lhmExePath", defaults.LhmExePath),
             };
 
             double whTotal = ReadDouble(root, "wattHoursTotal", 0);
@@ -162,6 +164,8 @@ public static class PowerMonitorSettingsStore
                 writer.WriteNumber("gpuTempThresholdC", settings.GpuTempThresholdC);
                 writer.WriteNumber("ssdTempThresholdC", settings.SsdTempThresholdC);
                 writer.WriteNumber("historyRetentionDays", settings.HistoryRetentionDays);
+                // LHM 启动路径(可选;空串照样写出,读回保持空)。
+                writer.WriteString("lhmExePath", settings.LhmExePath);
                 // 告警状态（跨重启保持，防重启后因残留超温状态重响）。
                 writer.WriteBoolean("alertCpuTriggered", alertState.CpuTriggered);
                 writer.WriteBoolean("alertGpuTriggered", alertState.GpuTriggered);

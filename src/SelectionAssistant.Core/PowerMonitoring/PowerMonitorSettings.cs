@@ -85,6 +85,15 @@ public sealed record PowerMonitorSettings
     /// </summary>
     public int HistoryRetentionDays { get; init; } = 30;
 
+    /// <summary>
+    /// Libre Hardware Monitor 可执行文件路径(用户机器上 LibreHardwareMonitor.exe 的位置)。
+    /// 供功耗栏"启动 LHM"按钮使用:当 8085 连不上(用户关了 LHM)时,点按钮以此路径提权
+    /// 启动 LHM(verb=runas → UAC)。空 = 未配置(按钮提示先选路径)。发布版 BYH 不打包
+    /// LHM,故路径由用户在设置里填一次后随配置持久化。不校验绝对路径——启动时由
+    /// <see cref="System.IO.File.Exists"/> 判定存在性。
+    /// </summary>
+    public string LhmExePath { get; init; } = "";
+
     public static PowerMonitorSettings Default { get; } = new();
 
     /// <summary>
@@ -93,6 +102,7 @@ public sealed record PowerMonitorSettings
     public PowerMonitorSettings Normalize() => this with
     {
         Endpoint = string.IsNullOrWhiteSpace(Endpoint) ? Default.Endpoint : Endpoint.Trim(),
+        LhmExePath = string.IsNullOrWhiteSpace(LhmExePath) ? "" : LhmExePath.Trim(),
         PollIntervalMs = PollIntervalMs <= 0
             ? Default.PollIntervalMs
             : Math.Min(Math.Max(PollIntervalMs, 1000), 60000),
