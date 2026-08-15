@@ -150,6 +150,7 @@ public sealed class WindowsSelectionTextCapturePolicyTests
     [InlineData("warp.exe", SimulatedCopyMode.CtrlShiftCOnly, 120)]
     [InlineData("Weixin.exe", SimulatedCopyMode.CtrlCOnly, 0)]
     [InlineData("WeChatAppEx.exe", SimulatedCopyMode.CtrlCOnly, 0)]
+    [InlineData("Zed.exe", SimulatedCopyMode.CtrlInsertThenCtrlC, 0)]
     public void WindowsDefaults_ResolveExpectedApplicationPolicy(
         string processName,
         SimulatedCopyMode expectedMode,
@@ -174,6 +175,50 @@ public sealed class WindowsSelectionTextCapturePolicyTests
         Assert.Equal(8, resolver.Resolve("warp", null, null).HistorySuppressionCount);
         Assert.False(resolver.Resolve("Weixin", null, null).PreserveCapturedClipboard);
         Assert.False(resolver.Resolve("WeChatAppEx", null, null).PreserveCapturedClipboard);
+    }
+
+    [Fact]
+    public void WindowsDefaults_ZedAcceptsOwnerlessClipboardWrite()
+    {
+        var resolver = new ProcessPolicyResolver();
+        WindowsDefaultCapturePolicies.AddTo(resolver);
+
+        ProcessCapturePolicy zed = resolver.Resolve("Zed", null, null);
+        Assert.True(zed.AllowOwnerlessClipboardResult);
+        Assert.Equal(8, zed.HistorySuppressionCount);
+
+        // Only Zed opts in explicitly; every other default rule (and the
+        // policy default itself) keeps rejecting ownerless writes.
+        Assert.False(resolver.Resolve("notepad", null, null).AllowOwnerlessClipboardResult);
+        Assert.False(ProcessCapturePolicy.Default.AllowOwnerlessClipboardResult);
+    }
+
+    [Fact]
+    public async Task OwnerlessPolicyFlag_ForwardsAllowOwnerlessResultToClipboardCapture()
+    {
+        var accessibility = new FakeAccessibilityCapture(Result(null, CaptureSource.None));
+        var clipboard = new FakeClipboardCapture(Result("gpui-text", CaptureSource.SimulatedCopyCtrlInsert));
+        ProcessCapturePolicy policy = ProcessCapturePolicy.Default with
+        {
+            AccessibilityEnabled = false,
+            AllowOwnerlessClipboardResult = true,
+        };
+        using var capture = Create(policy, accessibility, clipboard);
+
+        CaptureResult result = await capture.CaptureAsync(Gesture(), CancellationToken.None);
+
+        Assert.Equal("gpui-text", result.Text);
+        Assert.True(clipboard.LastInvocation?.AllowOwnerlessResult);
+
+        // Default policy must keep the flag off for non-CtrlShiftC modes.
+        var defaultClipboard = new FakeClipboardCapture(
+            Result("x", CaptureSource.SimulatedCopyCtrlC));
+        using var defaultCapture = Create(
+            ProcessCapturePolicy.Default,
+            new FakeAccessibilityCapture(Result(null, CaptureSource.None)),
+            defaultClipboard);
+        await defaultCapture.CaptureAsync(Gesture(), CancellationToken.None);
+        Assert.False(defaultClipboard.LastInvocation?.AllowOwnerlessResult);
     }
 
     [Fact]

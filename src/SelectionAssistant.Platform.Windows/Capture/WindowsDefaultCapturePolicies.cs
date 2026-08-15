@@ -27,6 +27,11 @@ public static class WindowsDefaultCapturePolicies
         "warp",
     ];
 
+    private static readonly string[] ZedProcessNames =
+    [
+        "zed",
+    ];
+
     private static readonly string[] WeChatProcessNames =
     [
         "Weixin",
@@ -69,6 +74,26 @@ public static class WindowsDefaultCapturePolicies
                 PolicyMatchKind.ProcessName,
                 processName,
                 warpPolicy));
+        }
+
+        // Zed's GPUI writes the clipboard without an owner HWND, so the owner
+        // check cannot attribute the write to the source process and the
+        // default policy rejects it. Both Ctrl+Insert and Ctrl+C dispatch
+        // editor::Copy fine (verified: injected chords copy a keyboard-made
+        // selection); one logical copy publishes 7 clipboard transactions
+        // (CF_UNICODETEXT + two "GPUI internal *" formats + synthesized), so
+        // reserve the same suppression headroom as Warp.
+        var zedPolicy = ProcessCapturePolicy.Default with
+        {
+            AllowOwnerlessClipboardResult = true,
+            HistorySuppressionCount = 8,
+        };
+        foreach (string processName in ZedProcessNames)
+        {
+            resolver.AddRule(new PolicyRule(
+                PolicyMatchKind.ProcessName,
+                processName,
+                zedPolicy));
         }
 
         // The new WeChat client hosts public-account content in a Chromium

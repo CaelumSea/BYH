@@ -28,6 +28,15 @@ public sealed record ProcessCapturePolicy(
     /// </summary>
     public int HistorySuppressionCount { get; init; } = 2;
 
+    /// <summary>
+    /// Accepts a clipboard write that has no owner HWND as a capture result.
+    /// Some GPU-rendered apps (Zed's GPUI, Warp) publish their copy without
+    /// calling SetClipboardData with an owner window, so Win32 cannot map the
+    /// write back to a process. Opt-in per process rule; the ownerless result
+    /// still goes through the sequence-stability and target checks.
+    /// </summary>
+    public bool AllowOwnerlessClipboardResult { get; init; }
+
     /// <summary>默认策略:全部启用,标准稳定时长。</summary>
     public static ProcessCapturePolicy Default { get; } = new(
         DetectionEnabled: true,

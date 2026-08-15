@@ -227,7 +227,12 @@ public sealed class WindowsSelectionTextCapture : ISelectionTextCapture, IDispos
                     new ClipboardCaptureInvocation(
                         chords,
                         stabilization,
-                        AllowOwnerlessResult: policy.CopyMode == SimulatedCopyMode.CtrlShiftCOnly,
+                        // Ownerless writes come from GPU-rendered surfaces that
+                        // publish without an owner HWND (Zed's GPUI, Warp).
+                        // Warp arrives here via CtrlShiftCOnly; Zed via the
+                        // explicit policy flag.
+                        AllowOwnerlessResult: policy.AllowOwnerlessClipboardResult ||
+                                              policy.CopyMode == SimulatedCopyMode.CtrlShiftCOnly,
                         PreserveCapturedClipboard: policy.PreserveCapturedClipboard,
                         HistorySuppressionCount: policy.HistorySuppressionCount),
                     token)
