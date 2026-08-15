@@ -295,7 +295,12 @@
                                    MaxLines="16"
                                    LineHeight="20"
                                    IsVisible="{Binding IsExpanded}" />
-                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                        <!-- Image rows render their own meta line inside the
+                             IsImage block above (thumb + "Image" badge + tags +
+                             source/time); this text-row meta line must hide for
+                             them or every badge shows twice. -->
+                        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0"
+                                    IsVisible="{Binding !IsImage}">
                           <!-- R103: "Archived" badge — only on rows from the monthly
                                archive (evicted from the live window by LRU). Sits
                                first so it's the most visible marker; neutral gray
