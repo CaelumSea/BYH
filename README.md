@@ -2,7 +2,7 @@
 
 > Context-aware selection assistant. 选词即用，不离开当前上下文。
 >
-> Status: **v0.1.0 + post-release updates (2026-08-09)** · NativeAOT single-binary · Windows 10+ · .NET 10 · [MIT License](#license)
+> Status: **v0.1.0 + post-release updates (2026-08-15)** · NativeAOT single-binary · Windows 10+ · .NET 10 · [MIT License](#license)
 
 BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选的内容——**一个工具搞定截图 OCR、即时翻译、剪贴板历史、启动器、提示词模板**，全程不离开当前窗口。
 
@@ -14,8 +14,13 @@ BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选�
 
 > **平台定位**：BYH 是 **Windows 专属**工具——核心能力（全局快捷键、UIA 文本捕获、低级 hook、DPAPI）深度依赖 Win32。`Platform.Abstractions` 作为 Windows 内部的解耦设计保留，Core/Providers 保持平台无关（由 macOS CI 守护）。
 
-## 最近更新 · 2026-08-09
+## 最近更新 · 2026-08-15
 
+- **Zed 选词兼容**：Zed（GPUI 渲染面）发布复制时剪贴板没有可查询的 Win32 owner，BYH 为 `zed` 进程内置受限的 ownerless 接受策略（序号变化 + 稳定文本 + 目标窗口校验不变），Zed 里划词即可弹出工具栏。
+- **功耗一键拉起 LHM**：功耗卡片新增「启动 LHM」按钮和 LibreHardwareMonitor.exe 路径设置；LHM 离线时一键按管理员重启（复用启动器的 UAC 提权回退）。
+- **空闲内存回落**：回到托盘空闲后定期调用 `EmptyWorkingSet` 裁剪工作集，任务管理器不再长期显示动作峰值的内存。
+- **剪贴板图片行修复**：图片条目的 tag / 徽章 / 来源 / 时间不再显示两排重复。
+- **剪贴板行快捷键**：`Ctrl+T` 添加标签、`Ctrl+M` 移动到、`Ctrl+R` 移除标签；非搜索刷新不再把选中条目重置回顶部。
 - **选词工具栏「朗读」**：选词工具栏新增「朗读」按钮（默认 `S` 快捷键），把当前选区送 MiniMax T2A 合成并通过 Windows MCI 播放；语音按书写体系自动路由（CJK / 拉丁），缺 mmx key 时回退到全局密钥。
 - **功耗监控（默认关闭）**：BYH 周期性 HTTP 轮询本地 Libre Hardware Monitor Web Server，托盘 tooltip 显示 W / kWh，按梯形积分累计能耗（Wh / kWh），温度超阈值 TTS 播报 mp3 警音（5°C 滞回），每分钟写入 `power-history.jsonl`。
 - **设置卡片实时功耗 + 托盘两行 tooltip**：设置中心右侧的手机式状态卡后 4 页（CPU / GPU / System / Energy）改为实时功率与温度数据——和功耗监控同源，传感器测不到的字段整行隐藏、LHM 离线时显示离线提示。托盘 hover tooltip 改为两行：上排 CPU/GPU 功率 + SSD1 温度，下排 CPU/GPU 温度 + SSD2 温度。
@@ -38,7 +43,7 @@ BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选�
 | 🔤 **选词工具栏** | 选中文字自动浮出 | 在任意应用选中文字即弹出工具栏，一键执行翻译 / 总结 / 解释 / 自定义提示词。结果窗口支持多模型同时对比、自定义动作、双语标题。 |
 | 🎛️ **托盘与设置** | 托盘右键 | 统一设置中心（Dashboard / 通用 / 翻译 / 动作 / 视觉 / 启动器 / 剪贴板七页），所有改动即时保存。托盘菜单直达设置、配置目录、截图画廊、重启、退出。 |
 
-**终端兼容性**：Warp（`warp.exe`）使用专用的 `Ctrl+Shift+C` 选区复制策略；其 GPU/WebView 剪贴板可能没有可查询的 Win32 owner，BYH 仅在该明确进程策略下按剪贴板序号变化和稳定文本读取，其他应用仍使用严格 owner 校验。
+**应用兼容性**：Warp（`warp.exe`）使用专用的 `Ctrl+Shift+C` 选区复制策略；Zed（`zed`，GPUI 渲染）的剪贴板写入同样没有可查询的 Win32 owner。两者都只在各自的明确进程策略下按剪贴板序号变化和稳定文本受控接受，其他应用仍使用严格 owner 校验。
 
 > 三组主快捷键均可在 **设置 → 各模块页** 自定义（支持 Ctrl/Alt/Shift/Win 修饰键 + A–Z / 0–9 / F1–F12 / Space）。修改后保存即时生效。
 
@@ -91,7 +96,8 @@ OCR（Ocean Eyes）用哪个 provider/model 在 **设置 → Vision** 单独配�
 | `clipboard-history-icons.json` | 用户导入的图标库（SVG path data）。 |
 | `launcher-entries.json` | 启动器条目（用户添加的 app/URL）。 |
 | `toolbar-shortcuts.json` | 工具栏内置快捷键（默认 R/C/V）。 |
-| `capture-policies.json` | 进程级选词捕获策略；内置 Warp 使用 `Ctrl+Shift+C`，微信/公众号使用 `Ctrl+C`，划词读取后恢复原剪贴板；只有主动复制才写入历史。其他终端保持 `Ctrl+Insert`。 |
+| `capture-policies.json` | 进程级选词捕获策略；内置 Warp 使用 `Ctrl+Shift+C`、微信/公众号使用 `Ctrl+C`、Zed 开启受控 ownerless 接受，划词读取后恢复原剪贴板；只有主动复制才写入历史。其他终端保持 `Ctrl+Insert`。 |
+| `power-monitoring.json` | 功耗监控：LHM Web 端点 / 轮询间隔 / 能耗累计 / 温度告警阈值 / LHM 程序路径（`LhmExePath`）。瞬时数据按分钟追加到 `power-history.jsonl`。 |
 | `clipboard-images/` | 图片剪贴板条目的 PNG。 |
 | `clipboard-archive/` | 按月分片（`YYYY-MM.json`）的剪贴板归档。 |
 | `launcher-icons/` | 启动器图标缓存。 |
@@ -126,7 +132,7 @@ Clipboard     ← 剪贴板历史所有开关与上限
 # 编译检查（Windows）
 dotnet build SelectionAssistant.slnx -c Release
 
-# 测试（当前 953 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
+# 测试（当前 956 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
 dotnet test
 
 # NativeAOT 单文件发布（Windows，生成 BYH.exe，约 28MB）
@@ -175,7 +181,7 @@ src/
 
 - **M1/M2**：`ClipboardHistoryWindow.axaml.cs`（~4000 行）和 `App.axaml.cs`（~2770 行）的 god-class 拆分
 - **L3**：无障碍 `AutomationProperties.Name` 全层补齐（需屏幕阅读器验证）
-- **M4**：剩余 ~51 处 `[DllImport]` → `[LibraryImport]` 迁移（hook / launcher / icon 高风险核心路径）
+- **M4**：剩余 ~53 处 `[DllImport]` → `[LibraryImport]` 迁移（hook / launcher / icon 高风险核心路径）
 - **L8**：`IManagedWindow` 公共接口（与 M1/M2 耦合）
 - 安装包 / 代码签名
 - **[REQ-036（已派发，未实现）](docs/architecture/10-multimodal-actions.md)**：让同一多模态 Provider/Model 按输入类型处理纯文本、OCR 和截图直译；保留纯 OCR 和“OCR → 文本动作”回退。

@@ -21,7 +21,7 @@
 | `Platform.Windows/Capture/WindowsSelectionTextCapture.cs` | UIA TextPattern2→TextPattern 取词 + 按进程策略选择剪贴板回退 |
 | `Platform.Windows/Capture/Win32ClipboardCapture.cs` | 监听剪贴板序号、注入复制键、校验来源并恢复原剪贴板 |
 | `Platform.Windows/Capture/SendInputHelper.cs` | 注入 Ctrl+Insert / Ctrl+C / Warp 的 Ctrl+Shift+C（以及 Ctrl+V）到源应用 |
-| `Platform.Windows/Capture/WindowsDefaultCapturePolicies.cs` | 内置终端 / PDF / Warp / 微信的进程匹配策略 |
+| `Platform.Windows/Capture/WindowsDefaultCapturePolicies.cs` | 内置终端 / PDF / Warp / 微信 / Zed 的进程匹配策略 |
 | `Core/Capture/IProcessCapturePolicyProvider.cs` | 进程策略（终端只注入 Ctrl+Insert；高完整性降级） |
 | `App/SelectionRuntime.cs` | 组合根；`OnMouseEvent` 分发（chord 优先 → dismiss → 手势 → 取词） |
 
@@ -51,7 +51,7 @@ UIA 没有返回确定文本时，`WindowsSelectionTextCapture` 根据 `SourcePr
 
 Warp 的 Windows 终端渲染面使用 `Ctrl+Shift+C` 复制选区，内置 `warp.exe` 规则映射到 `SimulatedCopyMode.CtrlShiftCOnly`，并使用 120ms 稳定等待。Warp 的 GPU/WebView 剪贴板在实测中会出现：一次逻辑复制产生多次序号/通知变化、`CF_UNICODETEXT` 可读，但 `GetClipboardOwner()` 返回空窗口，因此无法得到 owner PID。Warp 专用策略把 `historySuppressionCount` 提高到 8，覆盖这些中间写入；还原写入仍单独抑制 1 次。普通应用保留默认 2 次配额。
 
-为兼容这一行为，`ClipboardCaptureInvocation.AllowOwnerlessResult` 只在 `CtrlShiftCOnly` 策略中开启。ownerless 结果仍需同时满足：
+为兼容这一行为，`ClipboardCaptureInvocation.AllowOwnerlessResult` 在两种显式条件下开启：`CtrlShiftCOnly` 策略（Warp），或 `ProcessCapturePolicy.AllowOwnerlessClipboardResult` 策略开关（Zed，2026-08-15 加入，默认关闭）。ownerless 结果仍需同时满足：
 
 1. 注入前前台窗口的 root HWND 与手势来源一致，且没有用户正在按下的修饰键；
 2. 复制键发送成功，剪贴板序号在超时内变化并稳定；
@@ -66,6 +66,14 @@ Warp 的 Windows 终端渲染面使用 `Ctrl+Shift+C` 复制选区，内置 `war
 恢复重试和历史抑制配额，也无法从剪贴板事件本身可靠区分“被动划词”和“主动 Ctrl+C”，因此这不是继续
 增加 BYH 重试次数可以解决的问题。关闭该选项后，BYH 的 `Ctrl+Shift+C` 只做临时捕获并恢复原剪贴板，
 用户主动 `Ctrl+C` 仍按正常路径进入剪贴板历史；若 Warp 仍出现自动复制，先检查此源端设置，再调整 BYH。
+
+#### Zed（2026-08-15）
+
+Zed 的 GPUI 渲染面**接受注入键盘**（`Ctrl+Insert` / `Ctrl+C` 都能在 3–8ms 内触发复制），但**忽略注入和 PostMessage 的鼠标**——不能替用户做合成选区，只能捕获已有选区。UIA 取词为空且无害（走不到文本）。其剪贴板发布与 Warp 一样没有 owner HWND（`GetClipboardOwner()` 返回空），一次逻辑复制产生 **7 个事务**：`CF_UNICODETEXT` + 两个 “GPUI internal text hash” / “GPUI internal metadata” 自定义格式 + 合成的 `CF_TEXT`/`CF_OEMTEXT`/`CF_LOCALE`。默认 owner 校验在读文本前即拒绝，表现为「Zed 里划词不弹工具栏」。
+
+内置 `zed` 进程规则开启 `AllowOwnerlessClipboardResult` 并设 `HistorySuppressionCount = 8` 覆盖多事务写入；复制键链保持默认 `Ctrl+Insert → Ctrl+C`（Zed 不需要 Warp 的 `Ctrl+Shift+C`）。ownerless 结果走与 Warp 完全相同的四条保护（目标窗口 / 序号稳定 / 读取期间序号不变 / 恢复原剪贴板）。
+
+**已知边界**：Explorer 预览窗格（.txt preview handler）是只读视图——真实 `Ctrl+C` 也不复制、UIA 为空，划词捕获不可达；用 Ocean Eyes 框选 OCR（`Ctrl+Alt+Q`）兜底。Zed 侧同样：键盘焦点在聊天输入框（无选区）时划 agent 面板消息文本也捕获不到。
 
 其他进程和其他复制键仍要求 owner PID 等于手势来源进程，不能通过 ownerless 路径。`Program --probe-process-policy <pid>` 可检查 Warp/微信进程解析到的模式；运行日志的 `CaptureDebug` 类别只记录策略、发送结果、序号、owner 和长度，不记录选中文本正文。
 

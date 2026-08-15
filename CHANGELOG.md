@@ -20,15 +20,19 @@
 - **选词工具栏「朗读」快捷播报（TTS）。** 选词工具栏新增「朗读」按钮，默认 `S` 快捷键，把当前选区文本送 MiniMax T2A 合成语音并通过 Windows MCI 播放。语音按书写体系自动路由（CJK / 拉丁），缺 mmx key 时回退到全局密钥；同 R99 一样受 i18n + 焦点吞键哨位保护。
 - **功耗监控（PowerMonitoring，默认关闭）。** BYH 周期性 HTTP 轮询用户配置的 Libre Hardware Monitor Web Server 拉取实时功率 / 温度，托盘 tooltip 显示 W / kWh，按梯形积分把瞬时功率累计成 Wh / kWh 落盘，温度超过阈值时 TTS 播报 mp3 警音（5°C 滞回防抖），每分钟写入 `power-history.jsonl`。纯 HTTP、无 LHM 客户端依赖、无提权，NativeAOT 安全。
 - **手机卡片接入实时功耗数据 + 托盘两行 tooltip。** 设置中心右侧的「手机式状态卡」原先后 4 页是翻译/视觉/剪贴板/启动器的功能摘要，现在改为功耗实时数据页（CPU / GPU / System / Energy），与已上线的 PowerMonitoring 同源。底部 dock 4 个按钮换名但图标外观保持原样（五边形/树叶/信封/齿轮），Overview 第一页不动。字段映射直接取自 `PowerSnapshot` 的 dock 分组：CPU 页（封装功率/核心温度/总负载/最大核心负载/频率）、GPU 页（功耗/温度/负载/核心频率/显存频率）、System 页（12V/5V/3.3V/内存功耗与温度/CPU 与 GPU 风扇/电池功率与百分比/两块 SSD 温度）、Energy 页（仅瞬时合计功率）。传感器字段为 null（测不到）时整行隐藏，LHM 离线时 4 页统一显离线提示。同时把托盘 hover tooltip 从单行 W/kWh 改为两行——上排 CPU/GPU 功率 + SSD1 温度，下排 CPU/GPU 温度 + SSD2 温度（SSD 只有温度字段、无功率）。实现：`App.axaml.cs` 的 `PowerMonitorLoopAsync` 轮询回调在原 `UpdateTrayTooltip(snap)` 后增调 `_settingsWindow?.UpdatePhonePowerViews(snap)`；`SettingsWindow.axaml.cs` 新增公共方法按页/按行做 null-aware 显隐；i18n 三件套删 21 旧 phone key、新增 power key（最终 36/36/36 对齐）。
+- **剪贴板行快捷键 + 托盘点击恢复设置窗口（2026-08-10）。** 剪贴板行新增 `Ctrl+T` 添加标签、`Ctrl+M` 移动到（分类+自定义标签扁平列表）、`Ctrl+R` 移除标签三个快捷键；托盘点击恢复/置顶已打开的设置窗口；「翻译」+「视觉」导航合并为单一「模型」页（Provider 增删改 + 视觉/OCR 子卡片，控件 x:Name 与数据模型零改动）。右键菜单构建逻辑提取为 `PopulateMoveToItems` / `BuildMoveToMenu` 等纯函数，菜单行为不变。
+- **功耗「启动 LHM」按钮 + `LhmExePath` 路径设置。** 功耗设置卡片新增「启动 LHM」按钮和 LibreHardwareMonitor.exe 路径字段（文本框 + 浏览选择）。LHM 离线（8085 不可达）时点击即可按管理员拉起——LHM 清单自带 `requireAdministrator`，复用 LauncherRunner 既有的 740→runas→UAC 回退，零新增平台代码。按钮仅在 LHM 真正可达（Connected）时置灰，卡死的 LHM 仍可重新拉起。`LhmExePath` 落 `power-monitoring.json`（无 schemaVersion 变更，缺省空串）。
 
 ### 性能
 
 - **剪贴板超长内容检索（REQ-030）。** 将搜索索引构建和查询移出 UI 线程，加入查询版本取消与按需正文匹配；27 万字符级条目不再随每次键入同步扫描全文。
 - **剪贴板搜索二次提速（REQ-033）。** 普通历史取消固定 100ms 输入等待，超长正文预览改为常量级分配、展开正文按需生成，并消除打开窗口时的重复索引构建。搜索/默认列表分别只实例化首批 12/16 条，退格扩大结果集时复用现有控件，清空最后一个搜索字符不再同步重建约 60 个复杂条目。
+- **托盘空闲时裁剪工作集。** 托盘常驻应用呈突发负载（选词捕获、剪贴板缩略图、设置窗口），随后数小时空闲；GC 回收对象但不主动归还工作集，任务管理器长期显示峰值内存。新增 3 分钟 DispatcherTimer，仅在无弹窗可见（应用回到托盘）时调用 psapi `EmptyWorkingSet`，绝不在动作中途触发。纯提示性调用——失败静默吞掉，不承载任何逻辑（新增 P/Invoke 按惯例用 `[DllImport]`，与 App 层既有两处一致）。
 
 ### 兼容性
 
 - **Warp 选区捕获（REQ-029）。** 对 `warp.exe` 增加专用 `Ctrl+Shift+C` 复制策略与 120ms 剪贴板稳定等待；Warp 的 GPU/WebView 剪贴板没有 Win32 owner 时，在明确的 Warp 策略中按序号变化 + 稳定文本受控接受，其他应用仍保留严格 owner 校验。新增 `--probe-process-policy <pid>` 诊断探针。
+- **Zed（GPUI）选区捕获。** Zed 的 GPUI 渲染面发布复制时不带 owner HWND（一次逻辑复制产生 7 个剪贴板事务：`CF_UNICODETEXT` + 两个 “GPUI internal *” 自定义格式 + 合成的 `CF_TEXT`/`CF_OEMTEXT`/`CF_LOCALE`），owner 校验无法把写入归因到源进程，默认策略在读文本前即拒绝，表现为「Zed 里划词不弹工具栏」。新增 opt-in 的 `ProcessCapturePolicy.AllowOwnerlessClipboardResult` 策略开关（默认关闭），在 `WindowsSelectionTextCapture` 中与既有 Warp 的 `CtrlShiftCOnly` 条件并列下发；内置 `zed` 进程规则开启该开关并把 `HistorySuppressionCount` 提高到 8 覆盖多事务写入，复制键链保持默认 `Ctrl+Insert → Ctrl+C`（Zed 接受注入键盘）。Warp 行为不变，其他应用仍拒绝 ownerless 写入。
 
 ### 修复
 
@@ -39,6 +43,8 @@
 - **Speak 设置选项卡崩溃（REQ-041）。** 设置 → Speak 打开后偶发白屏，根因在 `ShowSettingsPage` 路由表缺少 `Tts` title 的分支，路由落入默认 catch → 触发对未初始化 view-model 的 null 解引用。补齐 Tts 分支，与 Vision / Translation 对齐。
 - **Speak 密钥状态显示与实际不符（REQ-042）。** 之前 Speak 设置只显示「已配 / 未配」二值化状态，实际来源可能不同（`ByhSecret` BYH 私钥库 / `MmxConfig` MiniMax 配置文件）。改为 `TtsCredentialSource` 枚举（ByhSecret / MmxConfig / None），UI 同步显示来源，避免用户误以为未配。
 - **剪贴板右下角快捷键提示跑位。** 剪贴板历史弹窗底部的快捷键提示行（↑↓ 选择 / 双击粘贴 / 右键菜单 / Esc 关闭）位置错乱，直接移除该 `NormalFooter`；同区的长按批量操作栏（`MultiSelectToolbar`）保留。进/出多选模式时切换该提示显隐的两行引用一并删除，4 个随之成为孤儿的 i18n key（`Clip_FooterSelect/Paste/Menu/Close`）从三件套同步移除（32/32/32）。
+- **非搜索刷新把剪贴板选中条目重置回顶部（2026-08-10）。** `ApplyFilterResults` 在 tag/group/pin/favorite 等非搜索刷新时把选中条目重置回列表顶部；改为按 Id 找回保持选中，真正的搜索仍跳到首个匹配。
+- **剪贴板图片条目 tag/徽章行重复。** 图片条目渲染了两排相同的 tag/徽章行：IsImage 块内自有的 meta 行 + 未按 `!IsImage` 过滤的通用文本行 meta 行（且 ToRow 把 GroupLabel 设为 “Image”，徽章也跟着重复）。将通用 meta 行用 `!IsImage` 门控；文本行不变，图片永不归档故 Archived 徽章无损失。
 
 ### 验证
 
@@ -48,6 +54,7 @@
 - 2026-08-02 REQ-033 支线验收：**754/754 通过**（Core 599、Windows Integration 105、Providers 50）；Release build 0 warning / 0 error；NativeAOT 发布成功，用户确认剪贴板连续检索及清空查询恢复流畅。
 - 2026-08-09 TTS / PowerMonitoring 合并后全量测试：**954/954 通过**（Core 784、Windows Integration 119、Providers 51）；Release build 0 warning / 0 error；NativeAOT 发布成功（29.3 MB，0 IL 警告）。新增 TTS 朗读功能、功耗监控功能、Ocean Eyes Enter 保存修复、Speak 选项卡崩溃修复与密钥状态修复。
 - 2026-08-09 手机卡片功耗数据 + 托盘两行 tooltip 合并后：i18n 三向 36/36/36 对齐，Release build 0 warning / 0 error，954 项测试全绿（i18n parity 守卫未动），NativeAOT 发布 0 IL 警告。已部署 `artifacts/publish/win-x64-nativeuia/BYH.exe`。
+- 2026-08-15 Zed ownerless 捕获 + 图片行修复 + 启动 LHM + 空闲工作集裁剪合并后全量测试：**956/956 通过**（Core 783、Windows Integration 122、Providers 51）。Zed 真机验证：12:32 运行日志 `ownerless=True`，划词成功捕获并弹工具栏；图片条目单排 meta 行确认；已部署 `dist/BYH.exe` 与 `artifacts/publish/win-x64-nativeuia/BYH.exe`（当前运行实例即该构建）。
 
 ---
 
