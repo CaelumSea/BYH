@@ -390,8 +390,10 @@
           </Grid>
         </Border>
 
-        <!-- Compact batch-action bar shown after a 500ms row long-press. -->
-        <Grid Grid.Row="3" Margin="0,4,0,0">
+        <!-- Compact batch-action bar shown after a 500ms row long-press.
+             Row 4 (trailing Auto) — row 3 is the star-sized list row, and a
+             sibling placed there stretches over the whole list, occluding it. -->
+        <Grid Grid.Row="4" Margin="0,4,0,0">
           <Border x:Name="MultiSelectToolbar"
                   Classes="MultiSelectToolbar"
                   IsVisible="False"
