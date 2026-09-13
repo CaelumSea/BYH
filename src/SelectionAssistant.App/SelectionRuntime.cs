@@ -511,14 +511,24 @@ internal sealed class SelectionRuntime : IDisposable
     /// 以管理员身份运行(触发 UAC)。LHM 的 manifest 声明 requireAdministrator,LauncherRunner
     /// 主路径返回 ERROR_ELEVATION_REQUIRED(740) 后自动 fallback 到 ShellExecuteEx(verb="runas")
     /// 弹 UAC —— 复用启动器现有的提权链路,无需新 P/Invoke。供设置页"启动 LHM"按钮使用:
-    /// LHM 离线时一键拉起,无需用户手动找 exe。fire-and-forget 在后台线程(shell 启动不阻塞
+    /// LHM 离线时一键拉起,无需用户手动找 exe。路径为空时自动回退到 BYH.exe 同级的
+    /// <c>tools\LibreHardwareMonitor\LibreHardwareMonitor.exe</c>(随包分发的默认位置),
+    /// 所以开箱即用,不填路径也能一键启动。fire-and-forget 在后台线程(shell 启动不阻塞
     /// UI,镜像 <see cref="RevealGalleryEntryInExplorer"/> 的非阻塞模式)。
     /// </summary>
     /// <returns><c>(Ok, Message)</c>:Ok=true 表示启动命令已发出(UAC 是否通过取决于用户),
-    /// Ok=false 表示路径不存在或参数缺失;Message 是可直接显示给用户的状态文案。</returns>
+    /// Ok=false 表示配置路径与默认路径都不存在;Message 是可直接显示给用户的状态文案。</returns>
     public (bool Ok, string Message) StartLhm(string exePath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(exePath);
+        exePath = exePath?.Trim() ?? string.Empty;
+        if (exePath.Length == 0)
+        {
+            // 空路径兜底:BYH.exe 同级的随包 LHM。BaseDirectory 在 NativeAOT 单文件
+            // 发布下就是 exe 所在目录。
+            exePath = Path.Combine(AppContext.BaseDirectory,
+                "tools", "LibreHardwareMonitor", "LibreHardwareMonitor.exe");
+            _logger.Info("PowerMonitor", $"StartLhm: no path configured, using bundled default: {exePath}");
+        }
         if (!File.Exists(exePath))
         {
             _logger.Error("PowerMonitor", $"StartLhm: executable not found: {exePath}");

@@ -1483,17 +1483,13 @@ public partial class SettingsWindow : Window
         PowerMonitorHistoryClearRequested?.Invoke();
     }
 
-    /// <summary>"Start LHM" button: when the configured path is set, ask the runtime to launch
-    /// Libre Hardware Monitor as administrator (UAC). The runtime pushes the outcome back via
-    /// the shared status line. A blank path shows the "not set" hint instead of launching.</summary>
+    /// <summary>"Start LHM" button: ask the runtime to launch Libre Hardware Monitor as
+    /// administrator (UAC). The runtime pushes the outcome back via the shared status line.
+    /// A blank path is forwarded as-is — the runtime falls back to the bundled
+    /// tools\LibreHardwareMonitor copy next to BYH.exe, so the button works out of the box.</summary>
     private void OnPowerMonitorLhmStartClick(object? sender, RoutedEventArgs e)
     {
         string path = (PowerMonitorLhmPathInput.Text ?? string.Empty).Trim();
-        if (string.IsNullOrEmpty(path))
-        {
-            PowerMonitorStatusText.Text = Strings.Settings_PowerMonitor_LhmNotFound;
-            return;
-        }
         PowerMonitorStatusText.Text = Strings.Settings_PowerMonitor_LhmStarting;
         PowerMonitorLhmStartRequested?.Invoke(path);
     }

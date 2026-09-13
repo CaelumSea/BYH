@@ -88,8 +88,9 @@ public sealed record PowerMonitorSettings
     /// <summary>
     /// Libre Hardware Monitor 可执行文件路径(用户机器上 LibreHardwareMonitor.exe 的位置)。
     /// 供功耗栏"启动 LHM"按钮使用:当 8085 连不上(用户关了 LHM)时,点按钮以此路径提权
-    /// 启动 LHM(verb=runas → UAC)。空 = 未配置(按钮提示先选路径)。发布版 BYH 不打包
-    /// LHM,故路径由用户在设置里填一次后随配置持久化。不校验绝对路径——启动时由
+    /// 启动 LHM(verb=runas → UAC)。空 = 自动回退到 BYH.exe 同级的
+    /// <c>tools\LibreHardwareMonitor\LibreHardwareMonitor.exe</c>(随包默认位置),开箱即用;
+    /// 两者都不存在时按钮提示用「浏览」选路径。不校验绝对路径——启动时由
     /// <see cref="System.IO.File.Exists"/> 判定存在性。
     /// </summary>
     public string LhmExePath { get; init; } = "";
