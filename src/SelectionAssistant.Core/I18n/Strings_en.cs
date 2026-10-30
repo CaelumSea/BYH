@@ -88,7 +88,7 @@ internal static partial class Strings_en
         // GalleryWindow
         ["Gallery_Title"] = "BYH · Screenshot Gallery",
         ["Gallery_Heading"] = "📷 Screenshot Gallery",
-        ["Gallery_Hint"] = "Click to view · double-click to delete · Esc to close",
+        ["Gallery_Hint"] = "Click to select · double-click to view · Delete to remove · Esc to close",
         ["Gallery_CountSuffix"] = " shot(s)",
         ["Gallery_CopiedSuffix"] = " · copied",
         ["Gallery_EmptyTitle"] = "No screenshots yet",

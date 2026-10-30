@@ -392,9 +392,6 @@ public partial class GalleryWindow : Window
     // window (ClickCount >= 2 on the next press), the pending open is cancelled
     // and the delete path runs instead. This mirrors how desktop file managers
     // disambiguate single- vs double-click on the same target.
-    private DispatcherTimer? _pendingOpenTimer;
-    private GalleryItemViewModel? _pendingOpenVm;
-    private const int SingleClickOpenDelayMs = 220;
 
     private void OnItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -408,50 +405,24 @@ public partial class GalleryWindow : Window
             {
                 return;
             }
+            // Single click only selects (fast, non-committal). Double-click
+            // opens the lightbox. Deletion lives on the Delete key and the
+            // context menu, so a fast second click can never destroy a shot
+            // by accident — the old double-click-to-delete is gone.
             SetSelected(vm);
             if (e.ClickCount >= 2)
             {
-                // Second click within the system double-click window: this is a
-                // double-click → cancel any pending single-click open and delete.
-                CancelPendingOpen();
-                DeleteEntry(vm);
+                OpenPreview(vm);
                 e.Handled = true;
-                return;
             }
-
-            // First click: defer the preview open so a potential second click
-            // (double-click) can still reach this handler to delete instead.
-            CancelPendingOpen();
-            _pendingOpenVm = vm;
-            _pendingOpenTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(SingleClickOpenDelayMs) };
-            _pendingOpenTimer.Tick += (_, _) =>
-            {
-                _pendingOpenTimer.Stop();
-                if (_pendingOpenVm is { } target)
-                {
-                    _pendingOpenVm = null;
-                    OpenPreview(target);
-                }
-            };
-            _pendingOpenTimer.Start();
         }
-    }
-
-    private void CancelPendingOpen()
-    {
-        if (_pendingOpenTimer is { } t)
-        {
-            t.Stop();
-            _pendingOpenTimer = null;
-        }
-        _pendingOpenVm = null;
     }
 
     private void OnItemPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         // Placeholder kept for future click-vs-drag distinction (e.g. marquee
-        // selection). Not used in v1 — single-click just updates _selected,
-        // which happens in PointerPressed above.
+        // selection). Not used — single-click selection happens in
+        // PointerPressed above, double-click opens the preview there too.
     }
 
     // Batch 125: while a thumbnail's context menu is open, suppress hover-select.
@@ -1195,7 +1166,17 @@ public partial class GalleryWindow : Window
         {
             RequestDelete?.Invoke(vm.Entry.FilePath);
             File.Delete(vm.Entry.FilePath);
+            // If the lightbox is showing this very shot, close it — otherwise
+            // the preview keeps displaying a file that no longer exists (the
+            // image stays on screen, "N / M" turns stale, and panning has
+            // nothing left to back it).
+            bool wasPreviewed = PreviewPopup.IsOpen
+                && PreviewTitle.Text == Path.GetFileName(vm.Entry.FilePath);
             _items.Remove(vm);
+            if (wasPreviewed)
+            {
+                ClosePreview();
+            }
             if (ReferenceEquals(_selected, vm))
             {
                 vm.IsSelected = false;
@@ -1236,9 +1217,6 @@ public partial class GalleryWindow : Window
         _selected = null;
         // Batch 125: close the preview Popup so it doesn't outlive the window.
         PreviewPopup.IsOpen = false;
-        // Batch 125: cancel any deferred single-click open so its timer
-        // doesn't fire OpenPreview after the window is gone.
-        CancelPendingOpen();
         // Audit N4: close any pending delete-confirm popup so it doesn't
         // outlive the window (it captured `this` + the row vm in its closure).
         ClosePendingDeletePopup();

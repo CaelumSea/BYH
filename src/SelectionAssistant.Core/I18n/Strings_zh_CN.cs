@@ -90,7 +90,7 @@ internal static partial class Strings_zh_CN
         // GalleryWindow
         ["Gallery_Title"] = "BYH · 截图相册",
         ["Gallery_Heading"] = "📷 截图相册",
-        ["Gallery_Hint"] = "单击查看 · 双击删除 · Esc 关闭",
+        ["Gallery_Hint"] = "单击选中 · 双击查看 · Delete 删除 · Esc 关闭",
         ["Gallery_CountSuffix"] = " 张",
         ["Gallery_CopiedSuffix"] = " · 已复制",
         ["Gallery_EmptyTitle"] = "还没有截图",
