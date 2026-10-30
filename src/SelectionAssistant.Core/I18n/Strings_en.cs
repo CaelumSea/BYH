@@ -97,6 +97,8 @@ internal static partial class Strings_en
         ["Gallery_CtxDelete"] = "Delete file",
         ["Gallery_CtxReveal"] = "Reveal in Explorer",
         ["Gallery_DeleteConfirmPrompt"] = "Delete this screenshot? This cannot be undone. Press Delete again to confirm.",
+        ["Gallery_DeleteConfirmPromptMany"] = "Delete {0} screenshots? This cannot be undone. Press Delete again to confirm.",
+        ["Gallery_SelectionCount"] = "{0} selected · Delete to remove · Esc to cancel",
         ["Gallery_DeleteConfirmButton"] = "Delete",
         ["Gallery_Today"] = "Today",
         ["Gallery_Yesterday"] = "Yesterday",

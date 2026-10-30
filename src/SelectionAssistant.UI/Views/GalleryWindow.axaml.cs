@@ -79,7 +79,14 @@ public partial class GalleryWindow : Window
 
     private readonly string _savePath;
     private readonly RedactedLogger _logger;
+    // Batch 126: multi-select. _selected stays the single "cursor" (what the
+    // preview, copy, pin and Enter act on); _selection is the set Delete acts
+    // on, and _anchor is the last plain-clicked shot that Shift+click extends
+    // from. Invariant: the cursor is normally a member of the selection; only
+    // preview paging may move it outside (it never re-picks implicitly).
     private GalleryItemViewModel? _selected;
+    private readonly HashSet<GalleryItemViewModel> _selection = new();
+    private GalleryItemViewModel? _anchor;
     private readonly ObservableCollection<GalleryItemViewModel> _items = new();
 
     // R49 + audit N4: in-app confirmation popup for screenshot deletion.
@@ -369,47 +376,144 @@ public partial class GalleryWindow : Window
 
     // ── Thumbnail grid interactions ────────────────────────────────────
 
+    // ── Selection ──────────────────────────────────────────────────────
+
     /// <summary>
-    /// Batch 125: centralizes selection. Updates <see cref="_selected"/> and
-    /// mirrors the state onto each VM's <see cref="GalleryItemViewModel.IsSelected"/>
-    /// (clears the old, sets the new) so the grid can react to the persistent
-    /// "current" shot — the one Delete/Enter act on — independent of the
-    /// :pointerover hover cue.
+    /// Plain click: this shot becomes the only pick, and it becomes the anchor
+    /// that a later Shift+click extends from.
     /// </summary>
-    private void SetSelected(GalleryItemViewModel? vm)
+    private void SelectOnly(GalleryItemViewModel? vm)
     {
-        if (ReferenceEquals(_selected, vm)) return;
-        if (_selected is { } prev) prev.IsSelected = false;
+        foreach (var item in _selection) item.IsSelected = false;
+        _selection.Clear();
+        if (vm is not null)
+        {
+            vm.IsSelected = true;
+            _selection.Add(vm);
+        }
         _selected = vm;
-        if (vm is { } next) next.IsSelected = true;
+        _anchor = vm;
+        UpdateSelectionBar();
     }
 
-    // Batch 125: single-click opens the preview, double-click deletes (with
-    // the N4 confirmation popup). Because the first click of a double-click
-    // would otherwise open the preview overlay immediately — swallowing the
-    // second click on the backdrop instead of the thumbnail — the single-click
-    // open is deferred by a short timer. If a second click lands within that
-    // window (ClickCount >= 2 on the next press), the pending open is cancelled
-    // and the delete path runs instead. This mirrors how desktop file managers
-    // disambiguate single- vs double-click on the same target.
+    /// <summary>Ctrl+click: add/remove one shot, keeping the rest of the picks.</summary>
+    private void ToggleSelected(GalleryItemViewModel vm)
+    {
+        if (_selection.Remove(vm))
+        {
+            vm.IsSelected = false;
+        }
+        else
+        {
+            vm.IsSelected = true;
+            _selection.Add(vm);
+        }
+        _selected = vm;
+        UpdateSelectionBar();
+    }
 
+    /// <summary>
+    /// Shift+click: replace the picks with the inclusive range from the anchor
+    /// (last plain click) to this shot. Falls back to a plain select when the
+    /// anchor has since been deleted.
+    /// </summary>
+    private void SelectRangeTo(GalleryItemViewModel vm)
+    {
+        int to = _items.IndexOf(vm);
+        int from = _anchor is null ? to : _items.IndexOf(_anchor);
+        if (from < 0 || to < 0)
+        {
+            SelectOnly(vm);
+            return;
+        }
+        if (from > to) (from, to) = (to, from);
+        foreach (var item in _selection) item.IsSelected = false;
+        _selection.Clear();
+        for (int i = from; i <= to; i++)
+        {
+            _items[i].IsSelected = true;
+            _selection.Add(_items[i]);
+        }
+        _selected = vm;
+        UpdateSelectionBar();
+    }
+
+    private void SelectAll()
+    {
+        foreach (var item in _items)
+        {
+            item.IsSelected = true;
+            _selection.Add(item);
+        }
+        _selected ??= _items.Count > 0 ? _items[0] : null;
+        UpdateSelectionBar();
+    }
+
+    private void ClearSelection()
+    {
+        foreach (var item in _selection) item.IsSelected = false;
+        _selection.Clear();
+        _selected = null;
+        _anchor = null;
+        UpdateSelectionBar();
+    }
+
+    private void UpdateSelectionBar()
+    {
+        int count = _selection.Count;
+        SelectionBar.IsVisible = count >= 2;
+        if (count >= 2)
+        {
+            SelectionBarText.Text = string.Format(Strings.Gallery_SelectionCount, count);
+        }
+    }
+
+    /// <summary>
+    /// Shots Delete acts on: the whole multi-selection, or the cursor alone
+    /// when nothing is picked. Ordered top-to-bottom so a partial failure
+    /// reports in the same order the grid shows.
+    /// </summary>
+    private List<GalleryItemViewModel> DeleteTargets()
+    {
+        if (_selection.Count > 0)
+        {
+            return _selection.OrderBy(_items.IndexOf).ToList();
+        }
+        return _selected is { } cursor ? new List<GalleryItemViewModel> { cursor } : new List<GalleryItemViewModel>();
+    }
+
+    // Batch 126: click semantics — plain click picks one shot, Ctrl+click
+    // toggles, Shift+click extends the range, double-click opens the lightbox.
+    // Hover no longer selects anything (it stays a pure visual cue), because a
+    // hover-driven cursor silently discards a multi-selection as soon as the
+    // pointer crosses the grid.
     private void OnItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (sender is Control { DataContext: GalleryItemViewModel vm })
         {
-            // Only the LEFT button drives open/delete. A right press still
-            // raises PointerPressed, but it should only open the context menu
-            // (handled separately) — letting it start the deferred-open timer
-            // made right-click also expand the preview (batch 125 fix).
+            // Only the LEFT button drives selection. A right press still
+            // raises PointerPressed, but it should only open the context menu.
             if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
             {
                 return;
             }
-            // Single click only selects (fast, non-committal). Double-click
-            // opens the lightbox. Deletion lives on the Delete key and the
-            // context menu, so a fast second click can never destroy a shot
-            // by accident — the old double-click-to-delete is gone.
-            SetSelected(vm);
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+            {
+                ToggleSelected(vm);
+                e.Handled = true;
+                return;
+            }
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                SelectRangeTo(vm);
+                e.Handled = true;
+                return;
+            }
+            // Plain click selects this shot alone; the second click of a
+            // double-click opens the preview. Removal lives on the Delete key
+            // and the context menu, so a fast second click can never destroy
+            // a shot by accident.
+            SelectOnly(vm);
             if (e.ClickCount >= 2)
             {
                 OpenPreview(vm);
@@ -421,33 +525,8 @@ public partial class GalleryWindow : Window
     private void OnItemPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         // Placeholder kept for future click-vs-drag distinction (e.g. marquee
-        // selection). Not used — single-click selection happens in
-        // PointerPressed above, double-click opens the preview there too.
-    }
-
-    // Batch 125: while a thumbnail's context menu is open, suppress hover-select.
-    // Without this, moving the mouse across other thumbnails fires PointerEntered
-    // → SetSelected → IsSelected PropertyChanged → the card's visual state /
-    // layout is recomputed, which makes the open ContextMenu's Popup flicker and
-    // reposition ("the menu updates several times as the mouse moves"). The
-    // clipboard list avoids this by having no PointerEntered at all; we keep
-    // hover-select as a feature but gate it on this flag.
-    private bool _isContextMenuOpen;
-
-    private void OnContextMenuOpening(object? sender, CancelEventArgs e) => _isContextMenuOpen = true;
-
-    private void OnContextMenuClosed(object? sender, RoutedEventArgs e) => _isContextMenuOpen = false;
-
-    private void OnItemPointerEntered(object? sender, PointerEventArgs e)
-    {
-        // Hover-select: a lightweight UX nicety so Delete works on the
-        // last-hovered thumbnail without requiring a click first. Skipped while
-        // a context menu is open (see _isContextMenuOpen).
-        if (_isContextMenuOpen) return;
-        if (sender is Control { DataContext: GalleryItemViewModel vm })
-        {
-            SetSelected(vm);
-        }
+        // selection). Not used — click selection happens in PointerPressed
+        // above, double-click opens the preview there too.
     }
 
     // ── Context menu ───────────────────────────────────────────────────
@@ -473,7 +552,13 @@ public partial class GalleryWindow : Window
     {
         if (sender is MenuItem { Tag: GalleryItemViewModel vm })
         {
-            DeleteEntry(vm);
+            // Right-clicking a shot that is part of the current picks deletes
+            // the whole selection; right-clicking any other shot deletes just
+            // that one (and leaves the picks alone).
+            var targets = _selection.Contains(vm) && _selection.Count > 1
+                ? DeleteTargets()
+                : new List<GalleryItemViewModel> { vm };
+            DeleteEntries(targets);
         }
     }
 
@@ -584,7 +669,10 @@ public partial class GalleryWindow : Window
         PreviewTitle.Text = Path.GetFileName(vm.Entry.FilePath);
         UpdatePreviewIndex(vm);
         OpenPreviewPopup();
-        SetSelected(vm);
+        // Opening the lightbox pins the picks onto this shot: the preview's
+        // own copy/delete/pin actions act on it, and a stale multi-selection
+        // behind the overlay would make them ambiguous.
+        SelectOnly(vm);
 
         // Reset state for the new image.
         _previewBitmap?.Dispose();
@@ -925,7 +1013,7 @@ public partial class GalleryWindow : Window
         if (_selected is { } vm)
         {
             ClosePreview();
-            DeleteEntry(vm);
+            DeleteEntries(new List<GalleryItemViewModel> { vm });
         }
     }
 
@@ -973,12 +1061,21 @@ public partial class GalleryWindow : Window
             return;
         }
 
-        // Esc has two levels: close preview if open, else close the window.
+        // Esc unwinds one layer at a time: the confirm popup, then the
+        // preview, then the multi-selection, and only then the window.
         if (e.Key == Key.Escape)
         {
-            if (PreviewPopup.IsOpen)
+            if (_deleteConfirmPopup is { IsOpen: true })
+            {
+                ClosePendingDeletePopup();
+            }
+            else if (PreviewPopup.IsOpen)
             {
                 ClosePreview();
+            }
+            else if (_selection.Count > 0)
+            {
+                ClearSelection();
             }
             else
             {
@@ -988,10 +1085,23 @@ public partial class GalleryWindow : Window
             return;
         }
 
-        if (e.Key == Key.Delete && _selected is { } sel)
+        // Ctrl+A picks every shot in the grid (ignored while the lightbox is
+        // up — the preview owns the whole viewport at that point).
+        if (e.Key == Key.A && e.KeyModifiers.HasFlag(KeyModifiers.Control) && !PreviewPopup.IsOpen)
         {
-            DeleteEntry(sel);
+            SelectAll();
             e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Delete)
+        {
+            var targets = DeleteTargets();
+            if (targets.Count > 0)
+            {
+                DeleteEntries(targets);
+                e.Handled = true;
+            }
         }
 
         if (e.Key == Key.Enter && _selected is { } selEnter)
@@ -1066,17 +1176,21 @@ public partial class GalleryWindow : Window
     /// which made a stray keypress irrecoverable. Now the popup must be
     /// confirmed before <see cref="PerformDelete"/> runs.
     /// </summary>
-    private void DeleteEntry(GalleryItemViewModel vm)
+    private void DeleteEntries(IReadOnlyList<GalleryItemViewModel> targets)
     {
+        if (targets.Count == 0) return;
         // Close any prior confirm popup (e.g. user opened a second one).
         ClosePendingDeletePopup();
-        // Capture the target: the popup is confirmed either by clicking
+        // Capture the targets: the popup is confirmed either by clicking
         // "Delete" or by pressing Delete a second time, both run this action.
-        _deleteConfirmAction = () => PerformDelete(vm);
+        var captured = targets.ToList();
+        _deleteConfirmAction = () => PerformDelete(captured);
 
         var prompt = new TextBlock
         {
-            Text = Strings.Gallery_DeleteConfirmPrompt,
+            Text = captured.Count == 1
+                ? Strings.Gallery_DeleteConfirmPrompt
+                : string.Format(Strings.Gallery_DeleteConfirmPromptMany, captured.Count),
             TextWrapping = TextWrapping.Wrap,
             FontSize = 13,
             Margin = new Thickness(0, 0, 0, 12),
@@ -1160,37 +1274,49 @@ public partial class GalleryWindow : Window
     /// Performs the actual file deletion + UI row removal. Only called after
     /// the user confirms in the popup raised by <see cref="DeleteEntry"/>.
     /// </summary>
-    private void PerformDelete(GalleryItemViewModel vm)
+    private void PerformDelete(IReadOnlyList<GalleryItemViewModel> targets)
     {
-        try
+        bool previewedDeleted = false;
+        int failed = 0;
+        foreach (var vm in targets)
         {
-            RequestDelete?.Invoke(vm.Entry.FilePath);
-            File.Delete(vm.Entry.FilePath);
-            // If the lightbox is showing this very shot, close it — otherwise
-            // the preview keeps displaying a file that no longer exists (the
-            // image stays on screen, "N / M" turns stale, and panning has
-            // nothing left to back it).
-            bool wasPreviewed = PreviewPopup.IsOpen
-                && PreviewTitle.Text == Path.GetFileName(vm.Entry.FilePath);
-            _items.Remove(vm);
-            if (wasPreviewed)
+            try
             {
-                ClosePreview();
-            }
-            if (ReferenceEquals(_selected, vm))
-            {
+                RequestDelete?.Invoke(vm.Entry.FilePath);
+                File.Delete(vm.Entry.FilePath);
+                // If the lightbox is showing this very shot it has to close —
+                // otherwise the preview keeps displaying a file that no longer
+                // exists (the image stays on screen, "N / M" turns stale, and
+                // panning has nothing left to back it).
+                if (PreviewPopup.IsOpen
+                    && PreviewTitle.Text == Path.GetFileName(vm.Entry.FilePath))
+                {
+                    previewedDeleted = true;
+                }
+                _items.Remove(vm);
+                _selection.Remove(vm);
                 vm.IsSelected = false;
-                _selected = null;
+                if (ReferenceEquals(_selected, vm)) _selected = null;
+                if (ReferenceEquals(_anchor, vm)) _anchor = null;
             }
-            UpdateCount(_items.Count);
-            if (_items.Count == 0)
+            catch (Exception ex)
             {
-                EmptyState.IsVisible = true;
+                // One locked/busy file must not abort the rest of the batch:
+                // keep its row and its pick so the user can retry just that one.
+                failed++;
+                _logger.Error("OceanEyes", $"Gallery delete failed: {vm.Entry.FilePath}", ex);
             }
         }
-        catch (Exception ex)
+        if (previewedDeleted) ClosePreview();
+        UpdateSelectionBar();
+        UpdateCount(_items.Count);
+        if (_items.Count == 0)
         {
-            _logger.Error("OceanEyes", $"Gallery delete failed: {vm.Entry.FilePath}", ex);
+            EmptyState.IsVisible = true;
+        }
+        if (failed > 0)
+        {
+            _logger.Info("OceanEyes", $"Gallery delete: {failed} of {targets.Count} file(s) could not be removed");
         }
     }
 
@@ -1214,7 +1340,9 @@ public partial class GalleryWindow : Window
         _items.Clear();
         _previewBitmap?.Dispose();
         _previewBitmap = null;
+        _selection.Clear();
         _selected = null;
+        _anchor = null;
         // Batch 125: close the preview Popup so it doesn't outlive the window.
         PreviewPopup.IsOpen = false;
         // Audit N4: close any pending delete-confirm popup so it doesn't

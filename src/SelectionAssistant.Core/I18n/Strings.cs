@@ -166,6 +166,10 @@ public static partial class Strings
     public static string Gallery_CtxDelete => Get(nameof(Gallery_CtxDelete));
     public static string Gallery_CtxReveal => Get(nameof(Gallery_CtxReveal));
     public static string Gallery_DeleteConfirmPrompt => Get(nameof(Gallery_DeleteConfirmPrompt));
+    /// <summary>Batch 126: multi-select confirm — {0} = number of picked shots.</summary>
+    public static string Gallery_DeleteConfirmPromptMany => Get(nameof(Gallery_DeleteConfirmPromptMany));
+    /// <summary>Batch 126: selection HUD text — {0} = number of picked shots.</summary>
+    public static string Gallery_SelectionCount => Get(nameof(Gallery_SelectionCount));
     public static string Gallery_DeleteConfirmButton => Get(nameof(Gallery_DeleteConfirmButton));
     public static string Gallery_Today => Get(nameof(Gallery_Today));
     public static string Gallery_Yesterday => Get(nameof(Gallery_Yesterday));

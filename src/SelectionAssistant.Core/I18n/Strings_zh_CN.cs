@@ -99,6 +99,8 @@ internal static partial class Strings_zh_CN
         ["Gallery_CtxDelete"] = "删除文件",
         ["Gallery_CtxReveal"] = "在资源管理器中显示",
         ["Gallery_DeleteConfirmPrompt"] = "删除这张截图？此操作无法撤销。再按一次 Delete 也可确认。",
+        ["Gallery_DeleteConfirmPromptMany"] = "删除 {0} 张截图？此操作无法撤销。再按一次 Delete 也可确认。",
+        ["Gallery_SelectionCount"] = "已选 {0} 张 · Delete 删除 · Esc 取消",
         ["Gallery_DeleteConfirmButton"] = "删除",
         ["Gallery_Today"] = "今天",
         ["Gallery_Yesterday"] = "昨天",

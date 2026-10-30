@@ -38,6 +38,14 @@
       <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
       <Setter Property="BoxShadow" Value="0 4 12 0 #33000000" />
     </Style>
+    <!-- Batch 126: persistent multi-select ring. The hover cue above is
+         transient and identical on every card, so a picked set needs its own,
+         stronger mark that survives the pointer moving away. Declared after
+         :pointerover so a selected card keeps the gold ring while hovered. -->
+    <Style Selector="Border.GalleryCard.selected">
+      <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
+      <Setter Property="BoxShadow" Value="0 0 0 2 #C8A24A, 0 4 12 0 #33000000" />
+    </Style>
   </Window.Styles>
   <Panel>
     <!-- Batch 125: the in-window count/hint bar was removed (the title bar
@@ -70,14 +78,14 @@
                    is handled by the GalleryCard style below. -->
               <Border Width="176" Height="132" Margin="6"
                       Classes="GalleryCard"
+                      Classes.selected="{Binding IsSelected}"
                       CornerRadius="{DynamicResource ByhRadiusMedium}"
                       Padding="0"
                       ClipToBounds="True"
                       PointerPressed="OnItemPointerPressed"
-                      PointerReleased="OnItemPointerReleased"
-                      PointerEntered="OnItemPointerEntered">
+                      PointerReleased="OnItemPointerReleased">
                 <Border.ContextMenu>
-                  <ContextMenu Opening="OnContextMenuOpening" Closed="OnContextMenuClosed">
+                  <ContextMenu>
                     <MenuItem Header="{x:Static i18n:Strings.Gallery_CtxCopy}"
                               Click="OnContextCopy_Click"
                               Tag="{Binding}"/>
@@ -114,6 +122,21 @@
         </StackPanel>
       </Border>
     </Grid>
+
+    <!-- Batch 126: multi-select HUD. Only shown with 2+ picks — browsing a
+         single shot stays pixel-identical to before. Sits above the grid so it
+         never eats a click on a thumbnail (it is bottom-left and only as wide
+         as its text). -->
+    <Border x:Name="SelectionBar" IsVisible="False"
+            HorizontalAlignment="Left" VerticalAlignment="Bottom"
+            Margin="14" Padding="12,6"
+            CornerRadius="{DynamicResource ByhRadiusMedium}"
+            Background="{DynamicResource ByhSurfaceBrush}"
+            BorderBrush="{DynamicResource ByhGoldBrush}"
+            BorderThickness="1"
+            IsHitTestVisible="False">
+      <TextBlock x:Name="SelectionBarText" FontSize="12"/>
+    </Border>
 
     <!-- Batch 125: preview lives in a Popup (an independent top-level
          window), NOT an in-window Border. This is the same mechanism as the
