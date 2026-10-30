@@ -76,6 +76,11 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.0" />
+    <!-- PNG→CF_DIB decoding lives on SkiaSharp directly: Avalonia 12's
+         Bitmap.CopyPixels throws ArgumentOutOfRangeException('stride') for
+         ordinary screenshots, which silently degraded every image copy to
+         CF_PNG-only. SkiaSharp is already in the graph via Avalonia. -->
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.0" />

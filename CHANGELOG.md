@@ -23,11 +23,12 @@
 
 ### 修复
 
+- **截图相册 / 置顶截图「复制」实际粘贴不出图（2026-10-30）。** 两条复制路径都只调 `Win32Clipboard.SetPng`，写的是注册格式 `PNG`；Word / Paint / 资源管理器粘贴图片读的是 `CF_DIB`（格式 8）——于是写入"成功"、日志写 "copied"、剪贴板里却没有任何进程能粘出来的图。改为统一走 `GalleryImageClipboard.CopyPng` → `SetImageDibAndPng`（CF_DIB + CF_PNG 在同一个 open/empty/set 序列里原子写入，与 Enter 保存同一条路径），并**校验返回值**：放不上时日志明确写 `clipboard rejected the image`，不再谎报成功。**根因还有第二层**：`PngToDibConverter` 依赖 Avalonia 12.1 的 `Bitmap.CopyPixels`，对普通截图抛 `ArgumentOutOfRangeException("stride")`（实测 2776×1525 / Bgra8888 / stride=width*4 即抛），异常被吞成 `null`，导致所有图片复制静默降级为 CF_PNG。PNG 解码现改用 SkiaSharp（Avalonia 自带、AOT 安全、不依赖窗口平台），4K 以内截图可稳定写出 DIB；超过 32 MiB 上限时仍自动降级为 PNG-only 而不是失败。验证：同一张图用旧路径写入后外部进程 `Clipboard.GetImage()` 拿到空，用新路径写入后读到 2776×1525 位图。
 - **截图相册删除确认支持键盘 `Delete` 二次确认。** 相册里按 `Delete` 先弹确认框，**松开后再按一次 `Delete` 即直接删除**（原来第二次按 `Delete` 只是把确认框关掉重开）；确认框的「删除」按钮与第二次 `Delete` 走同一个 action，不会出现两条路径行为分叉。防误触：确认框只在**开框那次按键松开后**才武装（`KeyUp` 武装），**按住 `Delete` 不会连删**；取消/点框外关闭都会清掉捕获的删除目标，不会隔次误删。确认框按钮改为 `Focusable=false`，键盘焦点始终留在相册窗口，避免鼠标点过按钮后按键丢失。提示文案同步说明「再按一次 Delete 也可确认」。
 
 ### 发布
 
-- **2026-10-30 内测发布包刷新。** `dist/BYH-v0.1.0-post-20261030-内测.zip`（21,250,523 B，SHA-256 `FAFED727…`）：`BYH.exe`（29,409,280 B，SHA-256 `2F87DF0F…`，等于 `artifacts/publish/win-x64-nativeuia` 的现役构建）+ `av_libglesv2` / `libHarfBuzzSharp` / `libSkiaSharp` 三个原生库 + `providers.example.json`（取 `docs/` 现役版）+ `快速上手.md`。压缩包 CRC 校验通过、exe 与发布目录逐字节一致；旧的内测包（7-29 `v0.1.0`）与 `dist/` 里的散装旧 exe/dll 已删除。
+- **2026-10-30 内测发布包刷新。** `dist/BYH-v0.1.0-post-20261030-内测.zip`（21,252,271 B，SHA-256 `A0DBBFE0…`）：`BYH.exe`（29,413,888 B，SHA-256 `5F22F589…`，等于 `artifacts/publish/win-x64-nativeuia` 的现役构建）+ `av_libglesv2` / `libHarfBuzzSharp` / `libSkiaSharp` 三个原生库 + `providers.example.json`（取 `docs/` 现役版）+ `快速上手.md`。压缩包 CRC 校验通过、exe 与发布目录逐字节一致；旧的内测包（7-29 `v0.1.0`）与 `dist/` 里的散装旧 exe/dll 已删除。
 - **`docs/快速上手.md` 入库。** 原 `dist/快速上手.md` 是内测用户上手说明且**从未进过版本控制**（与 README 中文内容 92% 不重叠），现移入 `docs/`：补当前构建标识、剪贴板图片上限（0=不限）/Pin/图片不归档的说明、开机自启改到「设置 → 通用 → 开机自启」、发布包与快速上手互相指路。
 
 

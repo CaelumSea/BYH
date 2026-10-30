@@ -2288,10 +2288,10 @@ internal sealed class SelectionRuntime : IDisposable
     }
 
     /// <summary>
-    /// R49: gallery "double-click to copy" handler. Reads the PNG from disk
-    /// and forwards it to the same Win32Clipboard.SetPng path used by
-    /// Enter-to-save and Copy-from-pinned. Background thread — clipboard
-    /// I/O must not block the UI thread.
+    /// R49: gallery copy handler. Reads the PNG from disk and writes it as
+    /// CF_DIB + CF_PNG (see <see cref="GalleryImageClipboard"/>) — the same
+    /// format pair Enter-to-save uses. Background thread: clipboard I/O must
+    /// not block the UI thread.
     /// </summary>
     private void CopyGalleryEntryToClipboard(string filePath)
     {
@@ -2308,8 +2308,18 @@ internal sealed class SelectionRuntime : IDisposable
                 var (cb, ownsClipboard) = GetClipboardForWrite();
                 try
                 {
-                    cb.SetPng(png);
-                    _logger.Info("OceanEyes", $"Gallery: copied {filePath} ({png.Length} bytes) to clipboard.");
+                    // CF_DIB + CF_PNG, not PNG alone: every app that pastes
+                    // images reads the DIB, and a PNG-only write looked like a
+                    // success while pasting produced nothing.
+                    bool placed = GalleryImageClipboard.CopyPng(png, cb);
+                    if (placed)
+                    {
+                        _logger.Info("OceanEyes", $"Gallery: copied {filePath} ({png.Length} bytes) to clipboard.");
+                    }
+                    else
+                    {
+                        _logger.Info("OceanEyes", $"Gallery copy: clipboard rejected the image: {filePath}");
+                    }
                 }
                 finally
                 {
@@ -2362,9 +2372,9 @@ internal sealed class SelectionRuntime : IDisposable
     }
 
     /// <summary>
-    /// R46: copies the pinned window's PNG to the clipboard via the same
-    /// Win32Clipboard.SetPng path used by Enter-to-save. Runs on a background
-    /// thread (clipboard I/O shouldn't block the UI thread).
+    /// R46: copies the pinned window's PNG to the clipboard as CF_DIB + CF_PNG
+    /// (see <see cref="GalleryImageClipboard"/>). Runs on a background thread
+    /// (clipboard I/O shouldn't block the UI thread).
     /// </summary>
     private void CopyPinnedToClipboard(PinnedScreenshotWindow window)
     {
@@ -2380,7 +2390,12 @@ internal sealed class SelectionRuntime : IDisposable
                 var (clipboard, ownsClipboard) = GetClipboardForWrite();
                 try
                 {
-                    clipboard.SetPng(png);
+                    bool placed = GalleryImageClipboard.CopyPng(png, clipboard);
+                    if (!placed)
+                    {
+                        _logger.Info("OceanEyes", $"Pinned copy: clipboard rejected the image ({png.Length} bytes).");
+                        return;
+                    }
                     _logger.Info("OceanEyes", $"Copied pinned PNG ({png.Length} bytes) to clipboard.");
                     Dispatcher.UIThread.Post(() => _toolbarWindow.SetDiagnosticStatus(Strings.Runtime_Status_PinnedCopied));
                 }

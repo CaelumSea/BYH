@@ -1,7 +1,6 @@
 using System.Runtime.InteropServices;
-using Avalonia;
-using Avalonia.Media.Imaging;
 using SelectionAssistant.Platform.Windows.Capture;
+using SkiaSharp;
 
 namespace SelectionAssistant.App;
 
@@ -17,13 +16,13 @@ namespace SelectionAssistant.App;
 /// to CF_PNG which most apps ignore → "copy doesn't work".
 /// </summary>
 /// <remarks>
-/// <b>AOT safety:</b> uses <see cref="Bitmap"/> + the nint overload of
-/// <c>CopyPixels</c> (the byte[] overload hits an Avalonia 12 stride bug — see
-/// SelectionRuntime.DecodePngToBgra). No reflection. The Avalonia imaging path
-/// is the same one Ocean Eyes / gallery already use under NativeAOT.
+/// <b>AOT safety:</b> decoding goes through SkiaSharp (already shipped with
+/// Avalonia), no reflection, no Avalonia imaging calls — Avalonia 12.1's
+/// <c>Bitmap.CopyPixels</c> rejects ordinary screenshots with a stride error,
+/// which silently turned every image copy into CF_PNG-only.
 /// <para>
-/// <b>Row order:</b> Avalonia's CopyPixels yields top-down rows; CF_DIB with a
-/// positive biHeight is bottom-up, so we flip the row order when emitting.
+/// <b>Row order:</b> decoded rows are top-down; CF_DIB with a positive
+/// biHeight is bottom-up, so we flip the row order when emitting.
 /// </para>
 /// </remarks>
 public static class PngToDibConverter
@@ -44,14 +43,9 @@ public static class PngToDibConverter
 
         byte[]? bgra;
         int width, height;
-        // R54 v2 bug fix: swallow decode exceptions and return null instead of
-        // propagating. Avalonia 12's Bitmap.CopyPixels throws
-        // ArgumentOutOfRangeException('stride') on certain PNGs (e.g. some Ocean
-        // Eyes screenshots) — this is a known framework bug, not a recoverable
-        // error. Propagating it crashed SaveOceanEyesScreenshot mid-save,
-        // preventing the clipboard write from ever running. Returning null lets
-        // the caller degrade gracefully (CF_PNG only). Matches
-        // SelectionRuntime.DecodePngToBgra's error handling.
+        // Swallow decode failures and return null instead of propagating: a
+        // corrupt or unsupported PNG must not take down the save flow. Callers
+        // degrade gracefully (CF_PNG only).
         try
         {
             bgra = DecodePngToBgra(png, out width, out height);
@@ -99,38 +93,66 @@ public static class PngToDibConverter
         return BuildDibFromBgra(bgra, width, height);
     }
 
-    /// <summary>Decodes a PNG to a top-down BGRA buffer via Avalonia, using the
-    /// nint CopyPixels overload to avoid the Avalonia 12 byte[] stride bug.
-    /// Mirrors SelectionRuntime.DecodePngToBgra.</summary>
+    /// <summary>
+    /// Decodes a PNG to a top-down BGRA buffer using SkiaSharp directly.
+    /// </summary>
+    /// <remarks>
+    /// <b>Why not Avalonia:</b> <c>Bitmap.CopyPixels</c> in Avalonia 12.1 throws
+    /// <c>ArgumentOutOfRangeException("stride")</c> for ordinary PNGs (verified
+    /// against a real Ocean Eyes screenshot: 2776x1525, Bgra8888, stride =
+    /// width*4). Every caller swallowed that and returned null, so image copies
+    /// silently degraded to CF_PNG-only — the "copy button does nothing" bug.
+    /// SkiaSharp, which Avalonia itself uses underneath, decodes the same PNG
+    /// without complaint and is platform-free, so this also works headless.
+    /// </remarks>
     private static byte[]? DecodePngToBgra(byte[] png, out int width, out int height)
     {
         width = height = 0;
-        using var stream = new MemoryStream(png);
-        using var bmp = new Bitmap(stream);
-        PixelSize pixelSize = bmp.PixelSize;
-        width = pixelSize.Width;
-        height = pixelSize.Height;
+        using var data = SKData.CreateCopy(png);
+        using var decoded = SKBitmap.Decode(data);
+        if (decoded is null)
+        {
+            return null;
+        }
+
+        width = decoded.Width;
+        height = decoded.Height;
         if (width <= 0 || height <= 0)
         {
             return null;
         }
-
-        if (!TryGetDibSize(width, height, out int totalBytes, out _))
+        if (!TryGetDibSize(width, height, out int totalBytes, out int rowStride))
         {
             return null;
         }
 
-        int stride = checked(width * 4);
-        var bgra = new byte[totalBytes];
-        nint nativeBuffer = Marshal.AllocHGlobal(totalBytes);
-        try
+        // CF_DIB is straight (unpremultiplied) BGRA. Copy into an explicit
+        // Bgra8888/Unpremul bitmap so the pixel bytes match what Windows
+        // consumers expect regardless of the source's colour type.
+        using var bgraBitmap = new SKBitmap(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Unpremul));
+        if (!decoded.CopyTo(bgraBitmap, SKColorType.Bgra8888))
         {
-            bmp.CopyPixels(new PixelRect(0, 0, width, height), nativeBuffer, stride, 0);
-            Marshal.Copy(nativeBuffer, bgra, 0, totalBytes);
+            return null;
         }
-        finally
+
+        var bgra = new byte[totalBytes];
+        IntPtr pixels = bgraBitmap.GetPixels();
+        if (pixels == IntPtr.Zero)
         {
-            Marshal.FreeHGlobal(nativeBuffer);
+            return null;
+        }
+        int srcStride = bgraBitmap.RowBytes;
+        if (srcStride == rowStride)
+        {
+            Marshal.Copy(pixels, bgra, 0, totalBytes);
+        }
+        else
+        {
+            // Skia may pad rows to its own alignment; copy row by row.
+            for (int y = 0; y < height; y++)
+            {
+                Marshal.Copy(pixels + y * srcStride, bgra, y * rowStride, rowStride);
+            }
         }
         return bgra;
     }
