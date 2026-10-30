@@ -13,9 +13,13 @@
 - **macOS 移植已取消。** 经 Mac 端实际调研，BYH 的核心能力（全局快捷键、UIA 文本捕获、低级鼠标/键盘 hook、DPAPI 密钥加密）深度依赖 Win32，跨平台移植成本远超收益。BYH 定位为 **Windows 专属**工具；Mac 上的同类需求由独立项目按 Mac 原生范式专项开发，不再共用代码库。`Platform.Abstractions` 抽象层作为 Windows 内部的解耦设计保留，但不再以「Mac 移植」为目标。
 
 ### 新增
+### 修复
+
+- **截图相册删除确认支持键盘 `Delete` 二次确认。** 相册里按 `Delete` 先弹确认框，**松开后再按一次 `Delete` 即直接删除**（原来第二次按 `Delete` 只是把确认框关掉重开）；确认框的「删除」按钮与第二次 `Delete` 走同一个 action，不会出现两条路径行为分叉。防误触：确认框只在**开框那次按键松开后**才武装（`KeyUp` 武装），**按住 `Delete` 不会连删**；取消/点框外关闭都会清掉捕获的删除目标，不会隔次误删。确认框按钮改为 `Focusable=false`，键盘焦点始终留在相册窗口，避免鼠标点过按钮后按键丢失。提示文案同步说明「再按一次 Delete 也可确认」。
+
 ### 发布
 
-- **2026-10-30 内测发布包刷新。** `dist/BYH-v0.1.0-post-20261030-内测.zip`（21,239,968 B，SHA-256 `821B2496…DD39CA`）：`BYH.exe`（29,380,608 B，SHA-256 `FAA00756…0C8C0B`，等于 `artifacts/publish/win-x64-nativeuia` 的现役构建）+ `av_libglesv2` / `libHarfBuzzSharp` / `libSkiaSharp` 三个原生库 + `providers.example.json`（取 `docs/` 现役版）+ `快速上手.md`。压缩包 CRC 校验通过、exe 与发布目录逐字节一致；旧的内测包（7-29 `v0.1.0`）与 `dist/` 里的散装旧 exe/dll 已删除。
+- **2026-10-30 内测发布包刷新。** `dist/BYH-v0.1.0-post-20261030-内测.zip`（21,240,089 B，SHA-256 `0D6559F9…4C35A27`）：`BYH.exe`（29,382,144 B，SHA-256 `0C4221F6…`，等于 `artifacts/publish/win-x64-nativeuia` 的现役构建）+ `av_libglesv2` / `libHarfBuzzSharp` / `libSkiaSharp` 三个原生库 + `providers.example.json`（取 `docs/` 现役版）+ `快速上手.md`。压缩包 CRC 校验通过、exe 与发布目录逐字节一致；旧的内测包（7-29 `v0.1.0`）与 `dist/` 里的散装旧 exe/dll 已删除。
 - **`docs/快速上手.md` 入库。** 原 `dist/快速上手.md` 是内测用户上手说明且**从未进过版本控制**（与 README 中文内容 92% 不重叠），现移入 `docs/`：补当前构建标识、剪贴板图片上限（0=不限）/Pin/图片不归档的说明、开机自启改到「设置 → 通用 → 开机自启」、发布包与快速上手互相指路。
 
 

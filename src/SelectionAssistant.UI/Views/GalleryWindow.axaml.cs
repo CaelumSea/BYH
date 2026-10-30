@@ -91,6 +91,21 @@ public partial class GalleryWindow : Window
     private Popup? _deleteConfirmPopup;
 
     /// <summary>
+    /// Delete captured by the open confirm popup — runs on the button click or
+    /// on the second Delete press. Cleared when the popup closes so a stale vm
+    /// can never be deleted by a later keystroke.
+    /// </summary>
+    private Action? _deleteConfirmAction;
+
+    /// <summary>
+    /// True once the press that opened the confirm popup has been released.
+    /// Only then does a Delete keydown confirm. Auto-repeat never arms (no
+    /// KeyUp fires between repeats), so holding Delete cannot chain deletions
+    /// through several screenshots.
+    /// </summary>
+    private bool _deleteConfirmArmed;
+
+    /// <summary>
     /// Full-size bitmap currently shown in the preview overlay, if any.
     /// Tracked separately so it can be disposed on close to release native
     /// image memory immediately (not waiting on GC).
@@ -164,6 +179,10 @@ public partial class GalleryWindow : Window
         InitPreviewTransform();
         Loaded += OnLoaded;
         Closed += OnClosed;
+        // Delete-confirm arming: the popup never takes keyboard focus, so the
+        // press that opened it is released here (window level) — that release
+        // is what allows the next Delete press to confirm.
+        KeyUp += OnKeyUp;
         // Re-fit when the viewport size changes (window resize). Only
         // meaningful while a preview is open.
         PreviewViewport.SizeChanged += (_, _) =>
@@ -967,6 +986,22 @@ public partial class GalleryWindow : Window
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
+        // Delete-confirm popup owns the Delete key while open: the press that
+        // opened it is spent, a second press confirms (button click or a
+        // second Delete both land in the same action). Keys keep arriving here
+        // because the popup's buttons are Focusable=false — it never steals
+        // keyboard focus from the window. Auto-repeat is ignored: arming
+        // happens on KeyUp (see OnKeyUp), so holding Delete deletes nothing.
+        if (_deleteConfirmPopup is { IsOpen: true } && e.Key == Key.Delete)
+        {
+            if (_deleteConfirmArmed)
+            {
+                ConfirmPendingDelete();
+            }
+            e.Handled = true;
+            return;
+        }
+
         // Esc has two levels: close preview if open, else close the window.
         if (e.Key == Key.Escape)
         {
@@ -1013,7 +1048,45 @@ public partial class GalleryWindow : Window
         }
     }
 
+    /// <summary>
+    /// Arms the Delete-confirm shortcut once the press that opened the popup is
+    /// released. Repeats of a held key produce no KeyUp, so a held Delete can
+    /// never confirm — the user has to lift and press again (double-tap).
+    /// </summary>
+    private void OnKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Delete && _deleteConfirmPopup is { IsOpen: true })
+        {
+            _deleteConfirmArmed = true;
+        }
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Runs the delete captured by the open confirm popup. Shared by the
+    /// "Delete" button click and the second Delete keypress so the two paths
+    /// can never drift apart.
+    /// </summary>
+    private void ConfirmPendingDelete()
+    {
+        Action? action = _deleteConfirmAction;
+        ClosePendingDeletePopup();
+        action?.Invoke();
+    }
+
+    /// <summary>
+    /// Closes the confirm popup and drops its captured action + arming state,
+    /// so neither a stale vm nor a half-armed popup survives into the next
+    /// deletion (including the light-dismiss path).
+    /// </summary>
+    private void ClosePendingDeletePopup()
+    {
+        _deleteConfirmAction = null;
+        _deleteConfirmArmed = false;
+        _deleteConfirmPopup?.Close();
+        _deleteConfirmPopup = null;
+    }
 
     /// <summary>
     /// Shows a themed confirmation popup before deleting the screenshot file.
@@ -1025,7 +1098,10 @@ public partial class GalleryWindow : Window
     private void DeleteEntry(GalleryItemViewModel vm)
     {
         // Close any prior confirm popup (e.g. user opened a second one).
-        _deleteConfirmPopup?.Close();
+        ClosePendingDeletePopup();
+        // Capture the target: the popup is confirmed either by clicking
+        // "Delete" or by pressing Delete a second time, both run this action.
+        _deleteConfirmAction = () => PerformDelete(vm);
 
         var prompt = new TextBlock
         {
@@ -1042,11 +1118,12 @@ public partial class GalleryWindow : Window
             Padding = new Thickness(16, 6),
             HorizontalContentAlignment = HorizontalAlignment.Center,
         };
-        confirmBtn.Click += (_, _) =>
-        {
-            _deleteConfirmPopup?.Close();
-            PerformDelete(vm);
-        };
+        // The popup is deliberately mouse-only for focus purposes: keeping the
+        // buttons out of the tab order means keyboard focus stays on the
+        // gallery window, so Delete/Esc keep routing to OnKeyDown while the
+        // confirm is open (and no focus is left dangling when it closes).
+        confirmBtn.Focusable = false;
+        confirmBtn.Click += (_, _) => ConfirmPendingDelete();
 
         var cancelBtn = new Button
         {
@@ -1055,7 +1132,8 @@ public partial class GalleryWindow : Window
             Padding = new Thickness(16, 6),
             HorizontalContentAlignment = HorizontalAlignment.Center,
         };
-        cancelBtn.Click += (_, _) => _deleteConfirmPopup?.Close();
+        cancelBtn.Focusable = false;
+        cancelBtn.Click += (_, _) => ClosePendingDeletePopup();
 
         var card = new Border
         {
@@ -1092,6 +1170,18 @@ public partial class GalleryWindow : Window
         };
         _deleteConfirmPopup = popup;
         ((ISetLogicalParent)popup).SetParent(this);
+        // Light dismiss (click outside) closes the popup without going through
+        // the helpers above — clear the captured action so a later Delete
+        // can't resurrect a stale deletion.
+        popup.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_deleteConfirmPopup, popup))
+            {
+                _deleteConfirmPopup = null;
+            }
+            _deleteConfirmAction = null;
+            _deleteConfirmArmed = false;
+        };
         popup.Open();
     }
 
@@ -1151,8 +1241,7 @@ public partial class GalleryWindow : Window
         CancelPendingOpen();
         // Audit N4: close any pending delete-confirm popup so it doesn't
         // outlive the window (it captured `this` + the row vm in its closure).
-        _deleteConfirmPopup?.Close();
-        _deleteConfirmPopup = null;
+        ClosePendingDeletePopup();
     }
 }
 

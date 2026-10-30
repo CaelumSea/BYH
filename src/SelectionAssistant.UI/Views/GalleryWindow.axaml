@@ -142,7 +142,8 @@
               ClipToBounds="True"
               Focusable="True"
               PointerPressed="OnPreviewOverlayPointerPressed"
-              KeyDown="OnKeyDown">
+              KeyDown="OnKeyDown"
+              KeyUp="OnKeyUp">
         <Grid x:Name="PreviewShell"
               RowDefinitions="Auto,*,Auto">
 
