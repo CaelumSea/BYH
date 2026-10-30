@@ -43,8 +43,9 @@
          stronger mark that survives the pointer moving away. Declared after
          :pointerover so a selected card keeps the gold ring while hovered. -->
     <Style Selector="Border.GalleryCard.selected">
-      <Setter Property="BorderBrush" Value="{DynamicResource ByhGoldBrush}" />
-      <Setter Property="BoxShadow" Value="0 0 0 2 #C8A24A, 0 4 12 0 #33000000" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ByhAccentBrush}" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BoxShadow" Value="0 0 0 2 #D5A86A, 0 4 12 0 #33000000" />
     </Style>
   </Window.Styles>
   <Panel>
@@ -101,8 +102,31 @@
                               Tag="{Binding}"/>
                   </ContextMenu>
                 </Border.ContextMenu>
-                <Image Source="{Binding Thumbnail}"
-                       Stretch="UniformToFill"/>
+                <!-- Batch 126: a picked shot carries three marks so it reads
+                     at a glance even when the grid is dense — a champagne wash
+                     over the thumbnail, a dark accent ring around the card
+                     (set by the .selected style above), and a gold check badge
+                     in the corner. All three are non-interactive so clicks
+                     still land on the card itself. -->
+                <Grid>
+                  <Image Source="{Binding Thumbnail}"
+                         Stretch="UniformToFill"/>
+                  <Border Background="#38D5A86A"
+                          BorderBrush="#D5A86A" BorderThickness="2"
+                          IsVisible="{Binding IsSelected}"
+                          IsHitTestVisible="False"/>
+                  <Border Width="22" Height="22" CornerRadius="11" Margin="6"
+                          HorizontalAlignment="Right" VerticalAlignment="Top"
+                          Background="{DynamicResource ByhGoldBrush}"
+                          BorderBrush="{DynamicResource ByhAccentBrush}"
+                          BorderThickness="1.5"
+                          IsVisible="{Binding IsSelected}"
+                          IsHitTestVisible="False">
+                    <TextBlock Text="✓" FontSize="13" FontWeight="Bold"
+                               Foreground="{DynamicResource ByhAccentBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                </Grid>
               </Border>
             </DataTemplate>
           </ItemsControl.ItemTemplate>

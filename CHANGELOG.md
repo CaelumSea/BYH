@@ -14,7 +14,7 @@
 
 ### 新增
 
-- **截图相册多选 + 一键批量删除。** `Ctrl+单击` 增减选中、`Shift+单击` 连选区间（锚点为上一次普通单击的图）、`Ctrl+A` 全选、`Esc` 取消选择、点空白清空；选中 ≥2 张时左下角浮出「已选 N 张 · Delete 删除 · Esc 取消」。`Delete` 作用于整个选区：确认框文案按数量切换「删除 N 张截图？」，**再按一次 `Delete` 一次删完**（沿用既有的两次确认 + 按住不连删保护）。实现上把「光标」（`_selected`，预览/复制/置顶/Enter 作用的对象）与「选区」（`HashSet`）拆开，`IsSelected` 通过 `Classes.selected="{Binding IsSelected}"` 绑定到卡片并新增金色 2px 描边样式 —— 顺带补上了此前**完全没有视觉反馈**的选中状态。删除改为逐张 try/catch：某张被占用不会中断整批，失败的图连同它的选中状态一起留在列表里供重试，并写 `Gallery delete: N of M file(s) could not be removed` 日志。右键菜单：右键的图在当前选区内则删整个选区，否则只删右键那张。同时**取消悬停即选中**（悬停只留金色高亮）——悬停驱动光标会在鼠标划过网格时悄悄清掉多选。进入大图会把选区收敛为该图；`←/→` 翻页时选区随之移动。
+- **截图相册多选 + 一键批量删除。** `Ctrl+单击` 增减选中、`Shift+单击` 连选区间（锚点为上一次普通单击的图）、`Ctrl+A` 全选、`Esc` 取消选择、点空白清空；选中 ≥2 张时左下角浮出「已选 N 张 · Delete 删除 · Esc 取消」。`Delete` 作用于整个选区：确认框文案按数量切换「删除 N 张截图？」，**再按一次 `Delete` 一次删完**（沿用既有的两次确认 + 按住不连删保护）。实现上把「光标」（`_selected`，预览/复制/置顶/Enter 作用的对象）与「选区」（`HashSet`）拆开，`IsSelected` 通过 `Classes.selected="{Binding IsSelected}"` 绑定到卡片 —— 顺带补上了此前**完全没有视觉反馈**的选中状态。选中标记做到一眼可辨（第一版只有一圈淡金描边，实测太淡）：卡片外框 2px 深棕 `ByhAccentBrush` + 缩略图上 2px 香槟金内环 + 12% 金色蒙层 + 右上角金色 ✓ 角标，四层叠加且全部 `IsHitTestVisible=False`，不影响点击命中的落点。删除改为逐张 try/catch：某张被占用不会中断整批，失败的图连同它的选中状态一起留在列表里供重试，并写 `Gallery delete: N of M file(s) could not be removed` 日志。右键菜单：右键的图在当前选区内则删整个选区，否则只删右键那张。同时**取消悬停即选中**（悬停只留金色高亮）——悬停驱动光标会在鼠标划过网格时悄悄清掉多选。进入大图会把选区收敛为该图；`←/→` 翻页时选区随之移动。
 
 ### 调整
 
@@ -27,7 +27,7 @@
 
 ### 发布
 
-- **2026-10-30 内测发布包刷新。** `dist/BYH-v0.1.0-post-20261030-内测.zip`（21,247,921 B，SHA-256 `16B2D9DB…`）：`BYH.exe`（29,405,184 B，SHA-256 `53D570D4…`，等于 `artifacts/publish/win-x64-nativeuia` 的现役构建）+ `av_libglesv2` / `libHarfBuzzSharp` / `libSkiaSharp` 三个原生库 + `providers.example.json`（取 `docs/` 现役版）+ `快速上手.md`。压缩包 CRC 校验通过、exe 与发布目录逐字节一致；旧的内测包（7-29 `v0.1.0`）与 `dist/` 里的散装旧 exe/dll 已删除。
+- **2026-10-30 内测发布包刷新。** `dist/BYH-v0.1.0-post-20261030-内测.zip`（21,250,523 B，SHA-256 `FAFED727…`）：`BYH.exe`（29,409,280 B，SHA-256 `2F87DF0F…`，等于 `artifacts/publish/win-x64-nativeuia` 的现役构建）+ `av_libglesv2` / `libHarfBuzzSharp` / `libSkiaSharp` 三个原生库 + `providers.example.json`（取 `docs/` 现役版）+ `快速上手.md`。压缩包 CRC 校验通过、exe 与发布目录逐字节一致；旧的内测包（7-29 `v0.1.0`）与 `dist/` 里的散装旧 exe/dll 已删除。
 - **`docs/快速上手.md` 入库。** 原 `dist/快速上手.md` 是内测用户上手说明且**从未进过版本控制**（与 README 中文内容 92% 不重叠），现移入 `docs/`：补当前构建标识、剪贴板图片上限（0=不限）/Pin/图片不归档的说明、开机自启改到「设置 → 通用 → 开机自启」、发布包与快速上手互相指路。
 
 
