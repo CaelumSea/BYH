@@ -13,6 +13,11 @@
 - **macOS 移植已取消。** 经 Mac 端实际调研，BYH 的核心能力（全局快捷键、UIA 文本捕获、低级鼠标/键盘 hook、DPAPI 密钥加密）深度依赖 Win32，跨平台移植成本远超收益。BYH 定位为 **Windows 专属**工具；Mac 上的同类需求由独立项目按 Mac 原生范式专项开发，不再共用代码库。`Platform.Abstractions` 抽象层作为 Windows 内部的解耦设计保留，但不再以「Mac 移植」为目标。
 
 ### 新增
+### 发布
+
+- **2026-10-30 内测发布包刷新。** `dist/BYH-v0.1.0-post-20261030-内测.zip`（21,239,968 B，SHA-256 `821B2496…DD39CA`）：`BYH.exe`（29,380,608 B，SHA-256 `FAA00756…0C8C0B`，等于 `artifacts/publish/win-x64-nativeuia` 的现役构建）+ `av_libglesv2` / `libHarfBuzzSharp` / `libSkiaSharp` 三个原生库 + `providers.example.json`（取 `docs/` 现役版）+ `快速上手.md`。压缩包 CRC 校验通过、exe 与发布目录逐字节一致；旧的内测包（7-29 `v0.1.0`）与 `dist/` 里的散装旧 exe/dll 已删除。
+- **`docs/快速上手.md` 入库。** 原 `dist/快速上手.md` 是内测用户上手说明且**从未进过版本控制**（与 README 中文内容 92% 不重叠），现移入 `docs/`：补当前构建标识、剪贴板图片上限（0=不限）/Pin/图片不归档的说明、开机自启改到「设置 → 通用 → 开机自启」、发布包与快速上手互相指路。
+
 
 - **剪贴板图片上限可关闭（2026-10-30）。** 「最大图片条数」填 **0 = 不限**（新增提示文案，中英三件套同步）：关闭按张数淘汰后不再自动删图，旧图片由用户手动删除。语义落在 `ClipboardHistorySettings.Normalize/Validate`（0 原样保留，非 0 值仍夹在 [5,500]），淘汰规则抽成 Core 纯函数 `ClipboardHistoryStore.EvictImagesToMax`（`maxImages <= 0` 直接原样返回，最老非置顶优先、置顶豁免、文本不受影响）以便脱离 Win32 单测；服务层只负责删文件与记日志。**注意**：总量上限 `maxEntries`（默认 1000）仍然生效，条数到顶时最老的**图片**照样会被 LRU 挤掉并删除文件——现在这条路径也会写日志。
 - **剪贴板图片生命周期日志（2026-10-30）。** 此前图片的采集、淘汰、删除**全程无日志**，导致「图片怎么不见了」事后完全无法追溯（本次排查即卡在这里）。现在记录：① `Image captured: clip-<hash>.png <w>x<h> png=<n>B dib=<n>B source=<proc>`；② `Image cap eviction: dropped N image(s) (cap=50|unlimited, remaining=M). Removed: <id(image,file)>…`；③ `Total cap eviction: …`（总量 LRU 挤掉的图片）；④ 用户删除类：`Deleted entry <id> (kind=image|text, imageFile=…)`、`Deleted N selected entries (M image file(s))`、`Cleared all non-pinned entries (X text, Y image)`、`Cleared N entries older than the selected one (…, M image file(s) deleted)`；⑤ 启动/设置日志把 0 渲染成 `maxImages=unlimited`，避免把 0 读成缺陷。每条最多列 10 个条目，避免大批量操作刷爆日志。
