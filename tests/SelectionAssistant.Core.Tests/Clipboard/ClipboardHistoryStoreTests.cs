@@ -1183,6 +1183,66 @@ public sealed class ClipboardHistoryStoreTests
         Assert.False(ClipboardHistoryStore.IsProtected(entry, assignedTagCount: 0));
     }
 
+    // ── 2026-10-30: image cap (0 = unlimited) ──
+
+    [Fact]
+    public void EvictImagesToMax_ZeroMeansUnlimited_DropsNothing()
+    {
+        var entries = new List<ClipboardEntry>
+        {
+            ImageEntry("oldest.png", ageSeconds: 300),
+            ImageEntry("mid.png", ageSeconds: 200),
+            ImageEntry("new.png", ageSeconds: 100),
+            Entry("some text"),
+        };
+
+        List<ClipboardEntry> kept = ClipboardHistoryStore.EvictImagesToMax(
+            entries, maxImages: 0, out IReadOnlyList<ClipboardEntry> dropped);
+
+        Assert.Empty(dropped);
+        Assert.Equal(entries.Count, kept.Count);
+    }
+
+    [Fact]
+    public void EvictImagesToMax_DropsOldestNonPinnedImages_KeepsText()
+    {
+        var entries = new List<ClipboardEntry>
+        {
+            ImageEntry("a.png", ageSeconds: 500),
+            Entry("text stays"),
+            ImageEntry("b.png", ageSeconds: 400),
+            ImageEntry("c.png", ageSeconds: 300),
+            ImageEntry("d.png", ageSeconds: 200),
+            ImageEntry("e.png", ageSeconds: 100),
+        };
+
+        List<ClipboardEntry> kept = ClipboardHistoryStore.EvictImagesToMax(
+            entries, maxImages: 2, out IReadOnlyList<ClipboardEntry> dropped);
+
+        Assert.Equal(3, dropped.Count);
+        Assert.Equal(["a.png", "b.png", "c.png"], dropped.Select(e => e.ImageFileName));
+        Assert.Equal(2, kept.Count(e => e.Kind == ClipboardEntryKind.Image));
+        Assert.Contains(kept, e => e.ImageFileName == "d.png");
+        Assert.Contains(kept, e => e.ImageFileName == "e.png");
+        Assert.Contains(kept, e => e.Text == "text stays");
+    }
+
+    [Fact]
+    public void EvictImagesToMax_PinnedImagesExemptFromCap()
+    {
+        var entries = new List<ClipboardEntry>
+        {
+            ImageEntry("pinned-old.png", ageSeconds: 900, pinned: true),
+            ImageEntry("only-unpinned.png", ageSeconds: 300),
+        };
+
+        List<ClipboardEntry> kept = ClipboardHistoryStore.EvictImagesToMax(
+            entries, maxImages: 1, out IReadOnlyList<ClipboardEntry> dropped);
+
+        Assert.Empty(dropped);
+        Assert.Equal(2, kept.Count);
+    }
+
     /// <summary>A cipher that always fails to decrypt — simulates the
     /// wrong-account / corrupt-cipher degradation path.</summary>
     private sealed class WrongCipher : IClipboardEntryCipher

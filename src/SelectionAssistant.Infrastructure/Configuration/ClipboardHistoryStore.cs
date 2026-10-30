@@ -386,6 +386,55 @@ public static class ClipboardHistoryStore
     public static List<ClipboardEntry> EvictToMax(IReadOnlyList<ClipboardEntry> entries, int maxEntries) =>
         EvictToMax(entries, maxEntries, out _);
 
+    /// <summary>R54 v2: trims <b>non-pinned image</b> entries to
+    /// <paramref name="maxImages"/>, leaving text entries and pinned images
+    /// untouched. <b><paramref name="maxImages"/> &lt;= 0 means unlimited</b> —
+    /// the caller (user) manages images by hand, so nothing is dropped.
+    /// <para>Extracted out of <c>ClipboardHistoryService</c> so the selection
+    /// rule (oldest <see cref="ClipboardEntry.CapturedAt"/> first, pinned
+    /// exempt, unlimited sentinel) is unit-testable without a live clipboard.
+    /// Input order is otherwise preserved. The caller owns file deletion and
+    /// does <b>not</b> archive image entries (metadata without the paired
+    /// .png/.dib would be a dangling reference).</para></summary>
+    /// <param name="dropped">Receives the evicted entries (ascending
+    /// <see cref="ClipboardEntry.CapturedAt"/> order); empty when nothing was
+    /// dropped, including the unlimited case.</param>
+    public static List<ClipboardEntry> EvictImagesToMax(
+        IReadOnlyList<ClipboardEntry> entries,
+        int maxImages,
+        out IReadOnlyList<ClipboardEntry> dropped)
+    {
+        var images = entries
+            .Select((e, i) => (entry: e, index: i))
+            .Where(t => t.entry.Kind == ClipboardEntryKind.Image && !t.entry.IsPinned)
+            .OrderBy(t => t.entry.CapturedAt)
+            .ToList();
+
+        int toDrop = maxImages <= 0 ? 0 : Math.Max(0, images.Count - maxImages);
+        if (toDrop == 0)
+        {
+            dropped = Array.Empty<ClipboardEntry>();
+            return entries.ToList();
+        }
+
+        var dropIndices = images.Take(toDrop).Select(t => t.index).ToHashSet();
+        var result = new List<ClipboardEntry>(entries.Count - toDrop);
+        var droppedList = new List<ClipboardEntry>(toDrop);
+        for (int i = 0; i < entries.Count; i++)
+        {
+            if (dropIndices.Contains(i))
+            {
+                droppedList.Add(entries[i]);
+            }
+            else
+            {
+                result.Add(entries[i]);
+            }
+        }
+        dropped = droppedList;
+        return result;
+    }
+
     /// <summary>Pinned first (by pinned time = order), then non-pinned by
     /// <see cref="ClipboardEntry.CapturedAt"/> descending (newest first). This
     /// is the canonical display order.</summary>

@@ -410,6 +410,7 @@ public static partial class Strings
     public static string Settings_Clipboard_ImagesOn => Get(nameof(Settings_Clipboard_ImagesOn));
     public static string Settings_Clipboard_ImagesOff => Get(nameof(Settings_Clipboard_ImagesOff));
     public static string Settings_Clipboard_MaxImages => Get(nameof(Settings_Clipboard_MaxImages));
+    public static string Settings_Clipboard_MaxImagesHint => Get(nameof(Settings_Clipboard_MaxImagesHint));
     public static string Settings_Clipboard_Excluded => Get(nameof(Settings_Clipboard_Excluded));
     public static string Settings_Clipboard_WindowSize_Title => Get(nameof(Settings_Clipboard_WindowSize_Title));
 

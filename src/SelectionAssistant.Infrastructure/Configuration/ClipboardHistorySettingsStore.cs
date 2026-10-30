@@ -44,6 +44,14 @@ public static class ClipboardHistorySettingsStore
                 Enabled = ReadBoolean(root, "enabled", defaults.Enabled),
                 AutoPasteEnabled = ReadBoolean(root, "autoPasteEnabled", defaults.AutoPasteEnabled),
                 MaxEntries = ReadInt(root, "maxEntries", defaults.MaxEntries),
+                // R54 v2 image settings. These were missing from Load/Save until
+                // the 2026-10-30 fix: the Settings page wrote them into the
+                // in-memory record only, so "Max images" and the image capture
+                // toggle silently reverted to defaults after every restart —
+                // and saving a lowered image cap deleted images on the spot
+                // with no persisted trace of why.
+                CaptureImagesEnabled = ReadBoolean(root, "captureImagesEnabled", defaults.CaptureImagesEnabled),
+                MaxImageEntries = ReadInt(root, "maxImageEntries", defaults.MaxImageEntries),
                 ExcludeProcessNames = ReadStringArray(root, "excludeProcessNames", defaults.ExcludeProcessNames),
                 MaskSensitiveEnabled = ReadBoolean(root, "maskSensitiveEnabled", defaults.MaskSensitiveEnabled),
                 WindowWidth = ReadInt(root, "windowWidth", defaults.WindowWidth),
@@ -85,6 +93,8 @@ public static class ClipboardHistorySettingsStore
                 writer.WriteBoolean("enabled", settings.Enabled);
                 writer.WriteBoolean("autoPasteEnabled", settings.AutoPasteEnabled);
                 writer.WriteNumber("maxEntries", settings.MaxEntries);
+                writer.WriteBoolean("captureImagesEnabled", settings.CaptureImagesEnabled);
+                writer.WriteNumber("maxImageEntries", settings.MaxImageEntries);
                 writer.WriteStartArray("excludeProcessNames");
                 foreach (string name in settings.ExcludeProcessNames)
                 {

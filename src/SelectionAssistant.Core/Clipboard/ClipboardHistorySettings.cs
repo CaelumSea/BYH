@@ -32,8 +32,10 @@ public sealed record ClipboardHistorySettings
 
     /// <summary>R54 v2: maximum number of non-pinned <b>image</b> entries kept,
     /// independent of <see cref="MaxEntries"/> (images are larger, so they get a
-    /// smaller cap). Range [5, 500]. When exceeded the oldest non-pinned image
-    /// entry is evicted (and its PNG deleted) on each image capture.</summary>
+    /// smaller cap). <b>0 = unlimited</b> (count-based image eviction turned
+    /// off — the user deletes images by hand); otherwise range [5, 500]. When
+    /// exceeded the oldest non-pinned image entry is evicted (and its PNG
+    /// deleted) on each image capture.</summary>
     public int MaxImageEntries { get; init; } = 50;
 
     /// <summary>Default privacy exclusion list — common password managers and
@@ -84,7 +86,9 @@ public sealed record ClipboardHistorySettings
     public ClipboardHistorySettings Normalize() => this with
     {
         MaxEntries = Math.Clamp(MaxEntries, 10, 5000),
-        MaxImageEntries = Math.Clamp(MaxImageEntries, 5, 500),
+        // 0 is the "unlimited" sentinel and must survive normalization; any
+        // other out-of-range value is clamped back into [5, 500].
+        MaxImageEntries = MaxImageEntries <= 0 ? 0 : Math.Clamp(MaxImageEntries, 5, 500),
         WindowWidth = Math.Clamp(WindowWidth, MinWindowWidth, MaxWindowWidth),
         WindowHeight = Math.Clamp(WindowHeight, MinWindowHeight, MaxWindowHeight),
         ExcludeProcessNames = ExcludeProcessNames
@@ -100,9 +104,9 @@ public sealed record ClipboardHistorySettings
         {
             throw new ArgumentOutOfRangeException(nameof(MaxEntries), "MaxEntries must be between 10 and 5000.");
         }
-        if (MaxImageEntries is < 5 or > 500)
+        if (MaxImageEntries != 0 && MaxImageEntries is < 5 or > 500)
         {
-            throw new ArgumentOutOfRangeException(nameof(MaxImageEntries), "MaxImageEntries must be between 5 and 500.");
+            throw new ArgumentOutOfRangeException(nameof(MaxImageEntries), "MaxImageEntries must be 0 (unlimited) or between 5 and 500.");
         }
         if (WindowWidth is < MinWindowWidth or > MaxWindowWidth)
         {

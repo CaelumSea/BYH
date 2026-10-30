@@ -13,7 +13,7 @@
 
 ```bash
 dotnet build SelectionAssistant.slnx -c Release      # 0 警告（CI /warnaserror）
-dotnet test SelectionAssistant.slnx                   # 当前 956 项
+dotnet test SelectionAssistant.slnx                   # 当前 972 项
 dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Release -r win-x64
 ```
 
@@ -51,6 +51,8 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 **2026-08-10 剪贴板交互改进**：托盘点击恢复最小化/置顶已打开的设置窗口（`ShowAndActivate` 闪烁 Topmost）；合并「翻译」+「视觉」导航为单一「模型」页（Provider 增删改 + 视觉/OCR 子卡片，OCR 控件 x:Name 不变、数据模型零改动）；剪贴板行新增三个快捷键 —— `Ctrl+T` 添加标签、`Ctrl+M` 移动到（分类+自定义标签扁平列表）、`Ctrl+R` 移除标签，并修复 `ApplyFilterResults` 在 tag/group/pin/favorite 等非搜索刷新时把选中条目重置回顶部的问题（改按 Id 找回保持选中，真搜索仍跳到首个匹配）。剪贴板行右键菜单的 Move to / Remove tag 构建逻辑提取为 `PopulateMoveToItems` / `PopulateRemoveTagItems`（叶子构建）+ `BuildMoveToMenu` / `BuildRemoveTagMenu`（带 header 包装）+ `FindRowContainer`（可视树查找，键盘路径无 PointerPressed source），右键菜单行为不变。
 
 **2026-08-15 修复与性能**：**Zed（GPUI）划词捕获**——Zed 发布复制不带 owner HWND（7 个剪贴板事务），默认 owner 校验在读文本前拒绝；新增 opt-in `AllowOwnerlessClipboardResult` 策略开关 + `zed` 规则（`HistorySuppressionCount=8`，复制键链保持默认），真机已验证划词弹工具栏。**剪贴板图片行修复**——图片条目 tag/徽章不再显示两排重复（通用 meta 行按 `!IsImage` 门控）。**功耗「启动 LHM」按钮**——功耗卡片新增按钮 + `LhmExePath` 路径字段，LHM 离线时复用 LauncherRunner 的 runas→UAC 回退按管理员拉起，仅在真正可达时置灰。**空闲工作集裁剪**——3 分钟 DispatcherTimer，仅在回托盘（无弹窗可见）时调 psapi `EmptyWorkingSet`，纯提示性。最新验证基线 **956/956**（Core 783 / Providers 51 / Windows 122）。
+
+**2026-10-30 剪贴板图片修复与可观测性**：`ClipboardHistorySettingsStore` 漏存 `captureImagesEnabled` / `maxImageEntries`（设置页改完重启回默认 50，且保存时会把超限图片当场删掉）→ 补上读写；图片上限支持 **0 = 不限**（`Normalize`/`Validate` 放行 0，淘汰规则抽成 `ClipboardHistoryStore.EvictImagesToMax` 纯函数，置顶豁免、文本不受影响）；图片采集 / 张数淘汰 / 总量淘汰 / 各类删除全部写日志（此前零日志，事后无法追溯）；`DibToPngConverter` 补 **BI_BITFIELDS**（32bpp 掩码 + 16bpp 5-6-5，掩码可尾随 40 字节头或内嵌 V2/V3/V4/V5 头；全零 alpha 按不透明），此前这类图静默跳过、根本不进历史。验证基线 **972/972**（Core 792 / Providers 51 / Windows 129），NativeAOT 发布 0 警告，真机日志确认 `maxImages=unlimited` 与 `Image captured: … source=…`。
 
 **下一项产品需求**：`REQ-036` “统一多模态模型与直接觉动作”，当前仅已派发、**尚未实现**。从 `TASK-053` 开始：先建立能力感知的多模态请求层，再接 Ocean Eyes 截图直译，最后对比直达与两段式链路。普通划词仍走纯文本，纯 OCR 与两段式回退必须保留。详见 [`docs/architecture/10-multimodal-actions.md`](docs/architecture/10-multimodal-actions.md)。`REQ-027` 的主题切换三个任务（TASK-030–032）仍在待办，不要误标已完成。
 

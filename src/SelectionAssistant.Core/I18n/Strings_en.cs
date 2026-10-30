@@ -323,6 +323,7 @@ internal static partial class Strings_en
         ["Settings_Clipboard_ImagesOn"] = "Capture images",
         ["Settings_Clipboard_ImagesOff"] = "Text only",
         ["Settings_Clipboard_MaxImages"] = "Max image entries",
+        ["Settings_Clipboard_MaxImagesHint"] = "0 = unlimited (you delete old images yourself)",
         ["Settings_Clipboard_Excluded"] = "Excluded applications",
         ["Settings_Clipboard_WindowSize_Title"] = "Default Window Size",
 

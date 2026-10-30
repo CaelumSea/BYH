@@ -1830,6 +1830,13 @@
                                Text="50"
                                FontSize="{DynamicResource ByhFontSizeBodyLarge}" />
                     </Grid>
+                    <!-- 2026-10-30: 0 turns the image cap off (user manages
+                         images by hand). Without the hint a "0" in the box reads
+                         like a typo — it silently means "unlimited". -->
+                    <TextBlock Text="{x:Static i18n:Strings.Settings_Clipboard_MaxImagesHint}"
+                               Classes="Muted"
+                               FontSize="{DynamicResource ByhFontSizeCaption}"
+                               TextWrapping="Wrap" />
                     <!-- R54 window-size: default open size of the
                          ClipboardHistoryWindow. The window is CanResize=True,
                          so this is the launch default; in-session manual

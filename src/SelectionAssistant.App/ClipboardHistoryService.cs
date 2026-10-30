@@ -134,7 +134,7 @@ public sealed class ClipboardHistoryService : IDisposable
         }
 
         clipboard.SubscribeChanges(OnClipboardChanged);
-        _logger.Info("ClipboardHistory", $"Started with {_entries.Count} entries, max={_settings.MaxEntries}, maxImages={_settings.MaxImageEntries}, tags={_tags.CustomTags.Count}, userIcons={_iconLibrary.Icons.Count}, encrypted={entryCipher is not null}, archive={_archiveDirectory}.");
+        _logger.Info("ClipboardHistory", $"Started with {_entries.Count} entries, max={_settings.MaxEntries}, maxImages={DescribeImageCap(_settings.MaxImageEntries)}, tags={_tags.CustomTags.Count}, userIcons={_iconLibrary.Icons.Count}, encrypted={entryCipher is not null}, archive={_archiveDirectory}.");
     }
 
     /// <summary>Current settings (normalized). Replacing via
@@ -279,7 +279,7 @@ public sealed class ClipboardHistoryService : IDisposable
             EvictImagesToMax();
             TryPersist();
         }
-        _logger.Info("ClipboardHistory", $"Settings updated: enabled={settings.Enabled} max={settings.MaxEntries} maxImages={settings.MaxImageEntries} captureImages={settings.CaptureImagesEnabled} autoPaste={settings.AutoPasteEnabled}.");
+        _logger.Info("ClipboardHistory", $"Settings updated: enabled={settings.Enabled} max={settings.MaxEntries} maxImages={DescribeImageCap(settings.MaxImageEntries)} captureImages={settings.CaptureImagesEnabled} autoPaste={settings.AutoPasteEnabled}.");
     }
 
     /// <summary>
@@ -310,10 +310,12 @@ public sealed class ClipboardHistoryService : IDisposable
     public bool Delete(Guid id)
     {
         string? imageToDelete;
+        bool wasImage;
         lock (_gate)
         {
             ClipboardEntry? found = _entries.FirstOrDefault(e => e.Id == id);
             imageToDelete = found?.ImageFileName;
+            wasImage = found?.Kind == ClipboardEntryKind.Image;
             int removed = _entries.RemoveAll(e => e.Id == id);
             if (removed > 0)
             {
@@ -326,6 +328,10 @@ public sealed class ClipboardHistoryService : IDisposable
         }
         // Delete outside the lock (disk I/O).
         DeleteImageFile(imageToDelete);
+        // 2026-10-30: user deletions were silent too — a vanished image could be
+        // an accidental Delete keypress nobody remembers. Log id + file.
+        _logger.Info("ClipboardHistory",
+            $"Deleted entry {id:N} (kind={(wasImage ? "image" : "text")}, imageFile={imageToDelete ?? "-"}) — user action.");
         return true;
     }
 
@@ -368,6 +374,10 @@ public sealed class ClipboardHistoryService : IDisposable
         {
             DeleteImageFile(imageFileName);
         }
+        // 2026-10-30: batch (multi-select) deletion was silent as well.
+        _logger.Info("ClipboardHistory",
+            $"Deleted {removed} selected entr{(removed == 1 ? "y" : "ies")} " +
+            $"({imagesToDelete.Count(n => !string.IsNullOrEmpty(n))} image file(s)) — user action.");
         return removed;
     }
 
@@ -520,12 +530,16 @@ public sealed class ClipboardHistoryService : IDisposable
     public void ClearNonPinned()
     {
         List<string> imagesToDelete;
+        int removedText;
+        int removedImages;
         lock (_gate)
         {
             imagesToDelete = _entries
                 .Where(e => !e.IsPinned && !string.IsNullOrEmpty(e.ImageFileName))
                 .Select(e => e.ImageFileName!)
                 .ToList();
+            removedImages = _entries.Count(e => !e.IsPinned && e.Kind == ClipboardEntryKind.Image);
+            removedText = _entries.Count(e => !e.IsPinned && e.Kind != ClipboardEntryKind.Image);
             _entries = _entries.Where(e => e.IsPinned).ToList();
             TryPersist();
         }
@@ -533,7 +547,10 @@ public sealed class ClipboardHistoryService : IDisposable
         {
             DeleteImageFile(name);
         }
-        _logger.Info("ClipboardHistory", "Cleared all non-pinned entries.");
+        // 2026-10-30: include the text/image split so a later "where did my
+        // images go" question can be answered from the log.
+        _logger.Info("ClipboardHistory",
+            $"Cleared all non-pinned entries ({removedText} text, {removedImages} image) — user action.");
     }
 
     /// <summary>R54 v2: clears every entry older than the one with the given id,
@@ -595,7 +612,9 @@ public sealed class ClipboardHistoryService : IDisposable
         {
             DeleteImageFile(name);
         }
-        _logger.Info("ClipboardHistory", $"Cleared {removed} entries older than the selected one (protected entries kept).");
+        _logger.Info("ClipboardHistory",
+            $"Cleared {removed} entries older than the selected one (protected entries kept, " +
+            $"{imagesToDelete.Count} image file(s) deleted) — user action.");
         return removed;
     }
 
@@ -1004,12 +1023,25 @@ public sealed class ClipboardHistoryService : IDisposable
                 _entries = ClipboardHistoryStore.AddAndEvict(
                     _entries, imageEntry, _settings.MaxEntries, out IReadOnlyList<ClipboardEntry> evictedFromImageAdd);
                 ArchiveEvictedTextEntries(evictedFromImageAdd);
+                var evictedImages = new List<ClipboardEntry>();
                 foreach (ClipboardEntry ev in evictedFromImageAdd)
                 {
                     if (ev.Kind == ClipboardEntryKind.Image)
                     {
-                        DeleteImageFile(ev.ImageFileName);
+                        evictedImages.Add(ev);
                     }
+                }
+                if (evictedImages.Count > 0)
+                {
+                    // 2026-10-30: the total-entry LRU also deletes image files;
+                    // log it so a shrink isn't mistaken for user deletion.
+                    _logger.Info("ClipboardHistory",
+                        $"Total cap eviction: dropped {evictedImages.Count} image(s) (max={_settings.MaxEntries}). " +
+                        $"Removed: {DescribeEntries(evictedImages)}.");
+                }
+                foreach (ClipboardEntry ev in evictedImages)
+                {
+                    DeleteImageFile(ev.ImageFileName);
                 }
                 EvictImagesToMax();
                 TryPersist();
@@ -1130,6 +1162,13 @@ public sealed class ClipboardHistoryService : IDisposable
             return null;
         }
 
+        // 2026-10-30: image captures were previously silent, so a history that
+        // "lost" an image left no evidence it had ever been captured. One line
+        // per capture is cheap (captures are user-driven, not a hot loop).
+        _logger.Info("ClipboardHistory",
+            $"Image captured: {pngName} {converted.Value.width}x{converted.Value.height} png={pngBytes.Length}B dib={dib.Length}B " +
+            $"source={sourceProcessName ?? "unknown"}.");
+
         return new ClipboardEntry
         {
             Kind = ClipboardEntryKind.Image,
@@ -1162,33 +1201,60 @@ public sealed class ClipboardHistoryService : IDisposable
     /// under <c>_gate</c>. Image and text entries share the same
     /// <c>_entries</c> list; this pass only removes images, leaving the text cap
     /// (<see cref="ClipboardHistoryStore.AddAndEvict"/>) untouched.
+    /// <para><b>Cap 0 = unlimited</b> (user manages images by hand). The
+    /// selection rule lives in
+    /// <see cref="ClipboardHistoryStore.EvictImagesToMax"/> so it is unit
+    /// tested; this wrapper only deletes files and logs.</para>
     /// </summary>
     private void EvictImagesToMax()
     {
         int maxImages = _settings.MaxImageEntries;
-        var images = _entries
-            .Select((e, i) => (entry: e, index: i))
-            .Where(t => t.entry.Kind == ClipboardEntryKind.Image && !t.entry.IsPinned)
-            .OrderBy(t => t.entry.CapturedAt) // oldest first
-            .ToList();
-
-        int toDrop = Math.Max(0, images.Count - maxImages);
-        if (toDrop == 0)
+        _entries = ClipboardHistoryStore.EvictImagesToMax(
+            _entries, maxImages, out IReadOnlyList<ClipboardEntry> dropped);
+        if (dropped.Count == 0)
         {
             return;
         }
 
-        var dropIds = images.Take(toDrop).Select(t => t.entry.Id).ToHashSet();
-        var dropFileNames = _entries
-            .Where(e => dropIds.Contains(e.Id) && !string.IsNullOrEmpty(e.ImageFileName))
-            .Select(e => e.ImageFileName!)
-            .ToList();
+        // 2026-10-30: this path used to delete .png/.dib files with zero logging,
+        // which made "my images disappeared" impossible to trace after the fact.
+        // Log the count, the cap that caused it, and the ids/filenames removed.
+        _logger.Info("ClipboardHistory",
+            $"Image cap eviction: dropped {dropped.Count} image(s) (cap={DescribeImageCap(maxImages)}, " +
+            $"remaining={_entries.Count(e => e.Kind == ClipboardEntryKind.Image)}). " +
+            $"Removed: {DescribeEntries(dropped)}.");
 
-        _entries = _entries.Where(e => !dropIds.Contains(e.Id)).ToList();
-        foreach (string name in dropFileNames)
+        foreach (ClipboardEntry entry in dropped)
         {
-            DeleteImageFile(name);
+            DeleteImageFile(entry.ImageFileName);
         }
+    }
+
+    /// <summary>2026-10-30: renders the image cap for logs. 0 means the cap is
+    /// off (the user manages images manually) — printing a bare "0" next to
+    /// "maxImages" reads like a bug, so log it as "unlimited".</summary>
+    private static string DescribeImageCap(int maxImages) =>
+        maxImages <= 0 ? "unlimited" : maxImages.ToString();
+
+    /// <summary>2026-10-30: compact log rendering of removed entries — id +
+    /// kind + image file name, capped at 10 items so a large sweep can't flood
+    /// the log (the count is logged separately).</summary>
+    private static string DescribeEntries(IReadOnlyList<ClipboardEntry> entries)
+    {
+        const int MaxItems = 10;
+        var parts = new List<string>(Math.Min(entries.Count, MaxItems));
+        for (int i = 0; i < entries.Count && i < MaxItems; i++)
+        {
+            ClipboardEntry e = entries[i];
+            parts.Add(e.Kind == ClipboardEntryKind.Image
+                ? $"{e.Id:N}(image,{e.ImageFileName ?? "-"})"
+                : $"{e.Id:N}(text)");
+        }
+        if (entries.Count > MaxItems)
+        {
+            parts.Add($"…+{entries.Count - MaxItems} more");
+        }
+        return string.Join(", ", parts);
     }
 
     /// <summary>Best-effort deletion of an image PNG. Never throws — a missing

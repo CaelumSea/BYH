@@ -49,6 +49,33 @@ public sealed class ClipboardHistorySettingsTests
         Assert.Throws<ArgumentOutOfRangeException>(settings.Validate);
     }
 
+    // ── 2026-10-30: image cap 0 = unlimited ──
+
+    [Fact]
+    public void Normalize_KeepsZeroMaxImageEntriesAsUnlimited()
+    {
+        ClipboardHistorySettings settings = ClipboardHistorySettings.Default with { MaxImageEntries = 0 };
+
+        Assert.Equal(0, settings.Normalize().MaxImageEntries);
+        settings.Normalize().Validate();
+    }
+
+    [Fact]
+    public void Normalize_ClampsSmallNonZeroMaxImageEntriesToFloor()
+    {
+        ClipboardHistorySettings settings = ClipboardHistorySettings.Default with { MaxImageEntries = 3 };
+
+        Assert.Equal(5, settings.Normalize().MaxImageEntries);
+    }
+
+    [Fact]
+    public void Validate_RejectsSmallNonZeroMaxImageEntries()
+    {
+        ClipboardHistorySettings settings = ClipboardHistorySettings.Default with { MaxImageEntries = 3 };
+
+        Assert.Throws<ArgumentOutOfRangeException>(settings.Validate);
+    }
+
     // ── R54 window size ──
 
     [Fact]

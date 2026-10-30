@@ -90,7 +90,7 @@ OCR（Ocean Eyes）用哪个 provider/model 在 **设置 → Vision** 单独配�
 | `ocean-eyes-capture.json` | 截图保存路径 / 自动保存 / 写入剪贴板 / UIA 辅助开关。 |
 | `spotlight-trigger.json` | 启动器面板快捷键 + 窗口尺寸。 |
 | `clipboard-history-trigger.json` | 剪贴板历史弹窗快捷键。 |
-| `clipboard-history-settings.json` | 剪贴板功能开关 / 自动粘贴 / 最大条数 / 排除应用 / 敏感掩码。 |
+| `clipboard-history-settings.json` | 剪贴板功能开关 / 自动粘贴 / 最大条数 / 图片采集开关 / 最大图片条数（`0` = 不限） / 排除应用 / 敏感掩码。 |
 | `clipboard-history.json` | 剪贴板条目（文本）。schema v5。 |
 | `clipboard-history-tags.json` | 标签 + 条目→标签分配。 |
 | `clipboard-history-icons.json` | 用户导入的图标库（SVG path data）。 |
@@ -132,7 +132,7 @@ Clipboard     ← 剪贴板历史所有开关与上限
 # 编译检查（Windows）
 dotnet build SelectionAssistant.slnx -c Release
 
-# 测试（当前 956 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
+# 测试（当前 972 项，含 i18n 三向同步守卫；Windows.IntegrationTests 仅 Windows 可跑）
 dotnet test
 
 # NativeAOT 单文件发布（Windows，生成 BYH.exe，约 28MB）

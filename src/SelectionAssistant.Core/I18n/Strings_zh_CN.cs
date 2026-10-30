@@ -325,6 +325,7 @@ internal static partial class Strings_zh_CN
         ["Settings_Clipboard_ImagesOn"] = "抓取图片",
         ["Settings_Clipboard_ImagesOff"] = "仅文本",
         ["Settings_Clipboard_MaxImages"] = "最大图片条数",
+        ["Settings_Clipboard_MaxImagesHint"] = "0 = 不限（旧图片由你手动删除）",
         ["Settings_Clipboard_Excluded"] = "排除的应用",
         ["Settings_Clipboard_WindowSize_Title"] = "默认窗口尺寸",
 
