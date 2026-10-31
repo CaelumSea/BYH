@@ -26,7 +26,7 @@ BYH 在后台常驻，通过全局快捷键直达屏幕上当前选中或框选�
 - **剪贴板图片采集补 BI_BITFIELDS**：.NET/System.Drawing、部分浏览器与带 alpha 的截图工具用的 32bpp 掩码格式（以及 16bpp 5-6-5）此前被静默跳过、根本不进历史，现在能正常采集；`BI_JPEG`/`BI_PNG` 仍按不支持安全跳过。
 
 - **Zed 选词兼容**：Zed（GPUI 渲染面）发布复制时剪贴板没有可查询的 Win32 owner，BYH 为 `zed` 进程内置受限的 ownerless 接受策略（序号变化 + 稳定文本 + 目标窗口校验不变），Zed 里划词即可弹出工具栏。
-- **功耗一键拉起 LHM**：功耗卡片新增「启动 LHM」按钮和 LibreHardwareMonitor.exe 路径设置；LHM 离线时一键按管理员重启（复用启动器的 UAC 提权回退）。
+- **功耗一键拉起 LHM**（随包带完整 `tools\LibreHardwareMonitor`，含绑定重定向配置；缺了它 LHM 会在建窗时崩）：功耗卡片新增「启动 LHM」按钮和 LibreHardwareMonitor.exe 路径设置；LHM 离线时一键按管理员重启（复用启动器的 UAC 提权回退）。
 - **空闲内存回落**：回到托盘空闲后定期调用 `EmptyWorkingSet` 裁剪工作集，任务管理器不再长期显示动作峰值的内存。
 - **剪贴板图片行修复**：图片条目的 tag / 徽章 / 来源 / 时间不再显示两排重复。
 - **剪贴板行快捷键**：`Ctrl+T` 添加标签、`Ctrl+M` 移动到、`Ctrl+R` 移除标签；非搜索刷新不再把选中条目重置回顶部。

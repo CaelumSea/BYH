@@ -74,6 +74,19 @@
     <CopyOutputSymbolsToPublishDirectory>false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
 
+  <!-- 随包分发的 LibreHardwareMonitor（设置页「启动 LHM」的默认路径）。
+       必须整目录拷贝：缺 LibreHardwareMonitor.exe.config 时，Aga.Controls 的
+       .resources 会去要 System.Resources.Extensions 4.0.0.0，而随包的是
+       10.0.0.3（无绑定重定向）→ 启动即 FileLoadException，用户看到的就是
+       「一键启动点了没反应」；缺 satellite 子目录则丢失本地化界面。 -->
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)..\..\tools\LibreHardwareMonitor\**\*"
+          Exclude="$(MSBuildThisFileDirectory)..\..\tools\LibreHardwareMonitor\LHM.zip;$(MSBuildThisFileDirectory)..\..\tools\LibreHardwareMonitor\**\*.pdb;$(MSBuildThisFileDirectory)..\..\tools\LibreHardwareMonitor\**\*.xml"
+          Link="tools\LibreHardwareMonitor\%(RecursiveDir)%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.0" />
     <!-- PNG→CF_DIB decoding lives on SkiaSharp directly: Avalonia 12's
