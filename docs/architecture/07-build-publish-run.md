@@ -8,7 +8,7 @@
 
 ```powershell
 Set-Location 'C:\dvr\gh-kb\MyProjects\BYH'
-dotnet test SelectionAssistant.slnx -c Release --nologo   # 当前 762/762 通过
+dotnet test SelectionAssistant.slnx -c Release --nologo   # 当前 972/972 通过（Core 792 / Providers 51 / Windows 集成 129）
 ```
 
 ## NativeAOT 发布
@@ -25,8 +25,19 @@ dotnet publish src\SelectionAssistant.App\SelectionAssistant.App.csproj `
 **产物**：`artifacts\publish\win-x64-nativeuia\`
 - `BYH.exe`（NativeAOT，无 PDB；R36 起 exe 名跟随 `<AssemblyName>BYH</AssemblyName>`，任务管理器进程名亦为 `BYH`）
 - `av_libglesv2.dll`、`libHarfBuzzSharp.dll`、`libSkiaSharp.dll`
+- `tools\LibreHardwareMonitor\`（41 个文件，含 `LibreHardwareMonitor.exe.config`）
 
 **要求**：0 AOT/裁剪警告（TrimMode=full）。
+
+**`tools\LibreHardwareMonitor` 是随包第三方工具，必须整目录**：源目录不入库（见 `.gitignore`，19MB 本地解压物），但 `SelectionAssistant.App.csproj` 用 `CopyToPublishDirectory` 整目录拷进产物，所以发版前必须保证本地那份是完整的 45 文件解压目录。**漏掉 `LibreHardwareMonitor.exe.config` 会让 LHM 建窗即崩**——里面只有一条绑定重定向（`System.Resources.Extensions 4.0.0.0 → 10.0.0.3`），缺了它 `Aga.Controls` 的嵌入资源抛 `FileLoadException 0x80131040`，用户看到的是「UAC 通过了但软件没起来」。新机器上：解压上游 LHM release 到 `tools\LibreHardwareMonitor\` 再 publish。
+
+## 分享包（dist）
+
+```powershell
+# exe 与三个原生库 + tools\ + 文档 → dist\BYH-<ver>-<日期>内测.zip
+```
+
+`dist/` 同样不入库；包内 `BYH.exe` 必须与 `artifacts/publish/win-x64-nativeuia/BYH.exe` 逐字节一致，CHANGELOG 末尾会记录包大小与 SHA-256 前 8 位。
 
 ## 启动入口
 

@@ -84,8 +84,9 @@ dist/
 
 ## --- 第三方工具（本地运行依赖，不进版本控制） ---
 ## tools/LibreHardwareMonitor/ 是解压的 Libre Hardware Monitor 程序（19MB，45 文件）。
-## BYH 功耗监控走 HTTP 轮询用户自装的 LHM Web Server，代码不引用这些二进制。
-## 用户自行从 https://github.com/LibreHardwareMonitor/LibreHardwareMonitor 下载安装。
+## 不入库，但 publish 时由 SelectionAssistant.App.csproj 整目录拷进产物（一键启动 LHM 用）。
+## 必须整目录：漏掉 LibreHardwareMonitor.exe.config 的绑定重定向会让 LHM 建窗即崩。
+## 来源：https://github.com/LibreHardwareMonitor/LibreHardwareMonitor 解压到本目录。
 tools/LibreHardwareMonitor/
 
 ## --- reqbase / 多 agent 协作过程产物（仓库根目录散落文件） ---

@@ -43,6 +43,7 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
    - **设置页结构**：每个 section 包一层 `Border Classes="DashboardPanel"`（奶白渐变 + 香槟金细边 + 暖调柔光，与 Dashboard 页同款），section 间靠 Spacing 间隔、**不用 hairline 分隔线**。子卡片用 `Classes="InnerCard"`。`EditFormBorder`/`PromptTemplatesCard` 这两个 x:Name 在 Border 上（code-behind 调 `BringIntoView()`，`Control` 基类方法，StackPanel→Border 类型变更安全）。
 
 8. **Ownerless clipboard 仅限显式策略（Warp / Zed）。** Warp（`Ctrl+Shift+C`）和 Zed（GPUI 渲染面）都可能写入无 Win32 owner HWND 的剪贴板，`ClipboardCaptureInvocation.AllowOwnerlessResult` 只由两种条件开启：Warp 的 `CtrlShiftCOnly` 模式，或显式 `AllowOwnerlessClipboardResult` 策略开关（当前仅 `zed` 规则）。仍必须满足目标窗口、剪贴板序号变化、稳定文本和读取期间序号未变化；其他应用不能走 ownerless 路径。
+9. **随包第三方工具整目录（LHM）。** `tools/LibreHardwareMonitor/` 不入库，但 publish 时由 `SelectionAssistant.App.csproj` 的 `CopyToPublishDirectory` 整目录带出。**必须包含 `LibreHardwareMonitor.exe.config`**——它只有一条绑定重定向（`System.Resources.Extensions 4.0.0.0 → 10.0.0.3`），缺了 LHM 在 `MainForm.InitializeComponent()` 抛 `FileLoadException 0x80131040` 秒退，表现为「设置页/托盘点了启动、UAC 也确认了、软件没起来」。手工挑文件复制过就大概率漏它（2026-10-31 事故）。
 
 ## 当前状态与下一步
 
@@ -53,6 +54,10 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 **2026-08-15 修复与性能**：**Zed（GPUI）划词捕获**——Zed 发布复制不带 owner HWND（7 个剪贴板事务），默认 owner 校验在读文本前拒绝；新增 opt-in `AllowOwnerlessClipboardResult` 策略开关 + `zed` 规则（`HistorySuppressionCount=8`，复制键链保持默认），真机已验证划词弹工具栏。**剪贴板图片行修复**——图片条目 tag/徽章不再显示两排重复（通用 meta 行按 `!IsImage` 门控）。**功耗「启动 LHM」按钮**——功耗卡片新增按钮 + `LhmExePath` 路径字段，LHM 离线时复用 LauncherRunner 的 runas→UAC 回退按管理员拉起，仅在真正可达时置灰。**空闲工作集裁剪**——3 分钟 DispatcherTimer，仅在回托盘（无弹窗可见）时调 psapi `EmptyWorkingSet`，纯提示性。最新验证基线 **956/956**（Core 783 / Providers 51 / Windows 122）。
 
 **2026-10-30 剪贴板图片修复与可观测性**：`ClipboardHistorySettingsStore` 漏存 `captureImagesEnabled` / `maxImageEntries`（设置页改完重启回默认 50，且保存时会把超限图片当场删掉）→ 补上读写；图片上限支持 **0 = 不限**（`Normalize`/`Validate` 放行 0，淘汰规则抽成 `ClipboardHistoryStore.EvictImagesToMax` 纯函数，置顶豁免、文本不受影响）；图片采集 / 张数淘汰 / 总量淘汰 / 各类删除全部写日志（此前零日志，事后无法追溯）；`DibToPngConverter` 补 **BI_BITFIELDS**（32bpp 掩码 + 16bpp 5-6-5，掩码可尾随 40 字节头或内嵌 V2/V3/V4/V5 头；全零 alpha 按不透明），此前这类图静默跳过、根本不进历史。验证基线 **972/972**（Core 792 / Providers 51 / Windows 129），NativeAOT 发布 0 警告，真机日志确认 `maxImages=unlimited` 与 `Image captured: … source=…`。
+
+**2026-10-30/31 相册交互与图片复制**：截图相册点击语义改为单击选中 / 双击看大图，`Delete` 弹确认框后**再按一次 Delete** 才删（按住不连删），选中 ≥2 张走批量删除（`Ctrl/Shift/Ctrl+A/Esc`、左下角「已选 N 张」浮条、单张失败不影响其余），选中态加粗金边 + ✓ 角标。图片复制改走 `GalleryImageClipboard.CopyPng` → `SetImageDibAndPng`（CF_DIB + CF_PNG 一次原子写入，并校验返回值），`PngToDibConverter` 的 PNG 解码换成 SkiaSharp——Avalonia 12.1 的 `Bitmap.CopyPixels` 对普通截图抛 `stride` 越界、异常被吞成 null，此前所有图片复制实际只剩 CF_PNG（Word/画图/资源管理器粘不出来）。验证基线 **972/972**（792 / 51 / 129）。
+
+**2026-10-31 LHM 随包与托盘入口**：修「启动 LHM 没反应」——发布目录只拷了 45 个文件里的 16 个，漏掉 `LibreHardwareMonitor.exe.config`，LHM 建窗即崩（见铁律 9）；现由 csproj 整目录随包拷贝。托盘右键新增「启动 LHM 温度监控」，与设置页按钮同一条 `StartLhm` 链路（路径取 `LhmExePath`、空则随包默认），LHM 在线置灰、结果写托盘 tooltip；菜单构建抽成 `BuildTrayMenu()` 便于脱离托盘外壳检查。分享包重打为 47 条目。
 
 **下一项产品需求**：`REQ-036` “统一多模态模型与直接觉动作”，当前仅已派发、**尚未实现**。从 `TASK-053` 开始：先建立能力感知的多模态请求层，再接 Ocean Eyes 截图直译，最后对比直达与两段式链路。普通划词仍走纯文本，纯 OCR 与两段式回退必须保留。详见 [`docs/architecture/10-multimodal-actions.md`](docs/architecture/10-multimodal-actions.md)。`REQ-027` 的主题切换三个任务（TASK-030–032）仍在待办，不要误标已完成。
 
