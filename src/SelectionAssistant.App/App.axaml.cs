@@ -57,6 +57,9 @@ public partial class App : Application
     private static readonly System.Net.Http.HttpClient _faviconHttpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
     private static readonly Dictionary<string, Avalonia.Media.Imaging.Bitmap?> _faviconCache = new(StringComparer.OrdinalIgnoreCase);
     private TrayIcon? _trayIcon;
+    // 托盘「启动 LHM」项：LHM 在线时置灰（避免再开一个实例），
+    // 由功耗轮询循环每拍刷新，语义与设置页的同名按钮一致。
+    private NativeMenuItem? _trayStartLhm;
     // 功耗监控 (power monitoring): the polling loop is a background Task driven
     // by a PeriodicTimer; _powerCts cancels it on shutdown or settings change.
     // The three alert mp3 byte[] are lazy-loaded from embedded resources the
@@ -2114,6 +2117,10 @@ public partial class App : Application
         _settingsWindow.SetPowerMonitorSettings(
             _runtime.GetPowerMonitorSettings(), histPath, histExists, histBytes, histSamples);
         _settingsWindow.IsLhmOnline = _runtime.GetLastPowerSnapshot().Connected;
+        if (_trayStartLhm is not null)
+        {
+            _trayStartLhm.IsEnabled = !_runtime.GetLastPowerSnapshot().Connected;
+        }
         _settingsWindow.SetOceanEyesTriggerSettings(_oceanEyesTrigger);
         _settingsWindow.SetOceanEyesCaptureSettings(_oceanEyesCapture);
         _settingsWindow.SetToolbarShortcuts(_toolbarShortcuts);
@@ -2414,6 +2421,23 @@ public partial class App : Application
             _runtime.GetPowerMonitorSettings(), histPath, histExists, histBytes, histSamples);
     }
 
+    /// <summary>
+    /// Tray "start LHM" handler: identical code path to the settings-page button
+    /// (SelectionRuntime.StartLhm → LauncherRunner → ShellExecuteEx runas, so UAC
+    /// still prompts). The settings window is usually closed when the tray menu is
+    /// used, so the synchronous outcome is surfaced through the tray tooltip; the
+    /// power polling loop overwrites it on its next tick anyway.
+    /// </summary>
+    private void OnTrayStartLhm()
+    {
+        if (_runtime is null) return;
+        (bool ok, string message) = _runtime.StartLhm(_runtime.GetPowerMonitorSettings().LhmExePath);
+        if (_trayIcon is not null && !string.IsNullOrEmpty(message))
+        {
+            _trayIcon.ToolTipText = $"BYH · {message}";
+        }
+    }
+
     /// <summary>Settings-page "Start LHM" handler: launch the configured Libre Hardware Monitor
     /// as administrator (UAC). Pushes the synchronous outcome to the status line — the actual
     /// online/offline flip arrives a few seconds later via the polling loop.</summary>
@@ -2475,6 +2499,10 @@ public partial class App : Application
                     if (_settingsWindow is not null)
                     {
                         _settingsWindow.IsLhmOnline = snap.Connected;
+                    }
+                    if (_trayStartLhm is not null)
+                    {
+                        _trayStartLhm.IsEnabled = !snap.Connected;
                     }
                     if (result.AnyNewlyTriggered)
                     {
@@ -2581,36 +2609,7 @@ public partial class App : Application
 
     private TrayIcon CreateTrayIcon()
     {
-        var openSettings = new NativeMenuItem(Strings.Tray_OpenSettings);
-        openSettings.Click += (_, _) => RefreshAndShowSettings();
-
-        var openConfig = new NativeMenuItem(Strings.Tray_OpenConfig);
-        openConfig.Click += (_, _) =>
-        {
-            if (_paths is not null)
-            {
-                OpenDirectory(_paths.BaseDirectory);
-            }
-        };
-
-        // R49: screenshot gallery entry. Works cold-start — does not need an
-        // Ocean Eyes session. ShowGallery reads SavePath from settings.
-        var openGallery = new NativeMenuItem(Strings.Tray_OpenGallery);
-        openGallery.Click += (_, _) => _runtime?.ShowGallery();
-
-        var restart = new NativeMenuItem(Strings.Tray_Restart);
-        restart.Click += (_, _) => RequestRestart();
-
-        var exit = new NativeMenuItem(Strings.Tray_Exit);
-        exit.Click += (_, _) => RequestExit();
-
-        var menu = new NativeMenu();
-        menu.Items.Add(openSettings);
-        menu.Items.Add(openConfig);
-        menu.Items.Add(openGallery);
-        menu.Items.Add(new NativeMenuItemSeparator());
-        menu.Items.Add(restart);
-        menu.Items.Add(exit);
+        NativeMenu menu = BuildTrayMenu();
 
         // Load the tray icon as a full ICO container (not a raw PNG). On
         // Windows the tray uses HICON via CreateIconFromResource, which needs
@@ -2634,6 +2633,54 @@ public partial class App : Application
         trayIcon.Clicked += (_, _) => RefreshAndShowSettings();
         return trayIcon;
     }
+
+    /// <summary>
+    /// Builds the tray context menu. Kept separate from <see cref="CreateTrayIcon"/>
+    /// so the entries can be inspected without a live tray icon (the icon itself
+    /// needs a shell + platform; the menu is a plain Avalonia object model).
+    /// </summary>
+    private NativeMenu BuildTrayMenu()
+    {
+        var openSettings = new NativeMenuItem(Strings.Tray_OpenSettings);
+        openSettings.Click += (_, _) => RefreshAndShowSettings();
+
+        var openConfig = new NativeMenuItem(Strings.Tray_OpenConfig);
+        openConfig.Click += (_, _) =>
+        {
+            if (_paths is not null)
+            {
+                OpenDirectory(_paths.BaseDirectory);
+            }
+        };
+
+        // R49: screenshot gallery entry. Works cold-start — does not need an
+        // Ocean Eyes session. ShowGallery reads SavePath from settings.
+        var openGallery = new NativeMenuItem(Strings.Tray_OpenGallery);
+        openGallery.Click += (_, _) => _runtime?.ShowGallery();
+
+        // 一键拉起 LHM：复用设置页按钮的 SelectionRuntime.StartLhm（提权 + UAC），
+        // 路径取当前设置，留空则回退到随包 tools\LibreHardwareMonitor。
+        var startLhm = new NativeMenuItem(Strings.Tray_StartLhm);
+        startLhm.Click += (_, _) => OnTrayStartLhm();
+        _trayStartLhm = startLhm;
+
+        var restart = new NativeMenuItem(Strings.Tray_Restart);
+        restart.Click += (_, _) => RequestRestart();
+
+        var exit = new NativeMenuItem(Strings.Tray_Exit);
+        exit.Click += (_, _) => RequestExit();
+
+        var menu = new NativeMenu();
+        menu.Items.Add(openSettings);
+        menu.Items.Add(openConfig);
+        menu.Items.Add(openGallery);
+        menu.Items.Add(startLhm);
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(restart);
+        menu.Items.Add(exit);
+        return menu;
+    }
+
 
     private static void OpenDirectory(string path)
     {

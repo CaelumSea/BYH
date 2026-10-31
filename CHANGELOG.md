@@ -14,6 +14,7 @@
 
 ### 新增
 
+- **托盘右键菜单「启动 LHM 温度监控」。** 和设置页按钮共用同一条链路（`SelectionRuntime.StartLhm` → `LauncherRunner` → `ShellExecuteEx runas`，照常弹 UAC），路径取当前设置、留空回退到随包 `tools\LibreHardwareMonitor`；LHM 在线时该项置灰，避免再起一个实例，由功耗轮询循环每一拍刷新。设置窗通常没开，所以同步结果（"正在启动…" / "找不到程序"）写进托盘 tooltip，下一拍会被实时功耗覆盖。菜单构建同时抽成 `BuildTrayMenu()`，从此条目可以脱离托盘外壳单独检查。实测：右键托盘图标读到的条目顺序为 Open BYH Settings / Open Config Folder / Open Screenshot Gallery / **Start Libre Hardware Monitor（在线时 enabled=False）** / Restart / Exit。
 - **截图相册多选 + 一键批量删除。** `Ctrl+单击` 增减选中、`Shift+单击` 连选区间（锚点为上一次普通单击的图）、`Ctrl+A` 全选、`Esc` 取消选择、点空白清空；选中 ≥2 张时左下角浮出「已选 N 张 · Delete 删除 · Esc 取消」。`Delete` 作用于整个选区：确认框文案按数量切换「删除 N 张截图？」，**再按一次 `Delete` 一次删完**（沿用既有的两次确认 + 按住不连删保护）。实现上把「光标」（`_selected`，预览/复制/置顶/Enter 作用的对象）与「选区」（`HashSet`）拆开，`IsSelected` 通过 `Classes.selected="{Binding IsSelected}"` 绑定到卡片 —— 顺带补上了此前**完全没有视觉反馈**的选中状态。选中标记做到一眼可辨（第一版只有一圈淡金描边，实测太淡）：卡片外框 2px 深棕 `ByhAccentBrush` + 缩略图上 2px 香槟金内环 + 12% 金色蒙层 + 右上角金色 ✓ 角标，四层叠加且全部 `IsHitTestVisible=False`，不影响点击命中的落点。删除改为逐张 try/catch：某张被占用不会中断整批，失败的图连同它的选中状态一起留在列表里供重试，并写 `Gallery delete: N of M file(s) could not be removed` 日志。右键菜单：右键的图在当前选区内则删整个选区，否则只删右键那张。同时**取消悬停即选中**（悬停只留金色高亮）——悬停驱动光标会在鼠标划过网格时悄悄清掉多选。进入大图会把选区收敛为该图；`←/→` 翻页时选区随之移动。
 
 ### 调整
@@ -29,7 +30,7 @@
 
 ### 发布
 
-- **2026-10-31 内测发布包刷新。** `dist/BYH-v0.1.0-post-20261030-内测.zip`（27,439,367 B，SHA-256 `4D2D4947…`，47 条目）：`BYH.exe`（29,413,888 B，SHA-256 `30469139…`，等于 `artifacts/publish/win-x64-nativeuia` 的现役构建）+ `av_libglesv2` / `libHarfBuzzSharp` / `libSkiaSharp` 三个原生库 + `tools\LibreHardwareMonitor`（41 文件完整目录，含 `LibreHardwareMonitor.exe.config`）+ `providers.example.json`（取 `docs/` 现役版）+ `快速上手.md`。压缩包 CRC 校验通过、exe 与发布目录逐字节一致；旧的内测包（7-29 `v0.1.0`）与 `dist/` 里的散装旧 exe/dll 已删除。
+- **2026-10-31 内测发布包刷新（含托盘「启动 LHM」）。** `dist/BYH-v0.1.0-post-20261030-内测.zip`（27,439,218 B，SHA-256 `978BFA60…`，47 条目）：`BYH.exe`（29,414,912 B，SHA-256 `36FE5C0C…`，等于 `artifacts/publish/win-x64-nativeuia` 的现役构建）+ `av_libglesv2` / `libHarfBuzzSharp` / `libSkiaSharp` 三个原生库 + `tools\LibreHardwareMonitor`（41 文件完整目录，含 `LibreHardwareMonitor.exe.config`）+ `providers.example.json`（取 `docs/` 现役版）+ `快速上手.md`。压缩包 CRC 校验通过、exe 与发布目录逐字节一致；旧的内测包（7-29 `v0.1.0`）与 `dist/` 里的散装旧 exe/dll 已删除。
 - **`docs/快速上手.md` 入库。** 原 `dist/快速上手.md` 是内测用户上手说明且**从未进过版本控制**（与 README 中文内容 92% 不重叠），现移入 `docs/`：补当前构建标识、剪贴板图片上限（0=不限）/Pin/图片不归档的说明、开机自启改到「设置 → 通用 → 开机自启」、发布包与快速上手互相指路。
 
 

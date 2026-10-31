@@ -383,6 +383,7 @@ internal static partial class Strings_zh_CN
         ["Tray_OpenSettings"] = "打开 BYH 设置",
         ["Tray_OpenConfig"] = "打开配置文件夹",
         ["Tray_OpenGallery"] = "打开截图相册",
+        ["Tray_StartLhm"] = "启动 LHM 温度监控",
         ["Tray_Restart"] = "重启 BYH",
         ["Tray_Exit"] = "退出 BYH",
 

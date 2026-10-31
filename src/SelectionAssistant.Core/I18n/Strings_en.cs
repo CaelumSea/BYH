@@ -381,6 +381,7 @@ internal static partial class Strings_en
         ["Tray_OpenSettings"] = "Open BYH Settings",
         ["Tray_OpenConfig"] = "Open Config Folder",
         ["Tray_OpenGallery"] = "Open Screenshot Gallery",
+        ["Tray_StartLhm"] = "Start Libre Hardware Monitor",
         ["Tray_Restart"] = "Restart BYH",
         ["Tray_Exit"] = "Exit BYH",
 

@@ -470,6 +470,7 @@ public static partial class Strings
     public static string Tray_OpenSettings => Get(nameof(Tray_OpenSettings));
     public static string Tray_OpenConfig => Get(nameof(Tray_OpenConfig));
     public static string Tray_OpenGallery => Get(nameof(Tray_OpenGallery));
+    public static string Tray_StartLhm => Get(nameof(Tray_StartLhm));
     public static string Tray_Restart => Get(nameof(Tray_Restart));
     public static string Tray_Exit => Get(nameof(Tray_Exit));
 
