@@ -57,7 +57,7 @@ dotnet publish src/SelectionAssistant.App/SelectionAssistant.App.csproj -c Relea
 
 **2026-10-30/31 相册交互与图片复制**：截图相册点击语义改为单击选中 / 双击看大图，`Delete` 弹确认框后**再按一次 Delete** 才删（按住不连删），选中 ≥2 张走批量删除（`Ctrl/Shift/Ctrl+A/Esc`、左下角「已选 N 张」浮条、单张失败不影响其余），选中态加粗金边 + ✓ 角标。图片复制改走 `GalleryImageClipboard.CopyPng` → `SetImageDibAndPng`（CF_DIB + CF_PNG 一次原子写入，并校验返回值），`PngToDibConverter` 的 PNG 解码换成 SkiaSharp——Avalonia 12.1 的 `Bitmap.CopyPixels` 对普通截图抛 `stride` 越界、异常被吞成 null，此前所有图片复制实际只剩 CF_PNG（Word/画图/资源管理器粘不出来）。验证基线 **972/972**（792 / 51 / 129）。
 
-**2026-10-31 LHM 随包与托盘入口**：修「启动 LHM 没反应」——发布目录只拷了 45 个文件里的 16 个，漏掉 `LibreHardwareMonitor.exe.config`，LHM 建窗即崩（见铁律 9）；现由 csproj 整目录随包拷贝。托盘右键新增「启动 LHM 温度监控」，与设置页按钮同一条 `StartLhm` 链路（路径取 `LhmExePath`、空则随包默认），LHM 在线置灰、结果写托盘 tooltip；菜单构建抽成 `BuildTrayMenu()` 便于脱离托盘外壳检查。分享包重打为 47 条目。
+**2026-10-31 LHM 随包与托盘入口**：修「启动 LHM 没反应」——发布目录只拷了 45 个文件里的 16 个，漏掉 `LibreHardwareMonitor.exe.config`，LHM 建窗即崩（见铁律 9）；现由 csproj 整目录随包拷贝。托盘右键新增「启动 LHM 温度监控」，与设置页按钮同一条 `StartLhm` 链路（路径取 `LhmExePath`、空则随包默认），LHM 在线置灰、结果写托盘 tooltip；菜单构建抽成 `BuildTrayMenu()` 便于脱离托盘外壳检查。分享包重打为 47 条目。功耗监控机制（轮询/积分/告警/启动入口/失败模式）见 `docs/architecture/11-power-monitoring.md`。
 
 **下一项产品需求**：`REQ-036` “统一多模态模型与直接觉动作”，当前仅已派发、**尚未实现**。从 `TASK-053` 开始：先建立能力感知的多模态请求层，再接 Ocean Eyes 截图直译，最后对比直达与两段式链路。普通划词仍走纯文本，纯 OCR 与两段式回退必须保留。详见 [`docs/architecture/10-multimodal-actions.md`](docs/architecture/10-multimodal-actions.md)。`REQ-027` 的主题切换三个任务（TASK-030–032）仍在待办，不要误标已完成。
 

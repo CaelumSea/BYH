@@ -200,7 +200,7 @@ src/
 
 ## 路线图与审查
 
-`docs/BACKLOG-roadmap.md` 是 R1–R54 路线图待办（含 120 批次演进历史），`docs/AUDIT-findings.md` 是按 P0/P1/P2/P3 分级的全代码库审查清单与修复进度。机器 agent 接续工作时先读根目录 `AGENTS.md`。
+`docs/architecture/00-architecture-overview.md` 是架构文档索引（选词/窗口/Provider/主题/配置/安全/构建/启动/功耗逐篇对应），`docs/BACKLOG-roadmap.md` 是 R1–R54 路线图待办（含 120 批次演进历史），`docs/AUDIT-findings.md` 是按 P0/P1/P2/P3 分级的全代码库审查清单与修复进度。机器 agent 接续工作时先读根目录 `AGENTS.md`。
 
 ---
 
