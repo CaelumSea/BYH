@@ -40,6 +40,7 @@ SelectionAssistant.App              ← 组合根 + 生命周期 + 五窗口接�
 | 安全规则（密钥/重定向/钩子不吞事件/NativeAOT） | `06-security-invariants.md` |
 | 构建命令 / 发布 / 启动 / 探针 / 单实例锁 | `07-build-publish-run.md` |
 | 主题色 / 控件状态 / 卡片材料 / 窗口视觉 | `08-theme-system.md` |
+| 功耗/温度显示 / LHM 轮询 / 能量积分 / 一键启动 LHM | `11-power-monitoring.md` |
 
 ---
 
